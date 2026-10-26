@@ -140,14 +140,24 @@ describe('EsploraClientAdapter', () => {
     });
   });
 
-  describe('read retries', () => {
-    const setupRetryTest = (): {
+  describe('fallback endpoint', () => {
+    const setupFallbackTest = (
+      fallbackUrl?: string,
+    ): {
       adapter: EsploraClientAdapter;
-      client: ReturnType<typeof mock<EsploraClient>>;
+      primary: ReturnType<typeof mock<EsploraClient>>;
+      fallback: ReturnType<typeof mock<EsploraClient>>;
       account: BitcoinAccount;
     } => {
-      const client = mock<EsploraClient>();
-      jest.mocked(EsploraClient).mockImplementation(() => client);
+      const primary = mock<EsploraClient>();
+      const fallback = mock<EsploraClient>();
+      jest
+        .mocked(EsploraClient)
+        .mockImplementation((url: string) =>
+          url === 'https://fallback.example' ? fallback : primary,
+        );
+      // A plain object: a deep mock would make every network's fallback
+      // URL truthy.
       const config = {
         parallelRequests: 5,
         maxRetries: 3,
@@ -159,12 +169,14 @@ describe('EsploraClientAdapter', () => {
           signet: 'https://signet.example',
           regtest: 'https://regtest.example',
         },
+        ...(fallbackUrl ? { fallbackUrl: { bitcoin: fallbackUrl } } : {}),
       } as unknown as ChainConfig;
       const account = mock<BitcoinAccount>({ network: 'bitcoin' });
       account.startFullScan.mockReturnValue(mock<FullScanRequest>());
       return {
         adapter: new EsploraClientAdapter(config),
-        client,
+        primary,
+        fallback,
         account,
       };
     };
@@ -177,24 +189,27 @@ describe('EsploraClientAdapter', () => {
       jest.useRealTimers();
     });
 
-    it('retries a scan that fails with a network error once', async () => {
-      const { adapter, client, account } = setupRetryTest();
+    it('scans against the fallback endpoint when the primary keeps failing with a network error', async () => {
+      const { adapter, primary, fallback, account } = setupFallbackTest(
+        'https://fallback.example',
+      );
+      primary.full_scan.mockRejectedValue(new TypeError('Failed to fetch'));
       const update = { update: true };
-      client.full_scan
-        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-        .mockResolvedValue(update as never);
+      fallback.full_scan.mockResolvedValue(update as never);
 
       const pending = adapter.fullScan(account);
       await jest.runAllTimersAsync();
       await pending;
 
-      expect(client.full_scan).toHaveBeenCalledTimes(2);
+      // 1 attempt + 1 retry on the primary, then the fallback.
+      expect(primary.full_scan).toHaveBeenCalledTimes(2);
+      expect(fallback.full_scan).toHaveBeenCalledTimes(1);
       expect(account.applyUpdate).toHaveBeenCalledWith(update);
     });
 
-    it('fails once the retry also fails with a network error', async () => {
-      const { adapter, client, account } = setupRetryTest();
-      client.full_scan.mockRejectedValue(new TypeError('Failed to fetch'));
+    it('fails with the primary error when no fallback is configured', async () => {
+      const { adapter, primary, fallback, account } = setupFallbackTest();
+      primary.full_scan.mockRejectedValue(new TypeError('Failed to fetch'));
 
       const pending = adapter
         .fullScan(account)
@@ -204,14 +219,14 @@ describe('EsploraClientAdapter', () => {
         message: 'Failed to perform initial full scan',
       });
 
-      // 1 attempt + 1 retry.
-      expect(client.full_scan).toHaveBeenCalledTimes(2);
-      expect(account.applyUpdate).not.toHaveBeenCalled();
+      expect(fallback.full_scan).not.toHaveBeenCalled();
     });
 
-    it('never retries a broadcast', async () => {
-      const { adapter, client } = setupRetryTest();
-      client.broadcast.mockRejectedValue(new TypeError('Failed to fetch'));
+    it('never retries nor falls back a broadcast', async () => {
+      const { adapter, primary, fallback } = setupFallbackTest(
+        'https://fallback.example',
+      );
+      primary.broadcast.mockRejectedValue(new TypeError('Failed to fetch'));
       const transaction =
         mock<Parameters<EsploraClientAdapter['broadcast']>[1]>();
       transaction.compute_txid.mockReturnValue({
@@ -226,7 +241,8 @@ describe('EsploraClientAdapter', () => {
         message: 'Failed to broadcast transaction',
       });
 
-      expect(client.broadcast).toHaveBeenCalledTimes(1);
+      expect(primary.broadcast).toHaveBeenCalledTimes(1);
+      expect(fallback.broadcast).not.toHaveBeenCalled();
     });
   });
 

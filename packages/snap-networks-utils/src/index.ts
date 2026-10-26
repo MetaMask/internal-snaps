@@ -156,6 +156,11 @@ export {
   parseRetryAfter,
 } from './utils/fetchPolicy/executeWithFetchPolicy';
 export type { FetchPolicy } from './utils/fetchPolicy/executeWithFetchPolicy';
+export {
+  shouldUseFallbackEndpoint,
+  withEndpointFallback,
+} from './utils/fetchPolicy/withEndpointFallback';
+export type { WithEndpointFallbackOptions } from './utils/fetchPolicy/withEndpointFallback';
 export { ActionHeader } from './ui/ActionHeader/ActionHeader';
 export type { ActionHeaderProps } from './ui/ActionHeader/ActionHeader';
 export { Asset, AssetIcon } from './ui/Asset/Asset';

@@ -26,6 +26,17 @@ const config: SnapConfig = {
     STELLAR_HORIZON_URL_TESTNET: process.env.STELLAR_HORIZON_URL_TESTNET ?? '',
     STELLAR_EXPLORER_TESTNET_BASE_URL:
       process.env.STELLAR_EXPLORER_TESTNET_BASE_URL ?? '',
+    // Optional public endpoints used only when the primary one fails at the
+    // transport level (e.g. the Infura empty-404 / no-CORS failure). Unset by
+    // default: no request leaves the primary provider.
+    STELLAR_HORIZON_FALLBACK_URL_MAINNET:
+      process.env.STELLAR_HORIZON_FALLBACK_URL_MAINNET ?? '',
+    STELLAR_RPC_FALLBACK_URL_MAINNET:
+      process.env.STELLAR_RPC_FALLBACK_URL_MAINNET ?? '',
+    STELLAR_HORIZON_FALLBACK_URL_TESTNET:
+      process.env.STELLAR_HORIZON_FALLBACK_URL_TESTNET ?? '',
+    STELLAR_RPC_FALLBACK_URL_TESTNET:
+      process.env.STELLAR_RPC_FALLBACK_URL_TESTNET ?? '',
     STELLAR_TRANSACTION_TIMEOUT: process.env.STELLAR_TRANSACTION_TIMEOUT ?? '',
     STELLAR_TRANSACTION_POLLING_ATTEMPTS:
       process.env.STELLAR_TRANSACTION_POLLING_ATTEMPTS ?? '',

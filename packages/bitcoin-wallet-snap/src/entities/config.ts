@@ -19,6 +19,9 @@ export type ChainConfig = {
   url: {
     [network in Network]: string;
   };
+  fallbackUrl?: {
+    [network in Network]?: string | undefined;
+  };
   explorerUrl: {
     [network in Network]: string;
   };

@@ -11,6 +11,7 @@ import {
   createFetchPolicy,
   createFetchPolicyError,
   executeWithFetchPolicy,
+  withEndpointFallback,
 } from '@metamask/snap-networks-utils';
 
 import { ExternalServiceError } from '../entities';
@@ -86,7 +87,7 @@ export async function toScripthash(script: Uint8Array): Promise<string> {
 }
 
 /**
- * Upper bound on a whole sync (all its requests and retries).
+ * Upper bound on a whole sync (all its requests, retries and the fallback).
  * The WASM client sets no timeout on its requests: a request stalled by a
  * suspended or broken connection could otherwise never settle, keeping the
  * coalesced cron sync (and every later cron run joining it) stuck.
@@ -134,7 +135,7 @@ export async function withOperationTimeout<Result>(
  * policies guarding them.
  */
 type EsploraEndpoint = {
-  label: 'primary';
+  label: 'primary' | 'fallback';
   client: EsploraClient;
   restUrl: string;
   /** Guards `full_scan` / `sync` (the WASM client already retries each request). */
@@ -167,6 +168,8 @@ export class EsploraClientAdapter implements BlockchainClient {
   // Should be a Repository but we don't support custom networks so we can save in memory from config values
   readonly #endpoints: Record<Network, EsploraEndpoint>;
 
+  readonly #fallbackEndpoints: Partial<Record<Network, EsploraEndpoint>>;
+
   readonly #config: ChainConfig;
 
   readonly #logger: Pick<Logger, 'warn'>;
@@ -181,14 +184,24 @@ export class EsploraClientAdapter implements BlockchainClient {
     this.#logger = logger;
 
     const endpoints = {} as Record<Network, EsploraEndpoint>;
+    const fallbackEndpoints: Partial<Record<Network, EsploraEndpoint>> = {};
     for (const network of NETWORKS) {
       endpoints[network] = this.#createEndpoint(
         network,
         config.url[network],
         'primary',
       );
+      const fallbackUrl = config.fallbackUrl?.[network];
+      if (fallbackUrl && fallbackUrl !== config.url[network]) {
+        fallbackEndpoints[network] = this.#createEndpoint(
+          network,
+          fallbackUrl,
+          'fallback',
+        );
+      }
     }
     this.#endpoints = endpoints;
+    this.#fallbackEndpoints = fallbackEndpoints;
   }
 
   #createEndpoint(
@@ -216,8 +229,8 @@ export class EsploraClientAdapter implements BlockchainClient {
   }
 
   /**
-   * Runs a read against the endpoint under its fetch policy (bounded retries
-   * with backoff on transient failures, circuit breaker).
+   * Runs a read against the primary endpoint under its fetch policy and, on a
+   * transport-level failure, against the configured fallback endpoint.
    *
    * @param network - The network.
    * @param policy - Which of the endpoint's policies guards the call.
@@ -229,9 +242,24 @@ export class EsploraClientAdapter implements BlockchainClient {
     policy: 'scanPolicy' | 'restPolicy',
     operation: (endpoint: EsploraEndpoint) => Promise<Result>,
   ): Promise<Result> {
-    const endpoint = this.#endpoints[network];
-    return executeWithFetchPolicy(endpoint[policy], async () =>
-      operation(endpoint),
+    const primary = this.#endpoints[network];
+    const fallback = this.#fallbackEndpoints[network];
+    return withEndpointFallback(
+      async (): Promise<Result> =>
+        executeWithFetchPolicy(primary[policy], async () => operation(primary)),
+      fallback
+        ? async (): Promise<Result> =>
+            executeWithFetchPolicy(fallback[policy], async () =>
+              operation(fallback),
+            )
+        : undefined,
+      {
+        onFallback: (error): void =>
+          this.#logger.warn(
+            `[esplora ${network}] primary endpoint failed, using fallback`,
+            error,
+          ),
+      },
     );
   }
 
@@ -379,7 +407,8 @@ export class EsploraClientAdapter implements BlockchainClient {
 
   async broadcast(network: Network, transaction: Transaction): Promise<void> {
     try {
-      // Never retried: a retry could broadcast twice.
+      // Never retried nor sent to a fallback: a retry could broadcast twice
+      // and leak the transaction to a third party.
       await this.#endpoints[network].client.broadcast(transaction);
     } catch (error) {
       throw new ExternalServiceError(

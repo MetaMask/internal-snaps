@@ -8,6 +8,7 @@ import {
   createFetchPolicy,
   executeWithFetchPolicy,
   useCache,
+  withEndpointFallback,
 } from '@metamask/snap-networks-utils';
 import {
   Address,
@@ -67,6 +68,7 @@ type ReadEndpoint<Client> = {
 
 type ReadEndpoints<Client> = {
   primary: ReadEndpoint<Client>;
+  fallback?: ReadEndpoint<Client>;
 };
 
 /**
@@ -132,6 +134,7 @@ export class NetworkService {
   ): ReadEndpoints<StellarHorizon.Server> {
     let endpoints = this.#horizonReadEndpoints.get(scope);
     if (!endpoints) {
+      const { horizonUrl, horizonFallbackUrl } = this.#getNetworkConfig(scope);
       endpoints = {
         primary: {
           client: this.#getHorizonClient(scope),
@@ -141,6 +144,18 @@ export class NetworkService {
             logger: this.#logger,
           }),
         },
+        ...(horizonFallbackUrl && horizonFallbackUrl !== horizonUrl
+          ? {
+              fallback: {
+                client: new StellarHorizon.Server(horizonFallbackUrl),
+                policy: createFetchPolicy({
+                  service: 'stellar_horizon_fallback',
+                  chainIdCaip: scope,
+                  logger: this.#logger,
+                }),
+              },
+            }
+          : {}),
       };
       this.#horizonReadEndpoints.set(scope, endpoints);
     }
@@ -150,6 +165,7 @@ export class NetworkService {
   #getRpcReadEndpoints(scope: KnownCaip2ChainId): ReadEndpoints<rpc.Server> {
     let endpoints = this.#rpcReadEndpoints.get(scope);
     if (!endpoints) {
+      const { rpcUrl, rpcFallbackUrl } = this.#getNetworkConfig(scope);
       endpoints = {
         primary: {
           client: this.#getRpcClient(scope),
@@ -159,6 +175,18 @@ export class NetworkService {
             logger: this.#logger,
           }),
         },
+        ...(rpcFallbackUrl && rpcFallbackUrl !== rpcUrl
+          ? {
+              fallback: {
+                client: new rpc.Server(rpcFallbackUrl),
+                policy: createFetchPolicy({
+                  service: 'stellar_rpc_fallback',
+                  chainIdCaip: scope,
+                  logger: this.#logger,
+                }),
+              },
+            }
+          : {}),
       };
       this.#rpcReadEndpoints.set(scope, endpoints);
     }
@@ -167,9 +195,10 @@ export class NetworkService {
 
   /**
    * Runs an idempotent read under the endpoint's fetch policy (retry with backoff on transient
-   * failures, circuit breaker). Rethrows the original SDK error so callers keep classifying it.
+   * failures, circuit breaker) and, on a transport-level failure, against the optional fallback
+   * endpoint. Rethrows the original SDK error so callers keep classifying it.
    *
-   * @param endpoints - The endpoints to read from.
+   * @param endpoints - The primary and optional fallback endpoints.
    * @param read - The read, given the client to use.
    * @param accountAddress - The account the read is about, to recognise a confirmed 404.
    * @returns The read result.
@@ -179,12 +208,27 @@ export class NetworkService {
     read: (client: Client) => Promise<Result>,
     accountAddress?: string,
   ): Promise<Result> {
-    const { client, policy } = endpoints.primary;
-    try {
-      return await executeWithFetchPolicy(
+    const run = async ({
+      client,
+      policy,
+    }: ReadEndpoint<Client>): Promise<Result> =>
+      executeWithFetchPolicy(
         policy,
         async () => read(client),
         (error) => toStellarFetchPolicyError(error, accountAddress),
+      );
+    const { fallback } = endpoints;
+    try {
+      return await withEndpointFallback(
+        async () => run(endpoints.primary),
+        fallback ? async (): Promise<Result> => run(fallback) : undefined,
+        {
+          onFallback: (error): void =>
+            this.#logger.warn(
+              'Primary endpoint failed, using fallback endpoint',
+              { error },
+            ),
+        },
       );
     } catch (error: unknown) {
       throw unwrapFetchPolicyError(error);

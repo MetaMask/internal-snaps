@@ -376,9 +376,31 @@ describe('NetworkService', () => {
     });
   });
 
-  describe('read retries', () => {
+  describe('read retries and fallback endpoints', () => {
     const testAddress =
       'GB5QOHJZ6RACA26NFDIEHD7I7SLROLC5P4NATSG43OJV2C5WUR4VEUKG';
+    const HORIZON_FALLBACK = 'https://horizon-fallback.example.org';
+    const RPC_FALLBACK = 'https://rpc-fallback.example.org';
+    const isFallback = (client: { serverURL: unknown }, url: string): boolean =>
+      String(client.serverURL).startsWith(url);
+    let originalNetworkConfig: (typeof AppConfig.networks)[KnownCaip2ChainId];
+
+    beforeEach(() => {
+      originalNetworkConfig = AppConfig.networks[KnownCaip2ChainId.Mainnet];
+    });
+
+    afterEach(() => {
+      AppConfig.networks[KnownCaip2ChainId.Mainnet] = originalNetworkConfig;
+    });
+
+    const enableFallbacks = (): void => {
+      AppConfig.networks[KnownCaip2ChainId.Mainnet] = {
+        ...originalNetworkConfig,
+        horizonFallbackUrl: HORIZON_FALLBACK,
+        rpcFallbackUrl: RPC_FALLBACK,
+      };
+    };
+
     const mockAccount = (): StellarHorizon.AccountResponse =>
       createMockAccountWithBalances(testAddress, '1', {
         nativeBalance: 1,
@@ -420,6 +442,75 @@ describe('NetworkService', () => {
         networkService.loadOnChainAccount(testAddress, scope),
       ).rejects.toThrow(NetworkServiceException);
       expect(loadAccountSpy.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    it('uses the Horizon fallback endpoint when the primary keeps failing', async () => {
+      enableFallbacks();
+      const { loadAccountSpy } = getHorizonClientSpies();
+      loadAccountSpy.mockImplementation(async function (
+        this: StellarHorizon.Server,
+      ) {
+        if (isFallback(this, HORIZON_FALLBACK)) {
+          return mockAccount();
+        }
+        throw new Error('Failed to fetch');
+      });
+
+      const result = await networkService.loadOnChainAccount(
+        testAddress,
+        scope,
+      );
+
+      expect(result.accountId).toBe(testAddress);
+      const fallbackCalls = loadAccountSpy.mock.contexts.filter((context) =>
+        isFallback(context as StellarHorizon.Server, HORIZON_FALLBACK),
+      );
+      expect(fallbackCalls).toHaveLength(1);
+      expect(loadAccountSpy.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    it('does not use the fallback for a confirmed missing account', async () => {
+      enableFallbacks();
+      const { loadAccountSpy } = getHorizonClientSpies();
+      loadAccountSpy.mockRejectedValue(
+        new NotFoundError('Not Found', { status: 404 }),
+      );
+
+      await expect(
+        networkService.loadOnChainAccount(testAddress, scope),
+      ).rejects.toThrow(AccountNotActivatedException);
+      expect(loadAccountSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports the primary error when the fallback also fails', async () => {
+      enableFallbacks();
+      const { loadAccountSpy } = getHorizonClientSpies();
+      loadAccountSpy.mockRejectedValue(new Error('Failed to fetch'));
+
+      await expect(
+        networkService.loadOnChainAccount(testAddress, scope),
+      ).rejects.toThrow(NetworkServiceException);
+      const fallbackCalls = loadAccountSpy.mock.contexts.filter((context) =>
+        isFallback(context as StellarHorizon.Server, HORIZON_FALLBACK),
+      );
+      expect(fallbackCalls.length).toBeGreaterThan(0);
+    });
+
+    it('uses the RPC fallback endpoint for getAccount', async () => {
+      enableFallbacks();
+      const { getAccountSpy } = getRpcServerSpies();
+      getAccountSpy.mockImplementation(async function (
+        this: StellarRpc.Server,
+      ) {
+        if (isFallback(this, RPC_FALLBACK)) {
+          return new Account(testAddress, '7');
+        }
+        throw new Error('Failed to fetch');
+      });
+
+      const result = await networkService.getAccount(testAddress, scope);
+
+      expect(result.sequenceNumber).toBe('7');
     });
   });
 

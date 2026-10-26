@@ -14,6 +14,7 @@ import {
   enums,
   number,
   object,
+  optional,
   string,
 } from '@metamask/superstruct';
 
@@ -42,6 +43,17 @@ export const ConfigStruct = object({
       signet: defaultedUrlStruct('https://mutinynet.com/api'),
       regtest: defaultedUrlStruct('http://localhost:8094/regtest/api'),
     }),
+    /**
+     * Optional fallback Esplora endpoints, used only when the primary fails
+     * at the transport level (see `withEndpointFallback`). Empty disables it.
+     */
+    fallbackUrl: optional(
+      object({
+        bitcoin: coerce(optional(string()), string(), (value: string) =>
+          value === '' ? undefined : value,
+        ),
+      }),
+    ),
     explorerUrl: object({
       bitcoin: defaultedUrlStruct('https://mempool.space'),
       testnet: defaultedUrlStruct('https://mempool.space/testnet'),
@@ -82,6 +94,10 @@ export const ENVIRONMENT = {
       signet: process.env.ESPLORA_SIGNET,
       regtest: process.env.ESPLORA_REGTEST,
     },
+    // Only set when configured, so the default config is unchanged.
+    ...(process.env.ESPLORA_BITCOIN_FALLBACK
+      ? { fallbackUrl: { bitcoin: process.env.ESPLORA_BITCOIN_FALLBACK } }
+      : {}),
     explorerUrl: {
       bitcoin: process.env.BITCOIN_EXPLORER,
       testnet: process.env.TESTNET_EXPLORER,

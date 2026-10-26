@@ -6,7 +6,7 @@ import {
   UrlStruct,
 } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
-import { boolean, enums, object } from '@metamask/superstruct';
+import { boolean, enums, object, optional } from '@metamask/superstruct';
 
 /* eslint-disable no-restricted-globals */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
@@ -32,6 +32,14 @@ const networkConfigStruct = object({
   rpcUrl: UrlStruct,
   horizonUrl: UrlStruct,
   explorerBaseUrl: UrlStruct,
+  /**
+   * Optional Horizon endpoint used only when the primary fails at the transport level.
+   */
+  horizonFallbackUrl: optional(UrlStruct),
+  /**
+   * Optional Soroban RPC endpoint used only when the primary fails at the transport level.
+   */
+  rpcFallbackUrl: optional(UrlStruct),
 });
 
 /**
@@ -138,6 +146,9 @@ const ENVIRONMENT = {
       explorerBaseUrl:
         process.env.STELLAR_EXPLORER_MAINNET_BASE_URL ||
         DEFAULT_EXPLORER_MAINNET_BASE_URL,
+      horizonFallbackUrl:
+        process.env.STELLAR_HORIZON_FALLBACK_URL_MAINNET || undefined,
+      rpcFallbackUrl: process.env.STELLAR_RPC_FALLBACK_URL_MAINNET || undefined,
     },
     [KnownCaip2ChainId.Testnet]: {
       rpcUrl: process.env.STELLAR_RPC_URL_TESTNET,
@@ -145,6 +156,9 @@ const ENVIRONMENT = {
       explorerBaseUrl:
         process.env.STELLAR_EXPLORER_TESTNET_BASE_URL ||
         DEFAULT_EXPLORER_TESTNET_BASE_URL,
+      horizonFallbackUrl:
+        process.env.STELLAR_HORIZON_FALLBACK_URL_TESTNET || undefined,
+      rpcFallbackUrl: process.env.STELLAR_RPC_FALLBACK_URL_TESTNET || undefined,
     },
   },
   selectedNetwork: KnownCaip2ChainId.Mainnet,
