@@ -1,6 +1,9 @@
 import { BigNumber } from 'bignumber.js';
 
-import { BASE_RESERVE_STROOPS } from '../../constants';
+import {
+  ACCOUNT_MINIMUM_BASE_RESERVE_UNIT,
+  BASE_RESERVE_STROOPS,
+} from '../../constants';
 
 type CalculateSpendableBalanceParams = {
   nativeBalance: BigNumber;
@@ -24,11 +27,48 @@ type MinimumBalanceLedgerMeta = {
 export function minimumBalanceStroops(
   meta: MinimumBalanceLedgerMeta,
 ): BigNumber {
-  return new BigNumber(2)
+  return new BigNumber(ACCOUNT_MINIMUM_BASE_RESERVE_UNIT)
     .plus(meta.subentryCount)
     .plus(meta.numSponsoring)
     .minus(meta.numSponsored)
     .times(BASE_RESERVE_STROOPS);
+}
+
+/**
+ * Best-effort ledger meta from AssetsController native `minimumReserveBalance` (stroops).
+ *
+ * Inverts {@link minimumBalanceStroops} into meta that reproduces the same reserve:
+ * `(2 + subentry_count + num_sponsoring − num_sponsored) × base_reserve`.
+ *
+ * When the reserve is at or above two base reserves, encodes the surplus as
+ * `subentryCount` with sponsorship fields at 0. When sponsorship reduces the
+ * reserve below two base reserves, encodes the deficit as `numSponsored` so
+ * {@link calculateSpendableBalance} is not understated.
+ *
+ * @param minimumReserveBalanceStroops - AssetsController `minimumReserveBalance` (integer stroops).
+ * @returns Ledger meta that preserves the controller minimum reserve.
+ */
+export function calculateLedgerMetaFromMinReserve(
+  minimumReserveBalanceStroops: string,
+): MinimumBalanceLedgerMeta {
+  const reserveUnits = new BigNumber(minimumReserveBalanceStroops).div(
+    BASE_RESERVE_STROOPS,
+  );
+  const netUnits = reserveUnits.minus(ACCOUNT_MINIMUM_BASE_RESERVE_UNIT);
+
+  if (netUnits.isGreaterThanOrEqualTo(0)) {
+    return {
+      subentryCount: netUnits.toNumber(),
+      numSponsoring: 0,
+      numSponsored: 0,
+    };
+  }
+
+  return {
+    subentryCount: 0,
+    numSponsoring: 0,
+    numSponsored: netUnits.abs().toNumber(),
+  };
 }
 
 /**

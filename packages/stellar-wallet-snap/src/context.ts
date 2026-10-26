@@ -134,6 +134,7 @@ const onChainAccountService = new OnChainAccountService({
   logger,
   networkService,
   onChainAccountRepository,
+  assetsService,
   assetMetadataService,
 });
 
@@ -357,6 +358,7 @@ const clientRequestHandler = new ClientRequestHandler({
 
 /** ------------------------------ Export Handlers ------------------------------ */
 export {
+  assetsService,
   clientRequestHandler,
   cronjobHandler,
   keyringHandler,
