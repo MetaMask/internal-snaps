@@ -5,7 +5,10 @@ import { mock } from 'jest-mock-extended';
 import type { BitcoinAccount, ChainConfig } from '../entities';
 import {
   EsploraClientAdapter,
+  FULL_SCAN_TIMEOUT_MS,
   SENDER_REQUEST_TIMEOUT_MS,
+  SYNC_TIMEOUT_MS,
+  withOperationTimeout,
 } from './EsploraClientAdapter';
 
 jest.mock('@metamask/bitcoindevkit', () => ({
@@ -69,6 +72,162 @@ describe('EsploraClientAdapter', () => {
     });
   });
 
+  describe('operation timeouts (v3: a stalled request must not keep the sync guard stuck)', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('withOperationTimeout resolves with the result and clears its timer', async () => {
+      jest.useFakeTimers();
+
+      expect(await withOperationTimeout(Promise.resolve(42), 1000, 'Op')).toBe(
+        42,
+      );
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('withOperationTimeout rejects with a TimeoutError when the operation stalls', async () => {
+      jest.useFakeTimers();
+      const stalled = new Promise<never>(() => undefined);
+
+      const result = withOperationTimeout(stalled, 1000, 'Op');
+      const caught = result.catch((error: unknown) => error);
+      await jest.advanceTimersByTimeAsync(1000);
+      expect(await caught).toMatchObject({
+        name: 'TimeoutError',
+        message: 'Op timed out after 1000 ms',
+      });
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('fails a sync whose request never settles after SYNC_TIMEOUT_MS, without applying anything', async () => {
+      jest.useFakeTimers();
+      const { adapter, mockEsploraClient, account } = setupTest();
+      mockEsploraClient.sync.mockReturnValue(new Promise(() => undefined));
+
+      const result = adapter.sync(account);
+      const caught = result.catch((error: unknown) => error);
+      await jest.advanceTimersByTimeAsync(SYNC_TIMEOUT_MS);
+      expect(await caught).toMatchObject({
+        message: 'Failed to synchronize account',
+        cause: expect.objectContaining({ name: 'TimeoutError' }),
+      });
+      expect(account.applyUpdate).not.toHaveBeenCalled();
+    });
+
+    it('fails a full scan whose requests never settle after FULL_SCAN_TIMEOUT_MS', async () => {
+      jest.useFakeTimers();
+      const { adapter, mockEsploraClient, account } = setupTest();
+      mockEsploraClient.full_scan.mockReturnValue(new Promise(() => undefined));
+
+      const result = adapter.fullScan(account);
+      let settled = false;
+      result.catch(() => undefined).finally(() => (settled = true));
+      await jest.advanceTimersByTimeAsync(SYNC_TIMEOUT_MS);
+      expect(settled).toBe(false);
+
+      const caught = result.catch((error: unknown) => error);
+      await jest.advanceTimersByTimeAsync(
+        FULL_SCAN_TIMEOUT_MS - SYNC_TIMEOUT_MS,
+      );
+      expect(await caught).toMatchObject({
+        message: 'Failed to perform initial full scan',
+        cause: expect.objectContaining({ name: 'TimeoutError' }),
+      });
+      expect(account.applyUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('read retries', () => {
+    const setupRetryTest = (): {
+      adapter: EsploraClientAdapter;
+      client: ReturnType<typeof mock<EsploraClient>>;
+      account: BitcoinAccount;
+    } => {
+      const client = mock<EsploraClient>();
+      jest.mocked(EsploraClient).mockImplementation(() => client);
+      const config = {
+        parallelRequests: 5,
+        maxRetries: 3,
+        stopGap: { discovery: 5, scan: 20 },
+        url: {
+          bitcoin: 'https://bitcoin.example',
+          testnet: 'https://testnet.example',
+          testnet4: 'https://testnet4.example',
+          signet: 'https://signet.example',
+          regtest: 'https://regtest.example',
+        },
+      } as unknown as ChainConfig;
+      const account = mock<BitcoinAccount>({ network: 'bitcoin' });
+      account.startFullScan.mockReturnValue(mock<FullScanRequest>());
+      return {
+        adapter: new EsploraClientAdapter(config),
+        client,
+        account,
+      };
+    };
+
+    beforeEach(() => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'queueMicrotask'] });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('retries a scan that fails with a network error once', async () => {
+      const { adapter, client, account } = setupRetryTest();
+      const update = { update: true };
+      client.full_scan
+        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+        .mockResolvedValue(update as never);
+
+      const pending = adapter.fullScan(account);
+      await jest.runAllTimersAsync();
+      await pending;
+
+      expect(client.full_scan).toHaveBeenCalledTimes(2);
+      expect(account.applyUpdate).toHaveBeenCalledWith(update);
+    });
+
+    it('fails once the retry also fails with a network error', async () => {
+      const { adapter, client, account } = setupRetryTest();
+      client.full_scan.mockRejectedValue(new TypeError('Failed to fetch'));
+
+      const pending = adapter
+        .fullScan(account)
+        .catch((error: unknown) => error);
+      await jest.runAllTimersAsync();
+      expect(await pending).toMatchObject({
+        message: 'Failed to perform initial full scan',
+      });
+
+      // 1 attempt + 1 retry.
+      expect(client.full_scan).toHaveBeenCalledTimes(2);
+      expect(account.applyUpdate).not.toHaveBeenCalled();
+    });
+
+    it('never retries a broadcast', async () => {
+      const { adapter, client } = setupRetryTest();
+      client.broadcast.mockRejectedValue(new TypeError('Failed to fetch'));
+      const transaction =
+        mock<Parameters<EsploraClientAdapter['broadcast']>[1]>();
+      transaction.compute_txid.mockReturnValue({
+        toString: () => 'txid',
+      } as never);
+
+      const pending = adapter
+        .broadcast('bitcoin', transaction)
+        .catch((error: unknown) => error);
+      await jest.runAllTimersAsync();
+      expect(await pending).toMatchObject({
+        message: 'Failed to broadcast transaction',
+      });
+
+      expect(client.broadcast).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('getTransactionSenders', () => {
     const mockFetch = jest.fn();
     let abortController: AbortController;
@@ -124,28 +283,44 @@ describe('EsploraClientAdapter', () => {
       );
     });
 
-    it('rejects and evicts the cache when the request times out', async () => {
-      const { adapter } = setupTest();
-      mockFetch.mockImplementation(
-        (_url: unknown, init?: { signal?: AbortSignal }) =>
-          new Promise((_resolve, reject) => {
-            init?.signal?.addEventListener('abort', () =>
-              reject(new Error('TimeoutError')),
-            );
-          }),
-      );
+    it('retries a timed-out request under the fetch policy, then rejects and evicts the cache', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'queueMicrotask'] });
+      try {
+        const { adapter } = setupTest();
+        // The signal is already aborted, so every attempt times out.
+        abortController.abort();
+        mockFetch.mockImplementation(
+          async (_url: unknown, init?: { signal?: AbortSignal }) => {
+            if (init?.signal?.aborted) {
+              throw new Error('TimeoutError');
+            }
+            return okResponse({ vin: [] });
+          },
+        );
 
-      const pending = adapter.getTransactionSenders('bitcoin', 'txid');
-      abortController.abort();
+        const first = adapter
+          .getTransactionSenders('bitcoin', 'txid')
+          .catch((error: unknown) => error);
+        await jest.runAllTimersAsync();
+        expect(await first).toMatchObject({
+          message: 'Failed to fetch transaction',
+        });
+        // 1 attempt + 3 policy retries.
+        const attempts = txCallCount();
+        expect(attempts).toBe(4);
 
-      await expect(pending).rejects.toThrow('TimeoutError');
-
-      // The failure is not cached, so the next lookup retries.
-      mockFetch.mockRejectedValue(new Error('TimeoutError'));
-      await expect(
-        adapter.getTransactionSenders('bitcoin', 'txid'),
-      ).rejects.toThrow('TimeoutError');
-      expect(txCallCount()).toBe(2);
+        // The failure is not cached, so the next lookup fetches again.
+        const second = adapter
+          .getTransactionSenders('bitcoin', 'txid')
+          .catch((error: unknown) => error);
+        await jest.runAllTimersAsync();
+        expect(await second).toMatchObject({
+          message: 'Failed to fetch transaction',
+        });
+        expect(txCallCount()).toBeGreaterThan(attempts);
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('skips inputs without a resolved prevout (e.g. coinbase)', async () => {
@@ -201,9 +376,9 @@ describe('EsploraClientAdapter', () => {
       expect(txCallCount()).toBe(1);
     });
 
-    it('throws and does not cache the failure for a non-2xx response', async () => {
+    it('throws without retrying and does not cache the failure for a non-retryable non-2xx response', async () => {
       const { adapter } = setupTest();
-      mockFetch.mockResolvedValue({ ok: false, status: 429 });
+      mockFetch.mockResolvedValue({ ok: false, status: 404 });
 
       await expect(
         adapter.getTransactionSenders('bitcoin', 'txid'),
@@ -212,6 +387,28 @@ describe('EsploraClientAdapter', () => {
         adapter.getTransactionSenders('bitcoin', 'txid'),
       ).rejects.toThrow('Failed to fetch transaction');
       expect(txCallCount()).toBe(2);
+    });
+
+    it('retries a transient non-2xx response and returns the recovered result', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'queueMicrotask'] });
+      try {
+        const { adapter } = setupTest();
+        mockFetch
+          .mockResolvedValueOnce({ ok: false, status: 503 })
+          .mockResolvedValueOnce(
+            okResponse({
+              vin: [{ prevout: { scriptpubkey_address: 'bc1qsender1' } }],
+            }),
+          );
+
+        const pending = adapter.getTransactionSenders('bitcoin', 'txid');
+        await jest.runAllTimersAsync();
+
+        expect(await pending).toStrictEqual(['bc1qsender1']);
+        expect(txCallCount()).toBe(2);
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 });

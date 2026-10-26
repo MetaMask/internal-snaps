@@ -4,6 +4,13 @@ import type {
   Transaction,
 } from '@metamask/bitcoindevkit';
 import { EsploraClient } from '@metamask/bitcoindevkit';
+import { BtcScope } from '@metamask/keyring-api';
+import type { FetchPolicy, Logger } from '@metamask/snap-networks-utils';
+import {
+  createFetchPolicy,
+  createFetchPolicyError,
+  executeWithFetchPolicy,
+} from '@metamask/snap-networks-utils';
 
 import { ExternalServiceError } from '../entities';
 import type {
@@ -51,37 +58,154 @@ function toEsploraRestUrl(url: string): string {
  */
 export const SENDER_REQUEST_TIMEOUT_MS = 10_000;
 
+/**
+ * Upper bound on a whole sync (all its requests and retries).
+ * The WASM client sets no timeout on its requests: a request stalled by a
+ * suspended or broken connection could otherwise never settle, keeping the
+ * coalesced cron sync (and every later cron run joining it) stuck.
+ */
+export const SYNC_TIMEOUT_MS = 60_000;
+
+/**
+ * Upper bound on a whole full scan, for the same reason as
+ * {@link SYNC_TIMEOUT_MS}: it also releases the single-flight scan guard.
+ */
+export const FULL_SCAN_TIMEOUT_MS = 120_000;
+
+/**
+ * Rejects with a `TimeoutError` (a transient failure for the fetch policies)
+ * if the operation does not settle in time. The abandoned operation's result
+ * is discarded: it is never applied to the wallet.
+ *
+ * @param operation - The operation.
+ * @param timeoutMs - The timeout, in milliseconds.
+ * @param label - Name of the operation, for the error message.
+ * @returns The operation result.
+ */
+export async function withOperationTimeout<Result>(
+  operation: Promise<Result>,
+  timeoutMs: number,
+  label: string,
+): Promise<Result> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error(`${label} timed out after ${timeoutMs} ms`);
+      error.name = 'TimeoutError';
+      reject(error);
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * One Esplora endpoint: the WASM client, the REST base URL, and the fetch
+ * policies guarding them.
+ */
+type EsploraEndpoint = {
+  label: 'primary';
+  client: EsploraClient;
+  restUrl: string;
+  /** Guards `full_scan` / `sync` (the WASM client already retries each request). */
+  scanPolicy: FetchPolicy;
+  /** Guards REST lookups and fee estimates. */
+  restPolicy: FetchPolicy;
+};
+
+const NETWORKS: Network[] = [
+  'bitcoin',
+  'testnet',
+  'testnet4',
+  'signet',
+  'regtest',
+];
+
+const CHAIN_IDS: Record<Network, string> = {
+  bitcoin: BtcScope.Mainnet,
+  testnet: BtcScope.Testnet,
+  testnet4: BtcScope.Testnet4,
+  signet: BtcScope.Signet,
+  regtest: BtcScope.Regtest,
+};
+
+const noopLogger: Pick<Logger, 'warn'> = {
+  warn: () => undefined,
+};
+
 export class EsploraClientAdapter implements BlockchainClient {
   // Should be a Repository but we don't support custom networks so we can save in memory from config values
-  readonly #clients: Record<Network, EsploraClient>;
+  readonly #endpoints: Record<Network, EsploraEndpoint>;
 
   readonly #config: ChainConfig;
 
-  readonly #restUrls: Record<Network, string>;
+  readonly #logger: Pick<Logger, 'warn'>;
 
   // Funding addresses are resolved while mapping transactions, which runs on
   // every sync/event emission. Cache by network + txid so a receive is only
   // looked up once instead of on each notification.
   readonly #sendersCache = new Map<string, Promise<string[]>>();
 
-  constructor(config: ChainConfig) {
-    this.#clients = {
-      bitcoin: new EsploraClient(config.url.bitcoin, config.maxRetries),
-      testnet: new EsploraClient(config.url.testnet, config.maxRetries),
-      testnet4: new EsploraClient(config.url.testnet4, config.maxRetries),
-      signet: new EsploraClient(config.url.signet, config.maxRetries),
-      regtest: new EsploraClient(config.url.regtest, config.maxRetries),
-    };
-
-    this.#restUrls = {
-      bitcoin: toEsploraRestUrl(config.url.bitcoin),
-      testnet: toEsploraRestUrl(config.url.testnet),
-      testnet4: toEsploraRestUrl(config.url.testnet4),
-      signet: toEsploraRestUrl(config.url.signet),
-      regtest: toEsploraRestUrl(config.url.regtest),
-    };
-
+  constructor(config: ChainConfig, logger: Pick<Logger, 'warn'> = noopLogger) {
     this.#config = config;
+    this.#logger = logger;
+
+    const endpoints = {} as Record<Network, EsploraEndpoint>;
+    for (const network of NETWORKS) {
+      endpoints[network] = this.#createEndpoint(
+        network,
+        config.url[network],
+        'primary',
+      );
+    }
+    this.#endpoints = endpoints;
+  }
+
+  #createEndpoint(
+    network: Network,
+    url: string,
+    label: EsploraEndpoint['label'],
+  ): EsploraEndpoint {
+    const chainIdCaip = CHAIN_IDS[network];
+    return {
+      label,
+      client: new EsploraClient(url, this.#config.maxRetries),
+      restUrl: toEsploraRestUrl(url),
+      scanPolicy: createFetchPolicy({
+        service: `esplora_${label}_scan`,
+        chainIdCaip,
+        logger: this.#logger,
+        maxRetries: 1,
+      }),
+      restPolicy: createFetchPolicy({
+        service: `esplora_${label}_rest`,
+        chainIdCaip,
+        logger: this.#logger,
+      }),
+    };
+  }
+
+  /**
+   * Runs a read against the endpoint under its fetch policy (bounded retries
+   * with backoff on transient failures, circuit breaker).
+   *
+   * @param network - The network.
+   * @param policy - Which of the endpoint's policies guards the call.
+   * @param operation - The read, given the endpoint to use.
+   * @returns The read result.
+   */
+  async #read<Result>(
+    network: Network,
+    policy: 'scanPolicy' | 'restPolicy',
+    operation: (endpoint: EsploraEndpoint) => Promise<Result>,
+  ): Promise<Result> {
+    const endpoint = this.#endpoints[network];
+    return executeWithFetchPolicy(endpoint[policy], async () =>
+      operation(endpoint),
+    );
   }
 
   async fullScan(
@@ -93,11 +217,17 @@ export class EsploraClientAdapter implements BlockchainClient {
         mode === 'discovery'
           ? this.#config.stopGap.discovery
           : this.#config.stopGap.scan;
-      const request = account.startFullScan();
-      const update = await this.#clients[account.network].full_scan(
-        request,
-        stopGap,
-        this.#config.parallelRequests,
+      // The WASM client consumes the request, so each attempt builds its own.
+      const update = await withOperationTimeout(
+        this.#read(account.network, 'scanPolicy', async ({ client }) =>
+          client.full_scan(
+            account.startFullScan(),
+            stopGap,
+            this.#config.parallelRequests,
+          ),
+        ),
+        FULL_SCAN_TIMEOUT_MS,
+        'Full scan',
       );
       account.applyUpdate(update);
     } catch (error) {
@@ -111,10 +241,12 @@ export class EsploraClientAdapter implements BlockchainClient {
 
   async sync(account: BitcoinAccount): Promise<void> {
     try {
-      const request = account.startSync();
-      const update = await this.#clients[account.network].sync(
-        request,
-        this.#config.parallelRequests,
+      const update = await withOperationTimeout(
+        this.#read(account.network, 'scanPolicy', async ({ client }) =>
+          client.sync(account.startSync(), this.#config.parallelRequests),
+        ),
+        SYNC_TIMEOUT_MS,
+        'Sync',
       );
       account.applyUpdate(update);
     } catch (error) {
@@ -128,7 +260,8 @@ export class EsploraClientAdapter implements BlockchainClient {
 
   async broadcast(network: Network, transaction: Transaction): Promise<void> {
     try {
-      await this.#clients[network].broadcast(transaction);
+      // Never retried: a retry could broadcast twice.
+      await this.#endpoints[network].client.broadcast(transaction);
     } catch (error) {
       throw new ExternalServiceError(
         `Failed to broadcast transaction`,
@@ -140,7 +273,9 @@ export class EsploraClientAdapter implements BlockchainClient {
 
   async getFeeEstimates(network: Network): Promise<FeeEstimates> {
     try {
-      return await this.#clients[network].get_fee_estimates();
+      return await this.#read(network, 'restPolicy', async ({ client }) =>
+        client.get_fee_estimates(),
+      );
     } catch (error) {
       throw new ExternalServiceError(
         `Failed to fetch fee estimates`,
@@ -193,19 +328,32 @@ export class EsploraClientAdapter implements BlockchainClient {
     network: Network,
     txid: string,
   ): Promise<string[]> {
-    const response = await fetch(`${this.#restUrls[network]}/tx/${txid}`, {
-      signal: AbortSignal.timeout(SENDER_REQUEST_TIMEOUT_MS),
-    });
-
-    if (!response.ok) {
-      throw new ExternalServiceError(`Failed to fetch transaction`, {
+    let transaction: EsploraTx;
+    try {
+      transaction = await this.#read(
         network,
-        txid,
-        status: response.status,
-      });
+        'restPolicy',
+        async ({ restUrl }) => {
+          const response = await fetch(`${restUrl}/tx/${txid}`, {
+            signal: AbortSignal.timeout(SENDER_REQUEST_TIMEOUT_MS),
+          });
+          if (!response.ok) {
+            throw createFetchPolicyError(`HTTP ${response.status}`, {
+              httpStatus: response.status,
+            });
+          }
+          return (await response.json()) as EsploraTx;
+        },
+      );
+    } catch (error) {
+      const status = (error as { httpStatus?: number }).httpStatus;
+      throw new ExternalServiceError(
+        `Failed to fetch transaction`,
+        status === undefined ? { network, txid } : { network, txid, status },
+        error,
+      );
     }
 
-    const transaction = (await response.json()) as EsploraTx;
     // Self-transfers and consolidations can repeat the same funding address;
     // dedupe while preserving input order.
     const senders = [

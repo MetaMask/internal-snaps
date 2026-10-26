@@ -40,7 +40,7 @@ const { config } = configProvider;
 
 // Infra layer
 const snapClient = new SnapClientAdapter(logger, config.encrypt);
-const chainClient = new EsploraClientAdapter(config.chain);
+const chainClient = new EsploraClientAdapter(config.chain, logger);
 const assetRatesClient = new PriceApiClientAdapter(config.priceApi);
 const translator = new LocalTranslatorAdapter();
 const middleware = new HandlerMiddleware(logger, snapClient, translator);
