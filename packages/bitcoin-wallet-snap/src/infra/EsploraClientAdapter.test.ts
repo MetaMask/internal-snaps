@@ -2,6 +2,9 @@ import type {
   FeeEstimates,
   FullScanRequest,
   Psbt as BdkPsbt,
+  Update,
+  Wallet as BdkWallet,
+  seed_to_descriptor as BdkSeedToDescriptor,
 } from '@metamask/bitcoindevkit';
 import { EsploraClient } from '@metamask/bitcoindevkit';
 import {
@@ -461,6 +464,8 @@ describe('EsploraClientAdapter', () => {
       __wbg_set_wasm: (exports: WebAssembly.Exports) => void;
       EsploraClient: typeof EsploraClient;
       Psbt: typeof BdkPsbt;
+      Wallet: typeof BdkWallet;
+      seed_to_descriptor: typeof BdkSeedToDescriptor;
       /* eslint-enable @typescript-eslint/naming-convention */
     };
 
@@ -595,6 +600,80 @@ describe('EsploraClientAdapter', () => {
       expect(postedBodies).toHaveLength(2);
       expect(postedBodies[0]).toBe(postedBodies[1]);
       expect(transaction.compute_txid().toString()).toBe(expectedTxid);
+    });
+
+    it('recreates real WASM FullScanRequest and SyncRequest objects on retry without a null-pointer error', async () => {
+      const adapter = createRealAdapter();
+      const descriptors = realBdk.seed_to_descriptor(
+        new Uint8Array(32).fill(1),
+        'bitcoin',
+        'p2wpkh',
+      );
+      const wallet = realBdk.Wallet.create(
+        'bitcoin',
+        descriptors.external,
+        descriptors.internal,
+      );
+      let fullScanRequests = 0;
+      let syncRequests = 0;
+      let appliedUpdates = 0;
+      const account = {
+        id: 'account-1',
+        network: 'bitcoin',
+        startFullScan: () => {
+          fullScanRequests += 1;
+          return wallet.start_full_scan();
+        },
+        startSync: () => {
+          syncRequests += 1;
+          return wallet.start_sync_with_revealed_spks();
+        },
+        applyUpdate: (update: Update) => {
+          appliedUpdates += 1;
+          wallet.apply_update(update);
+        },
+      } as unknown as BitcoinAccount;
+
+      const genesisBlock = JSON.stringify([
+        {
+          id: '000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f',
+          height: 0,
+          version: 1,
+          timestamp: 1231006505,
+          tx_count: 1,
+          size: 285,
+          weight: 1140,
+          merkle_root:
+            '4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b',
+          previousblockhash: null,
+          mediantime: 1231006505,
+          nonce: 2083236893,
+          bits: 486604799,
+          difficulty: 1,
+        },
+      ]);
+
+      let callCount = 0;
+      mockFetch.mockImplementation(async (input: Request) => {
+        callCount += 1;
+        if (callCount === 1) {
+          return wasmResponse(503, 'Service Unavailable', input.url);
+        }
+        return wasmResponse(
+          200,
+          input.url.endsWith('/blocks') ? genesisBlock : '[]',
+          input.url,
+        );
+      });
+
+      await adapter.fullScan(account, 'discovery');
+      expect(fullScanRequests).toBe(2);
+      expect(appliedUpdates).toBe(1);
+
+      callCount = 0;
+      await adapter.sync(account);
+      expect(syncRequests).toBe(2);
+      expect(appliedUpdates).toBe(2);
     });
   });
 });
