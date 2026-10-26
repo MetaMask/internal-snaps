@@ -1,6 +1,6 @@
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 
-import { UserActionError } from '../entities';
+import { BalanceNotSynchronizedError, UserActionError } from '../entities';
 import { shouldTrackError, trackError } from './errors';
 import logger from './logger';
 
@@ -36,6 +36,21 @@ describe('errors', () => {
 
     it('returns false for UserRejectedRequestError', () => {
       expect(shouldTrackError(new UserRejectedRequestError())).toBe(false);
+    });
+
+    it('returns false for the "not synchronized yet" state however it was wrapped (v3)', () => {
+      const original = new BalanceNotSynchronizedError();
+      // As re-created by the keyring SDK's handleKeyringRequest.
+      expect(shouldTrackError(new Error(original.message))).toBe(false);
+      expect(shouldTrackError(original)).toBe(false);
+      expect(
+        shouldTrackError(new Error('Snap request failed', { cause: original })),
+      ).toBe(false);
+      // Serialized error object (e.g. after crossing the snap boundary).
+      expect(
+        shouldTrackError({ name: 'Error', message: original.message }),
+      ).toBe(false);
+      expect(shouldTrackError(new Error('Failed to fetch'))).toBe(true);
     });
 
     it('returns true for other errors', () => {

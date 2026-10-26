@@ -31,6 +31,7 @@ import { encode } from 'wif';
 import snapManifest from '../../snap.manifest.json';
 import type { Logger, SnapClient } from '../entities';
 import {
+  BalanceNotSynchronizedError,
   computeDisplayBalanceSats,
   FormatError,
   networkToCurrencyUnit,
@@ -277,6 +278,16 @@ export class KeyringHandler implements KeyringSnapRpc {
     id: string,
   ): Promise<Record<CaipAssetType, Balance>> {
     const account = await this.#accountsUseCases.get(id);
+
+    // An account that never synchronized has an unknown balance: reporting
+    // the zero of an empty wallet would show a confident 0 to the user. Fail
+    // instead (an expected state, not reported to Sentry) so the client keeps
+    // it as unavailable and retries; the next successful sync delivers the
+    // real balance.
+    if (await this.#accountsUseCases.isBalanceUnknown(account)) {
+      throw new BalanceNotSynchronizedError({ account: id });
+    }
+
     const balance = Amount.from_sat(computeDisplayBalanceSats(account))
       .to_btc()
       .toString();

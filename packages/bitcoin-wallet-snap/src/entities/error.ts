@@ -86,6 +86,62 @@ export class ExternalServiceError extends BaseError {
 }
 
 /**
+ * Message of {@link BalanceNotSynchronizedError}. It is the stable marker of
+ * that expected state: the keyring SDK's `handleKeyringRequest` re-creates
+ * every non-`SnapError` as a plain `Error` carrying only the message, so the
+ * class, name and data are lost before the handler middleware sees it.
+ */
+export const BALANCE_NOT_SYNCHRONIZED_MESSAGE =
+  'Account balance unavailable: the account has not been synchronized yet';
+
+/**
+ * Thrown when an account's balance is requested before the account completed
+ * its first synchronization (full scan). This is an expected, transient state
+ * (e.g. right after onboarding, or while the network is unreachable), not a
+ * failure: it reaches the client as a `DisconnectedError` so the balance is
+ * shown as unavailable, but it is never reported to Sentry.
+ */
+export class BalanceNotSynchronizedError extends ExternalServiceError {
+  constructor(data?: Record<string, Json>) {
+    super(BALANCE_NOT_SYNCHRONIZED_MESSAGE, data);
+    this.name = 'BalanceNotSynchronizedError';
+  }
+}
+
+/**
+ * Whether an error is (or wraps) a {@link BalanceNotSynchronizedError}, even
+ * after it was re-created, wrapped or serialized along the way: matches the
+ * class, then the stable message marker on the error, its `cause` chain or a
+ * serialized error object.
+ *
+ * @param error - The error to check.
+ * @returns `true` for the expected "not synchronized yet" state.
+ */
+export function isBalanceNotSynchronizedError(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < 5 && current; depth += 1) {
+    if (current instanceof BalanceNotSynchronizedError) {
+      return true;
+    }
+    if (typeof current === 'string') {
+      return current.includes(BALANCE_NOT_SYNCHRONIZED_MESSAGE);
+    }
+    if (typeof current !== 'object') {
+      return false;
+    }
+    const { message, cause } = current as { message?: unknown; cause?: unknown };
+    if (
+      typeof message === 'string' &&
+      message.includes(BALANCE_NOT_SYNCHRONIZED_MESSAGE)
+    ) {
+      return true;
+    }
+    current = cause;
+  }
+  return false;
+}
+
+/**
  * Error thrown for wallet-specific failures.
  * Useful for signaling wallet operation errors.
  *

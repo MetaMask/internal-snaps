@@ -119,6 +119,22 @@ describe('AccountUseCases', () => {
     });
   });
 
+  describe('isBalanceUnknown', () => {
+    it('is unknown while the wallet never synchronized', async () => {
+      const mockAccount = mock<BitcoinAccount>();
+      mockAccount.hasSynchronized.mockReturnValue(false);
+
+      expect(await useCases.isBalanceUnknown(mockAccount)).toBe(true);
+    });
+
+    it('is known once the wallet synchronized', async () => {
+      const mockAccount = mock<BitcoinAccount>();
+      mockAccount.hasSynchronized.mockReturnValue(true);
+
+      expect(await useCases.isBalanceUnknown(mockAccount)).toBe(false);
+    });
+  });
+
   describe('list', () => {
     it('returns accounts', async () => {
       const mockAccount = mock<BitcoinAccount>();
