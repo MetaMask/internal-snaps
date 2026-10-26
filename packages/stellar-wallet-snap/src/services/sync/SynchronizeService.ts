@@ -2,6 +2,7 @@ import type { Logger } from '@metamask/snap-networks-utils';
 import { E_ALREADY_LOCKED, Mutex, tryAcquire } from 'async-mutex';
 
 import type { KnownCaip2ChainId } from '../../api';
+import { AssetType } from '../../api';
 import { AppConfig } from '../../config';
 import { BackgroundEventMethod } from '../../handlers/cronjob/api';
 import { Duration, scheduleBackgroundEvent, trackError } from '../../utils';
@@ -258,7 +259,11 @@ export class SynchronizeService {
     scope: KnownCaip2ChainId,
   ): Promise<Sep41StellarAssetMetadata[]> {
     try {
-      return await this.#assetMetadataService.fetchSep41AssetsOrSyncOnce(scope);
+      await this.#assetMetadataService.synchronizeIfStale(scope);
+      return await this.#assetMetadataService.getAssetsByScopeAndType(
+        scope,
+        AssetType.Sep41,
+      );
     } catch (error: unknown) {
       await trackError(error);
 
