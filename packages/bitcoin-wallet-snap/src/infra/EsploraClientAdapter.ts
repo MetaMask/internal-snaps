@@ -4,6 +4,18 @@ import type {
   Transaction,
 } from '@metamask/bitcoindevkit';
 import { EsploraClient } from '@metamask/bitcoindevkit';
+import {
+  createFetchPolicy,
+  createFetchPolicyError,
+  executeWithFetchPolicy,
+  FetchPolicyErrorName,
+  fetchWithPolicy,
+} from '@metamask/snap-networks-utils';
+import type {
+  FetchPolicy,
+  FetchPolicyError,
+  Logger,
+} from '@metamask/snap-networks-utils';
 
 import { ExternalServiceError } from '../entities';
 import type {
@@ -43,13 +55,59 @@ function toEsploraRestUrl(url: string): string {
   return url.replace(/\/+$/u, '').replace(/\/v1$/u, '');
 }
 
+const ALREADY_BROADCAST_PATTERN =
+  /already in block\s*chain|already in mempool|txn-already-(?:in-mempool|known)/iu;
+
 /**
- * Upper bound on a single sender lookup request. A stalled connection would
- * otherwise never settle, blocking the sync that awaits it and suppressing the
- * transaction event; the WASM client applies its own retry budget, so the raw
- * REST lookup needs an equivalent bound.
+ * Whether an Esplora broadcast error indicates the transaction is already in
+ * the mempool or blockchain.
+ *
+ * @param error - The error thrown by the BDK WASM client.
+ * @returns `true` if the node already knows the transaction.
  */
-export const SENDER_REQUEST_TIMEOUT_MS = 10_000;
+function isAlreadyBroadcastError(error: unknown): boolean {
+  return (
+    error instanceof Error && ALREADY_BROADCAST_PATTERN.test(error.message)
+  );
+}
+
+/**
+ * Converts errors exposed by the BDK WASM Esplora client to the shared policy
+ * shape. The WASM boundary preserves Rust's display strings but not its error
+ * variants, so only explicit HTTP and reqwest failures are treated as
+ * transport errors. Parsing, wallet, and request-construction errors pass
+ * through and are not retried.
+ *
+ * @param error - The error thrown by the BDK WASM client.
+ * @returns The error in the shared policy shape.
+ */
+function toFetchPolicyError(error: unknown): FetchPolicyError {
+  if (!(error instanceof Error)) {
+    return createFetchPolicyError('Esplora request failed', { cause: error });
+  }
+
+  const httpStatus = /HttpResponse \{ status: (?<status>\d+),/u.exec(
+    error.message,
+  )?.groups?.status;
+  if (httpStatus !== undefined) {
+    return createFetchPolicyError(error.message, {
+      httpStatus: Number(httpStatus),
+      cause: error,
+    });
+  }
+
+  if (
+    error.message.startsWith('Reqwest(') &&
+    !/\bkind: Decode\b/u.test(error.message)
+  ) {
+    return createFetchPolicyError(error.message, {
+      name: FetchPolicyErrorName.Network,
+      cause: error,
+    });
+  }
+
+  return error;
+}
 
 export class EsploraClientAdapter implements BlockchainClient {
   // Should be a Repository but we don't support custom networks so we can save in memory from config values
@@ -59,18 +117,20 @@ export class EsploraClientAdapter implements BlockchainClient {
 
   readonly #restUrls: Record<Network, string>;
 
+  readonly #policies: Record<Network, FetchPolicy>;
+
   // Funding addresses are resolved while mapping transactions, which runs on
   // every sync/event emission. Cache by network + txid so a receive is only
   // looked up once instead of on each notification.
   readonly #sendersCache = new Map<string, Promise<string[]>>();
 
-  constructor(config: ChainConfig) {
+  constructor(config: ChainConfig, logger: Logger) {
     this.#clients = {
-      bitcoin: new EsploraClient(config.url.bitcoin, config.maxRetries),
-      testnet: new EsploraClient(config.url.testnet, config.maxRetries),
-      testnet4: new EsploraClient(config.url.testnet4, config.maxRetries),
-      signet: new EsploraClient(config.url.signet, config.maxRetries),
-      regtest: new EsploraClient(config.url.regtest, config.maxRetries),
+      bitcoin: new EsploraClient(config.url.bitcoin, 0),
+      testnet: new EsploraClient(config.url.testnet, 0),
+      testnet4: new EsploraClient(config.url.testnet4, 0),
+      signet: new EsploraClient(config.url.signet, 0),
+      regtest: new EsploraClient(config.url.regtest, 0),
     };
 
     this.#restUrls = {
@@ -79,6 +139,14 @@ export class EsploraClientAdapter implements BlockchainClient {
       testnet4: toEsploraRestUrl(config.url.testnet4),
       signet: toEsploraRestUrl(config.url.signet),
       regtest: toEsploraRestUrl(config.url.regtest),
+    };
+
+    this.#policies = {
+      bitcoin: createFetchPolicy({ service: 'esplora_bitcoin', logger }),
+      testnet: createFetchPolicy({ service: 'esplora_testnet', logger }),
+      testnet4: createFetchPolicy({ service: 'esplora_testnet4', logger }),
+      signet: createFetchPolicy({ service: 'esplora_signet', logger }),
+      regtest: createFetchPolicy({ service: 'esplora_regtest', logger }),
     };
 
     this.#config = config;
@@ -93,11 +161,15 @@ export class EsploraClientAdapter implements BlockchainClient {
         mode === 'discovery'
           ? this.#config.stopGap.discovery
           : this.#config.stopGap.scan;
-      const request = account.startFullScan();
-      const update = await this.#clients[account.network].full_scan(
-        request,
-        stopGap,
-        this.#config.parallelRequests,
+      const update = await executeWithFetchPolicy(
+        this.#policies[account.network],
+        async () =>
+          this.#clients[account.network].full_scan(
+            account.startFullScan(),
+            stopGap,
+            this.#config.parallelRequests,
+          ),
+        toFetchPolicyError,
       );
       account.applyUpdate(update);
     } catch (error) {
@@ -111,10 +183,14 @@ export class EsploraClientAdapter implements BlockchainClient {
 
   async sync(account: BitcoinAccount): Promise<void> {
     try {
-      const request = account.startSync();
-      const update = await this.#clients[account.network].sync(
-        request,
-        this.#config.parallelRequests,
+      const update = await executeWithFetchPolicy(
+        this.#policies[account.network],
+        async () =>
+          this.#clients[account.network].sync(
+            account.startSync(),
+            this.#config.parallelRequests,
+          ),
+        toFetchPolicyError,
       );
       account.applyUpdate(update);
     } catch (error) {
@@ -128,7 +204,20 @@ export class EsploraClientAdapter implements BlockchainClient {
 
   async broadcast(network: Network, transaction: Transaction): Promise<void> {
     try {
-      await this.#clients[network].broadcast(transaction);
+      await executeWithFetchPolicy(
+        this.#policies[network],
+        async () => {
+          try {
+            await this.#clients[network].broadcast(transaction);
+          } catch (error) {
+            if (isAlreadyBroadcastError(error)) {
+              return;
+            }
+            throw error;
+          }
+        },
+        toFetchPolicyError,
+      );
     } catch (error) {
       throw new ExternalServiceError(
         `Failed to broadcast transaction`,
@@ -140,7 +229,11 @@ export class EsploraClientAdapter implements BlockchainClient {
 
   async getFeeEstimates(network: Network): Promise<FeeEstimates> {
     try {
-      return await this.#clients[network].get_fee_estimates();
+      return await executeWithFetchPolicy(
+        this.#policies[network],
+        async () => this.#clients[network].get_fee_estimates(),
+        toFetchPolicyError,
+      );
     } catch (error) {
       throw new ExternalServiceError(
         `Failed to fetch fee estimates`,
@@ -182,8 +275,8 @@ export class EsploraClientAdapter implements BlockchainClient {
    *
    * Unlike the WASM client's `get_tx`, the REST endpoint resolves each input's
    * `prevout`, so all senders are returned in a single request. The request is
-   * bounded by {@link SENDER_REQUEST_TIMEOUT_MS} so a stalled indexer surfaces
-   * as a best-effort failure instead of hanging the caller.
+   * bounded by the shared fetch helper's per-attempt timeout so a stalled
+   * indexer surfaces as a best-effort failure instead of hanging the caller.
    *
    * @param network - Network the transaction belongs to.
    * @param txid - Transaction id.
@@ -193,19 +286,11 @@ export class EsploraClientAdapter implements BlockchainClient {
     network: Network,
     txid: string,
   ): Promise<string[]> {
-    const response = await fetch(`${this.#restUrls[network]}/tx/${txid}`, {
-      signal: AbortSignal.timeout(SENDER_REQUEST_TIMEOUT_MS),
-    });
-
-    if (!response.ok) {
-      throw new ExternalServiceError(`Failed to fetch transaction`, {
-        network,
-        txid,
-        status: response.status,
-      });
-    }
-
-    const transaction = (await response.json()) as EsploraTx;
+    const body = await fetchWithPolicy(
+      this.#policies[network],
+      `${this.#restUrls[network]}/tx/${txid}`,
+    );
+    const transaction = JSON.parse(body) as EsploraTx;
     // Self-transfers and consolidations can repeat the same funding address;
     // dedupe while preserving input order.
     const senders = [

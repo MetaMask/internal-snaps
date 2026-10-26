@@ -1,12 +1,14 @@
-import type { FullScanRequest } from '@metamask/bitcoindevkit';
+import type { FeeEstimates, FullScanRequest } from '@metamask/bitcoindevkit';
 import { EsploraClient } from '@metamask/bitcoindevkit';
+import {
+  FetchPolicyErrorName,
+  Logger,
+  LogLevel,
+} from '@metamask/snap-networks-utils';
 import { mock } from 'jest-mock-extended';
 
 import type { BitcoinAccount, ChainConfig } from '../entities';
-import {
-  EsploraClientAdapter,
-  SENDER_REQUEST_TIMEOUT_MS,
-} from './EsploraClientAdapter';
+import { EsploraClientAdapter } from './EsploraClientAdapter';
 
 jest.mock('@metamask/bitcoindevkit', () => ({
   EsploraClient: jest.fn(),
@@ -15,7 +17,7 @@ jest.mock('@metamask/bitcoindevkit', () => ({
 const setupTest = (): {
   adapter: EsploraClientAdapter;
   mockEsploraClient: ReturnType<typeof mock<EsploraClient>>;
-  account: BitcoinAccount;
+  account: ReturnType<typeof mock<BitcoinAccount>>;
   mockRequest: FullScanRequest;
 } => {
   const mockEsploraClient = mock<EsploraClient>();
@@ -23,7 +25,6 @@ const setupTest = (): {
 
   const config = mock<ChainConfig>({
     parallelRequests: 5,
-    maxRetries: 3,
     stopGap: { discovery: 5, scan: 20 },
     url: {
       bitcoin: 'https://bitcoin.example',
@@ -34,15 +35,40 @@ const setupTest = (): {
     },
   });
 
-  const adapter = new EsploraClientAdapter(config);
+  const adapter = new EsploraClientAdapter(
+    config,
+    new Logger({ level: LogLevel.SILENT }),
+  );
   const mockRequest = mock<FullScanRequest>();
   const account = mock<BitcoinAccount>({ network: 'bitcoin' });
   account.startFullScan.mockReturnValue(mockRequest);
 
-  return { adapter, mockEsploraClient, account, mockRequest };
+  return {
+    adapter,
+    mockEsploraClient,
+    account,
+    mockRequest,
+  };
 };
 
 describe('EsploraClientAdapter', () => {
+  it('does not retry a non-error BDK rejection', async () => {
+    const { adapter, mockEsploraClient, account } = setupTest();
+    mockEsploraClient.full_scan.mockRejectedValue('failure');
+
+    await expect(adapter.fullScan(account)).rejects.toThrow(
+      'Failed to perform initial full scan',
+    );
+    expect(mockEsploraClient.full_scan).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables the Esplora client internal retries', () => {
+    setupTest();
+
+    expect(EsploraClient).toHaveBeenCalledTimes(5);
+    expect(EsploraClient).toHaveBeenCalledWith('https://bitcoin.example', 0);
+  });
+
   describe('fullScan', () => {
     it('uses the scan stop gap by default', async () => {
       const { adapter, mockEsploraClient, account, mockRequest } = setupTest();
@@ -67,20 +93,235 @@ describe('EsploraClientAdapter', () => {
         5,
       );
     });
+
+    it('retries transient failures with a fresh scan request and applies one update', async () => {
+      const { adapter, mockEsploraClient, account, mockRequest } = setupTest();
+      const retryRequest = mock<FullScanRequest>();
+      const update = {};
+      account.startFullScan
+        .mockReturnValueOnce(mockRequest)
+        .mockReturnValueOnce(retryRequest);
+      mockEsploraClient.full_scan
+        .mockRejectedValueOnce(new Error('Reqwest(error sending request)'))
+        .mockResolvedValueOnce(update as never);
+
+      await adapter.fullScan(account);
+
+      expect(account.startFullScan).toHaveBeenCalledTimes(2);
+      expect(mockEsploraClient.full_scan).toHaveBeenNthCalledWith(
+        2,
+        retryRequest,
+        20,
+        5,
+      );
+      expect(account.applyUpdate).toHaveBeenCalledTimes(1);
+      expect(account.applyUpdate).toHaveBeenCalledWith(update);
+    });
+
+    it('retries BDK timeout errors', async () => {
+      const { adapter, mockEsploraClient, account } = setupTest();
+      mockEsploraClient.full_scan
+        .mockRejectedValueOnce(
+          Object.assign(new Error('The operation timed out'), {
+            name: FetchPolicyErrorName.Timeout,
+          }),
+        )
+        .mockResolvedValueOnce({} as never);
+
+      await adapter.fullScan(account);
+
+      expect(mockEsploraClient.full_scan).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not retry a deterministic BDK error', async () => {
+      const { adapter, mockEsploraClient, account } = setupTest();
+      mockEsploraClient.full_scan.mockRejectedValue(
+        new Error('Parsing(ParseIntError)'),
+      );
+
+      await expect(adapter.fullScan(account)).rejects.toThrow(
+        'Failed to perform initial full scan',
+      );
+      expect(mockEsploraClient.full_scan).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retry a BDK response decode error', async () => {
+      const { adapter, mockEsploraClient, account } = setupTest();
+      mockEsploraClient.full_scan.mockRejectedValue(
+        new Error(
+          'Reqwest(reqwest::Error { kind: Decode, source: Error("invalid type") })',
+        ),
+      );
+
+      await expect(adapter.fullScan(account)).rejects.toThrow(
+        'Failed to perform initial full scan',
+      );
+      expect(mockEsploraClient.full_scan).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retry when constructing the scan request fails', async () => {
+      const { adapter, mockEsploraClient, account } = setupTest();
+      account.startFullScan.mockImplementation(() => {
+        throw new Error('Invalid wallet state');
+      });
+
+      await expect(adapter.fullScan(account)).rejects.toThrow(
+        'Failed to perform initial full scan',
+      );
+      expect(account.startFullScan).toHaveBeenCalledTimes(1);
+      expect(mockEsploraClient.full_scan).not.toHaveBeenCalled();
+    });
+
+    it('does not retry a non-transient BDK HTTP response', async () => {
+      const { adapter, mockEsploraClient, account } = setupTest();
+      mockEsploraClient.full_scan.mockRejectedValue(
+        new Error('HttpResponse { status: 404, message: "Not found" }'),
+      );
+
+      await expect(adapter.fullScan(account)).rejects.toThrow(
+        'Failed to perform initial full scan',
+      );
+      expect(mockEsploraClient.full_scan).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries a transient BDK HTTP response', async () => {
+      const { adapter, mockEsploraClient, account } = setupTest();
+      mockEsploraClient.full_scan
+        .mockRejectedValueOnce(
+          new Error(
+            'HttpResponse { status: 503, message: "Service unavailable" }',
+          ),
+        )
+        .mockResolvedValueOnce({} as never);
+
+      await adapter.fullScan(account);
+
+      expect(mockEsploraClient.full_scan).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('sync', () => {
+    it('retries transient failures and applies one update', async () => {
+      const { adapter, mockEsploraClient, account } = setupTest();
+      const update = {};
+      mockEsploraClient.sync
+        .mockRejectedValueOnce(new Error('Reqwest(error sending request)'))
+        .mockResolvedValueOnce(update as never);
+
+      await adapter.sync(account);
+
+      expect(mockEsploraClient.sync).toHaveBeenCalledTimes(2);
+      expect(account.applyUpdate).toHaveBeenCalledTimes(1);
+      expect(account.applyUpdate).toHaveBeenCalledWith(update);
+    });
+
+    it('wraps sync failures in ExternalServiceError', async () => {
+      const { adapter, mockEsploraClient, account } = setupTest();
+      mockEsploraClient.sync.mockRejectedValue(
+        new Error('HttpResponse { status: 400, message: "Bad request" }'),
+      );
+
+      await expect(adapter.sync(account)).rejects.toThrow(
+        'Failed to synchronize account',
+      );
+      expect(mockEsploraClient.sync).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getFeeEstimates', () => {
+    it('retries transient failures and returns the fee estimates', async () => {
+      const { adapter, mockEsploraClient } = setupTest();
+      const estimates = mock<FeeEstimates>();
+      mockEsploraClient.get_fee_estimates
+        .mockRejectedValueOnce(
+          new Error(
+            'HttpResponse { status: 503, message: "Service unavailable" }',
+          ),
+        )
+        .mockResolvedValueOnce(estimates);
+
+      expect(await adapter.getFeeEstimates('bitcoin')).toBe(estimates);
+      expect(mockEsploraClient.get_fee_estimates).toHaveBeenCalledTimes(2);
+    });
+
+    it('wraps fee estimate failures in ExternalServiceError', async () => {
+      const { adapter, mockEsploraClient } = setupTest();
+      mockEsploraClient.get_fee_estimates.mockRejectedValue(
+        new Error('HttpResponse { status: 400, message: "Bad request" }'),
+      );
+
+      await expect(adapter.getFeeEstimates('bitcoin')).rejects.toThrow(
+        'Failed to fetch fee estimates',
+      );
+      expect(mockEsploraClient.get_fee_estimates).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('broadcast', () => {
+    it('retries transient failures with the same signed transaction', async () => {
+      const { adapter, mockEsploraClient } = setupTest();
+      const transaction = mock<Parameters<typeof adapter.broadcast>[1]>();
+      mockEsploraClient.broadcast
+        .mockRejectedValueOnce(new Error('Reqwest(error sending request)'))
+        .mockResolvedValueOnce();
+
+      await adapter.broadcast('bitcoin', transaction);
+
+      expect(mockEsploraClient.broadcast).toHaveBeenCalledTimes(2);
+      expect(mockEsploraClient.broadcast).toHaveBeenNthCalledWith(
+        1,
+        transaction,
+      );
+      expect(mockEsploraClient.broadcast).toHaveBeenNthCalledWith(
+        2,
+        transaction,
+      );
+    });
+
+    it('treats an already-broadcast transaction as successful', async () => {
+      const { adapter, mockEsploraClient } = setupTest();
+      const transaction = mock<Parameters<typeof adapter.broadcast>[1]>();
+      mockEsploraClient.broadcast
+        .mockRejectedValueOnce(
+          new Error(
+            'HttpResponse { status: 503, message: "Service unavailable" }',
+          ),
+        )
+        .mockRejectedValueOnce(
+          new Error(
+            'HttpResponse { status: 400, message: "sendrawtransaction RPC error: {\\"code\\":-27,\\"message\\":\\"Transaction already in block chain\\"}" }',
+          ),
+        );
+
+      await adapter.broadcast('bitcoin', transaction);
+
+      expect(mockEsploraClient.broadcast).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not retry a non-transient broadcast rejection', async () => {
+      const { adapter, mockEsploraClient } = setupTest();
+      const transaction = mock<Parameters<typeof adapter.broadcast>[1]>();
+      transaction.compute_txid.mockReturnValue({
+        toString: () => 'txid',
+      } as never);
+      mockEsploraClient.broadcast.mockRejectedValue(
+        new Error(
+          'HttpResponse { status: 400, message: "sendrawtransaction RPC error: {\\"code\\":-26,\\"message\\":\\"min relay fee not met\\"}" }',
+        ),
+      );
+
+      await expect(adapter.broadcast('bitcoin', transaction)).rejects.toThrow(
+        'Failed to broadcast transaction',
+      );
+      expect(mockEsploraClient.broadcast).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('getTransactionSenders', () => {
     const mockFetch = jest.fn();
-    let abortController: AbortController;
 
     beforeEach(() => {
       global.fetch = mockFetch;
-      abortController = new AbortController();
-      // Drive the abort path deterministically instead of leaving a real
-      // 10-second timer pending on each call.
-      jest
-        .spyOn(AbortSignal, 'timeout')
-        .mockReturnValue(abortController.signal);
     });
 
     afterEach(() => {
@@ -89,9 +330,9 @@ describe('EsploraClientAdapter', () => {
 
     const okResponse = (
       body: unknown,
-    ): { ok: boolean; json: () => Promise<unknown> } => ({
+    ): { ok: boolean; text: () => Promise<string> } => ({
       ok: true,
-      json: async (): Promise<unknown> => body,
+      text: async (): Promise<string> => JSON.stringify(body),
     });
 
     const txCallCount = (): number =>
@@ -116,36 +357,9 @@ describe('EsploraClientAdapter', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         'https://bitcoin.example/tx/txid',
         {
-          signal: abortController.signal,
+          signal: expect.any(AbortSignal),
         },
       );
-      expect(AbortSignal.timeout).toHaveBeenCalledWith(
-        SENDER_REQUEST_TIMEOUT_MS,
-      );
-    });
-
-    it('rejects and evicts the cache when the request times out', async () => {
-      const { adapter } = setupTest();
-      mockFetch.mockImplementation(
-        (_url: unknown, init?: { signal?: AbortSignal }) =>
-          new Promise((_resolve, reject) => {
-            init?.signal?.addEventListener('abort', () =>
-              reject(new Error('TimeoutError')),
-            );
-          }),
-      );
-
-      const pending = adapter.getTransactionSenders('bitcoin', 'txid');
-      abortController.abort();
-
-      await expect(pending).rejects.toThrow('TimeoutError');
-
-      // The failure is not cached, so the next lookup retries.
-      mockFetch.mockRejectedValue(new Error('TimeoutError'));
-      await expect(
-        adapter.getTransactionSenders('bitcoin', 'txid'),
-      ).rejects.toThrow('TimeoutError');
-      expect(txCallCount()).toBe(2);
     });
 
     it('skips inputs without a resolved prevout (e.g. coinbase)', async () => {
@@ -178,6 +392,7 @@ describe('EsploraClientAdapter', () => {
             regtest: 'https://regtest.example',
           },
         }),
+        new Logger({ level: LogLevel.SILENT }),
       );
       mockFetch.mockResolvedValue(okResponse({ vin: [] }));
 
@@ -185,7 +400,7 @@ describe('EsploraClientAdapter', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://mempool.space/api/tx/txid',
-        { signal: abortController.signal },
+        { signal: expect.any(AbortSignal) },
       );
     });
 
@@ -201,16 +416,32 @@ describe('EsploraClientAdapter', () => {
       expect(txCallCount()).toBe(1);
     });
 
-    it('throws and does not cache the failure for a non-2xx response', async () => {
+    it('does not retry a non-transient response and does not cache it', async () => {
       const { adapter } = setupTest();
-      mockFetch.mockResolvedValue({ ok: false, status: 429 });
+      mockFetch.mockResolvedValue({ ok: false, status: 404 });
 
       await expect(
         adapter.getTransactionSenders('bitcoin', 'txid'),
-      ).rejects.toThrow('Failed to fetch transaction');
+      ).rejects.toThrow('HTTP error! status: 404');
       await expect(
         adapter.getTransactionSenders('bitcoin', 'txid'),
-      ).rejects.toThrow('Failed to fetch transaction');
+      ).rejects.toThrow('HTTP error! status: 404');
+      expect(txCallCount()).toBe(2);
+    });
+
+    it('retries a transient response', async () => {
+      const { adapter } = setupTest();
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 503,
+          headers: { get: () => null },
+        })
+        .mockResolvedValueOnce(okResponse({ vin: [] }));
+
+      expect(
+        await adapter.getTransactionSenders('bitcoin', 'txid'),
+      ).toStrictEqual([]);
       expect(txCallCount()).toBe(2);
     });
   });
