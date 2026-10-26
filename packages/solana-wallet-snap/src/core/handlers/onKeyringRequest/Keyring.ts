@@ -71,6 +71,7 @@ import {
 } from '../../utils/deriveSolanaKeypair';
 import { trackError } from '../../utils/errors';
 import { getBip32Entropy } from '../../utils/getBip32Entropy';
+import { getNetworkFromToken } from '../../utils/getNetworkFromToken';
 import {
   endTrace,
   listEntropySources,
@@ -457,8 +458,16 @@ export class SolanaKeyring implements KeyringSnapRpc {
 
       const account = await this.getAccountOrThrow(accountId);
 
-      const assetsList =
-        await this.#assetsService.fetchAccountAssetsFromRpc(account);
+      // A failed RPC fetch for a requested network must fail the request:
+      // answering with the partial (or empty) result would make the client
+      // keep showing a stale balance with no error.
+      const failOnNetworks = [
+        ...new Set(assets.map((asset) => getNetworkFromToken(asset))),
+      ];
+      const assetsList = await this.#assetsService.fetchAccountAssetsFromRpc(
+        account,
+        { failOnNetworks },
+      );
 
       const assetsToUse = assetsList
         .filter((asset) => assets.includes(asset.assetType))
