@@ -1,3 +1,4 @@
+import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
 import { noopAssetHandlers } from '@metamask/snap-networks-utils';
 import { SnapError } from '@metamask/snaps-sdk';
 
@@ -11,6 +12,7 @@ import {
   onKeyringRequest,
   onUserInput,
 } from '.';
+import { AccountBalanceUnavailableException } from './handlers/keyring/exceptions';
 import { logger } from './utils/logger';
 
 const mockKeyringHandle = jest.fn();
@@ -120,6 +122,60 @@ describe('entrypoints', () => {
       );
     },
   );
+
+  describe('the "not synchronized yet" balance state through the real keyring path (v3)', () => {
+    const balancesRequest = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'keyring_getAccountBalances',
+      params: {
+        id: '9b1c3a4e-2f6d-4b8a-9c1e-5d7f3a2b1c0d',
+        assets: ['stellar:pubnet/slip44:148'],
+      },
+    } as const;
+
+    const keyringThrowing = (error: Error): unknown => ({
+      getAccountBalances: jest.fn().mockRejectedValue(error),
+    });
+
+    it('is re-created by handleKeyringRequest as a plain Error, yet not tracked', async () => {
+      const keyring = keyringThrowing(
+        new AccountBalanceUnavailableException('account-1'),
+      );
+      // Same as KeyringHandler.handle: the SDK dispatches the request and
+      // re-creates every non-SnapError as `new Error(message)`.
+      mockKeyringHandle.mockImplementation(async (_origin, keyringRequest) =>
+        handleKeyringRequest(keyring as never, keyringRequest),
+      );
+
+      await expect(
+        onKeyringRequest({ origin, request: balancesRequest } as never),
+      ).rejects.toThrow('not been synchronized yet');
+
+      expect(mockKeyringHandle).toHaveBeenCalled();
+      expect(snapRequest).not.toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'snap_trackError' }),
+      );
+    });
+
+    it('still tracks other keyring errors re-created by the SDK', async () => {
+      const keyring = keyringThrowing(new Error('Horizon request failed'));
+      mockKeyringHandle.mockImplementation(async (_origin, keyringRequest) =>
+        handleKeyringRequest(keyring as never, keyringRequest),
+      );
+
+      await expect(
+        onKeyringRequest({ origin, request: balancesRequest } as never),
+      ).rejects.toBeInstanceOf(SnapError);
+
+      expect(snapRequest).toHaveBeenCalledWith({
+        method: 'snap_trackError',
+        params: {
+          error: expect.objectContaining({ message: 'Horizon request failed' }),
+        },
+      });
+    });
+  });
 
   it('exports the shared no-op asset handlers', () => {
     expect({

@@ -47,8 +47,14 @@ import {
   SignTransactionResponseStruct,
 } from './api';
 import type { IKeyringRequestHandler } from './base';
-import { ExportAccountException } from './exceptions';
-import { KeyringHandler } from './keyring';
+import {
+  AccountBalanceUnavailableException,
+  ExportAccountException,
+} from './exceptions';
+import {
+  KeyringHandler,
+  UNSYNCED_ACCOUNT_SYNC_MIN_INTERVAL_MS,
+} from './keyring';
 
 jest.mock('../../utils/logger');
 jest.mock('../../utils/snap');
@@ -607,7 +613,7 @@ describe('KeyringHandler', () => {
       });
     });
 
-    it('returns zero native balance when the account is not activated on-chain', async () => {
+    it('throws AccountBalanceUnavailableException when the account was never synchronized', async () => {
       const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
       const { resolveAccountSpy } = getAccountServiceSpies();
       resolveAccountSpy.mockResolvedValue({ account: mockAccount });
@@ -617,6 +623,127 @@ describe('KeyringHandler', () => {
           'resolveOnChainAccountByKeyringAccountId',
         )
         .mockResolvedValue(null);
+      const isConfirmedUnfundedSpy = jest
+        .spyOn(OnChainAccountService.prototype, 'isConfirmedUnfunded')
+        .mockResolvedValue(false);
+
+      await expect(
+        keyringHandler.getAccountBalances(mockAccountId, [slipId]),
+      ).rejects.toThrow(AccountBalanceUnavailableException);
+      expect(isConfirmedUnfundedSpy).toHaveBeenCalledWith(
+        mockAccountId,
+        KnownCaip2ChainId.Mainnet,
+      );
+    });
+
+    describe('on-demand sync for never-synchronized accounts', () => {
+      const setUpUnsyncedAccount = (): void => {
+        const { resolveAccountSpy } = getAccountServiceSpies();
+        resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+        jest
+          .spyOn(
+            OnChainAccountService.prototype,
+            'resolveOnChainAccountByKeyringAccountId',
+          )
+          .mockResolvedValue(null);
+        jest
+          .spyOn(OnChainAccountService.prototype, 'isConfirmedUnfunded')
+          .mockResolvedValue(false);
+      };
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it('schedules one background sync for the account and still reports it as unavailable', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        setUpUnsyncedAccount();
+        const syncSpy = jest
+          .spyOn(SyncAccountsHandler, 'scheduleBackgroundEvent')
+          .mockResolvedValue(undefined);
+
+        await expect(
+          keyringHandler.getAccountBalances(mockAccountId, [slipId]),
+        ).rejects.toThrow(AccountBalanceUnavailableException);
+
+        expect(syncSpy).toHaveBeenCalledTimes(1);
+        expect(syncSpy).toHaveBeenCalledWith(
+          { accountIds: [mockAccountId] },
+          Duration.OneSecond,
+        );
+      });
+
+      it('deduplicates bursts of balance requests within the interval', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        setUpUnsyncedAccount();
+        const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+        const syncSpy = jest
+          .spyOn(SyncAccountsHandler, 'scheduleBackgroundEvent')
+          .mockResolvedValue(undefined);
+
+        for (let i = 0; i < 5; i++) {
+          await expect(
+            keyringHandler.getAccountBalances(mockAccountId, [slipId]),
+          ).rejects.toThrow(AccountBalanceUnavailableException);
+        }
+        expect(syncSpy).toHaveBeenCalledTimes(1);
+
+        nowSpy.mockReturnValue(
+          1_000_000 + UNSYNCED_ACCOUNT_SYNC_MIN_INTERVAL_MS,
+        );
+        await expect(
+          keyringHandler.getAccountBalances(mockAccountId, [slipId]),
+        ).rejects.toThrow(AccountBalanceUnavailableException);
+        expect(syncSpy).toHaveBeenCalledTimes(2);
+      });
+
+      it('still throws the unavailable error, and retries scheduling next time, when scheduling fails', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        setUpUnsyncedAccount();
+        const syncSpy = jest
+          .spyOn(SyncAccountsHandler, 'scheduleBackgroundEvent')
+          .mockRejectedValueOnce(new Error('scheduling failed'))
+          .mockResolvedValue(undefined);
+
+        await expect(
+          keyringHandler.getAccountBalances(mockAccountId, [slipId]),
+        ).rejects.toThrow(AccountBalanceUnavailableException);
+        await expect(
+          keyringHandler.getAccountBalances(mockAccountId, [slipId]),
+        ).rejects.toThrow(AccountBalanceUnavailableException);
+
+        expect(syncSpy).toHaveBeenCalledTimes(2);
+      });
+
+      it('does not schedule a sync for a confirmed-unfunded account', async () => {
+        const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+        setUpUnsyncedAccount();
+        jest
+          .spyOn(OnChainAccountService.prototype, 'isConfirmedUnfunded')
+          .mockResolvedValue(true);
+        const syncSpy = jest
+          .spyOn(SyncAccountsHandler, 'scheduleBackgroundEvent')
+          .mockResolvedValue(undefined);
+
+        await keyringHandler.getAccountBalances(mockAccountId, [slipId]);
+
+        expect(syncSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    it('returns zero native balance when the account is confirmed unfunded on-chain', async () => {
+      const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+      const { resolveAccountSpy } = getAccountServiceSpies();
+      resolveAccountSpy.mockResolvedValue({ account: mockAccount });
+      jest
+        .spyOn(
+          OnChainAccountService.prototype,
+          'resolveOnChainAccountByKeyringAccountId',
+        )
+        .mockResolvedValue(null);
+      jest
+        .spyOn(OnChainAccountService.prototype, 'isConfirmedUnfunded')
+        .mockResolvedValue(true);
 
       const result = await keyringHandler.getAccountBalances(mockAccountId, [
         slipId,

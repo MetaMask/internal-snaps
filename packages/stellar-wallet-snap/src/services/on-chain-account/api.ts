@@ -24,8 +24,20 @@ export type OnChainAccountSnapshotsByKeyringId = Record<
 >;
 
 /**
+ * `unfundedOnChainAccounts[keyringAccountId][scope]` → when the network last confirmed that
+ * the account does not exist (unfunded). Lets the keyring tell a confirmed-unfunded account
+ * (balance 0) from one that was never synchronized (balance unknown).
+ */
+export type UnfundedOnChainAccountsByKeyringId = Record<
+  KeyringAccountId,
+  Partial<Record<KnownCaip2ChainId, number>>
+>;
+
+/**
  * Snap state slice for cached on-chain account snapshots (persisted under `onChainAccounts`).
  */
 export type OnChainAccountState = {
   onChainAccounts: OnChainAccountSnapshotsByKeyringId;
+  /** Optional: absent in states persisted before it was introduced. */
+  unfundedOnChainAccounts?: UnfundedOnChainAccountsByKeyringId;
 };

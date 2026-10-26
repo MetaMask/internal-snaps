@@ -72,6 +72,18 @@ export function sep41MulticallCellToBalance(value: unknown): BigNumber | null {
 }
 
 /**
+ * @param body - A parsed HTTP response body.
+ * @returns Whether the body is empty (no body, or an empty / whitespace-only string).
+ */
+export function isEmptyHttpBody(body: unknown): boolean {
+  return (
+    body === undefined ||
+    body === null ||
+    (typeof body === 'string' && body.trim() === '')
+  );
+}
+
+/**
  * Detects the error shape thrown by Soroban RPC `getAccount` / `getAccountEntry` when the account
  * ledger entry is missing (`Error` with message `Account not found: <G… address>`).
  *
@@ -84,7 +96,11 @@ export function isAccountNotFoundError(
   accountAddress: string,
 ): boolean {
   if (error instanceof NotFoundError) {
-    return true;
+    // Horizon answers a missing account with a JSON problem body. An empty 404 comes from
+    // something in front of Horizon (e.g. a provider router rejecting a mis-routed,
+    // HTTP/2-coalesced request): it says nothing about the account, so it must not be read as
+    // "unfunded" (which reports a confident zero balance).
+    return !isEmptyHttpBody(error.getResponse());
   }
   return ensureError(error).message === `Account not found: ${accountAddress}`;
 }

@@ -14,7 +14,10 @@ import {
   TransactionValidationException,
 } from '../../services/transaction/exceptions';
 import { HttpException } from '../../utils';
-import { StellarSnapException } from '../../utils/errors';
+import {
+  BALANCE_NOT_SYNCHRONIZED_MESSAGE,
+  StellarSnapException,
+} from '../../utils/errors';
 
 export class KeyringException extends StellarSnapException {}
 
@@ -22,6 +25,20 @@ export class KeyringException extends StellarSnapException {}
  * Thrown when private-key export fails. Messages must not include the secret.
  */
 export class ExportAccountException extends KeyringException {}
+
+/**
+ * Thrown by `getAccountBalances` when the account has no synchronized snapshot and is not
+ * confirmed unfunded: its balance is unknown, not zero. This is the expected state of a new
+ * account until its first sync, so it is not tracked as an error.
+ */
+export class AccountBalanceUnavailableException extends KeyringException {
+  /** An expected transient state, not a failure: never reported to Sentry. */
+  readonly isExpectedState = true as const;
+
+  constructor(accountId: string) {
+    super(BALANCE_NOT_SYNCHRONIZED_MESSAGE, { data: { accountId } });
+  }
+}
 
 /**
  * SEP-43 error codes.

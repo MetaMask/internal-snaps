@@ -250,6 +250,7 @@ export class SynchronizeService {
       noOfAccounts: accounts.length,
     });
 
+    const unfundedAccountIds: string[] = [];
     const results = await Promise.all(
       accounts.map(async (account): Promise<ActivatedAccountPair | null> => {
         try {
@@ -264,7 +265,9 @@ export class SynchronizeService {
         } catch (error: unknown) {
           // Only capture the error if it is unexpected.
           // AccountNotActivatedException is expected when the account is not activated yet.
-          if (!(error instanceof AccountNotActivatedException)) {
+          if (error instanceof AccountNotActivatedException) {
+            unfundedAccountIds.push(account.id);
+          } else {
             await trackError(error);
 
             this.#logger.warn('Failed to load account for sync', {
@@ -281,6 +284,20 @@ export class SynchronizeService {
     const pairs: ActivatedAccountPair[] = results.filter(
       (result): result is ActivatedAccountPair => result !== null,
     );
+
+    // Remember which accounts the network confirmed as unfunded, so the keyring reports their
+    // balance as 0 while a never-synchronized account (every load failed) stays unknown.
+    if (unfundedAccountIds.length > 0) {
+      try {
+        await this.#onChainAccountService.markAccountsUnfunded(
+          unfundedAccountIds,
+          scope,
+        );
+      } catch (error: unknown) {
+        await trackError(error);
+        this.#logger.warn('Failed to record unfunded accounts', { error });
+      }
+    }
 
     this.#logger.debug('number of activated account pairs', {
       noOfAccounts: pairs.length,

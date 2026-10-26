@@ -1,9 +1,16 @@
+import { KeyringEvent } from '@metamask/keyring-api';
+import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip19Sep41AssetId } from '../../api';
 import { AssetType, KnownCaip2ChainId } from '../../api';
-import { entries } from '../../utils';
+import {
+  entries,
+  getSlip44AssetId,
+  getSnapProvider,
+  trackError,
+} from '../../utils';
 import { assertSameAddress } from '../account/utils';
 import type {
   AssetMetadataService,
@@ -13,6 +20,7 @@ import { AccountNotActivatedException } from '../network';
 import type { NetworkService } from '../network';
 import type { ActivatedAccountPair } from '../sync/api';
 import { OnChainAccountSep41BalanceNotFoundException } from './exceptions';
+import { getDefaultBalanceEntry } from './keyringBalance';
 import { OnChainAccount } from './OnChainAccount';
 import type { OnChainAccountRepository } from './OnChainAccountRepository';
 import { OnChainAccountSynchronizeService } from './OnChainAccountSynchronizeService';
@@ -228,6 +236,65 @@ export class OnChainAccountService {
     return onChainAccount
       ? OnChainAccount.fromSerializable(onChainAccount)
       : null;
+  }
+
+  /**
+   * Records keyring accounts the network confirmed as unfunded (not created on-chain) on `scope`.
+   *
+   * @param keyringAccountIds - MetaMask keyring account ids.
+   * @param scope - CAIP-2 network.
+   * @returns The ids that were not already marked as unfunded.
+   */
+  async markAccountsUnfunded(
+    keyringAccountIds: string[],
+    scope: KnownCaip2ChainId,
+  ): Promise<string[]> {
+    const newlyMarked = await this.#onChainAccountRepository.markUnfunded(
+      keyringAccountIds,
+      scope,
+    );
+
+    // The client may hold these balances as unavailable (getAccountBalances fails until the
+    // account is confirmed unfunded): tell it the confirmed 0 once, best effort.
+    if (newlyMarked.length > 0) {
+      const nativeAssetId = getSlip44AssetId(scope);
+      try {
+        await emitSnapKeyringEvent(
+          getSnapProvider(),
+          KeyringEvent.AccountBalancesUpdated,
+          {
+            balances: Object.fromEntries(
+              newlyMarked.map((id) => [
+                id,
+                { [nativeAssetId]: getDefaultBalanceEntry() },
+              ]),
+            ),
+          },
+        );
+      } catch (error: unknown) {
+        await trackError(error);
+      }
+    }
+
+    return newlyMarked;
+  }
+
+  /**
+   * Whether the network last confirmed the account as unfunded on `scope`, as opposed to an
+   * account that was never synchronized (e.g. every load failed), whose balance is unknown.
+   *
+   * @param keyringAccountId - MetaMask keyring account id.
+   * @param scope - CAIP-2 network.
+   * @returns `true` if the account is confirmed unfunded.
+   */
+  async isConfirmedUnfunded(
+    keyringAccountId: string,
+    scope: KnownCaip2ChainId,
+  ): Promise<boolean> {
+    return this.#onChainAccountRepository.isConfirmedUnfunded(
+      keyringAccountId,
+      scope,
+    );
   }
 
   /**

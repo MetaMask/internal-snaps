@@ -1,9 +1,47 @@
+import { UserRejectedRequestError } from '@metamask/snaps-sdk';
+
+import { AccountBalanceUnavailableException } from '../handlers/keyring/exceptions';
 import {
   InvalidHttpRequestParamsException,
+  isExpectedStateException,
   rethrowIfInstanceElseThrow,
+  shouldTrackError,
+  StellarSnapException,
 } from './errors';
 
 describe('errors', () => {
+  describe('shouldTrackError', () => {
+    it('does not track the expected "not synchronized yet" balance state', () => {
+      const error = new AccountBalanceUnavailableException('account-1');
+      expect(isExpectedStateException(error)).toBe(true);
+      expect(shouldTrackError(error)).toBe(false);
+    });
+
+    it('does not track the state once re-created, wrapped or serialized (v3)', () => {
+      const { message } = new AccountBalanceUnavailableException('account-1');
+      expect(shouldTrackError(new Error(message))).toBe(false);
+      expect(
+        shouldTrackError(
+          new Error('wrapped', {
+            cause: new AccountBalanceUnavailableException('account-1'),
+          }),
+        ),
+      ).toBe(false);
+      expect(shouldTrackError({ name: 'Error', message })).toBe(false);
+      expect(shouldTrackError(message)).toBe(false);
+    });
+
+    it('does not track user rejections', () => {
+      expect(shouldTrackError(new UserRejectedRequestError())).toBe(false);
+    });
+
+    it('tracks real failures', () => {
+      expect(shouldTrackError(new StellarSnapException('boom'))).toBe(true);
+      expect(shouldTrackError(new Error('boom'))).toBe(true);
+      expect(isExpectedStateException(new Error('boom'))).toBe(false);
+    });
+  });
+
   describe('rethrowIfInstanceElseThrow', () => {
     class SampleDomainError extends Error {
       constructor(message: string) {

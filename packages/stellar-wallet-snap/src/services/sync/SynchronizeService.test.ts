@@ -182,6 +182,68 @@ describe('SynchronizeService', () => {
     );
   });
 
+  it('records unfunded accounts as confirmed unfunded', async () => {
+    const { service, onChainAccountService, resolveOnChainAccountSpy } =
+      setup();
+    const [funded, unfunded] = generateMockStellarKeyringAccounts(
+      2,
+      'sync-mark-unfunded-entropy',
+    ) as [StellarKeyringAccount, StellarKeyringAccount];
+    const markSpy = jest
+      .spyOn(onChainAccountService, 'markAccountsUnfunded')
+      .mockResolvedValue([unfunded.id]);
+    resolveOnChainAccountSpy.mockImplementation(async (accountAddress) => {
+      if (accountAddress === unfunded.address) {
+        throw new AccountNotActivatedException(unfunded.address, scope);
+      }
+      return buildOnChainAccount(funded);
+    });
+
+    await service.synchronize([funded, unfunded], { scope });
+
+    expect(markSpy).toHaveBeenCalledTimes(1);
+    expect(markSpy).toHaveBeenCalledWith([unfunded.id], scope);
+  });
+
+  it('does not record accounts whose load failed for another reason as unfunded', async () => {
+    const { service, onChainAccountService, resolveOnChainAccountSpy } =
+      setup();
+    const [account] = generateMockStellarKeyringAccounts(
+      1,
+      'sync-load-failed-entropy',
+    ) as [StellarKeyringAccount];
+    const markSpy = jest.spyOn(onChainAccountService, 'markAccountsUnfunded');
+    resolveOnChainAccountSpy.mockRejectedValue(new Error('Failed to fetch'));
+
+    await service.synchronize([account], { scope });
+
+    expect(markSpy).not.toHaveBeenCalled();
+  });
+
+  it('continues the sync when recording unfunded accounts fails', async () => {
+    const {
+      service,
+      onChainAccountService,
+      resolveOnChainAccountSpy,
+      onChainSynchronizeSpy,
+      sep41Assets,
+    } = setup();
+    const [account] = generateMockStellarKeyringAccounts(
+      1,
+      'sync-mark-fails-entropy',
+    ) as [StellarKeyringAccount];
+    jest
+      .spyOn(onChainAccountService, 'markAccountsUnfunded')
+      .mockRejectedValue(new Error('state write failed'));
+    resolveOnChainAccountSpy.mockRejectedValue(
+      new AccountNotActivatedException(account.address, scope),
+    );
+
+    await service.synchronize([account], { scope });
+
+    expect(onChainSynchronizeSpy).toHaveBeenCalledWith([], scope, sep41Assets);
+  });
+
   it('respects syncAccounts and syncTransactions options', async () => {
     const {
       service,

@@ -469,4 +469,76 @@ describe('OnChainAccountService', () => {
       );
     });
   });
+
+  describe('markAccountsUnfunded / isConfirmedUnfunded', () => {
+    const ACCOUNT_A = '11111111-1111-4111-8111-111111111111';
+    const ACCOUNT_B = '22222222-2222-4222-8222-222222222222';
+
+    beforeEach(() => {
+      jest.mocked(snap.request).mockReset();
+    });
+
+    it('marks accounts and emits a confirmed zero native balance once', async () => {
+      const { onChainAccountService } = mockOnChainAccountService();
+
+      const marked = await onChainAccountService.markAccountsUnfunded(
+        [ACCOUNT_A],
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(marked).toStrictEqual([ACCOUNT_A]);
+      expect(
+        await onChainAccountService.isConfirmedUnfunded(
+          ACCOUNT_A,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBe(true);
+      expect(snap.request).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(jest.mocked(snap.request).mock.calls[0])).toContain(
+        'notify:accountBalancesUpdated',
+      );
+      expect(JSON.stringify(jest.mocked(snap.request).mock.calls[0])).toContain(
+        ACCOUNT_A,
+      );
+
+      // Already marked: no second event.
+      await onChainAccountService.markAccountsUnfunded(
+        [ACCOUNT_A],
+        KnownCaip2ChainId.Mainnet,
+      );
+      expect(snap.request).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports never-synchronized accounts as not confirmed unfunded', async () => {
+      const { onChainAccountService } = mockOnChainAccountService();
+
+      expect(
+        await onChainAccountService.isConfirmedUnfunded(
+          ACCOUNT_B,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBe(false);
+    });
+
+    it('still records the marker when emitting the balance event fails', async () => {
+      const { onChainAccountService } = mockOnChainAccountService();
+      jest
+        .mocked(snap.request)
+        .mockRejectedValueOnce(new Error('emit failed'))
+        .mockResolvedValue(null);
+
+      const marked = await onChainAccountService.markAccountsUnfunded(
+        [ACCOUNT_B],
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(marked).toStrictEqual([ACCOUNT_B]);
+      expect(
+        await onChainAccountService.isConfirmedUnfunded(
+          ACCOUNT_B,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      ).toBe(true);
+    });
+  });
 });
