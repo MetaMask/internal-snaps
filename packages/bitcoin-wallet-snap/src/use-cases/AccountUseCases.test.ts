@@ -43,6 +43,12 @@ import type {
 } from './AccountUseCases';
 import {
   AccountUseCases,
+  DISCOVERY_SCAN_REUSE_TTL_MS,
+  FULL_SCAN_ON_DEMAND_MAX_INTERVAL_MS,
+  FULL_SCAN_ON_DEMAND_MIN_INTERVAL_MS,
+  FULL_SCAN_RECOVERY_MIN_INTERVAL_MS,
+  getOnDemandFullScanIntervalMs,
+  MAX_IMMEDIATE_FULL_SCANS_ON_CREATE,
   SENDER_LOOKUP_CONCURRENCY,
   SENDER_RESOLUTION_LIMIT,
 } from './AccountUseCases';
@@ -2709,6 +2715,939 @@ describe('AccountUseCases', () => {
 
       expect(result).toStrictEqual([{ error: 'Unable to derive private key' }]);
       expect(JSON.stringify(result)).not.toContain(sensitiveError);
+    });
+  });
+  describe('balance-unknown tracking and the full scan queue', () => {
+    const buildStatefulUseCases = (): {
+      useCases: AccountUseCases;
+      snapClient: ReturnType<typeof mock<SnapClient>>;
+      state: Record<string, unknown>;
+    } => {
+      const state: Record<string, unknown> = {};
+      const snapClient = mock<SnapClient>();
+      snapClient.getState.mockImplementation(async (key?: string) =>
+        key !== undefined && Object.hasOwn(state, key)
+          ? (JSON.parse(JSON.stringify(state[key])) as never)
+          : (null as never),
+      );
+      snapClient.setState.mockImplementation(async (key, value) => {
+        state[key as string] = JSON.parse(JSON.stringify(value));
+      });
+      return {
+        useCases: new AccountUseCases(
+          mockLogger,
+          snapClient,
+          mockRepository,
+          mockConfirmationRepository,
+          mockChain,
+          fallbackFeeRate,
+          targetBlocksConfirmation,
+          undefined,
+        ),
+        snapClient,
+        state,
+      };
+    };
+
+    const buildAccount = (
+      id: string,
+      synchronized: boolean,
+    ): BitcoinAccount => {
+      const account = mock<BitcoinAccount>({ id, network: 'bitcoin' });
+      account.hasSynchronized.mockReturnValue(synchronized);
+      account.listTransactions.mockReturnValue([]);
+      return account;
+    };
+
+    it('reports the balance of a never-synchronized account as unknown', async () => {
+      const { useCases: testUseCases } = buildStatefulUseCases();
+
+      expect(
+        await testUseCases.isBalanceUnknown(buildAccount('a', false)),
+      ).toBe(true);
+      expect(await testUseCases.isBalanceUnknown(buildAccount('b', true))).toBe(
+        false,
+      );
+    });
+
+    it('keeps a new account unknown until its first full scan succeeds, and retries a failed scan', async () => {
+      const { useCases: testUseCases } = buildStatefulUseCases();
+      const account = buildAccount('new-id', true);
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: { accounts: null, derivationPaths: null },
+      });
+      mockRepository.createMany.mockResolvedValue([account]);
+      mockRepository.update.mockResolvedValue();
+
+      await testUseCases.createMany([
+        {
+          network: 'bitcoin',
+          entropySource: 'some-source',
+          index: 0,
+          addressType: 'p2wpkh',
+          synchronize: false,
+        },
+      ]);
+      expect(await testUseCases.isBalanceUnknown(account)).toBe(true);
+      expect(await testUseCases.isInitialFullScanPending('new-id')).toBe(true);
+
+      mockChain.fullScan.mockRejectedValueOnce(new Error('Failed to fetch'));
+      await expect(testUseCases.fullScan(account)).rejects.toThrow(
+        'Failed to fetch',
+      );
+      expect(await testUseCases.isBalanceUnknown(account)).toBe(true);
+      // Backoff: not due right after the failure.
+      expect(await testUseCases.listDueFullScans([account], 2)).toStrictEqual(
+        [],
+      );
+
+      mockChain.fullScan.mockResolvedValueOnce();
+      await testUseCases.fullScan(account);
+      expect(await testUseCases.isBalanceUnknown(account)).toBe(false);
+    });
+
+    it('queues never-synchronized accounts and returns at most `max` due accounts', async () => {
+      const { useCases: testUseCases, state } = buildStatefulUseCases();
+      // The queue already exists (e.g. the repair scan finished).
+      state.rescanV1 = { pending: [] };
+      const synced = buildAccount('synced', true);
+      const legacy1 = buildAccount('legacy-1', false);
+      const legacy2 = buildAccount('legacy-2', false);
+      const legacy3 = buildAccount('legacy-3', false);
+
+      const due = await testUseCases.listDueFullScans(
+        [synced, legacy1, legacy2, legacy3],
+        2,
+      );
+
+      expect(due).toStrictEqual([legacy1, legacy2]);
+      expect(state.rescanV1).toStrictEqual({
+        pending: ['legacy-1', 'legacy-2', 'legacy-3'],
+      });
+    });
+  });
+
+  describe('full scan coordination (single-flight, on-demand, recovery)', () => {
+    const NOW = 1_700_000_000_000;
+    let nowSpy: jest.SpyInstance<number, []>;
+
+    const buildUseCases = (): {
+      useCases: AccountUseCases;
+      snapClient: ReturnType<typeof mock<SnapClient>>;
+    } => {
+      const state: Record<string, unknown> = {};
+      const snapClient = mock<SnapClient>();
+      snapClient.getState.mockImplementation(async (key?: string) =>
+        key !== undefined && Object.hasOwn(state, key)
+          ? (JSON.parse(JSON.stringify(state[key])) as never)
+          : (null as never),
+      );
+      snapClient.setState.mockImplementation(async (key, value) => {
+        state[key as string] = JSON.parse(JSON.stringify(value));
+      });
+      return {
+        useCases: new AccountUseCases(
+          mockLogger,
+          snapClient,
+          mockRepository,
+          mockConfirmationRepository,
+          mockChain,
+          fallbackFeeRate,
+          targetBlocksConfirmation,
+          undefined,
+        ),
+        snapClient,
+      };
+    };
+
+    const buildAccount = (id: string, synchronized = true): BitcoinAccount => {
+      const account = mock<BitcoinAccount>({ id, network: 'bitcoin' });
+      account.hasSynchronized.mockReturnValue(synchronized);
+      account.listTransactions.mockReturnValue([]);
+      return account;
+    };
+
+    const fullScanEvents = (
+      snapClient: ReturnType<typeof mock<SnapClient>>,
+    ): unknown[] =>
+      snapClient.scheduleBackgroundEvent.mock.calls.filter(
+        ([event]) => event.method === CronMethod.FullScanAccount,
+      );
+
+    beforeEach(() => {
+      mockChain.fullScan.mockReset();
+      mockChain.sync.mockReset();
+      mockRepository.update.mockResolvedValue();
+      nowSpy = jest.spyOn(Date, 'now').mockReturnValue(NOW);
+    });
+
+    afterEach(() => {
+      nowSpy.mockRestore();
+    });
+
+    it('computes a bounded on-demand interval', () => {
+      expect(getOnDemandFullScanIntervalMs(0)).toBe(
+        FULL_SCAN_ON_DEMAND_MIN_INTERVAL_MS,
+      );
+      expect(getOnDemandFullScanIntervalMs(1)).toBe(30_000);
+      expect(getOnDemandFullScanIntervalMs(2)).toBe(60_000);
+      expect(getOnDemandFullScanIntervalMs(3)).toBe(
+        FULL_SCAN_ON_DEMAND_MAX_INTERVAL_MS,
+      );
+      expect(getOnDemandFullScanIntervalMs(50)).toBe(
+        FULL_SCAN_ON_DEMAND_MAX_INTERVAL_MS,
+      );
+      expect(FULL_SCAN_ON_DEMAND_MAX_INTERVAL_MS).toBe(2 * 60_000);
+    });
+
+    it('runs one full scan per account at a time (single-flight)', async () => {
+      const { useCases: testUseCases } = buildUseCases();
+      const account = buildAccount('a');
+      let finishScan: () => void = () => undefined;
+      mockChain.fullScan.mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishScan = resolve;
+        }),
+      );
+
+      const first = testUseCases.fullScan(account);
+      const second = testUseCases.fullScan(account);
+      expect(testUseCases.isFullScanInFlight('a')).toBe(true);
+      finishScan();
+      const [firstResult, secondResult] = await Promise.all([first, second]);
+
+      expect(mockChain.fullScan).toHaveBeenCalledTimes(1);
+      expect(secondResult).toBe(firstResult);
+      expect(testUseCases.isFullScanInFlight('a')).toBe(false);
+
+      // A later scan runs again.
+      mockChain.fullScan.mockResolvedValue();
+      await testUseCases.fullScan(account);
+      expect(mockChain.fullScan).toHaveBeenCalledTimes(2);
+    });
+
+    it('makes a sync join an in-flight full scan instead of fetching concurrently', async () => {
+      const { useCases: testUseCases } = buildUseCases();
+      const scanned = buildAccount('a');
+      const stale = buildAccount('a');
+      let finishScan: () => void = () => undefined;
+      mockChain.fullScan.mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishScan = resolve;
+        }),
+      );
+
+      const scan = testUseCases.fullScan(scanned);
+      const sync = testUseCases.synchronize(stale, 'cron');
+      finishScan();
+      await scan;
+
+      expect(await sync).toStrictEqual({
+        account: scanned,
+        transactionsToNotify: [],
+      });
+      expect(mockChain.sync).not.toHaveBeenCalled();
+    });
+
+    it('excludes in-flight and just-scanned accounts from the cron queue', async () => {
+      const { useCases: testUseCases } = buildUseCases();
+      const account = buildAccount('a', false);
+      let finishScan: () => void = () => undefined;
+      mockChain.fullScan.mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishScan = resolve;
+        }),
+      );
+
+      const scan = testUseCases.fullScan(account);
+      expect(await testUseCases.listDueFullScans([account], 2)).toStrictEqual(
+        [],
+      );
+      finishScan();
+      await scan;
+    });
+
+    it('starts the first full scan of new accounts right away, even without `synchronize`', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const accounts = ['n1', 'n2', 'n3'].map((id) => buildAccount(id));
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null, null, null],
+        snapshot: { accounts: null, derivationPaths: null },
+      });
+      mockRepository.createMany.mockResolvedValue(accounts);
+      mockRepository.insertMany.mockResolvedValue(accounts);
+
+      await testUseCases.createMany(
+        [0, 1, 2].map((index) => ({
+          network: 'bitcoin' as const,
+          entropySource: 'some-source',
+          index,
+          addressType: 'p2wpkh' as const,
+          synchronize: false,
+        })),
+      );
+
+      expect(fullScanEvents(snapClient)).toStrictEqual(
+        accounts.slice(0, MAX_IMMEDIATE_FULL_SCANS_ON_CREATE).map(({ id }) => [
+          {
+            duration: 'PT1S',
+            method: CronMethod.FullScanAccount,
+            params: { accountId: id },
+          },
+        ]),
+      );
+      // The scheduled accounts are not picked again by the cron queue.
+      const due = await testUseCases.listDueFullScans(accounts, 3);
+      expect(due.map(({ id }) => id)).toStrictEqual(['n3']);
+    });
+
+    it('deduplicates on-demand scan requests from balance requests', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const account = buildAccount('a');
+
+      expect(
+        await testUseCases.requestFullScan(account, 'balance-request'),
+      ).toBe(true);
+      expect(
+        await testUseCases.requestFullScan(account, 'balance-request'),
+      ).toBe(false);
+      expect(
+        await testUseCases.requestFullScan(account, 'sync-succeeded'),
+      ).toBe(false);
+      expect(fullScanEvents(snapClient)).toHaveLength(1);
+
+      nowSpy.mockReturnValue(NOW + FULL_SCAN_ON_DEMAND_MIN_INTERVAL_MS);
+      expect(
+        await testUseCases.requestFullScan(account, 'balance-request'),
+      ).toBe(true);
+      expect(fullScanEvents(snapClient)).toHaveLength(2);
+    });
+
+    it('does not request a scan while one is running', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const account = buildAccount('a');
+      let finishScan: () => void = () => undefined;
+      mockChain.fullScan.mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishScan = resolve;
+        }),
+      );
+
+      const scan = testUseCases.fullScan(account);
+      expect(
+        await testUseCases.requestFullScan(account, 'balance-request'),
+      ).toBe(false);
+      finishScan();
+      await scan;
+      expect(fullScanEvents(snapClient)).toHaveLength(0);
+    });
+
+    it('backs off on-demand scans after failures, bounded to 2 minutes', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const account = buildAccount('a');
+      mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
+
+      for (let i = 0; i < 4; i++) {
+        await expect(testUseCases.fullScan(account)).rejects.toThrow(
+          'Failed to fetch',
+        );
+      }
+
+      nowSpy.mockReturnValue(NOW + FULL_SCAN_ON_DEMAND_MAX_INTERVAL_MS - 1);
+      expect(
+        await testUseCases.requestFullScan(account, 'balance-request'),
+      ).toBe(false);
+      nowSpy.mockReturnValue(NOW + FULL_SCAN_ON_DEMAND_MAX_INTERVAL_MS);
+      expect(
+        await testUseCases.requestFullScan(account, 'balance-request'),
+      ).toBe(true);
+      expect(fullScanEvents(snapClient)).toHaveLength(1);
+    });
+
+    it('runs the pending full scan promptly once syncs succeed again after an outage', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const account = buildAccount('a');
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: { accounts: null, derivationPaths: null },
+      });
+      mockRepository.createMany.mockResolvedValue([account]);
+      mockRepository.insertMany.mockResolvedValue([account]);
+      await testUseCases.createMany([
+        {
+          network: 'bitcoin',
+          entropySource: 'some-source',
+          index: 0,
+          addressType: 'p2wpkh',
+          synchronize: false,
+        },
+      ]);
+      snapClient.scheduleBackgroundEvent.mockClear();
+
+      // Outage: repeated scans fail (on-demand interval now 2 minutes) and
+      // the cron syncs fail too.
+      mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
+      for (let i = 0; i < 4; i++) {
+        await expect(testUseCases.fullScan(account)).rejects.toThrow(
+          'Failed to fetch',
+        );
+      }
+      mockChain.sync.mockRejectedValueOnce(new Error('Failed to fetch'));
+      await expect(testUseCases.synchronize(account, 'cron')).rejects.toThrow(
+        'Failed to fetch',
+      );
+
+      // The network comes back: the next cron sync (30 s later) succeeds and
+      // runs the full scan right away, without waiting for the backoff.
+      nowSpy.mockReturnValue(NOW + 30_000);
+      mockChain.sync.mockResolvedValueOnce();
+      await testUseCases.synchronize(account, 'cron');
+
+      expect(fullScanEvents(snapClient)).toStrictEqual([
+        [
+          {
+            duration: 'PT1S',
+            method: CronMethod.FullScanAccount,
+            params: { accountId: 'a' },
+          },
+        ],
+      ]);
+    });
+
+    it('lets a successful sync trigger the pending scan, bounded by the on-demand backoff', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const account = buildAccount('a');
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: { accounts: null, derivationPaths: null },
+      });
+      mockRepository.createMany.mockResolvedValue([account]);
+      mockRepository.insertMany.mockResolvedValue([account]);
+      await testUseCases.createMany([
+        {
+          network: 'bitcoin',
+          entropySource: 'some-source',
+          index: 0,
+          addressType: 'p2wpkh',
+          synchronize: false,
+        },
+      ]);
+      snapClient.scheduleBackgroundEvent.mockClear();
+      mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
+      for (let i = 0; i < 3; i++) {
+        await expect(testUseCases.fullScan(account)).rejects.toThrow(
+          'Failed to fetch',
+        );
+      }
+      mockChain.sync.mockResolvedValue();
+
+      nowSpy.mockReturnValue(NOW + 60_000);
+      await testUseCases.synchronize(account, 'cron');
+      expect(fullScanEvents(snapClient)).toHaveLength(0);
+
+      nowSpy.mockReturnValue(NOW + FULL_SCAN_ON_DEMAND_MAX_INTERVAL_MS);
+      await testUseCases.synchronize(account, 'cron');
+      expect(fullScanEvents(snapClient)).toHaveLength(1);
+    });
+
+    it('does not request scans from syncs of accounts with a known balance', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const account = buildAccount('a');
+      mockChain.sync.mockResolvedValue();
+
+      await testUseCases.synchronize(account, 'cron');
+
+      expect(fullScanEvents(snapClient)).toHaveLength(0);
+    });
+
+    it('treats a failed full scan joined by a sync as a failed sync, so the next successful sync recovers promptly (v3 item 6)', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const account = buildAccount('a');
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: { accounts: null, derivationPaths: null },
+      });
+      mockRepository.createMany.mockResolvedValue([account]);
+      mockRepository.insertMany.mockResolvedValue([account]);
+      await testUseCases.createMany([
+        {
+          network: 'bitcoin',
+          entropySource: 'some-source',
+          index: 0,
+          addressType: 'p2wpkh',
+          synchronize: false,
+        },
+      ]);
+      snapClient.scheduleBackgroundEvent.mockClear();
+
+      // Outage: scans keep failing (on-demand interval now 2 minutes).
+      mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
+      for (let i = 0; i < 3; i++) {
+        await expect(testUseCases.fullScan(account)).rejects.toThrow(
+          'Failed to fetch',
+        );
+      }
+      // The cron sync joins the next (failing) scan instead of syncing.
+      let failScan: (error: Error) => void = () => undefined;
+      mockChain.fullScan.mockReturnValueOnce(
+        new Promise<void>((_resolve, reject) => {
+          failScan = reject;
+        }),
+      );
+      const scan = testUseCases.fullScan(account);
+      const joinedSynchronization = testUseCases.synchronize(account, 'cron');
+      failScan(new Error('Failed to fetch'));
+      await expect(scan).rejects.toThrow('Failed to fetch');
+      await expect(joinedSynchronization).rejects.toThrow('Failed to fetch');
+      expect(mockChain.sync).not.toHaveBeenCalled();
+
+      // The connection heals: the next cron sync (30 s later) succeeds and
+      // requests the full scan right away, not after the 2-minute backoff.
+      nowSpy.mockReturnValue(NOW + 30_000);
+      mockChain.sync.mockResolvedValueOnce();
+      await testUseCases.synchronize(account, 'cron');
+
+      expect(fullScanEvents(snapClient)).toStrictEqual([
+        [
+          {
+            duration: 'PT1S',
+            method: CronMethod.FullScanAccount,
+            params: { accountId: 'a' },
+          },
+        ],
+      ]);
+    });
+
+    describe('first heal of a never-synchronized account (v7)', () => {
+      const createNeverSyncedAccount = async (
+        testUseCases: AccountUseCases,
+        snapClient: ReturnType<typeof mock<SnapClient>>,
+      ): Promise<BitcoinAccount> => {
+        const account = buildAccount('a', false);
+        mockRepository.getByDerivationPaths.mockResolvedValue({
+          accounts: [null],
+          snapshot: { accounts: null, derivationPaths: null },
+        });
+        mockRepository.createMany.mockResolvedValue([account]);
+        mockRepository.insertMany.mockResolvedValue([account]);
+        await testUseCases.createMany([
+          {
+            network: 'bitcoin',
+            entropySource: 'some-source',
+            index: 0,
+            addressType: 'p2wpkh',
+            synchronize: false,
+          },
+        ]);
+        snapClient.scheduleBackgroundEvent.mockClear();
+        return account;
+      };
+
+      const at = (offsetMs: number): void => {
+        nowSpy.mockReturnValue(NOW + offsetMs);
+      };
+
+      /**
+       * Seconds until the scheduled full scans run, from their ISO durations.
+       *
+       * @param snapClient - The snap client mock.
+       * @returns The delays in seconds, one per scheduled full scan.
+       */
+      const scheduledScanDelays = (
+        snapClient: ReturnType<typeof mock<SnapClient>>,
+      ): number[] =>
+        snapClient.scheduleBackgroundEvent.mock.calls
+          .filter(([event]) => event.method === CronMethod.FullScanAccount)
+          .map(([event]) => Number(/^PT(\d+)S$/u.exec(event.duration ?? '')?.[1]));
+
+      it('requests the full scan within seconds when the first successful sync comes 25 s after a failed scan (A-v6 22:49:13)', async () => {
+        const { useCases: testUseCases, snapClient } = buildUseCases();
+        const account = await createNeverSyncedAccount(testUseCases, snapClient);
+        mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
+        mockChain.sync.mockRejectedValue(new Error('Failed to fetch'));
+
+        // Outage, with the A-v6 timeline (seconds after onboarding): the
+        // first scans fail at +0 and +2, on-demand retries at +31 and +92,
+        // and the 30 s cron syncs fail in between.
+        for (const [offset, kind] of [
+          [0, 'scan'],
+          [2, 'scan'],
+          [26, 'sync'],
+          [31, 'scan'],
+          [56, 'sync'],
+          [86, 'sync'],
+          [92, 'scan'],
+        ] as const) {
+          at(offset * 1000);
+          const step =
+            kind === 'scan'
+              ? testUseCases.fullScan(account)
+              : testUseCases.synchronize(account, 'cron');
+          await expect(step).rejects.toThrow('Failed to fetch');
+        }
+        // The backoff has grown: a balance request (client retry) is now
+        // held back by the 2-minute on-demand interval.
+        at(116_000);
+        expect(
+          await testUseCases.requestFullScan(account, 'balance-request'),
+        ).toBe(false);
+        expect(fullScanEvents(snapClient)).toHaveLength(0);
+
+        // Heal: the next cron sync, 25 s after the last failed scan, succeeds.
+        at(117_000);
+        mockChain.sync.mockResolvedValue();
+        await testUseCases.synchronize(account, 'cron');
+
+        const delays = scheduledScanDelays(snapClient);
+        expect(delays).toHaveLength(1);
+        expect(delays[0]).toBeLessThanOrEqual(5);
+        expect(fullScanEvents(snapClient)).toStrictEqual([
+          [
+            {
+              duration: 'PT1S',
+              method: CronMethod.FullScanAccount,
+              params: { accountId: 'a' },
+            },
+          ],
+        ]);
+
+        // No duplicate scan before the scheduled one runs: neither the cron
+        // queue, nor later syncs, nor balance requests add another.
+        at(118_000);
+        expect(await testUseCases.listDueFullScans([account], 2)).toStrictEqual(
+          [],
+        );
+        await testUseCases.synchronize(account, 'cron');
+        expect(
+          await testUseCases.requestFullScan(account, 'balance-request'),
+        ).toBe(false);
+        expect(fullScanEvents(snapClient)).toHaveLength(1);
+
+        // The scheduled scan runs and succeeds: the balance is known and the
+        // following syncs request nothing more.
+        mockChain.fullScan.mockResolvedValue();
+        await testUseCases.fullScan(account);
+        jest.mocked(account.hasSynchronized).mockReturnValue(true);
+        expect(await testUseCases.isBalanceUnknown(account)).toBe(false);
+        at(147_000);
+        await testUseCases.synchronize(account, 'cron');
+        expect(fullScanEvents(snapClient)).toHaveLength(1);
+        expect(mockChain.fullScan).toHaveBeenCalledTimes(5);
+      });
+
+      it('defers, rather than drops, a recovery that arrives right after a failed scan', async () => {
+        const { useCases: testUseCases, snapClient } = buildUseCases();
+        const account = await createNeverSyncedAccount(testUseCases, snapClient);
+        mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
+        mockChain.sync.mockRejectedValueOnce(new Error('Failed to fetch'));
+        for (let i = 0; i < 3; i++) {
+          await expect(testUseCases.fullScan(account)).rejects.toThrow(
+            'Failed to fetch',
+          );
+        }
+        await expect(testUseCases.synchronize(account, 'cron')).rejects.toThrow(
+          'Failed to fetch',
+        );
+
+        // The sync succeeds 2 s after the last failed scan.
+        at(2_000);
+        mockChain.sync.mockResolvedValue();
+        await testUseCases.synchronize(account, 'cron');
+
+        expect(scheduledScanDelays(snapClient)).toStrictEqual([
+          (FULL_SCAN_RECOVERY_MIN_INTERVAL_MS - 2_000) / 1000,
+        ]);
+        // Still a single scan while it is pending.
+        at(4_000);
+        await testUseCases.synchronize(account, 'cron');
+        expect(await testUseCases.listDueFullScans([account], 2)).toStrictEqual(
+          [],
+        );
+        expect(fullScanEvents(snapClient)).toHaveLength(1);
+      });
+
+      it('keeps the on-demand backoff for successful syncs that are not a recovery', async () => {
+        const { useCases: testUseCases, snapClient } = buildUseCases();
+        const account = await createNeverSyncedAccount(testUseCases, snapClient);
+        mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
+        for (let i = 0; i < 3; i++) {
+          await expect(testUseCases.fullScan(account)).rejects.toThrow(
+            'Failed to fetch',
+          );
+        }
+        // Syncs never failed (only the scans did): no recovery, so the
+        // 2-minute on-demand interval still applies.
+        mockChain.sync.mockResolvedValue();
+        at(25_000);
+        await testUseCases.synchronize(account, 'cron');
+        expect(fullScanEvents(snapClient)).toHaveLength(0);
+      });
+    });
+  });
+
+  describe('discovery scan reuse and the discovery frontier (v3 item 1)', () => {
+    const NOW = 1_700_000_000_000;
+    let nowSpy: jest.SpyInstance<number, []>;
+
+    const buildUseCases = (): {
+      useCases: AccountUseCases;
+      snapClient: ReturnType<typeof mock<SnapClient>>;
+    } => {
+      const state: Record<string, unknown> = {};
+      const snapClient = mock<SnapClient>();
+      snapClient.getState.mockImplementation(async (key?: string) =>
+        key !== undefined && Object.hasOwn(state, key)
+          ? (JSON.parse(JSON.stringify(state[key])) as never)
+          : (null as never),
+      );
+      snapClient.setState.mockImplementation(async (key, value) => {
+        state[key as string] = JSON.parse(JSON.stringify(value));
+      });
+      return {
+        useCases: new AccountUseCases(
+          mockLogger,
+          snapClient,
+          mockRepository,
+          mockConfirmationRepository,
+          mockChain,
+          fallbackFeeRate,
+          targetBlocksConfirmation,
+          undefined,
+        ),
+        snapClient,
+      };
+    };
+
+    const buildAccount = (
+      id: string,
+      { synchronized = true, transactions = 0 } = {},
+    ): BitcoinAccount => {
+      const account = mock<BitcoinAccount>({ id, network: 'bitcoin' });
+      account.hasSynchronized.mockReturnValue(synchronized);
+      account.listTransactions.mockReturnValue(
+        Array.from({ length: transactions }, () => mock<WalletTx>()),
+      );
+      return account;
+    };
+
+    const request = (index: number): CreateAccountParams => ({
+      network: 'bitcoin',
+      entropySource: 'some-source',
+      index,
+      addressType: 'p2wpkh',
+      synchronize: false,
+    });
+
+    const eventsOf = (
+      snapClient: ReturnType<typeof mock<SnapClient>>,
+      method: string,
+    ): unknown[] =>
+      snapClient.scheduleBackgroundEvent.mock.calls
+        .filter(([event]) => event.method === method)
+        .map(([event]) => event);
+
+    const discover = async (
+      testUseCases: AccountUseCases,
+      account: BitcoinAccount,
+      index: number,
+    ): Promise<void> => {
+      mockRepository.getByDerivationPath.mockResolvedValueOnce(null);
+      mockRepository.create.mockResolvedValueOnce(account);
+      mockChain.fullScan.mockResolvedValueOnce();
+      await testUseCases.discover({
+        network: 'bitcoin',
+        entropySource: 'some-source',
+        index,
+        addressType: 'p2wpkh',
+      });
+    };
+
+    beforeEach(() => {
+      mockChain.fullScan.mockReset();
+      mockChain.sync.mockReset();
+      mockRepository.createMany.mockReset();
+      mockRepository.insertMany.mockReset();
+      mockRepository.update.mockResolvedValue();
+      nowSpy = jest.spyOn(Date, 'now').mockReturnValue(NOW);
+    });
+
+    afterEach(() => {
+      nowSpy.mockRestore();
+    });
+
+    it('reuses the account discovery just scanned as its first synchronization', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const discovered = buildAccount('d1');
+      await discover(testUseCases, discovered, 1);
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: { accounts: null, derivationPaths: null },
+      });
+      mockRepository.insertMany.mockResolvedValue([discovered]);
+
+      const created = await testUseCases.createMany([request(1)]);
+
+      expect(created).toStrictEqual([discovered]);
+      expect(mockRepository.createMany).not.toHaveBeenCalled();
+      expect(mockRepository.insertMany).toHaveBeenCalledWith(
+        [discovered],
+        expect.anything(),
+      );
+      expect(discovered.revealNextAddress).toHaveBeenCalled();
+      // No second full scan: not scheduled, not queued.
+      expect(mockChain.fullScan).toHaveBeenCalledTimes(1);
+      expect(eventsOf(snapClient, CronMethod.FullScanAccount)).toHaveLength(0);
+      expect(await testUseCases.isInitialFullScanPending('d1')).toBe(false);
+      expect(await testUseCases.isBalanceUnknown(discovered)).toBe(false);
+    });
+
+    it('syncs (instead of full-scanning) new accounts above the lowest index discovery found unused', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      // Onboarding: discovery finds index 1 unused, then alignment creates
+      // groups 1..4 because other networks have activity there.
+      const discovered = buildAccount('d1');
+      await discover(testUseCases, discovered, 1);
+      const fresh = ['a2', 'a3', 'a4'].map((id) =>
+        buildAccount(id, { synchronized: false }),
+      );
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null, null, null, null],
+        snapshot: { accounts: null, derivationPaths: null },
+      });
+      mockRepository.createMany.mockResolvedValue(fresh);
+      mockRepository.insertMany.mockResolvedValue([discovered, ...fresh]);
+
+      await testUseCases.createMany([1, 2, 3, 4].map(request));
+
+      expect(mockRepository.createMany).toHaveBeenCalledTimes(1);
+      expect(
+        mockRepository.createMany.mock.calls[0]?.[0].map(
+          ({ derivationPath }) => derivationPath[3],
+        ),
+      ).toStrictEqual(["2'", "3'", "4'"]);
+      expect(eventsOf(snapClient, CronMethod.FullScanAccount)).toHaveLength(0);
+      expect(
+        eventsOf(snapClient, CronMethod.SyncSelectedAccounts),
+      ).toStrictEqual([
+        {
+          duration: 'PT1S',
+          method: CronMethod.SyncSelectedAccounts,
+          params: { accountIds: ['a2', 'a3', 'a4'] },
+        },
+      ]);
+      expect(await testUseCases.isInitialFullScanPending('a2')).toBe(false);
+      // Not picked by the cron full-scan queue either.
+      expect(await testUseCases.listDueFullScans(fresh, 5)).toStrictEqual([]);
+      // Discovery's own scan is the only full scan.
+      expect(mockChain.fullScan).toHaveBeenCalledTimes(1);
+    });
+
+    it('answers a balance request for a fresh account with a sync, and full-scans normally once it synced', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      await discover(testUseCases, buildAccount('d1'), 1);
+      const fresh = buildAccount('a2', { synchronized: false });
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: { accounts: null, derivationPaths: null },
+      });
+      mockRepository.createMany.mockResolvedValue([fresh]);
+      mockRepository.insertMany.mockResolvedValue([fresh]);
+      await testUseCases.createMany([request(2)]);
+      snapClient.scheduleBackgroundEvent.mockClear();
+
+      expect(await testUseCases.requestFullScan(fresh, 'balance-request')).toBe(
+        true,
+      );
+      expect(snapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        duration: 'PT1S',
+        method: CronMethod.SyncSelectedAccounts,
+        params: { accountIds: ['a2'] },
+      });
+
+      // After its first successful sync, it is a regular account again.
+      mockChain.sync.mockResolvedValueOnce();
+      jest.mocked(fresh.hasSynchronized).mockReturnValue(true);
+      await testUseCases.synchronize(fresh, 'cron');
+      snapClient.scheduleBackgroundEvent.mockClear();
+      nowSpy.mockReturnValue(NOW + 60_000);
+      await testUseCases.requestFullScan(fresh, 'balance-request');
+      expect(snapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+        duration: 'PT1S',
+        method: CronMethod.FullScanAccount,
+        params: { accountId: 'a2' },
+      });
+    });
+
+    it('still full-scans accounts at or below an index with activity', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      // Discovery found activity at index 1 (frontier not set by it).
+      await discover(testUseCases, buildAccount('d1', { transactions: 2 }), 1);
+      const next = buildAccount('a2', { synchronized: false });
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: { accounts: null, derivationPaths: null },
+      });
+      mockRepository.createMany.mockResolvedValue([next]);
+      mockRepository.insertMany.mockResolvedValue([next]);
+
+      await testUseCases.createMany([request(2)]);
+
+      expect(
+        eventsOf(snapClient, CronMethod.SyncSelectedAccounts),
+      ).toHaveLength(0);
+      expect(eventsOf(snapClient, CronMethod.FullScanAccount)).toStrictEqual([
+        {
+          duration: 'PT1S',
+          method: CronMethod.FullScanAccount,
+          params: { accountId: 'a2' },
+        },
+      ]);
+    });
+
+    it('requests a standard-gap scan for a reused discovery scan that found activity', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const discovered = buildAccount('d1', { transactions: 3 });
+      await discover(testUseCases, discovered, 1);
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null],
+        snapshot: { accounts: null, derivationPaths: null },
+      });
+
+      await testUseCases.createMany([request(1)]);
+
+      expect(mockRepository.createMany).not.toHaveBeenCalled();
+      expect(eventsOf(snapClient, CronMethod.FullScanAccount)).toStrictEqual([
+        {
+          duration: 'PT1S',
+          method: CronMethod.FullScanAccount,
+          params: { accountId: 'd1' },
+        },
+      ]);
+      // Its balance is known from the discovery scan meanwhile.
+      expect(await testUseCases.isInitialFullScanPending('d1')).toBe(false);
+    });
+
+    it('does not reuse discovery results older than the reuse TTL', async () => {
+      const { useCases: testUseCases, snapClient } = buildUseCases();
+      await discover(testUseCases, buildAccount('d1'), 1);
+      nowSpy.mockReturnValue(NOW + DISCOVERY_SCAN_REUSE_TTL_MS);
+      const derived = buildAccount('n1', { synchronized: false });
+      const fresh = buildAccount('n2', { synchronized: false });
+      mockRepository.getByDerivationPaths.mockResolvedValue({
+        accounts: [null, null],
+        snapshot: { accounts: null, derivationPaths: null },
+      });
+      mockRepository.createMany.mockResolvedValue([derived, fresh]);
+      mockRepository.insertMany.mockResolvedValue([derived, fresh]);
+
+      await testUseCases.createMany([request(1), request(2)]);
+
+      expect(mockRepository.createMany.mock.calls[0]?.[0]).toHaveLength(2);
+      expect(
+        eventsOf(snapClient, CronMethod.SyncSelectedAccounts),
+      ).toHaveLength(0);
+      expect(eventsOf(snapClient, CronMethod.FullScanAccount)).toHaveLength(2);
     });
   });
 });

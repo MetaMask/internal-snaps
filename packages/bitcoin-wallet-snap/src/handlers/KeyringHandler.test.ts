@@ -679,6 +679,32 @@ describe('KeyringHandler', () => {
       );
       expect(mockAccounts.get).toHaveBeenCalled();
     });
+
+    it('kicks off a full scan when the balance is still unknown', async () => {
+      mockAccounts.get.mockResolvedValue(mockAccount);
+      mockAccounts.isBalanceUnknown.mockResolvedValue(true);
+      mockAccounts.requestFullScan.mockResolvedValue(true);
+
+      const result = await handler.getAccountBalances(mockAccount.id);
+
+      expect(mockAccounts.isBalanceUnknown).toHaveBeenCalledWith(mockAccount);
+      expect(mockAccounts.requestFullScan).toHaveBeenCalledWith(
+        mockAccount,
+        'balance-request',
+      );
+      expect(result).toStrictEqual({
+        [Caip19Asset.Bitcoin]: { amount: '1', unit: 'BTC' },
+      });
+    });
+
+    it('does not request a full scan when the balance is known', async () => {
+      mockAccounts.get.mockResolvedValue(mockAccount);
+      mockAccounts.isBalanceUnknown.mockResolvedValue(false);
+
+      await handler.getAccountBalances(mockAccount.id);
+
+      expect(mockAccounts.requestFullScan).not.toHaveBeenCalled();
+    });
   });
 
   describe('getAccount', () => {

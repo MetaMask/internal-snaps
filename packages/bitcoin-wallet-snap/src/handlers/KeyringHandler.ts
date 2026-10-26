@@ -277,6 +277,16 @@ export class KeyringHandler implements KeyringSnapRpc {
     id: string,
   ): Promise<Record<CaipAssetType, Balance>> {
     const account = await this.#accountsUseCases.get(id);
+
+    // An account that never synchronized, or never completed its first full
+    // scan, has an unknown balance: its local state alone would never
+    // recover, so the request kicks off a full scan (deduplicated and
+    // single-flight per account, bounded backoff); its balances-updated event
+    // then delivers the real balance.
+    if (await this.#accountsUseCases.isBalanceUnknown(account)) {
+      await this.#accountsUseCases.requestFullScan(account, 'balance-request');
+    }
+
     const balance = Amount.from_sat(computeDisplayBalanceSats(account))
       .to_btc()
       .toString();
