@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING:** Read account asset balances from AssetsController when the feature flag `networkAssetsSnapsMigrationStellar` is on ([#331](https://github.com/MetaMask/internal-snaps/pull/331), [#513](https://github.com/MetaMask/internal-snaps/pull/513))
   - Keyring methods `getAccountAssets` and `getAccountBalances` include watched SEP-41 assets and return the latest live balances.
   - While the flag is on, account sync no longer persists asset snapshots or emits `AccountBalancesUpdated` and `AccountAssetListUpdated`.
-- Read asset metadata from AssetsController when feature flag `networkAssetsSnapsMigrationStellar` is on ([#493](https://github.com/MetaMask/internal-snaps/pull/493), [#513](https://github.com/MetaMask/internal-snaps/pull/513))
+- Read asset metadata from AssetsController first when feature flag `networkAssetsSnapsMigrationStellar` is on ([#493](https://github.com/MetaMask/internal-snaps/pull/493), [#513](https://github.com/MetaMask/internal-snaps/pull/513))
 
 ### Changed
 
