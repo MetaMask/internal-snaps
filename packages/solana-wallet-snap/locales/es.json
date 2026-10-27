@@ -275,7 +275,7 @@
       "message": "This request may be risky"
     },
     "confirmation.validationWarningSubtitle": {
-      "message": "Security Alerts found potential risk. Only continue if you trust this site and every address involved."
+      "message": "Only continue if you trust this site and/or every address involved."
     },
     "confirmation.reviewAlertsButton": {
       "message": "Review alert"
