@@ -83,6 +83,24 @@ describe('NetworkService', () => {
       expect(fetchBaseFeeSpy).toHaveBeenCalled();
     });
 
+    it('retries transient Horizon failures', async () => {
+      const { fetchBaseFeeSpy } = getHorizonClientSpies();
+      fetchBaseFeeSpy
+        .mockRejectedValueOnce(
+          Object.assign(new Error('Service unavailable'), {
+            response: { status: 503 },
+          }),
+        )
+        .mockResolvedValueOnce(100);
+
+      expect(await networkService.getBaseFee(scope)).toStrictEqual(
+        new BigNumber(100).multipliedBy(
+          AppConfig.transaction.baseFeeMultiplier,
+        ),
+      );
+      expect(fetchBaseFeeSpy).toHaveBeenCalledTimes(2);
+    });
+
     it('throws NetworkServiceException when fetch fails', async () => {
       const { fetchBaseFeeSpy } = getHorizonClientSpies();
       fetchBaseFeeSpy.mockRejectedValue(new Error('Network error'));
@@ -169,6 +187,7 @@ describe('NetworkService', () => {
       await expect(
         networkService.loadOnChainAccount(testAddress, scope),
       ).rejects.toThrow(AccountNotActivatedException);
+      expect(loadAccountSpy).toHaveBeenCalledTimes(1);
     });
 
     it('throws NetworkServiceException when load fails for other reason', async () => {
@@ -355,6 +374,7 @@ describe('NetworkService', () => {
       await expect(
         networkService.getAccount(testAddress, scope),
       ).rejects.toThrow(AccountNotActivatedException);
+      expect(getAccountSpy).toHaveBeenCalledTimes(1);
     });
 
     it('throws NetworkServiceException when error message is not the Soroban missing-account shape', async () => {
@@ -439,6 +459,7 @@ describe('NetworkService', () => {
       await expect(
         networkService.getAccountLedgerMetadata(testAddress, scope),
       ).rejects.toThrow(AccountNotActivatedException);
+      expect(getAccountEntrySpy).toHaveBeenCalledTimes(1);
     });
 
     it('throws NetworkServiceException for other RPC errors', async () => {
@@ -514,14 +535,13 @@ describe('NetworkService', () => {
 
   describe('getHorizonTransactionInclusionStatus', () => {
     it('returns pending when Horizon returns NotFoundError', async () => {
+      const call = jest
+        .fn()
+        .mockRejectedValue(new NotFoundError('not found', {}));
       const transactionsSpy = jest
         .spyOn(StellarHorizon.Server.prototype, 'transactions')
         .mockReturnValue({
-          transaction: jest.fn().mockReturnValue({
-            call: jest
-              .fn()
-              .mockRejectedValue(new NotFoundError('not found', {})),
-          }),
+          transaction: jest.fn().mockReturnValue({ call }),
         } as never);
 
       const result = await networkService.getHorizonTransactionInclusionStatus(
@@ -530,6 +550,7 @@ describe('NetworkService', () => {
       );
 
       expect(result).toBe('pending');
+      expect(call).toHaveBeenCalledTimes(1);
       transactionsSpy.mockRestore();
     });
 
@@ -623,6 +644,7 @@ describe('NetworkService', () => {
       await expect(
         networkService.getTransaction(testTransactionHash, scope),
       ).rejects.toThrow(TransactionNotFoundException);
+      expect(call).toHaveBeenCalledTimes(1);
 
       transactionsSpy.mockRestore();
     });
@@ -824,6 +846,53 @@ describe('NetworkService', () => {
       transactionsSpy.mockRestore();
     });
 
+    it('retries a transient next() page failure without refetching earlier pages', async () => {
+      const accountAddress = generateStellarAddress();
+      const txA = createMockTransaction(accountAddress);
+      const txB = createMockTransaction(accountAddress);
+
+      const page1Records = [
+        buildMockHorizonTransactionRecord({
+          transaction: txA,
+          pagingToken: '11',
+        }),
+      ];
+      const page2Records = [
+        buildMockHorizonTransactionRecord({
+          transaction: txB,
+          pagingToken: '22',
+        }),
+      ];
+
+      const page2 = buildMockHorizonTransactionPage(page2Records);
+      const page1Next = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('transient page failure'))
+        .mockResolvedValueOnce(page2);
+      const page1 = buildMockHorizonTransactionPage(page1Records, page1Next);
+
+      const call = jest.fn().mockResolvedValue(page1);
+      const transactionsSpy = mockHorizonAccountTransactions(call);
+
+      const result = await networkService.getTransactions({
+        accountAddress,
+        lastScanToken: '',
+        scope,
+        order: 'asc',
+        includeSelfTransactionsOnly: false,
+        pageSize: 1,
+        maxScan: 2,
+      });
+
+      expect(result.map((transaction) => transaction.id)).toStrictEqual([
+        txA.id,
+        txB.id,
+      ]);
+      expect(call).toHaveBeenCalledTimes(1);
+      expect(page1Next).toHaveBeenCalledTimes(2);
+      transactionsSpy.mockRestore();
+    });
+
     it('returns empty array when the first page has no records', async () => {
       const accountAddress = generateStellarAddress();
       const lastScanToken = 'cursor-abc';
@@ -1021,6 +1090,7 @@ describe('NetworkService', () => {
       await expect(
         networkService.send({ transaction: mockTransaction, scope }),
       ).rejects.toThrow(TransactionSendException);
+      expect(sendTransactionSpy).toHaveBeenCalledTimes(1);
     });
 
     it('rethrows NetworkServiceException when sendTransaction throws one', async () => {
@@ -1104,7 +1174,7 @@ describe('NetworkService', () => {
         networkService.simulateTransaction(mockInvoke, scope),
       ).rejects.toThrow(SimulationException);
 
-      expect(simulateTransactionSpy).toHaveBeenCalledTimes(1);
+      expect(simulateTransactionSpy).toHaveBeenCalledTimes(4);
       expect(simulateTransactionSpy).toHaveBeenCalledWith(mockInvoke.getRaw());
     });
 
@@ -1208,6 +1278,16 @@ describe('NetworkService', () => {
   });
 
   describe('#getHorizonClient', () => {
+    it('configures a bounded request timeout', async () => {
+      const { fetchBaseFeeSpy } = getHorizonClientSpies();
+      fetchBaseFeeSpy.mockResolvedValue(100);
+
+      await networkService.getBaseFee(scope);
+
+      const client = fetchBaseFeeSpy.mock.instances[0];
+      expect(client.httpClient.defaults.timeout).toBe(10_000);
+    });
+
     it('creates and returns a new Horizon client when it is not already created', async () => {
       const { fetchBaseFeeSpy } = getHorizonClientSpies();
       fetchBaseFeeSpy.mockResolvedValue(100);
@@ -1228,6 +1308,19 @@ describe('NetworkService', () => {
   });
 
   describe('#getRpcClient', () => {
+    it('configures a bounded request timeout', async () => {
+      const { pollTransactionSpy } = getRpcServerSpies();
+      pollTransactionSpy.mockResolvedValue({
+        status: StellarRpc.Api.GetTransactionStatus.SUCCESS,
+        txHash: testTransactionHash,
+      } as unknown as StellarRpc.Api.GetSuccessfulTransactionResponse);
+
+      await networkService.pollTransaction(testTransactionHash, scope);
+
+      const client = pollTransactionSpy.mock.instances[0];
+      expect(client.httpClient.defaults.timeout).toBe(10_000);
+    });
+
     it('creates and returns a new RPC client when it is not already created', async () => {
       const { pollTransactionSpy } = getRpcServerSpies();
       pollTransactionSpy.mockResolvedValue({

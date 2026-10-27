@@ -1,3 +1,9 @@
+import type { FetchPolicyError } from '@metamask/snap-networks-utils';
+import {
+  createFetchPolicyError,
+  FetchPolicyErrorName,
+  parseRetryAfter,
+} from '@metamask/snap-networks-utils';
 import { ensureError } from '@metamask/utils';
 import { Networks, NotFoundError } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
@@ -7,6 +13,105 @@ import { AppConfig } from '../../config';
 import { BASE_FEE } from '../../constants';
 import { toSmallestUnit } from '../../utils';
 import { parseScValToNative } from '../transaction/xdrParser';
+
+type StellarTransportError = Error & {
+  code?: string;
+  response?: {
+    headers?:
+      | { get: (name: string) => string | null }
+      | Record<string, unknown>;
+    status?: number;
+  };
+};
+
+type JsonRpcError = {
+  code: number;
+  message: string;
+};
+
+const SOROBAN_ACCOUNT_NOT_FOUND_PREFIX = 'Account not found: ';
+const SDK_TIMEOUT_MESSAGE_PATTERN = /^timeout of \d+\s*ms exceeded$/iu;
+
+const isJsonRpcError = (error: unknown): error is JsonRpcError => {
+  const candidate = error as Partial<JsonRpcError> | null;
+  return (
+    typeof candidate?.code === 'number' && typeof candidate.message === 'string'
+  );
+};
+
+/**
+ * Converts Stellar SDK transport failures to the shared fetch-policy shape.
+ *
+ * @param error - Error thrown by the Stellar SDK HTTP client.
+ * @returns A policy-compatible error.
+ */
+export function toFetchPolicyError(error: unknown): FetchPolicyError {
+  if (isJsonRpcError(error)) {
+    return createFetchPolicyError(error.message, { cause: error });
+  }
+
+  if (!(error instanceof Error)) {
+    return createFetchPolicyError('Network request failed', {
+      name: FetchPolicyErrorName.Network,
+      cause: error,
+    });
+  }
+
+  if (
+    error instanceof NotFoundError ||
+    error.message.startsWith(SOROBAN_ACCOUNT_NOT_FOUND_PREFIX)
+  ) {
+    return createFetchPolicyError(error.message, {
+      httpStatus: 404,
+      cause: error,
+    });
+  }
+
+  const transportError = error as StellarTransportError;
+  const { response } = transportError;
+  if (response?.status !== undefined) {
+    const getHeader = (response.headers as { get?: unknown } | undefined)?.get;
+    const retryAfter =
+      typeof getHeader === 'function'
+        ? getHeader.call(response.headers, 'Retry-After')
+        : (response.headers as Record<string, unknown> | undefined)?.[
+            'retry-after'
+          ];
+    return createFetchPolicyError(error.message, {
+      httpStatus: response.status,
+      retryAfterMs: parseRetryAfter(retryAfter),
+      cause: error,
+    });
+  }
+
+  const isTimeout =
+    error.name === FetchPolicyErrorName.Timeout ||
+    transportError.code === 'ECONNABORTED' ||
+    SDK_TIMEOUT_MESSAGE_PATTERN.test(error.message);
+
+  return createFetchPolicyError(error.message, {
+    name: isTimeout
+      ? FetchPolicyErrorName.Timeout
+      : FetchPolicyErrorName.Network,
+    cause: error,
+  });
+}
+
+/**
+ * Restores an SDK error wrapped for policy classification.
+ *
+ * @param error - The error emitted after policy execution.
+ * @returns Its original cause, when present.
+ */
+export function unwrapFetchPolicyError(error: unknown): unknown {
+  return error instanceof Error &&
+    (error.name === FetchPolicyErrorName.Network ||
+      error.name === FetchPolicyErrorName.Timeout ||
+      (error as FetchPolicyError).httpStatus !== undefined) &&
+    error.cause !== undefined
+    ? error.cause
+    : error;
+}
 
 const StellarNetwork: Record<KnownCaip2ChainId, Networks> = {
   [KnownCaip2ChainId.Mainnet]: Networks.PUBLIC,
@@ -23,7 +128,7 @@ const StellarNetwork: Record<KnownCaip2ChainId, Networks> = {
 export function caip2ChainIdToNetwork(
   caip2ChainId: KnownCaip2ChainId,
 ): Networks {
-  if (!(caip2ChainId in StellarNetwork)) {
+  if (!Object.hasOwn(StellarNetwork, caip2ChainId)) {
     throw new Error(`Network not found for caip2ChainId: ${caip2ChainId}`);
   }
   return StellarNetwork[caip2ChainId];

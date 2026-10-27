@@ -1,9 +1,14 @@
 import type {
+  FetchPolicy,
   ICache,
   Logger,
   Serializable,
 } from '@metamask/snap-networks-utils';
-import { useCache } from '@metamask/snap-networks-utils';
+import {
+  createFetchPolicy,
+  executeWithFetchPolicy,
+  useCache,
+} from '@metamask/snap-networks-utils';
 import {
   Address,
   Horizon as StellarHorizon,
@@ -51,7 +56,11 @@ import {
   baseInclusionFee,
   isAccountNotFoundError,
   sep41MulticallCellToBalance,
+  toFetchPolicyError,
+  unwrapFetchPolicyError,
 } from './utils';
+
+const REQUEST_TIMEOUT_MS = 10_000;
 
 /**
  * Stellar network access through **Horizon** and **Soroban RPC**: base fee, account loading (full
@@ -70,6 +79,10 @@ export class NetworkService {
 
   readonly #rpcClientMap = new Map<KnownCaip2ChainId, rpc.Server>();
 
+  readonly #horizonPolicyMap = new Map<KnownCaip2ChainId, FetchPolicy>();
+
+  readonly #rpcPolicyMap = new Map<KnownCaip2ChainId, FetchPolicy>();
+
   constructor({
     logger,
     cache,
@@ -87,6 +100,34 @@ export class NetworkService {
       client = new StellarHorizon.Server(
         this.#getNetworkConfig(scope).horizonUrl,
       );
+      client.httpClient.defaults.timeout = REQUEST_TIMEOUT_MS;
+      client.httpClient.interceptors.response.use(
+        (response) => response,
+        (error: unknown) => {
+          const response = (
+            error as
+              | {
+                  response?: {
+                    data?: unknown;
+                    headers?: unknown;
+                    status?: number;
+                    statusText?: string;
+                  };
+                }
+              | undefined
+          )?.response;
+          if (response?.status !== undefined) {
+            response.data = {
+              ...(typeof response.data === 'object' && response.data !== null
+                ? response.data
+                : {}),
+              headers: response.headers,
+              status: response.status,
+            };
+          }
+          throw error;
+        },
+      );
       this.#horizonClientMap.set(scope, client);
     }
     return client;
@@ -95,7 +136,12 @@ export class NetworkService {
   #getRpcClient(scope: KnownCaip2ChainId): rpc.Server {
     let client = this.#rpcClientMap.get(scope);
     if (!client) {
-      client = new rpc.Server(this.#getNetworkConfig(scope).rpcUrl);
+      client = new rpc.Server(this.#getNetworkConfig(scope).rpcUrl, {
+        timeout: REQUEST_TIMEOUT_MS,
+      });
+      // Stellar SDK 17 declares this constructor option but does not forward it
+      // to the fetch client, so set the effective default explicitly.
+      client.httpClient.defaults.timeout = REQUEST_TIMEOUT_MS;
       this.#rpcClientMap.set(scope, client);
     }
     return client;
@@ -111,6 +157,42 @@ export class NetworkService {
     return config;
   }
 
+  #getPolicy(
+    service: 'stellar_horizon' | 'stellar_rpc',
+    scope: KnownCaip2ChainId,
+  ): FetchPolicy {
+    const policies =
+      service === 'stellar_horizon'
+        ? this.#horizonPolicyMap
+        : this.#rpcPolicyMap;
+    let policy = policies.get(scope);
+    if (!policy) {
+      policy = createFetchPolicy({
+        service,
+        chainIdCaip: scope,
+        logger: this.#logger,
+      });
+      policies.set(scope, policy);
+    }
+    return policy;
+  }
+
+  async #read<Result>(
+    service: 'stellar_horizon' | 'stellar_rpc',
+    scope: KnownCaip2ChainId,
+    operation: () => Promise<Result>,
+  ): Promise<Result> {
+    try {
+      return await executeWithFetchPolicy(
+        this.#getPolicy(service, scope),
+        operation,
+        toFetchPolicyError,
+      );
+    } catch (error) {
+      throw unwrapFetchPolicyError(error);
+    }
+  }
+
   /**
    * Fetches the current Stellar network base fee and applies
    * {@link AppConfig.transaction.baseFeeMultiplier} to produce the per-operation inclusion fee.
@@ -122,7 +204,9 @@ export class NetworkService {
   async getBaseFee(scope: KnownCaip2ChainId): Promise<BigNumber> {
     try {
       const client = this.#getHorizonClient(scope);
-      const baseFee = await client.fetchBaseFee();
+      const baseFee = await this.#read('stellar_horizon', scope, async () =>
+        client.fetchBaseFee(),
+      );
       return baseInclusionFee(baseFee);
     } catch (error: unknown) {
       return this.#throwError({
@@ -165,10 +249,9 @@ export class NetworkService {
   ): Promise<'pending' | 'success' | 'failed'> {
     try {
       const client = this.#getHorizonClient(scope);
-      const record = await client
-        .transactions()
-        .transaction(transactionHash)
-        .call();
+      const record = await this.#read('stellar_horizon', scope, async () =>
+        client.transactions().transaction(transactionHash).call(),
+      );
       return record.successful ? 'success' : 'failed';
     } catch (error: unknown) {
       if (error instanceof NotFoundError) {
@@ -197,9 +280,11 @@ export class NetworkService {
   ): Promise<string> {
     try {
       const client = this.#getRpcClient(scope);
-      const result = await client.pollTransaction(transactionHash, {
-        attempts: AppConfig.transaction.pollingAttempts,
-      });
+      const result = await this.#read('stellar_rpc', scope, async () =>
+        client.pollTransaction(transactionHash, {
+          attempts: AppConfig.transaction.pollingAttempts,
+        }),
+      );
       if (result.status === rpc.Api.GetTransactionStatus.SUCCESS) {
         return result.txHash;
       }
@@ -228,7 +313,9 @@ export class NetworkService {
     try {
       const client = this.#getHorizonClient(scope);
       return OnChainAccount.fromHorizon(
-        await client.loadAccount(accountAddress),
+        await this.#read('stellar_horizon', scope, async () =>
+          client.loadAccount(accountAddress),
+        ),
         scope,
       );
     } catch (error: unknown) {
@@ -339,7 +426,9 @@ export class NetworkService {
   ): Promise<OnChainAccount> {
     try {
       const client = this.#getRpcClient(scope);
-      const loaded = await client.getAccount(accountAddress);
+      const loaded = await this.#read('stellar_rpc', scope, async () =>
+        client.getAccount(accountAddress),
+      );
       return new OnChainAccount(loaded, scope);
     } catch (error: unknown) {
       if (isAccountNotFoundError(error, accountAddress)) {
@@ -369,7 +458,9 @@ export class NetworkService {
   ): Promise<AccountLedgerMeta> {
     try {
       const client = this.#getRpcClient(scope);
-      const entry = await client.getAccountEntry(accountAddress);
+      const entry = await this.#read('stellar_rpc', scope, async () =>
+        client.getAccountEntry(accountAddress),
+      );
 
       const accountExt = entry.ext;
 
@@ -438,6 +529,12 @@ export class NetworkService {
         routerContract: StellarRouterContract.V1,
         // Caller for `exec` on the router; first funded user account is typical; else the shared sim account.
         simulationAccount: accounts[0] ?? SIMULATION_ACCOUNT,
+        simulateTransaction: async (
+          transaction,
+        ): ReturnType<rpc.Server['simulateTransaction']> =>
+          this.#read('stellar_rpc', scope, async () =>
+            this.#getRpcClient(scope).simulateTransaction(transaction),
+          ),
       });
 
       const invocations: InvocationV1[] = [];
@@ -594,7 +691,11 @@ export class NetworkService {
 
       const client = this.#getRpcClient(scope);
       const rawTransaction = transaction.getRaw();
-      const simulateResponse = await client.simulateTransaction(rawTransaction);
+      const simulateResponse = await this.#read(
+        'stellar_rpc',
+        scope,
+        async () => client.simulateTransaction(rawTransaction),
+      );
 
       if (rpc.Api.isSimulationError(simulateResponse)) {
         throw new SimulationException(
@@ -699,10 +800,9 @@ export class NetworkService {
   ): Promise<Transaction> {
     try {
       const client = this.#getHorizonClient(scope);
-      const result = await client
-        .transactions()
-        .transaction(transactionHash)
-        .call();
+      const result = await this.#read('stellar_horizon', scope, async () =>
+        client.transactions().transaction(transactionHash).call(),
+      );
       return this.#toTransaction(result, scope);
     } catch (error: unknown) {
       if (error instanceof NotFoundError) {
@@ -769,14 +869,19 @@ export class NetworkService {
     try {
       const client = this.#getHorizonClient(scope);
 
-      const initialTransactionsResponse = await client
-        .transactions()
-        .forAccount(accountAddress)
-        .order(order)
-        .cursor(lastScanToken ?? '')
-        .limit(pageSize)
-        .includeFailed(includeFailed)
-        .call();
+      const initialTransactionsResponse = await this.#read(
+        'stellar_horizon',
+        scope,
+        async () =>
+          client
+            .transactions()
+            .forAccount(accountAddress)
+            .order(order)
+            .cursor(lastScanToken ?? '')
+            .limit(pageSize)
+            .includeFailed(includeFailed)
+            .call(),
+      );
 
       let transactions = this.#toTransactions(
         initialTransactionsResponse.records,
@@ -794,7 +899,10 @@ export class NetworkService {
         maxScanRemaining > 0 &&
         currentResponse.records.length === pageSize
       ) {
-        currentResponse = await currentResponse.next();
+        const currentPage = currentResponse;
+        currentResponse = await this.#read('stellar_horizon', scope, async () =>
+          currentPage.next(),
+        );
 
         if (currentResponse.records.length === 0) {
           break;
