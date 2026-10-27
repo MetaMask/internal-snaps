@@ -14,7 +14,6 @@ const FULL_ENVIRONMENT = {
   chain: {
     parallelRequests: 5,
     stopGap: { discovery: 5, scan: 20 },
-    maxRetries: 3,
     url: {
       bitcoin: 'https://esplora.example.com/api',
       testnet: 'https://esplora.example.com/testnet/api',
@@ -48,7 +47,6 @@ describe('ConfigProvider', () => {
       chain: {
         parallelRequests: 5,
         stopGap: { discovery: 5, scan: 20 },
-        maxRetries: 3,
         url: {
           bitcoin: 'https://esplora.example.com/api',
           testnet: 'https://esplora.example.com/testnet/api',

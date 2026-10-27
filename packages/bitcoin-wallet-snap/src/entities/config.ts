@@ -15,7 +15,6 @@ export type SnapConfig = {
 export type ChainConfig = {
   parallelRequests: number;
   stopGap: { discovery: number; scan: number };
-  maxRetries: number;
   url: {
     [network in Network]: string;
   };
