@@ -20,7 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Retry transient Stellar Horizon, Soroban RPC, Token API, Price API, and Security Alerts API read failures with bounded timeouts and circuit breaking ([#532](https://github.com/MetaMask/internal-snaps/pull/532))
   - Signed transaction submission remains one-shot; the existing explicit `txBadSeq` rebuild and re-sign flow is unchanged.
-- **BREAKING:** Stop falling back to Soroban RPC and Horizon for asset metadata ([#505](https://github.com/MetaMask/internal-snaps/pull/505))
 - Stop falling back to Soroban RPC and Horizon for asset metadata ([#505](https://github.com/MetaMask/internal-snaps/pull/505))
   - Fetch asset metadata from the local catalog or the mainnet token API.
 - **BREAKING:** Return classic keyring balance metadata `limit` in integer stroop string ([#495](https://github.com/MetaMask/internal-snaps/pull/495))
