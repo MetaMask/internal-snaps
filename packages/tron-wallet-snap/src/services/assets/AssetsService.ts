@@ -11,6 +11,7 @@ import { Networks } from '../../constants';
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { extractScopesFromAssetIds } from '../../utils/caip';
+import type { ExplicitRequestOptions } from '../../utils/openCircuitBypass';
 import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 
@@ -113,12 +114,14 @@ export class AssetsService {
    * flag.
    *
    * @param account - The account to fetch live assets for.
+   * @param options - Options of an explicit client request.
    * @returns The live assets.
    */
   async fetchAccountAssetsFromTrongrid(
     account: KeyringAccount,
+    options?: ExplicitRequestOptions,
   ): Promise<AssetEntity[]> {
-    return this.#snapAdapter.fetchAccountAssets(account);
+    return this.#snapAdapter.fetchAccountAssets(account, options);
   }
 
   /**

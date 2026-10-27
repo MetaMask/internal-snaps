@@ -1,5 +1,6 @@
 import {
   BaseConfigProvider,
+  BrokenCircuitError,
   InMemoryCache,
 } from '@metamask/snap-networks-utils';
 import type { ICache, Serializable } from '@metamask/snap-networks-utils';
@@ -734,6 +735,108 @@ describe('TrongridApiClient', () => {
         ]);
 
         expect(fetchMock).toHaveBeenCalledTimes(2);
+      });
+    });
+  });
+
+  describe('open circuit bypass (v5)', () => {
+    const mockAddress = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
+    const mockTrc20Balances: Trc20Balance[] = [
+      { TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t: '24249143' },
+    ];
+
+    /**
+     * Opens the fetch policy circuit with non-retryable server failures.
+     *
+     * @param client - The client.
+     */
+    async function openCircuit(client: TrongridApiClient): Promise<void> {
+      jest
+        .spyOn(global, 'fetch')
+        // eslint-disable-next-line no-restricted-globals
+        .mockImplementation(async () => new Response('', { status: 501 }));
+      for (let attempt = 0; attempt < 30; attempt++) {
+        try {
+          await client.getTrc20BalancesByAddress(
+            Network.Mainnet,
+            `address-${attempt}`,
+          );
+        } catch (error) {
+          if (error instanceof BrokenCircuitError) {
+            return;
+          }
+        }
+      }
+      throw new Error('The circuit did not open');
+    }
+
+    it('lets an explicit request reach the network once while the circuit is open', async () => {
+      await withTrongridApiClient(async ({ client }) => {
+        await openCircuit(client);
+        const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+          async () =>
+            // eslint-disable-next-line no-restricted-globals
+            new Response(
+              JSON.stringify({
+                data: mockTrc20Balances,
+                success: true,
+                meta: { at: 1770121997373, page_size: 4 },
+              }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } },
+            ),
+        );
+
+        // The spy is reused: forget the calls that opened the circuit.
+        fetchMock.mockClear();
+
+        // Background reads stay short-circuited.
+        await expect(
+          client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress),
+        ).rejects.toBeInstanceOf(BrokenCircuitError);
+        expect(fetchMock).not.toHaveBeenCalled();
+
+        // Concurrent identical explicit requests share one attempt.
+        const results = await Promise.all([
+          client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress, {
+            bypassOpenCircuit: true,
+          }),
+          client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress, {
+            bypassOpenCircuit: true,
+          }),
+        ]);
+        expect(results).toStrictEqual([mockTrc20Balances, mockTrc20Balances]);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+
+        // The next explicit call reuses the direct result.
+        expect(
+          await client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress, {
+            bypassOpenCircuit: true,
+          }),
+        ).toStrictEqual(mockTrc20Balances);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+
+        // The service answered: background reads are no longer
+        // short-circuited.
+        expect(
+          await client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress),
+        ).toStrictEqual(mockTrc20Balances);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('does not bypass the circuit for other failures', async () => {
+      await withTrongridApiClient(async ({ client }) => {
+        const fetchMock = jest
+          .spyOn(global, 'fetch')
+          // eslint-disable-next-line no-restricted-globals
+          .mockImplementation(async () => new Response('', { status: 404 }));
+
+        await expect(
+          client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress, {
+            bypassOpenCircuit: true,
+          }),
+        ).rejects.toThrow(Error);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
       });
     });
   });

@@ -18,6 +18,11 @@ import { assert } from '@metamask/superstruct';
 import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import logger, { noOpLogger } from '../../utils/logger';
+import { OpenCircuitBypass } from '../../utils/openCircuitBypass';
+import type {
+  BypassablePolicy,
+  ExplicitRequestOptions,
+} from '../../utils/openCircuitBypass';
 import type { TronHttpClient } from '../tron-http/TronHttpClient';
 import type { ChainParameter } from '../tron-http/types';
 import {
@@ -76,7 +81,9 @@ export class TrongridApiClient {
 
   readonly #cache: ICache<Serializable>;
 
-  readonly #policies: Map<Network, FetchPolicy>;
+  readonly #policies: Map<Network, FetchPolicy & BypassablePolicy>;
+
+  readonly #openCircuitBypass = new OpenCircuitBypass();
 
   readonly #requestCache: (
     scope: Network,
@@ -173,6 +180,7 @@ export class TrongridApiClient {
    * @see https://developers.tron.network/reference/get-account-info-by-address
    * @param scope - The network to query (e.g., 'mainnet', 'shasta')
    * @param address - The TRON address to query
+   * @param options - Options of an explicit client request.
    * @returns Promise<TronAccount> - Account data including balances.
    * @throws TrongridAccountNotFoundError - for inactive accounts.
    * @throws Error - HTTP errors or API failures.
@@ -180,6 +188,7 @@ export class TrongridApiClient {
   async getAccountInfoByAddress(
     scope: Network,
     address: string,
+    options?: ExplicitRequestOptions,
   ): Promise<TronAccount> {
     const client = this.#clients.get(scope);
     if (!client) {
@@ -193,7 +202,7 @@ export class TrongridApiClient {
       pathParams: { address },
     });
 
-    const response = await this.#fetch(scope, url, headers);
+    const response = await this.#fetch(scope, url, headers, options);
 
     const rawData: TrongridApiResponse<TronAccount[]> = JSON.parse(response);
 
@@ -324,11 +333,13 @@ export class TrongridApiClient {
    * @see https://developers.tron.network/reference/get-trc20-token-holder-balances
    * @param scope - The network to query (e.g., 'mainnet', 'shasta')
    * @param address - The TRON address to query
+   * @param options - Options of an explicit client request.
    * @returns Promise<Trc20Balance[]> - Array of TRC20 balances (contract address -> balance)
    */
   async getTrc20BalancesByAddress(
     scope: Network,
     address: string,
+    options?: ExplicitRequestOptions,
   ): Promise<Trc20Balance[]> {
     const client = this.#clients.get(scope);
     if (!client) {
@@ -342,7 +353,7 @@ export class TrongridApiClient {
       pathParams: { address },
     });
 
-    const response = await this.#fetch(scope, url, headers);
+    const response = await this.#fetch(scope, url, headers, options);
 
     const rawData: TrongridApiResponse<Trc20Balance[]> = JSON.parse(response);
 
@@ -403,8 +414,15 @@ export class TrongridApiClient {
     scope: Network,
     url: string,
     headers: Record<string, string>,
+    options?: ExplicitRequestOptions,
   ): Promise<string> {
-    return this.#requestCache(scope, url, headers);
+    return this.#openCircuitBypass.run(
+      `${scope} GET ${url}`,
+      options,
+      async () => this.#requestCache(scope, url, headers),
+      async () => this.#request(url, headers),
+      this.#policies.get(scope),
+    );
   }
 
   async #fetchUncached(
@@ -417,15 +435,22 @@ export class TrongridApiClient {
       throw new Error(`No policy configured for network: ${scope}`);
     }
 
-    return executeWithFetchPolicy(policy, async () => {
-      const response = await fetch(url, {
-        headers,
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) {
-        throw createTrongridHttpError(response);
-      }
-      return response.text();
+    return executeWithFetchPolicy(policy, async () =>
+      this.#request(url, headers),
+    );
+  }
+
+  async #request(
+    url: string,
+    headers: Record<string, string>,
+  ): Promise<string> {
+    const response = await fetch(url, {
+      headers,
+      signal: AbortSignal.timeout(10_000),
     });
+    if (!response.ok) {
+      throw createTrongridHttpError(response);
+    }
+    return response.text();
   }
 }

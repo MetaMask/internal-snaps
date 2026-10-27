@@ -389,10 +389,20 @@ describe('AssetsService', () => {
           ).toHaveBeenCalledTimes(2);
           expect(
             mockTrongridApiClient.getAccountInfoByAddress,
-          ).toHaveBeenNthCalledWith(1, Network.Mainnet, mockAccount.address);
+          ).toHaveBeenNthCalledWith(
+            1,
+            Network.Mainnet,
+            mockAccount.address,
+            undefined,
+          );
           expect(
             mockTrongridApiClient.getAccountInfoByAddress,
-          ).toHaveBeenNthCalledWith(2, Network.Shasta, mockAccount.address);
+          ).toHaveBeenNthCalledWith(
+            2,
+            Network.Shasta,
+            mockAccount.address,
+            undefined,
+          );
           expect(findAsset(assets, KnownCaip19Id.TrxMainnet)?.rawAmount).toBe(
             '1000000',
           );

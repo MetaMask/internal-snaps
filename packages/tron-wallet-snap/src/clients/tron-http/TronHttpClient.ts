@@ -14,6 +14,11 @@ import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
 import { hexToString } from '../../utils/hex';
 import logger, { noOpLogger } from '../../utils/logger';
+import { OpenCircuitBypass } from '../../utils/openCircuitBypass';
+import type {
+  BypassablePolicy,
+  ExplicitRequestOptions,
+} from '../../utils/openCircuitBypass';
 import {
   AccountResourcesStruct,
   ChainParametersResponseStruct,
@@ -55,7 +60,9 @@ export class TronHttpClient {
     }
   > = new Map();
 
-  readonly #policies: Map<Network, FetchPolicy>;
+  readonly #policies: Map<Network, FetchPolicy & BypassablePolicy>;
+
+  readonly #openCircuitBypass = new OpenCircuitBypass();
 
   readonly #requestCache: (
     network: Network,
@@ -172,12 +179,14 @@ export class TronHttpClient {
    * @see https://developers.tron.network/reference/getaccountresource
    * @param network - Network to query.
    * @param accountAddress - Account address in base58 format.
+   * @param options - Options of an explicit client request.
    * @returns Promise<AccountResources> - Account resources (energy, bandwidth, etc.).
    * @throws Error - HTTP errors or configuration errors.
    */
   async getAccountResources(
     network: Network,
     accountAddress: string,
+    options?: ExplicitRequestOptions,
   ): Promise<AccountResources> {
     const client = this.#clients.get(network);
     if (!client) {
@@ -195,11 +204,17 @@ export class TronHttpClient {
       visible: true,
     });
 
-    const response = await this.#fetch(network, url, {
-      method: 'POST',
-      headers,
-      body,
-    });
+    const response = await this.#fetch(
+      network,
+      url,
+      {
+        method: 'POST',
+        headers,
+        body,
+      },
+      [],
+      options,
+    );
 
     const accountResources: AccountResources = JSON.parse(response.body);
 
@@ -434,9 +449,14 @@ export class TronHttpClient {
    * @see https://developers.tron.network/reference/getreward
    * @param network - Network to query
    * @param accountAddress - Account address in base58 format
+   * @param options - Options of an explicit client request.
    * @returns Promise<number> - Unclaimed rewards in sun (0 if no rewards)
    */
-  async getReward(network: Network, accountAddress: string): Promise<number> {
+  async getReward(
+    network: Network,
+    accountAddress: string,
+    options?: ExplicitRequestOptions,
+  ): Promise<number> {
     const client = this.#clients.get(network);
     if (!client) {
       throw new Error(`No client configured for network: ${network}`);
@@ -453,11 +473,17 @@ export class TronHttpClient {
       visible: true,
     });
 
-    const response = await this.#fetch(network, url, {
-      method: 'POST',
-      headers,
-      body,
-    });
+    const response = await this.#fetch(
+      network,
+      url,
+      {
+        method: 'POST',
+        headers,
+        body,
+      },
+      [],
+      options,
+    );
 
     const rewardResponse: GetRewardResponse = JSON.parse(response.body);
 
@@ -472,14 +498,25 @@ export class TronHttpClient {
     url: string,
     init: RequestInit,
     allowedStatuses: number[] = [],
+    options?: ExplicitRequestOptions,
   ): Promise<{ body: string; status: number }> {
-    return this.#requestCache(
-      network,
-      url,
-      init.method ?? 'GET',
-      init.headers as Record<string, string> | undefined,
-      typeof init.body === 'string' ? init.body : '',
-      allowedStatuses,
+    const method = init.method ?? 'GET';
+    const headers = init.headers as Record<string, string> | undefined;
+    const body = typeof init.body === 'string' ? init.body : '';
+    return this.#openCircuitBypass.run(
+      `${network} ${method} ${url} ${body}`,
+      options,
+      async () =>
+        this.#requestCache(
+          network,
+          url,
+          method,
+          headers,
+          body,
+          allowedStatuses,
+        ),
+      async () => this.#request(url, method, headers, body, allowedStatuses),
+      this.#policies.get(network),
     );
   }
 
@@ -496,26 +533,36 @@ export class TronHttpClient {
       throw new Error(`No policy configured for network: ${network}`);
     }
 
-    return executeWithFetchPolicy(policy, async () => {
-      const response = await fetch(url, {
-        method,
-        headers,
-        ...(body ? { body } : {}),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok && !allowedStatuses.includes(response.status)) {
-        throw createFetchPolicyError(`HTTP error! status: ${response.status}`, {
-          httpStatus: response.status,
-          retryAfterMs: parseRetryAfter(response.headers.get('Retry-After')),
-        });
-      }
-      if (allowedStatuses.includes(response.status)) {
-        return { body: '', status: response.status };
-      }
-      return {
-        body: await response.text(),
-        status: response.status,
-      };
+    return executeWithFetchPolicy(policy, async () =>
+      this.#request(url, method, headers, body, allowedStatuses),
+    );
+  }
+
+  async #request(
+    url: string,
+    method: string,
+    headers: Record<string, string> | undefined,
+    body: string,
+    allowedStatuses: number[],
+  ): Promise<{ body: string; status: number }> {
+    const response = await fetch(url, {
+      method,
+      headers,
+      ...(body ? { body } : {}),
+      signal: AbortSignal.timeout(10_000),
     });
+    if (!response.ok && !allowedStatuses.includes(response.status)) {
+      throw createFetchPolicyError(`HTTP error! status: ${response.status}`, {
+        httpStatus: response.status,
+        retryAfterMs: parseRetryAfter(response.headers.get('Retry-After')),
+      });
+    }
+    if (allowedStatuses.includes(response.status)) {
+      return { body: '', status: response.status };
+    }
+    return {
+      body: await response.text(),
+      status: response.status,
+    };
   }
 }
