@@ -3,6 +3,7 @@ import { InMemoryCache } from '@metamask/snap-networks-utils';
 import {
   Account,
   Horizon as StellarHorizon,
+  NetworkError,
   Networks,
   NotFoundError,
   rpc as StellarRpc,
@@ -99,6 +100,54 @@ describe('NetworkService', () => {
         ),
       );
       expect(fetchBaseFeeSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not retry non-transient Stellar SDK NetworkErrors', async () => {
+      const { fetchBaseFeeSpy } = getHorizonClientSpies();
+      const error = new NetworkError('Unauthorized', { status: 401 });
+      fetchBaseFeeSpy.mockRejectedValue(error);
+
+      await expect(networkService.getBaseFee(scope)).rejects.toMatchObject({
+        cause: error,
+      });
+      expect(fetchBaseFeeSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('isolates Horizon circuits by network and from RPC', async () => {
+      const { fetchBaseFeeSpy } = getHorizonClientSpies();
+      const { simulateTransactionSpy } = getRpcServerSpies();
+      const error = Object.assign(new Error('Not implemented'), {
+        response: { status: 501 },
+      });
+      fetchBaseFeeSpy.mockRejectedValue(error);
+
+      for (let attempt = 0; attempt < 12; attempt++) {
+        await expect(networkService.getBaseFee(scope)).rejects.toThrow(
+          NetworkServiceException,
+        );
+      }
+      await expect(networkService.getBaseFee(scope)).rejects.toThrow(
+        NetworkServiceException,
+      );
+      expect(fetchBaseFeeSpy).toHaveBeenCalledTimes(12);
+
+      fetchBaseFeeSpy.mockResolvedValue(100);
+      expect(
+        await networkService.getBaseFee(KnownCaip2ChainId.Testnet),
+      ).toStrictEqual(
+        new BigNumber(100).multipliedBy(
+          AppConfig.transaction.baseFeeMultiplier,
+        ),
+      );
+
+      simulateTransactionSpy.mockRejectedValue(new Error('RPC reached'));
+      await expect(
+        networkService.simulateTransaction(
+          createMockInvokeHostFunctionTransaction(),
+          scope,
+        ),
+      ).rejects.toThrow(SimulationException);
+      expect(simulateTransactionSpy).toHaveBeenCalledTimes(4);
     });
 
     it('throws NetworkServiceException when fetch fails', async () => {
@@ -1126,6 +1175,24 @@ describe('NetworkService', () => {
           scope,
         ),
       ).rejects.toThrow(SimulationException);
+    });
+
+    it('preserves JSON-RPC rejection identity as the exception cause', async () => {
+      const { simulateTransactionSpy } = getRpcServerSpies();
+      const error = {
+        code: -32602,
+        message: 'Invalid params',
+        data: { field: 'transaction' },
+      };
+      simulateTransactionSpy.mockRejectedValue(error);
+
+      await expect(
+        networkService.simulateTransaction(
+          createMockInvokeHostFunctionTransaction(),
+          scope,
+        ),
+      ).rejects.toMatchObject({ cause: error });
+      expect(simulateTransactionSpy).toHaveBeenCalledTimes(1);
     });
 
     it('throws SimulationException when RPC returns a simulation error', async () => {

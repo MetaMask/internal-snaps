@@ -7,7 +7,11 @@ import { BigNumber } from 'bignumber.js';
 
 import { AppConfig } from '../../config';
 import { toSmallestUnit } from '../../utils';
-import { multiplyFee, toFetchPolicyError } from './utils';
+import {
+  multiplyFee,
+  toFetchPolicyError,
+  unwrapFetchPolicyError,
+} from './utils';
 
 const maxFeeThresholdInStroops = toSmallestUnit(
   new BigNumber(AppConfig.transaction.maxFeeThresholdInXLM),
@@ -48,13 +52,16 @@ describe('toFetchPolicyError', () => {
   });
 
   it('does not classify JSON-RPC errors as transient', () => {
-    const error = toFetchPolicyError({
+    const rejection = {
       code: -32602,
       message: 'Invalid params',
-    });
+      data: { field: 'transaction' },
+    };
+    const error = toFetchPolicyError(rejection);
 
     expect(error.name).not.toBe(FetchPolicyErrorName.Network);
     expect(isTransientError(error)).toBe(false);
+    expect(unwrapFetchPolicyError(error)).toBe(rejection);
   });
 
   it('maps Soroban missing-account errors to 404', () => {

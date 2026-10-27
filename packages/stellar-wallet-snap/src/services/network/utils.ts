@@ -104,11 +104,7 @@ export function toFetchPolicyError(error: unknown): FetchPolicyError {
  * @returns Its original cause, when present.
  */
 export function unwrapFetchPolicyError(error: unknown): unknown {
-  return error instanceof Error &&
-    (error.name === FetchPolicyErrorName.Network ||
-      error.name === FetchPolicyErrorName.Timeout ||
-      (error as FetchPolicyError).httpStatus !== undefined) &&
-    error.cause !== undefined
+  return error instanceof Error && error.cause !== undefined
     ? error.cause
     : error;
 }
