@@ -11,13 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Uncategorized
 
-- Release/19.0.0 ([#510](https://github.com/MetaMask/internal-snaps/pull/510))
-- chore(stellar): tighten chain id type + centralize `parseCaipAssetType` method call ([#504](https://github.com/MetaMask/internal-snaps/pull/504))
-- chore(stellar): tighten asset metadata type ([#503](https://github.com/MetaMask/internal-snaps/pull/503))
-- feat(stellar): unify refresher key resolution for open and save flows ([#378](https://github.com/MetaMask/internal-snaps/pull/378))
-- chore(stellar): add testing cli script ([#497](https://github.com/MetaMask/internal-snaps/pull/497))
-- chore(stellar): use BaseTransactionScanService from shared lib ([#476](https://github.com/MetaMask/internal-snaps/pull/476))
-- feat(solana-wallet-snap): add Core messenger plumbing for AssetsProvider ([#485](https://github.com/MetaMask/internal-snaps/pull/485))
+
+
 
 ### Added
 
@@ -36,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Keep in-progress memo edits in `memoDraft` so Back does not commit unsaved memo text on send confirmation. ([#406](https://github.com/MetaMask/internal-snaps/pull/406))
+- After a memo is saved, resume price updates, security scanning, and transaction rebuild and validation with the user preferences captured when the confirmation opened. ([#378](https://github.com/MetaMask/internal-snaps/pull/378))
 
 ## [1.3.0]
 
