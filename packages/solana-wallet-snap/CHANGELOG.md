@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Sign the original message bytes in single and batch message signing, preserving NUL bytes, invalid UTF-8 sequences, and byte order marks so signatures verify against the returned `signedMessage`. ([#507](https://github.com/MetaMask/internal-snaps/pull/507))
+- Reject compiled transaction messages in message-signing requests and show binary or hidden message data as labelled Base64 rather than lossy text. ([#507](https://github.com/MetaMask/internal-snaps/pull/507))
+
 ## [7.2.0]
 
 ### Added
