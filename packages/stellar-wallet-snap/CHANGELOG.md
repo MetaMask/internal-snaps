@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- Release/19.0.0 ([#510](https://github.com/MetaMask/internal-snaps/pull/510))
+- chore(stellar): tighten chain id type + centralize `parseCaipAssetType` method call ([#504](https://github.com/MetaMask/internal-snaps/pull/504))
+- chore(stellar): tighten asset metadata type ([#503](https://github.com/MetaMask/internal-snaps/pull/503))
+- feat(stellar): unify refresher key resolution for open and save flows ([#378](https://github.com/MetaMask/internal-snaps/pull/378))
+- chore(stellar): add testing cli script ([#497](https://github.com/MetaMask/internal-snaps/pull/497))
+- chore(stellar): use BaseTransactionScanService from shared lib ([#476](https://github.com/MetaMask/internal-snaps/pull/476))
+- feat(solana-wallet-snap): add Core messenger plumbing for AssetsProvider ([#485](https://github.com/MetaMask/internal-snaps/pull/485))
+
 ### Added
 
 - **BREAKING:** Read account asset balances from AssetsController when the feature flag `networkAssetsSnapsMigrationStellar` is on ([#331](https://github.com/MetaMask/internal-snaps/pull/331), [#513](https://github.com/MetaMask/internal-snaps/pull/513))
