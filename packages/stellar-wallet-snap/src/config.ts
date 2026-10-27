@@ -6,7 +6,7 @@ import {
   UrlStruct,
 } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
-import { boolean, enums, object } from '@metamask/superstruct';
+import { enums, object } from '@metamask/superstruct';
 
 /* eslint-disable no-restricted-globals */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
@@ -49,7 +49,6 @@ export const ConfigStruct = object({
     [KnownCaip2ChainId.Mainnet]: networkConfigStruct,
     [KnownCaip2ChainId.Testnet]: networkConfigStruct,
   }),
-  enableAssetMigration: boolean(),
   selectedNetwork: enums(getSupportedScopes()),
   transaction: object({
     timeout: parseIntegerStruct(100, 180),
@@ -150,7 +149,6 @@ const ENVIRONMENT = {
     },
   },
   selectedNetwork: KnownCaip2ChainId.Mainnet,
-  enableAssetMigration: false,
   transaction: {
     timeout: process.env.STELLAR_TRANSACTION_TIMEOUT,
     pollingAttempts: process.env.STELLAR_TRANSACTION_POLLING_ATTEMPTS,
