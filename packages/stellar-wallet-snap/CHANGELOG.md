@@ -9,16 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Read account asset balances from AssetsController when the feature flag `enableAssetMigration` and local flag `enableAssetMigration` are on ([#331](https://github.com/MetaMask/internal-snaps/pull/331))
-  - Include SEP-41 balances on keyring `getAccountAssets` and `getAccountBalances`.
-- Read asset metadata from AssetsController when feature flag `enableAssetMigration` and local flag `enableAssetMigration` is on ([#493](https://github.com/MetaMask/internal-snaps/pull/493))
-  - `enableAssetMigration` set to off.
+- **BREAKING:** Read account asset balances from AssetsController when the feature flag `networkAssetsSnapsMigrationStellar` is on ([#331](https://github.com/MetaMask/internal-snaps/pull/331), [#513](https://github.com/MetaMask/internal-snaps/pull/513))
+  - Keyring methods `getAccountAssets` and `getAccountBalances` include watched SEP-41 assets and return the latest live balances.
+  - While the flag is on, account sync no longer persists asset snapshots or emits `AccountBalancesUpdated` and `AccountAssetListUpdated`.
+- **BREAKING:** Read asset metadata from AssetsController first when feature flag `networkAssetsSnapsMigrationStellar` is on ([#493](https://github.com/MetaMask/internal-snaps/pull/493), [#513](https://github.com/MetaMask/internal-snaps/pull/513))
 
 ### Changed
 
 - Retry transient Stellar Horizon, Soroban RPC, Token API, Price API, and Security Alerts API read failures with bounded timeouts and circuit breaking.
   - Signed transaction submission remains one-shot; the existing explicit `txBadSeq` rebuild and re-sign flow is unchanged.
 - **BREAKING:** Stop falling back to Soroban RPC and Horizon for asset metadata ([#505](https://github.com/MetaMask/internal-snaps/pull/505))
+- Stop falling back to Soroban RPC and Horizon for asset metadata ([#505](https://github.com/MetaMask/internal-snaps/pull/505))
   - Fetch asset metadata from the local catalog or the mainnet token API.
 - **BREAKING:** Return classic keyring balance metadata `limit` in integer stroop string ([#495](https://github.com/MetaMask/internal-snaps/pull/495))
   - Keyring method `getAccountBalances` and the Keyring event `AccountBalancesUpdated` now return this `limit` in stroops.

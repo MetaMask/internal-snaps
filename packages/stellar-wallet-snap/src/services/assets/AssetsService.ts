@@ -9,7 +9,6 @@ import type {
   KnownCaip19AssetIdOrSlip44Id,
   KnownCaip2ChainId,
 } from '../../api';
-import { AppConfig } from '../../config';
 import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { parseCoreStellarAsset, parseCoreAssetMetadata } from './api';
 import type { CoreAsset, CoreAssetMetadata } from './api';
@@ -37,16 +36,9 @@ export class AssetsService {
    * Returns whether Stellar should read assets from AssetsController
    * instead of snap state.
    *
-   * `AppConfig.enableAssetMigration` stays false until the migration is ready
-   * to ship, so this returns false without reading the feature flag. When that
-   * config is true, any migration stage other than Off enables the read.
-   *
    * @returns Whether AssetsController reads are active.
    */
   async isMigrationEnabled(): Promise<boolean> {
-    if (!AppConfig.enableAssetMigration) {
-      return false;
-    }
     const flagValue = await this.#remoteFeatureFlagsProvider.getFeatureFlag(
       SNAPS_ASSETS_MIGRATION_FLAG_KEYS.stellar,
     );
