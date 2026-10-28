@@ -571,7 +571,21 @@ export class AccountUseCases {
   async fullScan(account: BitcoinAccount): Promise<SyncResult> {
     this.#logger.debug('Performing initial full scan: %s', account.id);
 
-    await this.#chain.fullScan(account);
+    // The first scan of an account uses the discovery gap: most new accounts
+    // are unused, and the standard gap costs four times the requests per
+    // empty account (onboarding scanned five accounts this way). Only an
+    // account where it finds activity is completed to the standard gap right
+    // after (checking just the addresses the standard gap adds), so used
+    // accounts keep their full address coverage.
+    const initialScan = !account.hasSynchronized();
+    await this.#chain.fullScan(account, initialScan ? 'discovery' : 'scan');
+    if (initialScan && account.listTransactions().length > 0) {
+      this.#logger.debug(
+        'Activity found by the initial scan, completing it to the standard gap: %s',
+        account.id,
+      );
+      await this.#chain.extendDiscoveryScan(account);
+    }
 
     const inscriptions = this.#metaProtocols
       ? await this.#metaProtocols.fetchInscriptions(account)

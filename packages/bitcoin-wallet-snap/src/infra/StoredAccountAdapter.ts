@@ -21,6 +21,7 @@ import type {
   AccountMetadata,
   AccountState,
   BitcoinAccount,
+  Keychain,
   TransactionBuilder,
 } from '../entities';
 
@@ -103,6 +104,18 @@ export class StoredAccountAdapter implements BitcoinAccount {
     return this.#unsupported();
   }
 
+  peekKeychainAddress(_keychain: Keychain, _index: number): AddressInfo {
+    return this.#unsupported();
+  }
+
+  lastUsedIndex(_keychain: Keychain): number | undefined {
+    return this.#unsupported();
+  }
+
+  lastRevealedIndex(_keychain: Keychain): number | undefined {
+    return this.#unsupported();
+  }
+
   nextUnusedAddress(): AddressInfo {
     return this.#unsupported();
   }
@@ -121,6 +134,13 @@ export class StoredAccountAdapter implements BitcoinAccount {
 
   applyUpdate(_update: Update): void {
     this.#unsupported();
+  }
+
+  hasSynchronized(): boolean {
+    // Metadata-only view: the wallet (and its checkpoint) is not loaded.
+    // Callers that need the sync state load the full account; never report
+    // this view as unsynchronized, which would hide a known balance.
+    return true;
   }
 
   takeStaged(): ChangeSet | undefined {

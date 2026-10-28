@@ -26,7 +26,7 @@ import {
 } from '@metamask/bitcoindevkit';
 
 import { AccountCapability, ValidationError, WalletError } from '../entities';
-import type { BitcoinAccount, TransactionBuilder } from '../entities';
+import type { BitcoinAccount, Keychain, TransactionBuilder } from '../entities';
 import { toFeeRateSatsPerVb } from '../utils/fee-rate';
 import { BdkTxBuilderAdapter } from './BdkTxBuilderAdapter';
 
@@ -149,6 +149,27 @@ export class BdkAccountAdapter implements BitcoinAccount {
     return this.#wallet.peek_address('external', index);
   }
 
+  peekKeychainAddress(keychain: Keychain, index: number): AddressInfo {
+    return this.#wallet.peek_address(keychain, index);
+  }
+
+  lastUsedIndex(keychain: Keychain): number | undefined {
+    let last: number | undefined;
+    for (const output of this.#wallet.list_output()) {
+      if (
+        output.keychain === keychain &&
+        (last === undefined || output.derivation_index > last)
+      ) {
+        last = output.derivation_index;
+      }
+    }
+    return last;
+  }
+
+  lastRevealedIndex(keychain: Keychain): number | undefined {
+    return this.#wallet.derivation_index(keychain);
+  }
+
   nextUnusedAddress(): AddressInfo {
     return this.#wallet.next_unused_address('external');
   }
@@ -181,6 +202,12 @@ export class BdkAccountAdapter implements BitcoinAccount {
 
   applyUpdate(update: Update): void {
     return this.#wallet.apply_update(update);
+  }
+
+  hasSynchronized(): boolean {
+    // A freshly created wallet only holds the genesis checkpoint (height 0);
+    // every successful sync or full scan applies a chain update to the tip.
+    return this.#wallet.latest_checkpoint.height > 0;
   }
 
   takeStaged(): ChangeSet | undefined {
