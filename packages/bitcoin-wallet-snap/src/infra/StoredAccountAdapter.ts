@@ -123,6 +123,13 @@ export class StoredAccountAdapter implements BitcoinAccount {
     this.#unsupported();
   }
 
+  hasSynchronized(): boolean {
+    // Metadata-only view: the wallet (and its checkpoint) is not loaded.
+    // Callers that need the sync state load the full account; never report
+    // this view as unsynchronized, which would hide a known balance.
+    return true;
+  }
+
   takeStaged(): ChangeSet | undefined {
     return this.#unsupported();
   }

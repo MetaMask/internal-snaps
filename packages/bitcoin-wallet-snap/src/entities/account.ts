@@ -127,6 +127,15 @@ export type BitcoinAccount = {
   applyUpdate(update: Update): void;
 
   /**
+   * Whether the account's wallet has applied at least one chain update (sync
+   * or full scan). A wallet that never synced still sits on the genesis
+   * checkpoint (height 0), and its zero balance means "unknown", not "empty".
+   *
+   * @returns true if the wallet has synchronized with the chain at least once
+   */
+  hasSynchronized(): boolean;
+
+  /**
    * Extract the change set if it exists.
    *
    * @returns the change set

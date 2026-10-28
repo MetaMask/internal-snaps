@@ -24,7 +24,11 @@ import { mock } from 'jest-mock-extended';
 import { assert } from 'superstruct';
 
 import type { BitcoinAccount, Logger, SnapClient } from '../entities';
-import { AccountCapability, CurrencyUnit } from '../entities';
+import {
+  AccountCapability,
+  BalanceNotSynchronizedError,
+  CurrencyUnit,
+} from '../entities';
 import type { AccountUseCases } from '../use-cases/AccountUseCases';
 import { Caip19Asset } from './caip';
 import { KeyringHandler } from './KeyringHandler';
@@ -678,6 +682,36 @@ describe('KeyringHandler', () => {
         error,
       );
       expect(mockAccounts.get).toHaveBeenCalled();
+    });
+
+    it('fails instead of reporting 0 when the balance is still unknown', async () => {
+      mockAccounts.get.mockResolvedValue(mockAccount);
+      mockAccounts.isBalanceUnknown.mockResolvedValue(true);
+
+      await expect(handler.getAccountBalances(mockAccount.id)).rejects.toThrow(
+        'Account balance unavailable: the account has not been synchronized yet',
+      );
+      expect(mockAccounts.isBalanceUnknown).toHaveBeenCalledWith(mockAccount);
+    });
+
+    it('throws the untracked BalanceNotSynchronizedError when the balance is unknown', async () => {
+      mockAccounts.get.mockResolvedValue(mockAccount);
+      mockAccounts.isBalanceUnknown.mockResolvedValue(true);
+
+      await expect(
+        handler.getAccountBalances(mockAccount.id),
+      ).rejects.toBeInstanceOf(BalanceNotSynchronizedError);
+    });
+
+    it('reports the balance once it is known', async () => {
+      mockAccounts.get.mockResolvedValue(mockAccount);
+      mockAccounts.isBalanceUnknown.mockResolvedValue(false);
+
+      const result = await handler.getAccountBalances(mockAccount.id);
+
+      expect(result).toStrictEqual({
+        [Caip19Asset.Bitcoin]: { amount: '1', unit: 'BTC' },
+      });
     });
   });
 
