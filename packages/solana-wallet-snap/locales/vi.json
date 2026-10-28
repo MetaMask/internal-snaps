@@ -271,9 +271,6 @@
     "confirmation.validationWarningSubtitle": {
       "message": "Security Alerts found potential risk. Only continue if you trust this site and every address involved."
     },
-    "confirmation.reviewAlertsButton": {
-      "message": "Review alert"
-    },
     "confirmation.maliciousAck.title": {
       "message": "Malicious request"
     },

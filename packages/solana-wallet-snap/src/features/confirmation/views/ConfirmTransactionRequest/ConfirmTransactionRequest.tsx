@@ -144,11 +144,10 @@ export const ConfirmTransactionRequest = ({
         labels={{
           cancelButton: translate('confirmation.cancelButton'),
           confirmButton: translate('confirmation.confirmButton'),
-          reviewAlertsButton: translate('confirmation.reviewAlertsButton'),
         }}
         cancelButtonName={ConfirmSignAndSendTransactionFormNames.Cancel}
         confirmButtonName={ConfirmSignAndSendTransactionFormNames.Confirm}
-        reviewAlertsName={MaliciousAcknowledgementFormNames.Review}
+        openAcknowledgementName={MaliciousAcknowledgementFormNames.Review}
         confirmDisabled={shouldDisableConfirmButton}
         requiresAcknowledgement={requiresAcknowledgement}
       />

@@ -84,13 +84,13 @@ async function onConfirmButtonClick({ id }: { id: string }): Promise<void> {
 }
 
 /**
- * Opens the malicious acknowledgement screen when the user clicks "Review alert".
+ * Opens malicious acknowledgement when the user clicks the danger Confirm button.
  *
  * @param params - The parameters for the function.
  * @param params.id - The ID of the interface to update.
  * @param params.context - The current confirmation context.
  */
-async function onReviewAlertsButtonClick({
+async function onOpenAcknowledgementButtonClick({
   id,
   context,
 }: {
@@ -202,7 +202,7 @@ export const eventHandlers = {
     onShowAdvancedButtonClick,
   [ConfirmSignAndSendTransactionFormNames.Cancel]: onCancelButtonClick,
   [ConfirmSignAndSendTransactionFormNames.Confirm]: onConfirmButtonClick,
-  [MaliciousAcknowledgementFormNames.Review]: onReviewAlertsButtonClick,
+  [MaliciousAcknowledgementFormNames.Review]: onOpenAcknowledgementButtonClick,
   [MaliciousAcknowledgementFormNames.Acknowledge]: onAcknowledgeChange,
   [MaliciousAcknowledgementFormNames.Proceed]: onProceedButtonClick,
   [MaliciousAcknowledgementFormNames.Back]: onBackButtonClick,
