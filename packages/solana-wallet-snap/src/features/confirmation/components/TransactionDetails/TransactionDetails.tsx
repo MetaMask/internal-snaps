@@ -28,6 +28,34 @@ import type { FeePayment } from '../../utils/analyzeFeePayment';
 const truncateAddress = (address: string): string =>
   `${address.slice(0, 5)}...${address.slice(-5)}`;
 
+/**
+ * How each verdict of {@link FeePayment.userCost} is shown. The tooltip of
+ * `costs` only applies when the user may pay more than the costs listed.
+ */
+const USER_COST_DISPLAY = {
+  free: {
+    label: 'confirmation.youPay.free',
+    color: 'success',
+    fontWeight: 'bold',
+    tooltip: 'confirmation.youPay.free.tooltip',
+    icon: 'question',
+  },
+  unverified: {
+    label: 'confirmation.youPay.unverified',
+    color: 'warning',
+    fontWeight: 'regular',
+    tooltip: 'confirmation.youPay.unverified.tooltip',
+    icon: 'warning',
+  },
+  costs: {
+    label: 'confirmation.youPay.notFree',
+    color: 'warning',
+    fontWeight: 'regular',
+    tooltip: 'confirmation.youPay.mayCostMore.tooltip',
+    icon: 'warning',
+  },
+} as const;
+
 type TransactionDetailsProps = {
   accountAddress: string | null;
   accountDomain: string | null;
@@ -90,6 +118,14 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
         programs: feePayment.uncheckedPrograms.map(truncateAddress).join(', '),
       })}`
     : '';
+
+  // `userCost` is only set when the fee is sponsored.
+  const userCost = feePayment?.userCost
+    ? USER_COST_DISPLAY[feePayment.userCost]
+    : null;
+  // `free` is never reached with unchecked programs, so the suffix is empty there.
+  const showUserCostTooltip =
+    feePayment?.userCost !== 'costs' || feePayment.mayCostMore;
 
   const rentInSol = feePayment?.userCosts.reduce(
     (total, cost) =>
@@ -220,47 +256,23 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
           />
         </Box>
       ) : null}
-      {feePayment?.paidBy === 'sponsor' ? (
+      {userCost ? (
         <Box alignment="space-between" direction="horizontal">
           <Box alignment="space-between" direction="horizontal" center>
             <Text fontWeight="medium" color="alternative">
               {translate('confirmation.youPay')}
             </Text>
-            {feePayment.userCost === 'free' ? (
-              <Tooltip content={translate('confirmation.youPay.free.tooltip')}>
-                <Icon name="question" color="muted" />
-              </Tooltip>
-            ) : null}
-            {feePayment.userCost === 'unverified' ? (
+            {showUserCostTooltip ? (
               <Tooltip
-                content={`${translate('confirmation.youPay.unverified.tooltip')}${uncheckedPrograms}`}
+                content={`${translate(userCost.tooltip)}${uncheckedPrograms}`}
               >
-                <Icon name="warning" color="muted" />
-              </Tooltip>
-            ) : null}
-            {feePayment.userCost === 'costs' && feePayment.mayCostMore ? (
-              <Tooltip
-                content={`${translate('confirmation.youPay.mayCostMore.tooltip')}${uncheckedPrograms}`}
-              >
-                <Icon name="warning" color="muted" />
+                <Icon name={userCost.icon} color="muted" />
               </Tooltip>
             ) : null}
           </Box>
-          {feePayment.userCost === 'free' ? (
-            <Text fontWeight="bold" color="success">
-              {translate('confirmation.youPay.free')}
-            </Text>
-          ) : null}
-          {feePayment.userCost === 'unverified' ? (
-            <Text color="warning">
-              {translate('confirmation.youPay.unverified')}
-            </Text>
-          ) : null}
-          {feePayment.userCost === 'costs' ? (
-            <Text color="warning">
-              {translate('confirmation.youPay.notFree')}
-            </Text>
-          ) : null}
+          <Text fontWeight={userCost.fontWeight} color={userCost.color}>
+            {translate(userCost.label)}
+          </Text>
         </Box>
       ) : null}
       {rentInSol?.isGreaterThan(0) ? (
