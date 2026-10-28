@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Show who pays the network fee on transaction confirmations, and whether a sponsored transaction is free for the user ([#455](https://github.com/MetaMask/internal-snaps/pull/455))
+  - When another account pays the fee, the confirmation shows the sponsor and a "You pay" row: "Free" only when no instruction charges the user, otherwise the account rent and payments to the sponsor the user covers
+  - Shows "Can't confirm" instead of "Free" when it can't rule out other costs, for example when the simulation fails
+  - Simulates the transaction to find what other programs charge the user through the System and token programs, so it doesn't need to know each program
+
 ## [7.2.0]
 
 ### Added

@@ -4,9 +4,11 @@ import { ActionHeader } from '@metamask/snap-networks-utils';
 import type { SpotPrices } from '../../../../core/clients/price-api/types';
 import { KnownCaip19Id, Network } from '../../../../core/constants/solana';
 import type { TransactionScanResult } from '../../../../core/services/transaction-scan/types';
+import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../../../core/test/mocks/solana-keyring-accounts';
 import type { Preferences } from '../../../../core/types/snap';
 import { formatFiat } from '../../../../core/utils/formatFiat';
 import { tokenToFiat } from '../../../../core/utils/tokenToFiat';
+import type { FeePayment } from '../../utils/analyzeFeePayment';
 import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
 import type { ConfirmTransactionRequestContext } from './types';
 
@@ -22,6 +24,7 @@ const context: ConfirmTransactionRequestContext = {
   scan: null,
   scanFetchStatus: 'fetched',
   feeEstimatedInSol: '0',
+  feePayment: null,
   tokenPrices: {},
   tokenPricesFetchStatus: 'fetched',
   origin: '',
@@ -165,6 +168,150 @@ describe('ConfirmTransactionRequest', () => {
 
       expect(serialized).toContain('"name":"warning"');
       expect(serialized).not.toContain(' SOL"');
+    });
+  });
+
+  describe('fee payment', () => {
+    const sponsor = 'CDg3bPoM21fSXEzrXWHWyJR33JHX6xaYboq5p7s4uo48';
+    const sponsored = (overrides: Partial<FeePayment>): FeePayment => ({
+      feePayer: sponsor,
+      paidBy: 'sponsor',
+      userCost: 'free',
+      userCosts: [],
+      mayCostMore: false,
+      uncheckedPrograms: [],
+      ...overrides,
+    });
+    const renderWithFeePayment = (feePayment: FeePayment): string =>
+      render({
+        account: MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        feeEstimatedInSol: '0.000005',
+        feePayment,
+      });
+
+    it('renders no payer rows when the account pays the fee', () => {
+      const serialized = renderWithFeePayment({
+        feePayer: MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
+        paidBy: 'account',
+        userCost: null,
+        userCosts: [],
+        mayCostMore: false,
+        uncheckedPrograms: [],
+      });
+
+      expect(serialized).toContain('"children":"0.000005 SOL"');
+      expect(serialized).not.toContain('Sponsored by');
+      expect(serialized).not.toContain('Fee paid by');
+      expect(serialized).not.toContain('You pay');
+    });
+
+    it('renders the paying account when another wallet account pays', () => {
+      const serialized = renderWithFeePayment({
+        feePayer: sponsor,
+        paidBy: 'ownAccount',
+        userCost: null,
+        userCosts: [],
+        mayCostMore: false,
+        uncheckedPrograms: [],
+      });
+
+      expect(serialized).toContain('Fee paid by');
+      expect(serialized).toContain(
+        `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:${sponsor}`,
+      );
+      expect(serialized).not.toContain('You pay');
+    });
+
+    it('renders a free sponsored transaction', () => {
+      const serialized = renderWithFeePayment(sponsored({}));
+
+      expect(serialized).toContain('"children":"0.000005 SOL"');
+      expect(serialized).toContain('Sponsored by');
+      expect(serialized).toContain(
+        `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:${sponsor}`,
+      );
+      expect(serialized).toContain('You pay');
+      expect(serialized).toContain('"children":"Free"');
+      expect(serialized).toContain('"color":"success"');
+      expect(serialized).not.toContain('Not free');
+    });
+
+    it('renders what the user pays when the sponsored transaction has costs', () => {
+      const serialized = renderWithFeePayment(
+        sponsored({
+          userCost: 'costs',
+          userCosts: [
+            { type: 'rent', lamports: '2039280' },
+            { type: 'solToSponsor', lamports: '5000' },
+            {
+              type: 'tokenToSponsor',
+              mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+              amount: '150000',
+              decimals: 6,
+              symbol: 'USDC',
+            },
+          ],
+        }),
+      );
+
+      expect(serialized).toContain('Not free');
+      expect(serialized).not.toContain('"children":"Free"');
+      expect(serialized).toContain('Account rent');
+      expect(serialized).toContain('"children":"0.00204 SOL"');
+      expect(serialized).toContain('Paid to sponsor');
+      expect(serialized).toContain('"children":"0.000005 SOL"');
+      expect(serialized).toContain('"children":"0.15 USDC"');
+      expect(serialized).not.toContain('charge you more than shown');
+    });
+
+    it('falls back to the mint address when the token symbol is unknown', () => {
+      const serialized = renderWithFeePayment(
+        sponsored({
+          userCost: 'costs',
+          userCosts: [
+            {
+              type: 'tokenToSponsor',
+              mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+              amount: '150000',
+              decimals: 6,
+              symbol: null,
+            },
+          ],
+        }),
+      );
+
+      expect(serialized).toContain('"children":"0.15 EPjFW...TDt1v"');
+    });
+
+    it('warns that the user may pay more than the listed costs', () => {
+      const serialized = renderWithFeePayment(
+        sponsored({
+          userCost: 'costs',
+          userCosts: [{ type: 'solToSponsor', lamports: '5000' }],
+          mayCostMore: true,
+        }),
+      );
+
+      expect(serialized).toContain('Not free');
+      expect(serialized).toContain('charge you more than shown');
+    });
+
+    it('does not claim the transaction is free when it cannot be verified', () => {
+      const serialized = renderWithFeePayment(
+        sponsored({
+          userCost: 'unverified',
+          mayCostMore: true,
+          uncheckedPrograms: ['JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4'],
+        }),
+      );
+
+      expect(serialized).toContain(
+        "can't check these programs: JUP6L...VTaV4.",
+      );
+
+      expect(serialized).toContain('Sponsored by');
+      expect(serialized).toContain("Can't confirm");
+      expect(serialized).not.toContain('"children":"Free"');
     });
   });
 });

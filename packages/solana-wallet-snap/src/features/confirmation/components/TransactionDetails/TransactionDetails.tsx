@@ -1,4 +1,5 @@
 import { DEFAULT_METAMASK_ORIGIN, Asset } from '@metamask/snap-networks-utils';
+import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import type { SnapComponent } from '@metamask/snaps-sdk/jsx';
 import {
   Address,
@@ -9,17 +10,51 @@ import {
   Text,
   Tooltip,
 } from '@metamask/snaps-sdk/jsx';
+import { BigNumber } from 'bignumber.js';
 
 import { Domain } from '../../../../core/components/Domain/Domain';
 import type { Network } from '../../../../core/constants/solana';
 import { Networks } from '../../../../core/constants/solana';
 import type { FetchStatus, Preferences } from '../../../../core/types/snap';
 import { addressToCaip10 } from '../../../../core/utils/addressToCaip10';
+import { lamportsToSol } from '../../../../core/utils/conversion';
 import { formatCryptoBalance } from '../../../../core/utils/formatCryptoBalance';
 import { formatFiat } from '../../../../core/utils/formatFiat';
 import { i18n } from '../../../../core/utils/i18n';
 import { parseOrigin } from '../../../../core/utils/parseOrigin';
 import { tokenToFiat } from '../../../../core/utils/tokenToFiat';
+import type { FeePayment } from '../../utils/analyzeFeePayment';
+
+const truncateAddress = (address: string): string =>
+  `${address.slice(0, 5)}...${address.slice(-5)}`;
+
+/**
+ * How each verdict of {@link FeePayment.userCost} is shown. The tooltip of
+ * `costs` only applies when the user may pay more than the costs listed.
+ */
+const USER_COST_DISPLAY = {
+  free: {
+    label: 'confirmation.youPay.free',
+    color: 'success',
+    fontWeight: 'bold',
+    tooltip: 'confirmation.youPay.free.tooltip',
+    icon: 'question',
+  },
+  unverified: {
+    label: 'confirmation.youPay.unverified',
+    color: 'warning',
+    fontWeight: 'regular',
+    tooltip: 'confirmation.youPay.unverified.tooltip',
+    icon: 'warning',
+  },
+  costs: {
+    label: 'confirmation.youPay.notFree',
+    color: 'warning',
+    fontWeight: 'regular',
+    tooltip: 'confirmation.youPay.mayCostMore.tooltip',
+    icon: 'warning',
+  },
+} as const;
 
 type TransactionDetailsProps = {
   accountAddress: string | null;
@@ -28,6 +63,7 @@ type TransactionDetailsProps = {
   destinationDomain: string | null;
   scope: Network;
   feeInSol: string | null;
+  feePayment: FeePayment | null;
   nativePrice: number | null;
   fetchingPricesStatus: FetchStatus;
   preferences: Preferences;
@@ -43,6 +79,7 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
   destinationDomain,
   scope,
   feeInSol,
+  feePayment,
   nativePrice,
   fetchingPricesStatus,
   preferences,
@@ -57,10 +94,44 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
   const pricesFetching = fetchingPricesStatus === 'fetching';
   const pricesError = fetchingPricesStatus === 'error';
 
-  const feeInFiat =
-    feeInSol && nativePrice && !pricesError
-      ? formatFiat(tokenToFiat(feeInSol, nativePrice), currency, locale)
+  const toFiat = (amountInSol: string): string | null =>
+    nativePrice && !pricesError
+      ? formatFiat(tokenToFiat(amountInSol, nativePrice), currency, locale)
       : null;
+
+  const feeInFiat = feeInSol ? toFiat(feeInSol) : null;
+
+  const nativeSymbol = Networks[scope].nativeToken.symbol;
+
+  const renderSol = (amountInSol: string): ComponentOrElement => (
+    <Asset
+      symbol={nativeSymbol}
+      amount={formatCryptoBalance(amountInSol, locale)}
+      hideIcon
+      fiat={toFiat(amountInSol)}
+      isFiatLoading={pricesFetching}
+    />
+  );
+
+  const uncheckedPrograms = feePayment?.uncheckedPrograms.length
+    ? ` ${translate('confirmation.youPay.uncheckedPrograms', {
+        programs: feePayment.uncheckedPrograms.map(truncateAddress).join(', '),
+      })}`
+    : '';
+
+  // `userCost` is only set when the fee is sponsored.
+  const userCost = feePayment?.userCost
+    ? USER_COST_DISPLAY[feePayment.userCost]
+    : null;
+  // `free` is never reached with unchecked programs, so the suffix is empty there.
+  const showUserCostTooltip =
+    feePayment?.userCost !== 'costs' || feePayment.mayCostMore;
+
+  const rentInSol = feePayment?.userCosts.reduce(
+    (total, cost) =>
+      cost.type === 'rent' ? total.plus(lamportsToSol(cost.lamports)) : total,
+    BigNumber(0),
+  );
 
   return (
     <Section>
@@ -155,6 +226,97 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
           </Tooltip>
         )}
       </Box>
+      {feePayment &&
+      (feePayment.paidBy === 'sponsor' ||
+        feePayment.paidBy === 'ownAccount') ? (
+        <Box alignment="space-between" direction="horizontal">
+          <Box alignment="space-between" direction="horizontal" center>
+            <Text fontWeight="medium" color="alternative">
+              {translate(
+                feePayment.paidBy === 'sponsor'
+                  ? 'confirmation.sponsoredBy'
+                  : 'confirmation.paidBy',
+              )}
+            </Text>
+            <Tooltip
+              content={translate(
+                feePayment.paidBy === 'sponsor'
+                  ? 'confirmation.sponsoredBy.tooltip'
+                  : 'confirmation.paidBy.tooltip',
+              )}
+            >
+              <Icon name="question" color="muted" />
+            </Tooltip>
+          </Box>
+          <Address
+            address={addressToCaip10(scope, feePayment.feePayer)}
+            truncate
+            displayName
+            avatar
+          />
+        </Box>
+      ) : null}
+      {userCost ? (
+        <Box alignment="space-between" direction="horizontal">
+          <Box alignment="space-between" direction="horizontal" center>
+            <Text fontWeight="medium" color="alternative">
+              {translate('confirmation.youPay')}
+            </Text>
+            {showUserCostTooltip ? (
+              <Tooltip
+                content={`${translate(userCost.tooltip)}${uncheckedPrograms}`}
+              >
+                <Icon name={userCost.icon} color="muted" />
+              </Tooltip>
+            ) : null}
+          </Box>
+          <Text fontWeight={userCost.fontWeight} color={userCost.color}>
+            {translate(userCost.label)}
+          </Text>
+        </Box>
+      ) : null}
+      {rentInSol?.isGreaterThan(0) ? (
+        <Box alignment="space-between" direction="horizontal">
+          <Box alignment="space-between" direction="horizontal" center>
+            <Text color="alternative">{translate('confirmation.rent')}</Text>
+            <Tooltip content={translate('confirmation.rent.tooltip')}>
+              <Icon name="question" color="muted" />
+            </Tooltip>
+          </Box>
+          {renderSol(rentInSol.toString())}
+        </Box>
+      ) : null}
+      {feePayment?.userCosts.map((cost) => {
+        if (cost.type === 'rent') {
+          return null;
+        }
+
+        return (
+          <Box
+            key={cost.type === 'tokenToSponsor' ? cost.mint : cost.type}
+            alignment="space-between"
+            direction="horizontal"
+          >
+            <Text color="alternative">
+              {translate('confirmation.paidToSponsor')}
+            </Text>
+            {cost.type === 'solToSponsor' ? (
+              renderSol(lamportsToSol(cost.lamports).toString())
+            ) : (
+              <Asset
+                symbol={cost.symbol ?? truncateAddress(cost.mint)}
+                amount={formatCryptoBalance(
+                  BigNumber(cost.amount).shiftedBy(-cost.decimals).toString(),
+                  locale,
+                )}
+                hideIcon
+                fiat={null}
+                isFiatLoading={false}
+              />
+            )}
+          </Box>
+        );
+      })}
     </Section>
   );
 };
