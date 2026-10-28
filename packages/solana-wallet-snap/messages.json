@@ -98,9 +98,8 @@
   "transactionScan.errors.unknownError": "An unknown error occurred.",
   "confirmation.validationWarningTitle": "This request may be risky",
   "confirmation.validationWarningSubtitle": "Only continue if you trust this site and/or every address involved.",
-  "confirmation.reviewAlertsButton": "Review alert",
-  "confirmation.maliciousAck.title": "Malicious request",
-  "confirmation.maliciousAck.description": "If you confirm this request, you will probably lose your assets to a scammer.",
+  "confirmation.maliciousAck.title": "High-risk request",
+  "confirmation.maliciousAck.description": "Security partners found high-risk signals in this request. If you continue, your funds can't be recovered.",
   "confirmation.maliciousAck.checkbox": "I have acknowledged the risk and still want to proceed",
   "confirmation.maliciousAck.proceed": "Confirm",
   "confirmation.maliciousAck.back": "Go back"

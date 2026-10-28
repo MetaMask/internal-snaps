@@ -1,5 +1,8 @@
 import { SolMethod } from '@metamask/keyring-api';
-import { ActionHeader } from '@metamask/snap-networks-utils';
+import {
+  ActionHeader,
+  MaliciousAcknowledgementFormNames,
+} from '@metamask/snap-networks-utils';
 
 import type { SpotPrices } from '../../../../core/clients/price-api/types';
 import { KnownCaip19Id, Network } from '../../../../core/constants/solana';
@@ -119,12 +122,16 @@ describe('ConfirmTransactionRequest', () => {
       expect(serialized).not.toContain('This is a deceptive request');
     });
 
-    it('swaps the confirm button for "Review alert" on a malicious validation', () => {
+    it('renders a destructive Confirm that opens acknowledgement for a malicious validation', () => {
       const serialized = render({
         scan: scan({ validation: { type: 'Malicious', reason: null } }),
       });
 
-      expect(serialized).toContain('Review alert');
+      expect(serialized).toContain('Confirm');
+      expect(serialized).toContain('"variant":"destructive"');
+      expect(serialized).toContain(MaliciousAcknowledgementFormNames.Review);
+      expect(serialized).not.toContain('Review alert');
+      expect(serialized).not.toContain('"disabled":true');
       expect(serialized).not.toContain(
         'confirm-sign-and-send-transaction-confirm',
       );
@@ -136,6 +143,7 @@ describe('ConfirmTransactionRequest', () => {
       });
 
       expect(serialized).not.toContain('Review alert');
+      expect(serialized).not.toContain('"variant":"destructive"');
       expect(serialized).toContain('confirm-sign-and-send-transaction-confirm');
     });
 
@@ -148,7 +156,10 @@ describe('ConfirmTransactionRequest', () => {
         }),
       });
 
-      expect(serialized).not.toContain('Review alert');
+      expect(serialized).not.toContain(
+        MaliciousAcknowledgementFormNames.Review,
+      );
+      expect(serialized).not.toContain('"variant":"destructive"');
       expect(serialized).toContain('"disabled":true');
     });
 
@@ -196,10 +207,16 @@ describe('ConfirmTransactionRequest', () => {
   });
 
   describe('malicious acknowledgement', () => {
-    it('renders the acknowledgement screen when active', () => {
+    it('renders the acknowledgement title once with an untitled danger banner', () => {
       const serialized = render({ acknowledgementScreen: true });
 
-      expect(serialized).toContain('Malicious request');
+      expect(serialized.match(/High-risk request/gu)).toHaveLength(1);
+      expect(serialized).toContain(
+        "Security partners found high-risk signals in this request. If you continue, your funds can't be recovered.",
+      );
+      expect(serialized).toContain('"type":"Banner"');
+      expect(serialized).toContain('"title":""');
+      expect(serialized).toContain('"severity":"danger"');
       expect(serialized).toContain(
         'I have acknowledged the risk and still want to proceed',
       );

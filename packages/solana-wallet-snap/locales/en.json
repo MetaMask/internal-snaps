@@ -298,14 +298,11 @@
     "confirmation.validationWarningSubtitle": {
       "message": "Only continue if you trust this site and/or every address involved."
     },
-    "confirmation.reviewAlertsButton": {
-      "message": "Review alert"
-    },
     "confirmation.maliciousAck.title": {
-      "message": "Malicious request"
+      "message": "High-risk request"
     },
     "confirmation.maliciousAck.description": {
-      "message": "If you confirm this request, you will probably lose your assets to a scammer."
+      "message": "Security partners found high-risk signals in this request. If you continue, your funds can't be recovered."
     },
     "confirmation.maliciousAck.checkbox": {
       "message": "I have acknowledged the risk and still want to proceed"

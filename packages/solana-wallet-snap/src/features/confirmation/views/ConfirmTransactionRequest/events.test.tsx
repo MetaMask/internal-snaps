@@ -4,7 +4,10 @@ import type { UserInputEvent } from '@metamask/snaps-sdk';
 import { UserInputEventType } from '@metamask/snaps-sdk';
 
 import { Network } from '../../../../core/constants/solana';
-import { updateInterface } from '../../../../core/utils/interface';
+import {
+  resolveInterface,
+  updateInterface,
+} from '../../../../core/utils/interface';
 import { state } from '../../../../snapContext';
 import { ConfirmSignAndSendTransactionFormNames } from './events';
 import { eventHandlers } from './events';
@@ -69,7 +72,7 @@ describe('confirm transaction request events', () => {
   });
 
   describe('malicious acknowledgement', () => {
-    it('opens the acknowledgement screen on "Review alert"', async () => {
+    it('opens acknowledgement without approving when the danger Confirm is clicked', async () => {
       const name = MaliciousAcknowledgementFormNames.Review;
       await eventHandlers[name]?.({
         id: INTERFACE_ID,
@@ -85,6 +88,7 @@ describe('confirm transaction request events', () => {
           acknowledged: false,
         }),
       );
+      expect(resolveInterface).not.toHaveBeenCalled();
       expect(state.deleteKey).not.toHaveBeenCalled();
     });
 
