@@ -8,7 +8,7 @@ import {
   HttpException,
   HttpResponseException,
   InvalidHttpRequestParamsException,
-  normalizeFetchPolicyException,
+  normalizeHttpException,
   rethrowIfInstanceElseThrow,
 } from './errors';
 
@@ -111,11 +111,11 @@ describe('errors', () => {
     });
   });
 
-  describe('normalizeFetchPolicyException', () => {
+  describe('normalizeHttpException', () => {
     it('wraps HTTP status policy errors in HttpResponseException', () => {
       const error = createFetchPolicyError('HTTP 503', { httpStatus: 503 });
 
-      expect(normalizeFetchPolicyException(error)).toBeInstanceOf(
+      expect(normalizeHttpException(error)).toBeInstanceOf(
         HttpResponseException,
       );
     });
@@ -129,13 +129,13 @@ describe('errors', () => {
       });
       const brokenCircuitError = new BrokenCircuitError();
 
-      expect(normalizeFetchPolicyException(networkError)).toBeInstanceOf(
+      expect(normalizeHttpException(networkError)).toBeInstanceOf(
         HttpException,
       );
-      expect(normalizeFetchPolicyException(timeoutError)).toBeInstanceOf(
+      expect(normalizeHttpException(timeoutError)).toBeInstanceOf(
         HttpException,
       );
-      expect(normalizeFetchPolicyException(brokenCircuitError)).toBeInstanceOf(
+      expect(normalizeHttpException(brokenCircuitError)).toBeInstanceOf(
         HttpException,
       );
     });

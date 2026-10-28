@@ -16,7 +16,6 @@ import {
   HttpException,
   InvalidHttpRequestParamsException,
   InvalidHttpResponseException,
-  normalizeFetchPolicyException,
   normalizeHttpException,
 } from '../../../utils/errors';
 import { logger } from '../../../utils/logger';
@@ -100,9 +99,7 @@ export class PriceApiClient {
     exceptionClasses?: readonly AnyErrorConstructor[];
     fallbackError: string | PriceApiException;
   }): never {
-    const normalized = normalizeHttpException(
-      normalizeFetchPolicyException(error),
-    );
+    const normalized = normalizeHttpException(error);
     if (normalized instanceof HttpException) {
       throw normalized;
     }

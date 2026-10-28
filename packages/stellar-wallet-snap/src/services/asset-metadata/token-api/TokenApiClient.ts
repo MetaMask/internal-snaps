@@ -22,7 +22,6 @@ import {
   HttpException,
   InvalidHttpRequestParamsException,
   InvalidHttpResponseException,
-  normalizeFetchPolicyException,
   normalizeHttpException,
 } from '../../../utils/errors';
 import { logger } from '../../../utils/logger';
@@ -149,9 +148,7 @@ export class TokenApiClient {
     exceptionClasses?: readonly AnyErrorConstructor[];
     fallbackError: string | TokenApiException;
   }): never {
-    const normalized = normalizeHttpException(
-      normalizeFetchPolicyException(error),
-    );
+    const normalized = normalizeHttpException(error);
     if (normalized instanceof HttpException) {
       throw normalized;
     }

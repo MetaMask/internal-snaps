@@ -213,22 +213,23 @@ export function isHttpException(
  * when `error` is a recognized transport failure, otherwise `error` unchanged.
  */
 export function normalizeHttpException(error: unknown): unknown {
-  if (!(error instanceof Error)) {
-    return error;
+  const normalizedError = normalizeFetchPolicyException(error);
+  if (!(normalizedError instanceof Error)) {
+    return normalizedError;
   }
 
-  if (error instanceof HttpException) {
-    return error;
+  if (normalizedError instanceof HttpException) {
+    return normalizedError;
   }
 
-  if (!isHttpException(error)) {
-    return error;
+  if (!isHttpException(normalizedError)) {
+    return normalizedError;
   }
 
-  const code = getHttpErrorCode(error);
+  const code = getHttpErrorCode(normalizedError);
   return new HttpException(
     code ? `HTTP error! cause: ${code}` : 'HTTP error!',
-    { cause: error },
+    { cause: normalizedError },
   );
 }
 
@@ -238,7 +239,7 @@ export function normalizeHttpException(error: unknown): unknown {
  * @param error - Error emitted by the shared fetch policy.
  * @returns A compatible HTTP exception, or the original error.
  */
-export function normalizeFetchPolicyException(error: unknown): unknown {
+function normalizeFetchPolicyException(error: unknown): unknown {
   if (!(error instanceof Error)) {
     return error;
   }
