@@ -14,6 +14,7 @@ import {
   updateInterface,
 } from '../../../../core/utils/interface';
 import logger from '../../../../core/utils/logger';
+import type { InstructionParseResult } from '../../../../entities';
 import { extractInstructionsFromUnknownBase64String } from '../../../../entities';
 import {
   accountsService,
@@ -70,12 +71,13 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
  * sponsored. Never throws: on failure the confirmation shows the fee as usual.
  *
  * @param context - The confirmation context.
- * @param instructionsExtracted - Whether the transaction instructions could be parsed.
+ * @param instructions - The parsed top-level instructions, or `null` when they
+ * could not be parsed.
  * @returns The fee payment, or `null` if it could not be determined.
  */
 async function getFeePayment(
   context: ConfirmTransactionRequestContext,
-  instructionsExtracted: boolean,
+  instructions: InstructionParseResult[] | null,
 ): Promise<FeePayment | null> {
   if (!context.account) {
     return null;
@@ -83,28 +85,17 @@ async function getFeePayment(
 
   try {
     const ownAccounts = await accountsService.getAll();
-    const feePayment = await analyzeFeePayment({
+    return await analyzeFeePayment({
       transaction: context.transaction,
       accountAddress: context.account.address,
       ownAddresses: ownAccounts.map((account) => account.address),
-      instructions: context.advanced.instructions,
+      instructions,
       reader: createFeePaymentChainReader(
         connection.getRpc(context.scope),
         context.scope,
         async (assetTypes) => assetsService.getAssetsMetadata(assetTypes),
       ),
     });
-
-    if (instructionsExtracted || feePayment.paidBy !== 'sponsor') {
-      return feePayment;
-    }
-
-    // Without the instructions we cannot tell what the user pays.
-    return {
-      ...feePayment,
-      userCost: feePayment.userCost === 'costs' ? 'costs' : 'unverified',
-      mayCostMore: true,
-    };
   } catch (error) {
     await trackError(error);
     return null;
@@ -137,14 +128,14 @@ export async function render(
       context.preferences = DEFAULT_CONFIRMATION_CONTEXT.preferences;
     });
 
-  let instructionsExtracted = false;
+  let parsedInstructions: InstructionParseResult[] | null = null;
   const instructionsPromise = extractInstructionsFromUnknownBase64String(
     connection.getRpc(context.scope),
     context.transaction,
   )
     .then(async (instructions) => {
       context.advanced.instructions = instructions;
-      instructionsExtracted = true;
+      parsedInstructions = instructions;
 
       try {
         context.destinationAddress = extractDestinationAddress(instructions);
@@ -232,7 +223,7 @@ export async function render(
   const [, , feePayment] = await Promise.all([
     destinationDomainPromise,
     tokenPricesPromise,
-    getFeePayment(context, instructionsExtracted),
+    getFeePayment(context, parsedInstructions),
   ]);
   updatedContext1.feePayment = feePayment;
 

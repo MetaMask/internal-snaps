@@ -438,7 +438,7 @@ describe('render tracking', () => {
     expect(trackError).toHaveBeenCalledTimes(5);
   });
 
-  it('does not claim a sponsored transaction is free when its instructions cannot be parsed', async () => {
+  it('tells the fee analysis when the instructions cannot be parsed', async () => {
     const {
       render,
       analyzeFeePayment,
@@ -472,13 +472,18 @@ describe('render tracking', () => {
       origin: 'https://metamask.io',
     } as unknown as ConfirmTransactionRequestContext);
 
+    expect(analyzeFeePayment).toHaveBeenCalledWith(
+      expect.objectContaining({ instructions: null }),
+    );
+
+    // The analysis owns the verdict, so its result is used as it comes.
     const [, , contextAfterFee] = updateInterface.mock.calls[0];
     expect(contextAfterFee.feePayment).toStrictEqual({
       feePayer: 'CDg3bPoM21fSXEzrXWHWyJR33JHX6xaYboq5p7s4uo48',
       paidBy: 'sponsor',
-      userCost: 'unverified',
+      userCost: 'free',
       userCosts: [],
-      mayCostMore: true,
+      mayCostMore: false,
       uncheckedPrograms: [],
     });
   });

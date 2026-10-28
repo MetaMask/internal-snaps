@@ -141,7 +141,7 @@ type AnalyzeFeePaymentParams = {
   transaction: string;
   accountAddress: string;
   ownAddresses: string[];
-  instructions: InstructionParseResult[];
+  instructions: InstructionParseResult[] | null;
   reader: FeePaymentChainReader;
 };
 
@@ -623,7 +623,8 @@ const resolveUserCosts = async (
  * @param params.transaction - The base64 encoded transaction.
  * @param params.accountAddress - The account confirming the transaction.
  * @param params.ownAddresses - All the accounts of this wallet.
- * @param params.instructions - The parsed top-level instructions.
+ * @param params.instructions - The parsed top-level instructions, or `null`
+ * when they could not be parsed, which makes a sponsored result `unverified`.
  * @param params.reader - Reads the on-chain state the analysis depends on.
  * @returns The fee payment analysis.
  */
@@ -674,8 +675,13 @@ export const analyzeFeePayment = async ({
     uncheckedPrograms: new Set(),
   };
 
-  for (const instruction of instructions) {
+  for (const instruction of instructions ?? []) {
     analyzeTopLevelInstruction(instruction, context, sponsorship);
+  }
+
+  // Without the instructions we cannot tell what the user pays.
+  if (instructions === null) {
+    sponsorship.unverified = true;
   }
 
   for (const instruction of innerInstructions ?? []) {

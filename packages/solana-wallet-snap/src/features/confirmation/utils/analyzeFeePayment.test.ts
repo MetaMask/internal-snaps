@@ -218,6 +218,44 @@ describe('analyzeFeePayment', () => {
     });
   });
 
+  it('does not claim a sponsored transaction is free without its instructions', async () => {
+    expect(
+      await analyzeFeePayment({
+        transaction: buildTransaction(sponsor, [transferSol(recipient, 1000n)]),
+        accountAddress: user,
+        ownAddresses: [user, otherOwnAccount],
+        instructions: null,
+        reader: buildReader(),
+      }),
+    ).toStrictEqual({
+      feePayer: sponsor,
+      paidBy: 'sponsor',
+      userCost: 'unverified',
+      userCosts: [],
+      mayCostMore: true,
+      uncheckedPrograms: [],
+    });
+  });
+
+  it('still reports who pays without the instructions', async () => {
+    expect(
+      await analyzeFeePayment({
+        transaction: buildTransaction(user, [transferSol(recipient, 1000n)]),
+        accountAddress: user,
+        ownAddresses: [user, otherOwnAccount],
+        instructions: null,
+        reader: buildReader(),
+      }),
+    ).toStrictEqual({
+      feePayer: user,
+      paidBy: 'account',
+      userCost: null,
+      userCosts: [],
+      mayCostMore: false,
+      uncheckedPrograms: [],
+    });
+  });
+
   it('reports SOL sent to the sponsor as a cost', async () => {
     const result = await analyze(sponsor, [
       transferSol(recipient, 1000n),
