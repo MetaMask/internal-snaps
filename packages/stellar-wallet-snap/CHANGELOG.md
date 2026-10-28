@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Retry transient Stellar Horizon, Soroban RPC, Token API, Price API, and Security Alerts API read failures with bounded timeouts and circuit breaking ([#532](https://github.com/MetaMask/internal-snaps/pull/532))
+  - Signed transaction submission remains one-shot; the existing explicit `txBadSeq` rebuild and re-sign flow is unchanged.
+
 ## [2.0.0]
 
 ### Added

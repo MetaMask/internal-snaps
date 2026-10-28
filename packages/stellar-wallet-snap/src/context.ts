@@ -1,5 +1,6 @@
 import {
   AnalyticsService,
+  createFetchPolicy,
   SecurityAlertsApiClient,
   State,
   AssetsProvider,
@@ -153,6 +154,10 @@ const priceService = new PriceService({
 
 const securityAlertsApiClient = new SecurityAlertsApiClient({
   scanUrl: `${AppConfig.api.securityAlertsApi.baseUrl}/stellar/transaction/scan`,
+  policy: createFetchPolicy({
+    service: 'security_alerts_api',
+    logger,
+  }),
 });
 
 const transactionScanService = new TransactionScanService({

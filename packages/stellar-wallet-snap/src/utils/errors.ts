@@ -1,4 +1,9 @@
-import { createSnapErrorHandling } from '@metamask/snap-networks-utils';
+import type { FetchPolicyError } from '@metamask/snap-networks-utils';
+import {
+  BrokenCircuitError,
+  createSnapErrorHandling,
+  FetchPolicyErrorName,
+} from '@metamask/snap-networks-utils';
 import type { Struct } from '@metamask/superstruct';
 import { assert, enums, object, type } from '@metamask/superstruct';
 
@@ -225,6 +230,31 @@ export function normalizeHttpException(error: unknown): unknown {
     code ? `HTTP error! cause: ${code}` : 'HTTP error!',
     { cause: error },
   );
+}
+
+/**
+ * Restores the API client's public HTTP exceptions after policy execution.
+ *
+ * @param error - Error emitted by the shared fetch policy.
+ * @returns A compatible HTTP exception, or the original error.
+ */
+export function normalizeFetchPolicyException(error: unknown): unknown {
+  if (!(error instanceof Error)) {
+    return error;
+  }
+
+  const policyError = error as FetchPolicyError;
+  if (policyError.httpStatus !== undefined) {
+    return new HttpResponseException(policyError.httpStatus, { cause: error });
+  }
+  if (
+    error.name === FetchPolicyErrorName.Network ||
+    error.name === FetchPolicyErrorName.Timeout ||
+    error instanceof BrokenCircuitError
+  ) {
+    return new HttpException(error.message, { cause: error });
+  }
+  return error;
 }
 
 /**

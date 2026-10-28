@@ -4004,9 +4004,11 @@ __metadata:
     jest: "npm:30.0.3"
     jest-it-up: "npm:^2.0.2"
     lodash: "npm:^4.17.21"
+    nock: "npm:^13.3.1"
     oxfmt: "npm:^0.70.0"
     qrcode-generator: "npm:^2.0.4"
     ts-jest: "npm:^29.4.14"
+    webpack: "npm:5.107.2"
   languageName: unknown
   linkType: soft
 
