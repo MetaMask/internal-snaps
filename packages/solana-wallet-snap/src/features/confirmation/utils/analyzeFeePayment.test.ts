@@ -161,11 +161,11 @@ const transferUsdc = (destination: string, amount: bigint): Instruction =>
   });
 
 describe('getFeePayer', () => {
-  it('returns the first account of a wire transaction', () => {
-    expect(getFeePayer(buildTransaction(sponsor, []))).toBe(sponsor);
+  it('returns the first account of a wire transaction', async () => {
+    expect(await getFeePayer(buildTransaction(sponsor, []))).toBe(sponsor);
   });
 
-  it('returns the first account of a bare transaction message', () => {
+  it('returns the first account of a bare transaction message', async () => {
     const messageBase64 = pipe(
       buildMessage(sponsor, [transferSol(recipient, 1n)]),
       compileTransactionMessage,
@@ -173,7 +173,7 @@ describe('getFeePayer', () => {
       (bytes) => getBase64Decoder().decode(bytes),
     );
 
-    expect(getFeePayer(messageBase64)).toBe(sponsor);
+    expect(await getFeePayer(messageBase64)).toBe(sponsor);
   });
 });
 

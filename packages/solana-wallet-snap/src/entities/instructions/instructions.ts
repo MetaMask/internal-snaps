@@ -156,6 +156,7 @@ import {
 } from '@solana-program/token-2022';
 import { getBase58Codec } from '@solana/kit';
 import type {
+  AccountRole,
   Rpc,
   SolanaRpcApi,
   Instruction,
@@ -227,6 +228,9 @@ type ParsedInstruction = {
 
 type EncodedInstruction = Omit<Instruction, 'data' | 'accounts'> & {
   dataBase58: string;
+  // The kit accounts are readonly and branded, which the interface context
+  // cannot serialize, so they are normalized to a plain shape.
+  accounts?: { address: string; role: AccountRole }[];
 };
 
 // When the instruction is parsed successfully, we return data with this structure
@@ -563,11 +567,19 @@ export const parseInstruction = (
   instruction: Instruction,
 ): InstructionParseResult => {
   const { programAddress } = instruction;
+  const { accounts, ...instructionWithoutAccounts } = instruction;
 
   // We need to rewrite the data field from ReadonlyUint8Array to Uint8Array
-  // because the interface context is serialized as JSON, and JSON does not support ReadonlyUint8Array
-  const encoded = {
-    ...instruction,
+  // because the interface context is serialized as JSON, and JSON does not support ReadonlyUint8Array.
+  // The accounts are normalized to a plain shape for the same reason.
+  const encoded: EncodedInstruction = {
+    ...instructionWithoutAccounts,
+    ...(accounts && {
+      accounts: accounts.map(({ address, role }) => ({
+        address,
+        role,
+      })),
+    }),
     dataBase58: getBase58Codec().decode(instruction.data ?? new Uint8Array()),
   };
 

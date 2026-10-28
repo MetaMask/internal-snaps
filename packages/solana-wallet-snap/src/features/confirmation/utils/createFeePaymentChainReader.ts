@@ -1,3 +1,10 @@
+import {
+  is,
+  number,
+  optional,
+  string,
+  type as typeStruct,
+} from '@metamask/superstruct';
 import type { CaipAssetType } from '@metamask/utils';
 import { address } from '@solana/kit';
 import type {
@@ -19,11 +26,21 @@ import type {
   SimulatedInstruction,
 } from './analyzeFeePayment';
 
-type TokenAccountInfo = {
-  owner?: string;
-  mint?: string;
-  tokenAmount?: { decimals?: number };
-};
+/**
+ * A token account as the RPC parses it, with the fields the analysis reads.
+ * Accounts the RPC cannot parse come back as a base64 tuple instead, and it
+ * types the parsed `info` as a bare `object`, so the data is validated rather
+ * than cast.
+ */
+const ParsedTokenAccountStruct = typeStruct({
+  parsed: typeStruct({
+    info: typeStruct({
+      owner: optional(string()),
+      mint: optional(string()),
+      tokenAmount: optional(typeStruct({ decimals: optional(number()) })),
+    }),
+  }),
+});
 
 /**
  * Builds the on-chain reader used by {@link analyzeFeePayment}.
@@ -53,10 +70,9 @@ export const createFeePaymentChainReader = (
         }
 
         const { data } = accountInfo;
-        // Accounts the RPC cannot parse come back as a base64 tuple.
-        const info = Array.isArray(data)
-          ? undefined
-          : (data as { parsed?: { info?: TokenAccountInfo } }).parsed?.info;
+        const info = is(data, ParsedTokenAccountStruct)
+          ? data.parsed.info
+          : undefined;
 
         return [
           account,
