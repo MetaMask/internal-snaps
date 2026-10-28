@@ -428,17 +428,27 @@ const analyzeSimulatedSystemInstruction: SimulatedAnalyzer = (
   sponsorship,
 ) => {
   const info = parsed.info ?? {};
-  if (info.source !== accountAddress) {
+
+  if (SIMULATED_ACCOUNT_CREATION_TYPES.has(parsed.type)) {
+    if (info.source === accountAddress) {
+      sponsorship.rentLamports += BigInt(info.lamports ?? 0);
+    }
     return;
   }
 
-  if (SIMULATED_ACCOUNT_CREATION_TYPES.has(parsed.type)) {
-    sponsorship.rentLamports += BigInt(info.lamports ?? 0);
-  } else if (
-    SIMULATED_SOL_TRANSFER_TYPES.has(parsed.type) &&
-    info.destination === feePayer
-  ) {
-    sponsorship.solToSponsorLamports += BigInt(info.lamports ?? 0);
+  if (SIMULATED_SOL_TRANSFER_TYPES.has(parsed.type)) {
+    if (info.source === accountAddress && info.destination === feePayer) {
+      sponsorship.solToSponsorLamports += BigInt(info.lamports ?? 0);
+    }
+    return;
+  }
+
+  // Any other System instruction that involves both the user and the sponsor,
+  // for example a withdrawal from an account the user controls. The user is
+  // not always the `source`, so we cannot tell what it costs them.
+  const values = Object.values(info);
+  if (values.includes(accountAddress) && values.includes(feePayer)) {
+    sponsorship.unverified = true;
   }
 };
 

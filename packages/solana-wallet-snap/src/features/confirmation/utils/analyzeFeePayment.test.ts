@@ -687,6 +687,37 @@ describe('analyzeFeePayment', () => {
       ]);
     });
 
+    it('marks other invoked system instructions moving the user funds to the sponsor as unverified', async () => {
+      const { result } = await simulate(
+        [cowCreateOrder(sponsor)],
+        [
+          innerSystem('withdrawNonceAccount', {
+            nonceAccount: orderAccount,
+            destination: sponsor,
+            lamports: 5000,
+            nonceAuthority: user,
+          }),
+        ],
+      );
+
+      expect(result.userCost).toBe('unverified');
+    });
+
+    it('ignores other invoked system instructions that do not involve the sponsor', async () => {
+      const { result } = await simulate(
+        [cowCreateOrder(sponsor)],
+        [
+          innerSystem('allocate', {
+            account: orderAccount,
+            space: 100,
+            authority: user,
+          }),
+        ],
+      );
+
+      expect(result.userCost).toBe('free');
+    });
+
     it('marks invoked approvals to the sponsor as unverified', async () => {
       const { result } = await simulate(
         [cowCreateOrder(sponsor)],
