@@ -1,4 +1,9 @@
-import { createSnapErrorHandling } from '@metamask/snap-networks-utils';
+import type { FetchPolicyError } from '@metamask/snap-networks-utils';
+import {
+  BrokenCircuitError,
+  createSnapErrorHandling,
+  FetchPolicyErrorName,
+} from '@metamask/snap-networks-utils';
 import type { Struct } from '@metamask/superstruct';
 import { assert, enums, object, type } from '@metamask/superstruct';
 
@@ -208,23 +213,49 @@ export function isHttpException(
  * when `error` is a recognized transport failure, otherwise `error` unchanged.
  */
 export function normalizeHttpException(error: unknown): unknown {
+  const normalizedError = normalizeFetchPolicyException(error);
+  if (!(normalizedError instanceof Error)) {
+    return normalizedError;
+  }
+
+  if (normalizedError instanceof HttpException) {
+    return normalizedError;
+  }
+
+  if (!isHttpException(normalizedError)) {
+    return normalizedError;
+  }
+
+  const code = getHttpErrorCode(normalizedError);
+  return new HttpException(
+    code ? `HTTP error! cause: ${code}` : 'HTTP error!',
+    { cause: normalizedError },
+  );
+}
+
+/**
+ * Restores the API client's public HTTP exceptions after policy execution.
+ *
+ * @param error - Error emitted by the shared fetch policy.
+ * @returns A compatible HTTP exception, or the original error.
+ */
+function normalizeFetchPolicyException(error: unknown): unknown {
   if (!(error instanceof Error)) {
     return error;
   }
 
-  if (error instanceof HttpException) {
-    return error;
+  const policyError = error as FetchPolicyError;
+  if (policyError.httpStatus !== undefined) {
+    return new HttpResponseException(policyError.httpStatus, { cause: error });
   }
-
-  if (!isHttpException(error)) {
-    return error;
+  if (
+    error.name === FetchPolicyErrorName.Network ||
+    error.name === FetchPolicyErrorName.Timeout ||
+    error instanceof BrokenCircuitError
+  ) {
+    return new HttpException(error.message, { cause: error });
   }
-
-  const code = getHttpErrorCode(error);
-  return new HttpException(
-    code ? `HTTP error! cause: ${code}` : 'HTTP error!',
-    { cause: error },
-  );
+  return error;
 }
 
 /**

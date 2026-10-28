@@ -1,4 +1,9 @@
-import { buildUrl } from '@metamask/snap-networks-utils';
+import type { FetchPolicy, Logger } from '@metamask/snap-networks-utils';
+import {
+  buildUrl,
+  createFetchPolicy,
+  fetchWithPolicy,
+} from '@metamask/snap-networks-utils';
 import { array } from '@metamask/superstruct';
 
 import {
@@ -15,11 +20,11 @@ import {
   assertHttpRequestParams,
   assertHttpResponse,
   HttpException,
-  HttpResponseException,
   InvalidHttpRequestParamsException,
   InvalidHttpResponseException,
   normalizeHttpException,
 } from '../../../utils/errors';
+import { logger } from '../../../utils/logger';
 import type {
   TokenMetadataByAssetIdsResponse,
   TokenMetadataByChainIdResponse,
@@ -35,6 +40,8 @@ export class TokenApiClient {
 
   readonly #baseUrl: string;
 
+  readonly #policy: FetchPolicy;
+
   constructor(
     {
       baseUrl,
@@ -42,9 +49,14 @@ export class TokenApiClient {
       baseUrl: string;
     },
     _fetch: typeof globalThis.fetch = globalThis.fetch,
+    _logger: Logger = logger,
   ) {
     this.#fetch = _fetch;
     this.#baseUrl = baseUrl;
+    this.#policy = createFetchPolicy({
+      service: 'token_api',
+      logger: _logger,
+    });
   }
 
   async getAssetsByAssetIds(
@@ -64,13 +76,13 @@ export class TokenApiClient {
         },
       });
 
-      const response = await this.#fetch(url);
-
-      if (!response.ok) {
-        throw new HttpResponseException(response.status);
-      }
-
-      const data = await response.json();
+      const body = await fetchWithPolicy(
+        this.#policy,
+        url,
+        undefined,
+        this.#fetch,
+      );
+      const data = JSON.parse(body);
 
       assertHttpResponse(data, TokenMetadataByAssetIdsResponseStruct);
 
@@ -108,13 +120,13 @@ export class TokenApiClient {
         },
       });
 
-      const response = await this.#fetch(url);
-
-      if (!response.ok) {
-        throw new HttpResponseException(response.status);
-      }
-
-      const data = await response.json();
+      const body = await fetchWithPolicy(
+        this.#policy,
+        url,
+        undefined,
+        this.#fetch,
+      );
+      const data = JSON.parse(body);
 
       assertHttpResponse(data, TokenMetadataByChainIdResponseStruct);
 

@@ -1,5 +1,14 @@
 import {
+  BrokenCircuitError,
+  createFetchPolicyError,
+  FetchPolicyErrorName,
+} from '@metamask/snap-networks-utils';
+
+import {
+  HttpException,
+  HttpResponseException,
   InvalidHttpRequestParamsException,
+  normalizeHttpException,
   rethrowIfInstanceElseThrow,
 } from './errors';
 
@@ -98,6 +107,36 @@ describe('errors', () => {
     it('can be constructed with a message', () => {
       expect(new InvalidHttpRequestParamsException('bad params').message).toBe(
         'bad params',
+      );
+    });
+  });
+
+  describe('normalizeHttpException', () => {
+    it('wraps HTTP status policy errors in HttpResponseException', () => {
+      const error = createFetchPolicyError('HTTP 503', { httpStatus: 503 });
+
+      expect(normalizeHttpException(error)).toBeInstanceOf(
+        HttpResponseException,
+      );
+    });
+
+    it('wraps network, timeout, and broken-circuit errors in HttpException', () => {
+      const networkError = createFetchPolicyError('network failed', {
+        name: FetchPolicyErrorName.Network,
+      });
+      const timeoutError = createFetchPolicyError('timed out', {
+        name: FetchPolicyErrorName.Timeout,
+      });
+      const brokenCircuitError = new BrokenCircuitError();
+
+      expect(normalizeHttpException(networkError)).toBeInstanceOf(
+        HttpException,
+      );
+      expect(normalizeHttpException(timeoutError)).toBeInstanceOf(
+        HttpException,
+      );
+      expect(normalizeHttpException(brokenCircuitError)).toBeInstanceOf(
+        HttpException,
       );
     });
   });

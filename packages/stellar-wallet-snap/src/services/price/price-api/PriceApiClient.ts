@@ -1,4 +1,10 @@
-import { UrlStruct, buildUrl } from '@metamask/snap-networks-utils';
+import type { FetchPolicy, Logger } from '@metamask/snap-networks-utils';
+import {
+  UrlStruct,
+  buildUrl,
+  createFetchPolicy,
+  fetchWithPolicy,
+} from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
 import type { CaipAssetType } from '@metamask/utils';
 
@@ -8,11 +14,11 @@ import {
   assertHttpRequestParams,
   assertHttpResponse,
   HttpException,
-  HttpResponseException,
   InvalidHttpRequestParamsException,
   InvalidHttpResponseException,
   normalizeHttpException,
 } from '../../../utils/errors';
+import { logger } from '../../../utils/logger';
 import type { SpotPricesResponse, VsCurrencyParam } from './api';
 import { GetSpotPricesParamsStruct, GetSpotPricesResponseStruct } from './api';
 import { PriceApiException } from './exceptions';
@@ -22,6 +28,8 @@ export class PriceApiClient {
 
   readonly #baseUrl: string;
 
+  readonly #policy: FetchPolicy;
+
   constructor(
     {
       baseUrl,
@@ -29,11 +37,16 @@ export class PriceApiClient {
       baseUrl: string;
     },
     _fetch: typeof globalThis.fetch = globalThis.fetch,
+    _logger: Logger = logger,
   ) {
     assert(baseUrl, UrlStruct);
 
     this.#fetch = _fetch;
     this.#baseUrl = baseUrl;
+    this.#policy = createFetchPolicy({
+      service: 'price_api',
+      logger: _logger,
+    });
   }
 
   async getSpotPrices(
@@ -59,13 +72,13 @@ export class PriceApiClient {
         },
       });
 
-      const response = await this.#fetch(url);
-
-      if (!response.ok) {
-        throw new HttpResponseException(response.status);
-      }
-
-      const spotPrices = await response.json();
+      const body = await fetchWithPolicy(
+        this.#policy,
+        url,
+        undefined,
+        this.#fetch,
+      );
+      const spotPrices = JSON.parse(body);
       assertHttpResponse(spotPrices, GetSpotPricesResponseStruct);
 
       return spotPrices;
