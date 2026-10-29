@@ -355,6 +355,8 @@ describe('render tracking', () => {
 
     return {
       render,
+      createInterface,
+      getPreferences,
       trackError,
       calculateFee,
       extractDestinationAddress,
@@ -363,6 +365,56 @@ describe('render tracking', () => {
       transactionScanService,
     };
   };
+
+  it.each([
+    [false, false, false, 'fetched'],
+    [false, false, true, 'fetched'],
+    [true, false, false, 'fetching'],
+    [false, true, false, 'fetching'],
+    [true, true, false, 'fetching'],
+  ] as const)(
+    'initializes security=%s simulation=%s expiry=%s with scan state %s',
+    async (
+      useSecurityAlerts,
+      simulateOnChainActions,
+      transactionExpired,
+      scanFetchStatus,
+    ) => {
+      const {
+        render,
+        createInterface,
+        getPreferences,
+        transactionScanService,
+      } = await setupTest();
+      getPreferences.mockResolvedValue({
+        locale: 'en',
+        currency: 'usd',
+        useExternalPricingData: false,
+        useSecurityAlerts,
+        simulateOnChainActions,
+      });
+      transactionScanService.scanTransaction.mockResolvedValue({
+        status: 'SUCCESS',
+        estimatedChanges: { assets: [] },
+        validation: { type: 'Benign', reason: null },
+        error: null,
+      });
+
+      await render({
+        ...DEFAULT_CONFIRMATION_CONTEXT,
+        networkImage: null,
+        transactionExpired,
+      });
+
+      expect(createInterface).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({ scanFetchStatus, transactionExpired }),
+      );
+      expect(transactionScanService.scanTransaction).toHaveBeenCalledTimes(
+        Number(useSecurityAlerts || simulateOnChainActions),
+      );
+    },
+  );
 
   it('tracks confirmation fallbacks', async () => {
     const {
@@ -379,7 +431,6 @@ describe('render tracking', () => {
     const destinationDomainError = new Error('Domain failed');
     const pricesError = new Error('Prices failed');
     const feeError = new Error('Fee failed');
-    const scanError = new Error('Scan failed');
 
     extractDestinationAddress.mockImplementation(() => {
       throw destinationExtractError;
@@ -391,7 +442,7 @@ describe('render tracking', () => {
     calculateFee.mockImplementation(() => {
       throw feeError;
     });
-    transactionScanService.scanTransaction.mockRejectedValue(scanError);
+    transactionScanService.scanTransaction.mockResolvedValue(null);
 
     await expect(
       render({
@@ -408,7 +459,6 @@ describe('render tracking', () => {
     expect(trackError).toHaveBeenCalledWith(destinationExtractError);
     expect(trackError).toHaveBeenCalledWith(pricesError);
     expect(trackError).toHaveBeenCalledWith(feeError);
-    expect(trackError).toHaveBeenCalledWith(scanError);
-    expect(trackError).toHaveBeenCalledTimes(4);
+    expect(trackError).toHaveBeenCalledTimes(3);
   });
 });

@@ -14,6 +14,7 @@ import type { SecurityAlertSimulationValidationResponse } from '../../clients/se
 import { Network } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../test/mocks/solana-keyring-accounts';
 import { TransactionScanService } from './TransactionScanService';
+import type { TransactionScanError, TransactionScanStatus } from './types';
 
 describe('TransactionScan', () => {
   let transactionScanService: TransactionScanService;
@@ -50,11 +51,224 @@ describe('TransactionScan', () => {
   });
 
   describe('scanTransaction', () => {
+    it.each<{
+      name: string;
+      response: SecurityAlertSimulationValidationResponse;
+      options: ('simulation' | 'validation')[];
+      status: TransactionScanStatus;
+      error: TransactionScanError | null;
+    }>([
+      {
+        name: 'an API-level error',
+        response: {
+          status: 'ERROR',
+          error_details: { type: 'ApiError', message: 'Unavailable' },
+        },
+        options: ['simulation', 'validation'],
+        status: 'ERROR',
+        error: { type: 'response', code: 'ApiError', message: 'Unavailable' },
+      },
+      {
+        name: 'an overall error without execution details',
+        response: { status: 'ERROR' },
+        options: ['simulation', 'validation'],
+        status: 'ERROR',
+        error: { type: 'response', code: null, message: null },
+      },
+      {
+        name: 'a validation error with a successful simulation',
+        response: {
+          status: 'SUCCESS',
+          result: { simulation: {}, validation: { result_type: 'Error' } },
+        },
+        options: ['simulation', 'validation'],
+        status: 'ERROR',
+        error: { type: 'validation', code: null, message: null },
+      },
+      {
+        name: 'no requested results',
+        response: {
+          status: 'SUCCESS',
+          result: { simulation: null, validation: null },
+        },
+        options: ['simulation', 'validation'],
+        status: 'ERROR',
+        error: {
+          type: 'response',
+          code: 'empty',
+          message: 'No scan results returned',
+        },
+      },
+      {
+        name: 'a missing result object',
+        response: { status: 'SUCCESS' },
+        options: ['simulation', 'validation'],
+        status: 'ERROR',
+        error: {
+          type: 'response',
+          code: 'empty',
+          message: 'No scan results returned',
+        },
+      },
+      {
+        name: 'a present validation section without a verdict',
+        response: { status: 'SUCCESS', result: { validation: {} } },
+        options: ['validation'],
+        status: 'SUCCESS',
+        error: null,
+      },
+      {
+        name: 'simulation only when requested',
+        response: {
+          status: 'SUCCESS',
+          result: { simulation: {}, validation: null },
+        },
+        options: ['simulation'],
+        status: 'SUCCESS',
+        error: null,
+      },
+      {
+        name: 'validation only when requested',
+        response: {
+          status: 'SUCCESS',
+          result: { simulation: null, validation: { result_type: 'Benign' } },
+        },
+        options: ['validation'],
+        status: 'SUCCESS',
+        error: null,
+      },
+      {
+        name: 'partial requested results',
+        response: {
+          status: 'SUCCESS',
+          result: { simulation: {}, validation: null },
+        },
+        options: ['simulation', 'validation'],
+        status: 'SUCCESS',
+        error: null,
+      },
+      {
+        name: 'a security verdict without requested simulation estimates',
+        response: {
+          status: 'SUCCESS',
+          result: { simulation: null, validation: { result_type: 'Benign' } },
+        },
+        options: ['simulation', 'validation'],
+        status: 'ERROR',
+        error: null,
+      },
+      {
+        name: 'an unrequested result with the requested result missing',
+        response: {
+          status: 'SUCCESS',
+          result: { simulation: {}, validation: null },
+        },
+        options: ['validation'],
+        status: 'ERROR',
+        error: {
+          type: 'response',
+          code: 'empty',
+          message: 'No scan results returned',
+        },
+      },
+      {
+        name: 'an execution failure',
+        response: {
+          status: 'ERROR',
+          error_details: {
+            type: 'TransactionError',
+            message: 'Insufficient funds',
+            transaction_index: 0,
+            code: 'ResultWithNegativeLamports',
+          },
+        },
+        options: ['simulation', 'validation'],
+        status: 'ERROR',
+        error: {
+          type: 'simulation',
+          code: 'ResultWithNegativeLamports',
+          message: 'Insufficient funds',
+        },
+      },
+      {
+        name: 'an instruction failure',
+        response: {
+          status: 'ERROR',
+          error_details: {
+            type: 'InstructionError',
+            message: 'Failed instruction',
+            transaction_index: 0,
+            instruction_index: 0,
+            program_account: null,
+          },
+        },
+        options: ['simulation', 'validation'],
+        status: 'ERROR',
+        error: {
+          type: 'simulation',
+          code: null,
+          message: 'Failed instruction',
+        },
+      },
+    ])(
+      'classifies $name independently of transaction validity',
+      async ({ response, options, status, error }) => {
+        jest
+          .mocked(mockSecurityAlertsApiClient.scanTransaction)
+          .mockResolvedValue(response);
+
+        const scan = await transactionScanService.scanTransaction({
+          method: 'signAndSendTransaction',
+          accountAddress: MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
+          transaction: 'transaction',
+          scope: Network.Mainnet,
+          origin: 'metamask',
+          options,
+        });
+
+        expect(scan).toMatchObject({
+          status,
+          error,
+        });
+        expect(scan).not.toHaveProperty('unavailable');
+        expect(scan?.estimatedChanges).toStrictEqual(
+          expect.objectContaining({ assets: expect.any(Array) }),
+        );
+      },
+    );
+
+    it('keeps the shared estimates container when only validation was requested', async () => {
+      jest
+        .mocked(mockSecurityAlertsApiClient.scanTransaction)
+        .mockResolvedValue({
+          status: 'SUCCESS',
+          result: { simulation: null, validation: { result_type: 'Benign' } },
+        });
+
+      const result = await transactionScanService.scanTransaction({
+        method: 'signAndSendTransaction',
+        accountAddress: MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
+        transaction: 'transaction',
+        scope: Network.Mainnet,
+        origin: 'metamask',
+        options: ['validation'],
+      });
+
+      expect(result?.estimatedChanges).toStrictEqual({ assets: [] });
+      expect(Object.keys(result ?? {}).sort()).toStrictEqual([
+        'error',
+        'estimatedChanges',
+        'status',
+        'validation',
+      ]);
+    });
+
     it('scans a transaction', async () => {
       jest
         .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
         .mockResolvedValue({
           status: 'SUCCESS',
+          result: { simulation: {}, validation: { result_type: 'Benign' } },
         } as SecurityAlertSimulationValidationResponse);
 
       const result = await transactionScanService.scanTransaction({
@@ -67,6 +281,43 @@ describe('TransactionScan', () => {
 
       expect(result).toMatchObject({
         status: 'SUCCESS',
+      });
+    });
+
+    it('preserves a failed security verdict alongside the classified simulation error', async () => {
+      jest
+        .mocked(mockSecurityAlertsApiClient.scanTransaction)
+        .mockResolvedValue({
+          status: 'ERROR',
+          result: {
+            validation: {
+              result_type: 'Error',
+              reason: 'Validation unavailable',
+            },
+          },
+          error_details: {
+            type: 'TransactionError',
+            message: 'Insufficient funds',
+            transaction_index: 0,
+            code: 'ResultWithNegativeLamports',
+          },
+        });
+
+      const result = await transactionScanService.scanTransaction({
+        method: 'signAndSendTransaction',
+        accountAddress: MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
+        transaction: 'transaction',
+        scope: Network.Mainnet,
+        origin: 'metamask',
+      });
+
+      expect(result).toMatchObject({
+        error: {
+          type: 'simulation',
+          code: 'ResultWithNegativeLamports',
+          message: 'Insufficient funds',
+        },
+        validation: { type: 'Error', reason: 'Validation unavailable' },
       });
     });
 
@@ -319,8 +570,9 @@ describe('TransactionScan', () => {
           ],
         },
         error: {
-          type: 'TransactionError',
+          type: 'simulation',
           code: '0x1',
+          message: 'failed',
         },
       });
     });

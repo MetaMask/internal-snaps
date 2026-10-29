@@ -68,10 +68,12 @@
   "confirmation.simulationErrorSubtitle": "{reason}",
   "confirmation.validationErrorTitle": "This is a deceptive request",
   "confirmation.validationErrorSubtitle": "If you approve this request, a third party known for scams will take all your assets.",
-  "confirmation.validationErrorLearnMore": "Learn more",
-  "confirmation.validationErrorSecurityAdviced": "Security advice by",
+  "confirmation.validationErrorLearnMore": "See details",
+  "confirmation.validationErrorSecurityAdviced": "Powered by",
   "confirmation.securityScanInProgressTitle": "Checking for security issues",
   "confirmation.securityScanInProgressMessage": "This usually takes a few seconds.",
+  "confirmation.securityScanUnavailableTitle": "Security check unavailable",
+  "confirmation.securityScanUnavailableMessage": "We couldn't complete this safety check. Continue only if you trust the site and addresses involved.",
   "confirmation.signMessage.title": "Sign message",
   "confirmation.signMessage.message": "Message",
   "confirmation.signIn.title": "Sign-in request",
@@ -95,5 +97,12 @@
   "transactionScan.errors.insufficientSol": "Account does not have enough SOL to perform the operation.",
   "transactionScan.errors.slippageToleranceExceeded": "The transaction was reverted because the slippage tolerance was exceeded.",
   "transactionScan.errors.transactionBlockhashExpired": "Please go back and try again",
-  "transactionScan.errors.unknownError": "An unknown error occurred."
+  "transactionScan.errors.unknownError": "An unknown error occurred.",
+  "confirmation.validationWarningTitle": "This request may be risky",
+  "confirmation.validationWarningSubtitle": "Only continue if you trust this site and/or every address involved.",
+  "confirmation.maliciousAck.title": "High-risk request",
+  "confirmation.maliciousAck.description": "Security partners found high-risk signals in this request. If you continue, your funds can't be recovered.",
+  "confirmation.maliciousAck.checkbox": "I have acknowledged the risk and still want to proceed",
+  "confirmation.maliciousAck.proceed": "Confirm",
+  "confirmation.maliciousAck.back": "Go back"
 }

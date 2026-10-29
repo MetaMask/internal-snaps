@@ -209,16 +209,22 @@
       "message": "If you approve this request, a third party known for scams will take all your assets."
     },
     "confirmation.validationErrorLearnMore": {
-      "message": "Learn more"
+      "message": "See details"
     },
     "confirmation.validationErrorSecurityAdviced": {
-      "message": "Security advice by"
+      "message": "Powered by"
     },
     "confirmation.securityScanInProgressTitle": {
       "message": "Checking for security issues"
     },
     "confirmation.securityScanInProgressMessage": {
       "message": "This usually takes a few seconds."
+    },
+    "confirmation.securityScanUnavailableTitle": {
+      "message": "Security check unavailable"
+    },
+    "confirmation.securityScanUnavailableMessage": {
+      "message": "We couldn't complete this safety check. Continue only if you trust the site and addresses involved."
     },
     "confirmation.signMessage.title": {
       "message": "Sign message"
@@ -291,6 +297,27 @@
     },
     "transactionScan.errors.unknownError": {
       "message": "An unknown error occurred."
+    },
+    "confirmation.validationWarningTitle": {
+      "message": "This request may be risky"
+    },
+    "confirmation.validationWarningSubtitle": {
+      "message": "Only continue if you trust this site and/or every address involved."
+    },
+    "confirmation.maliciousAck.title": {
+      "message": "High-risk request"
+    },
+    "confirmation.maliciousAck.description": {
+      "message": "Security partners found high-risk signals in this request. If you continue, your funds can't be recovered."
+    },
+    "confirmation.maliciousAck.checkbox": {
+      "message": "I have acknowledged the risk and still want to proceed"
+    },
+    "confirmation.maliciousAck.proceed": {
+      "message": "Confirm"
+    },
+    "confirmation.maliciousAck.back": {
+      "message": "Go back"
     }
   }
 }

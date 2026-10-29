@@ -52,6 +52,12 @@
     "send.insufficientBalance": {
       "message": "Saldo insuficiente"
     },
+    "confirmation.securityScanUnavailableTitle": {
+      "message": "Security check unavailable"
+    },
+    "confirmation.securityScanUnavailableMessage": {
+      "message": "We couldn't complete this safety check. Continue only if you trust the site and addresses involved."
+    },
     "send.simulationTitleAPIError": {
       "message": "Debido a un error, no pudimos verificar las alertas de seguridad."
     },
@@ -191,10 +197,10 @@
       "message": "Si aprueba esta solicitud, un tercero conocido por sus estafas se quedará con todos sus activos."
     },
     "confirmation.validationErrorLearnMore": {
-      "message": "Conozca más"
+      "message": "Ver detalles"
     },
     "confirmation.validationErrorSecurityAdviced": {
-      "message": "Asesoramiento de seguridad por"
+      "message": "Con tecnología de"
     },
     "confirmation.securityScanInProgressTitle": {
       "message": "Comprobando problemas de seguridad"
@@ -270,6 +276,27 @@
     },
     "transactionScan.errors.unknownError": {
       "message": "An unknown error occurred."
+    },
+    "confirmation.validationWarningTitle": {
+      "message": "This request may be risky"
+    },
+    "confirmation.validationWarningSubtitle": {
+      "message": "Only continue if you trust this site and/or every address involved."
+    },
+    "confirmation.maliciousAck.title": {
+      "message": "High-risk request"
+    },
+    "confirmation.maliciousAck.description": {
+      "message": "Security partners found high-risk signals in this request. If you continue, your funds can't be recovered."
+    },
+    "confirmation.maliciousAck.checkbox": {
+      "message": "I have acknowledged the risk and still want to proceed"
+    },
+    "confirmation.maliciousAck.proceed": {
+      "message": "Confirm"
+    },
+    "confirmation.maliciousAck.back": {
+      "message": "Go back"
     }
   }
 }
