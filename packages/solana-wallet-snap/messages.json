@@ -72,6 +72,8 @@
   "confirmation.validationErrorSecurityAdviced": "Powered by",
   "confirmation.securityScanInProgressTitle": "Checking for security issues",
   "confirmation.securityScanInProgressMessage": "This usually takes a few seconds.",
+  "confirmation.securityScanUnavailableTitle": "Security check unavailable",
+  "confirmation.securityScanUnavailableMessage": "We couldn't complete this safety check. Continue only if you trust the site and addresses involved.",
   "confirmation.signMessage.title": "Sign message",
   "confirmation.signMessage.message": "Message",
   "confirmation.signIn.title": "Sign-in request",

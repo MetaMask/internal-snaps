@@ -52,6 +52,12 @@
     "send.insufficientBalance": {
       "message": "Saldo insuficiente"
     },
+    "confirmation.securityScanUnavailableTitle": {
+      "message": "Security check unavailable"
+    },
+    "confirmation.securityScanUnavailableMessage": {
+      "message": "We couldn't complete this safety check. Continue only if you trust the site and addresses involved."
+    },
     "send.simulationTitleAPIError": {
       "message": "Debido a un error, no pudimos verificar las alertas de seguridad."
     },

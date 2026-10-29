@@ -152,12 +152,12 @@ async function onProceedButtonClick({
     return;
   }
 
-  if (
-    shouldDisableConfirmation({
-      scanFetchStatus: context.scanFetchStatus,
-      scan: context.scan,
-    })
-  ) {
+  const shouldDisableConfirmButton = shouldDisableConfirmation({
+    scanFetchStatus: context.scanFetchStatus,
+    transactionExpired: context.transactionExpired,
+  });
+
+  if (shouldDisableConfirmButton) {
     await reRender(id, context, {
       acknowledgementScreen: false,
       acknowledged: false,

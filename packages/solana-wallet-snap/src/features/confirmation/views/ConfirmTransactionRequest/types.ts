@@ -22,6 +22,8 @@ export type ConfirmTransactionRequestContext = {
   tokenPricesFetchStatus: FetchStatus;
   scan: TransactionScanResult | null;
   scanFetchStatus: FetchStatus;
+  /** Local expiry is independent of API availability; absent in older contexts. */
+  transactionExpired?: boolean;
   /** Whether the malicious-acknowledgement screen is currently shown. */
   acknowledgementScreen: boolean;
   /** Whether the malicious-risk checkbox is currently checked. */
