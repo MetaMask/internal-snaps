@@ -11,7 +11,7 @@ permissions:
 jobs:
   publish-preview:
     if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '@metamaskbot publish-preview') }}
-    uses: MetaMask/github-tools/.github/workflows/publish-preview.yml@b1b556ff7ab5b6054698d078c661a7b149b8609e # v1.20.0
+    uses: MetaMask/github-tools/.github/workflows/publish-preview.yml@5d993ac935eff3f248d2213bb2d6922ce9cb3510 # v1.21.0
     with:
       rename-after-install-and-build: true
       environment: default-branch
