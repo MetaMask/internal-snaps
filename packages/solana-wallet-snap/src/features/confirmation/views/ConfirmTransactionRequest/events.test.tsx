@@ -141,7 +141,7 @@ describe('confirm transaction request events', () => {
       expect(state.deleteKey).not.toHaveBeenCalled();
     });
 
-    it('returns to the confirmation view when the transaction became invalid while acknowledging', async () => {
+    it('allows proceeding after acknowledging a malicious request with a remote execution failure', async () => {
       const name = MaliciousAcknowledgementFormNames.Proceed;
       await eventHandlers[name]?.({
         id: INTERFACE_ID,
@@ -154,20 +154,68 @@ describe('confirm transaction request events', () => {
             status: 'ERROR',
             estimatedChanges: { assets: [] },
             validation: { type: 'Malicious', reason: null },
-            error: null,
+            error: {
+              type: 'simulation',
+              code: 'ResultWithNegativeLamports',
+              message: null,
+            },
           },
         },
       } as never);
 
+      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, true);
+      expect(updateInterface).not.toHaveBeenCalled();
+    });
+
+    it('blocks proceeding when local expiry is detected during acknowledgement', async () => {
+      const name = MaliciousAcknowledgementFormNames.Proceed;
+      await eventHandlers[name]?.({
+        id: INTERFACE_ID,
+        event: buttonEvent(name),
+        context: {
+          ...baseContext,
+          acknowledgementScreen: true,
+          acknowledged: true,
+          transactionExpired: true,
+          scanFetchStatus: 'error',
+        },
+      } as never);
+
+      expect(resolveInterface).not.toHaveBeenCalled();
       expect(updateInterface).toHaveBeenCalledWith(
         INTERFACE_ID,
         expect.anything(),
         expect.objectContaining({
           acknowledgementScreen: false,
-          acknowledged: false,
+          transactionExpired: true,
         }),
       );
-      expect(state.deleteKey).not.toHaveBeenCalled();
+    });
+
+    it('allows proceeding after a scan outage despite a retained remote execution error', async () => {
+      const name = MaliciousAcknowledgementFormNames.Proceed;
+      await eventHandlers[name]?.({
+        id: INTERFACE_ID,
+        event: buttonEvent(name),
+        context: {
+          ...baseContext,
+          acknowledgementScreen: true,
+          acknowledged: true,
+          scanFetchStatus: 'error',
+          scan: {
+            status: 'ERROR',
+            estimatedChanges: { assets: [] },
+            validation: { type: 'Malicious', reason: null },
+            error: {
+              type: 'simulation',
+              code: 'ResultWithNegativeLamports',
+              message: null,
+            },
+          },
+        },
+      } as never);
+
+      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, true);
     });
 
     it('returns to the confirmation view on back', async () => {

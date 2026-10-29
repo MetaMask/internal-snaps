@@ -12,9 +12,8 @@ import {
   state,
   transactionScanService,
 } from '../../../../snapContext';
+import { isTransactionBlockhashExpired } from '../../../services/confirmation/isTransactionBlockhashExpired';
 import type { UnencryptedStateValue } from '../../../services/state/stateTypes';
-import { EXPIRED_TRANSACTION_SCAN } from '../../../services/transaction-scan/buildExpiredScanResult';
-import { isTransactionBlockhashExpired } from '../../../services/transaction-scan/isTransactionBlockhashExpired';
 import { trackError } from '../../../utils/errors';
 import {
   CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME,
@@ -120,18 +119,17 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
       return;
     }
 
-    // Update the current context with the new rates. A failed re-scan (null)
-    // keeps the previous scan result for its estimates and reports the error
-    // so the "scan failed" banner shows — the user is warned, not blocked.
-    const scanFailed = shouldScan && scan === null && !isExpired;
-    const nextScan = isExpired
-      ? EXPIRED_TRANSACTION_SCAN
-      : (scan ?? updatedInterfaceContextFinal.scan ?? null);
+    // Retain estimates after an outage, but do not reuse a stale execution
+    // failure as a blocker. Local expiry remains independent and cannot be
+    // cleared by a later failed scan or inconclusive blockhash check.
+    const scanFailed = shouldScan && scan === null;
 
     const updatedInterfaceContext = {
       ...updatedInterfaceContextFinal,
       scanFetchStatus: scanFailed ? ('error' as const) : ('fetched' as const),
-      scan: nextScan,
+      scan: scan ?? updatedInterfaceContextFinal.scan ?? null,
+      transactionExpired:
+        isExpired || updatedInterfaceContextFinal.transactionExpired === true,
     };
 
     if (shouldScan) {

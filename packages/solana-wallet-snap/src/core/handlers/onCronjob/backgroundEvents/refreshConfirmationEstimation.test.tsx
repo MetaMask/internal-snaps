@@ -7,14 +7,13 @@ import type { JsonRpcParams, JsonRpcRequest } from '@metamask/utils';
 
 import { transactionScanService, state } from '../../../../snapContext';
 import { Network } from '../../../constants/solana';
-import { EXPIRED_TRANSACTION_SCAN } from '../../../services/transaction-scan/buildExpiredScanResult';
-import { isTransactionBlockhashExpired } from '../../../services/transaction-scan/isTransactionBlockhashExpired';
+import { isTransactionBlockhashExpired } from '../../../services/confirmation/isTransactionBlockhashExpired';
 import { trackError } from '../../../utils/errors';
 import { getInterfaceContext, updateInterface } from '../../../utils/interface';
 import { refreshConfirmationEstimation } from './refreshConfirmationEstimation';
 
 jest.mock(
-  '../../../services/transaction-scan/isTransactionBlockhashExpired',
+  '../../../services/confirmation/isTransactionBlockhashExpired',
   () => ({
     isTransactionBlockhashExpired: jest.fn().mockResolvedValue(false),
   }),
@@ -94,7 +93,7 @@ const setupTest = (): {
 };
 
 describe('refreshConfirmationEstimation', () => {
-  it('disables confirmation with an expired scan result for an invalid blockhash', async () => {
+  it('stores local expiry separately without replacing the API scan', async () => {
     setupTest();
 
     (transactionScanService.scanTransaction as jest.Mock).mockResolvedValue({
@@ -110,13 +109,14 @@ describe('refreshConfirmationEstimation', () => {
       'interface-id',
       null,
       expect.objectContaining({
-        scan: EXPIRED_TRANSACTION_SCAN,
+        transactionExpired: true,
+        scan: { status: 'SUCCESS' },
         scanFetchStatus: 'fetched',
       }),
     );
   });
 
-  it('tracks refresh failures and restores the fetched state', async () => {
+  it('tracks unexpected refresh failures and restores the fetched state', async () => {
     setupTest();
 
     const error = new Error('Scan failed');
@@ -158,7 +158,7 @@ describe('refreshConfirmationEstimation', () => {
       'interface-id',
       null,
       expect.objectContaining({
-        scan: EXPIRED_TRANSACTION_SCAN,
+        transactionExpired: true,
         scanFetchStatus: 'fetched',
       }),
     );
@@ -176,6 +176,49 @@ describe('refreshConfirmationEstimation', () => {
     });
 
     expect(isTransactionBlockhashExpired).not.toHaveBeenCalled();
+  });
+
+  it('keeps a known local expiry when the next scan and expiry RPC are unavailable', async () => {
+    const interfaceContext = { ...setupTest(), transactionExpired: true };
+    (getInterfaceContext as jest.Mock).mockResolvedValue(interfaceContext);
+    (transactionScanService.scanTransaction as jest.Mock).mockResolvedValue(
+      null,
+    );
+    jest.mocked(isTransactionBlockhashExpired).mockResolvedValue(false);
+
+    await refreshConfirmationEstimation({
+      request: {} as JsonRpcRequest<JsonRpcParams>,
+    });
+
+    expect(updateInterface).toHaveBeenLastCalledWith(
+      'interface-id',
+      null,
+      expect.objectContaining({
+        transactionExpired: true,
+        scanFetchStatus: 'error',
+      }),
+    );
+  });
+
+  it('preserves a newly detected expiry when the scan is unavailable', async () => {
+    setupTest();
+    (transactionScanService.scanTransaction as jest.Mock).mockResolvedValue(
+      null,
+    );
+    jest.mocked(isTransactionBlockhashExpired).mockResolvedValue(true);
+
+    await refreshConfirmationEstimation({
+      request: {} as JsonRpcRequest<JsonRpcParams>,
+    });
+
+    expect(updateInterface).toHaveBeenLastCalledWith(
+      'interface-id',
+      null,
+      expect.objectContaining({
+        transactionExpired: true,
+        scanFetchStatus: 'error',
+      }),
+    );
   });
 
   it('re-scans validation-only and preserves the scan result without a fetching state when simulation is disabled', async () => {
