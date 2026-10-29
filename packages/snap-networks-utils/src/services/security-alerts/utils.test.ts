@@ -1,4 +1,8 @@
-import { deriveSecurityAlert, getSecurityAlertDescription } from './utils';
+import {
+  deriveSecurityAlert,
+  getSecurityAlertDescription,
+  requiresMaliciousAcknowledgement,
+} from './utils';
 
 describe('deriveSecurityAlert', () => {
   it('returns null for missing verdicts', () => {
@@ -40,5 +44,58 @@ describe('getSecurityAlertDescription', () => {
     expect(getSecurityAlertDescription('mystery_reason')).toBe(
       'Security alert: mystery_reason',
     );
+  });
+});
+
+describe('requiresMaliciousAcknowledgement', () => {
+  it('requires acknowledgement for a malicious verdict with security alerts on', () => {
+    expect(
+      requiresMaliciousAcknowledgement({
+        useSecurityAlerts: true,
+        scan: { status: 'SUCCESS', validation: { type: 'Malicious' } },
+      }),
+    ).toBe(true);
+  });
+
+  it('does not require acknowledgement when security alerts are off', () => {
+    expect(
+      requiresMaliciousAcknowledgement({
+        useSecurityAlerts: false,
+        scan: { status: 'SUCCESS', validation: { type: 'Malicious' } },
+      }),
+    ).toBe(false);
+  });
+
+  it('does not require acknowledgement for a missing scan', () => {
+    expect(
+      requiresMaliciousAcknowledgement({ useSecurityAlerts: true, scan: null }),
+    ).toBe(false);
+    expect(requiresMaliciousAcknowledgement({ useSecurityAlerts: true })).toBe(
+      false,
+    );
+  });
+
+  it('does not require acknowledgement for a missing validation', () => {
+    expect(
+      requiresMaliciousAcknowledgement({
+        useSecurityAlerts: true,
+        scan: { status: 'ERROR', validation: null },
+      }),
+    ).toBe(false);
+  });
+
+  it('does not require acknowledgement for warning and benign verdicts', () => {
+    expect(
+      requiresMaliciousAcknowledgement({
+        useSecurityAlerts: true,
+        scan: { status: 'SUCCESS', validation: { type: 'Warning' } },
+      }),
+    ).toBe(false);
+    expect(
+      requiresMaliciousAcknowledgement({
+        useSecurityAlerts: true,
+        scan: { status: 'SUCCESS', validation: { type: 'Benign' } },
+      }),
+    ).toBe(false);
   });
 });

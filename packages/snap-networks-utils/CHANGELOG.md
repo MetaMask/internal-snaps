@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add the `MaliciousAcknowledgementScreen` and `ConfirmationFooter` UI components and the `MaliciousAcknowledgementFormNames` form element names, add the `requiresMaliciousAcknowledgement` helper ([#501](https://github.com/MetaMask/internal-snaps/pull/501))
+
 ## [3.1.0]
 
 ### Added
