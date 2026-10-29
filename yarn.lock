@@ -2673,17 +2673,17 @@ __metadata:
   linkType: hard
 
 "@metamask/eth-simple-keyring@npm:^13.0.0":
-  version: 13.0.0
-  resolution: "@metamask/eth-simple-keyring@npm:13.0.0"
+  version: 13.0.1
+  resolution: "@metamask/eth-simple-keyring@npm:13.0.1"
   dependencies:
     "@ethereumjs/util": "npm:^9.1.0"
-    "@metamask/eth-sig-util": "npm:^8.2.0"
-    "@metamask/keyring-api": "npm:^24.0.0"
-    "@metamask/keyring-sdk": "npm:^3.0.0"
+    "@metamask/eth-sig-util": "npm:^9.0.0"
+    "@metamask/keyring-api": "npm:^24.2.0"
+    "@metamask/keyring-sdk": "npm:^4.0.0"
     "@metamask/utils": "npm:^11.11.0"
     ethereum-cryptography: "npm:^2.2.1"
     randombytes: "npm:^2.1.0"
-  checksum: 10/aa7fd327574d12eb221756931ce51278a66b9a4412f7f64bce1dc63cc2197be04d5107ab94786fa3ab4abfe133283ac92790a66bf5f417b4b699f9d27b4f9bfa
+  checksum: 10/02e3fbbaa8d27dfe0b5e2af6c5950a9da8c40c63ee5450a57a7404008175fdcff3c23381cdda41be5ed4b8cdfb8926eade0d8a35fedcdd1efcd1a5b842c276ca
   languageName: node
   linkType: hard
 
