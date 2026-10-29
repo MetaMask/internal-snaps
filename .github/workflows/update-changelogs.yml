@@ -96,7 +96,7 @@ jobs:
     steps:
       - name: Get access token
         id: get-token
-        uses: MetaMask/github-tools/.github/actions/get-token@b1b556ff7ab5b6054698d078c661a7b149b8609e # v1.20.0
+        uses: MetaMask/github-tools/.github/actions/get-token@5d993ac935eff3f248d2213bb2d6922ce9cb3510 # v1.21.0
         with:
           token-exchange-url: ${{ vars.TOKEN_EXCHANGE_URL }}
           permissions: |
@@ -128,7 +128,7 @@ jobs:
     steps:
       - name: Get access token
         id: get-token
-        uses: MetaMask/github-tools/.github/actions/get-token@b1b556ff7ab5b6054698d078c661a7b149b8609e # v1.20.0
+        uses: MetaMask/github-tools/.github/actions/get-token@5d993ac935eff3f248d2213bb2d6922ce9cb3510 # v1.21.0
         with:
           token-exchange-url: ${{ vars.TOKEN_EXCHANGE_URL }}
           permissions: |
