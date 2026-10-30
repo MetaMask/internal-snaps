@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Checkout and setup environment
         # This is MetaMask/action-checkout-and-setup@v3
-        uses: MetaMask/action-checkout-and-setup@f424d21e0622377e7cea0e1bcfdd096d338ed64e
+        uses: MetaMask/action-checkout-and-setup@097d47e741dfa9c09ee779a020b8851875e72904
         with:
           is-high-risk-environment: false
           # SonarCloud needs the full history for new-code and blame data
