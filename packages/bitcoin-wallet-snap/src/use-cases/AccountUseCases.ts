@@ -364,10 +364,9 @@ export class AccountUseCases {
         }
         const uniqueEntries = [...uniqueEntriesByPath.values()];
 
-        const { accounts: existingAccounts, snapshot } =
-          await this.#repository.getByDerivationPaths(
-            uniqueEntries.map(({ derivationPath }) => derivationPath),
-          );
+        const existingAccounts = await this.#repository.getByDerivationPaths(
+          uniqueEntries.map(({ derivationPath }) => derivationPath),
+        );
         const existingAccountsByPath = new Map<string, BitcoinAccount>();
 
         uniqueEntries.forEach((entry, index) => {
@@ -404,10 +403,7 @@ export class AccountUseCases {
 
         const persistStartMs = Date.now();
         if (newAccounts.length > 0) {
-          // Reuse the lookup's derivation-path snapshot: account lifecycle
-          // mutations are serialized, while `insertMany` refreshes the
-          // accounts map to preserve concurrent sync updates.
-          await this.#repository.insertMany(newAccounts, snapshot);
+          await this.#repository.insertMany(newAccounts);
         }
         const persistMs = Date.now() - persistStartMs;
 

@@ -24,17 +24,6 @@ export type RescanState = {
   pending: string[];
 };
 
-/**
- * In-memory snapshot loaded while resolving derivation paths. The
- * derivation-path map can be reused by a subsequent insert within the same
- * account mutation; the accounts map is retained for lookup results but
- * refreshed before full-map writes to avoid overwriting sync updates.
- */
-export type AccountStateSnapshot = {
-  accounts: SnapState['accounts'] | null;
-  derivationPaths: SnapState['derivationPaths'] | null;
-};
-
 export type AccountState = {
   // Split derivation path.
   derivationPath: string[];
