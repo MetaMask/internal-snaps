@@ -5,6 +5,7 @@ import {
   SynchronizationError,
   getSyncFailuresFromSettledResult,
 } from '@metamask/snap-networks-utils';
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
 import type { Describe } from 'superstruct';
 import { array, assert, is, object, string } from 'superstruct';
@@ -14,7 +15,13 @@ import {
   mapToTransactionType,
   TrackingSnapEvent,
 } from '../entities';
-import type { Logger, RescanState, SnapClient, SyncResult } from '../entities';
+import type {
+  Logger,
+  RescanState,
+  SnapClient,
+  SnapState,
+  SyncResult,
+} from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 
 export const CronMethod = {
@@ -49,6 +56,8 @@ export class CronHandler {
 
   readonly #snapClient: SnapClient;
 
+  readonly #unencryptedState: IStateManager<Partial<SnapState>>;
+
   readonly #snap: SnapsProvider;
 
   readonly #logger: Logger;
@@ -59,12 +68,14 @@ export class CronHandler {
     accounts: AccountUseCases,
     sendFlow: SendFlowUseCases,
     snapClient: SnapClient,
+    unencryptedState: IStateManager<Partial<SnapState>>,
     snap: SnapsProvider,
     logger: Logger,
   ) {
     this.#accountsUseCases = accounts;
     this.#sendFlowUseCases = sendFlow;
     this.#snapClient = snapClient;
+    this.#unencryptedState = unencryptedState;
     this.#snap = snap;
     this.#logger = logger;
   }
@@ -274,7 +285,7 @@ export class CronHandler {
    * next sync run instead of being marked done prematurely.
    */
   async #repairNextAccount(): Promise<void> {
-    const stored = await this.#snapClient.getState('rescanV1');
+    const stored = await this.#unencryptedState.getKey<RescanState>('rescanV1');
     const hasValidRescanState = is(stored, RescanStateStruct);
 
     if (hasValidRescanState && stored.pending.length === 0) {
@@ -289,7 +300,7 @@ export class CronHandler {
       : accounts.map((account) => account.id);
 
     if (!hasValidRescanState || pending.length !== stored.pending.length) {
-      await this.#snapClient.setState('rescanV1', { pending });
+      await this.#unencryptedState.setKey('rescanV1', { pending });
     }
 
     const account = accounts.find(({ id }) => id === pending[0]);
@@ -315,6 +326,8 @@ export class CronHandler {
     }
 
     await this.#emitSyncEvents([result]);
-    await this.#snapClient.setState('rescanV1', { pending: pending.slice(1) });
+    await this.#unencryptedState.setKey('rescanV1', {
+      pending: pending.slice(1),
+    });
   }
 }

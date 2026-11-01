@@ -110,6 +110,7 @@ const cronHandler = new CronHandler(
   accountsUseCases,
   sendFlowUseCases,
   snapClient,
+  unencryptedState,
   snap,
   logger,
 );

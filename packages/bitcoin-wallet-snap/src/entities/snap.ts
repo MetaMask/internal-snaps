@@ -92,25 +92,9 @@ export type TransactionBroadcastEventType = Exclude<
 >;
 
 /**
- * The SnapClient represents the MetaMask Snap state and manages the BIP-32 entropy from the Wallet SRP.
+ * Provides access to Snap APIs for entropy, UI, events, and client status.
  */
 export type SnapClient = {
-  /**
-   * Get the Snap state for a given key.
-   *
-   * @param key - The key to get the state for. Undefined for the root.
-   * @returns The Snap state.
-   */
-  getState(key?: string): Promise<Json | null>;
-
-  /**
-   * Set the Snap state for a given key.
-   *
-   * @param key - The key to set the state for. Undefined for the root.
-   * @param newState - The new state.
-   */
-  setState(key?: string, newState?: Json): Promise<void>;
-
   /**
    * Get the private SLIP10 for a given derivation path from the Snap SRP.
    *

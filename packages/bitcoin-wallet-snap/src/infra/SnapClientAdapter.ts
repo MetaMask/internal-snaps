@@ -46,31 +46,6 @@ export class SnapClientAdapter implements SnapClient {
     this.#logger = logger;
   }
 
-  decideToEncrypt(key?: string): boolean {
-    return key?.includes('accounts') ?? false;
-  }
-
-  async getState(key?: string): Promise<Json | null> {
-    return snap.request({
-      method: 'snap_getState',
-      params: {
-        key,
-        encrypted: this.decideToEncrypt(key),
-      },
-    });
-  }
-
-  async setState(key?: string, newState: Json = {}): Promise<void> {
-    await snap.request({
-      method: 'snap_setState',
-      params: {
-        key,
-        value: newState,
-        encrypted: this.decideToEncrypt(key),
-      },
-    });
-  }
-
   async getPrivateEntropy(derivationPath: string[]): Promise<JsonSLIP10Node> {
     const source = derivationPath[0] === 'm' ? undefined : derivationPath[0];
     const path = ['m', ...derivationPath.slice(1)];
