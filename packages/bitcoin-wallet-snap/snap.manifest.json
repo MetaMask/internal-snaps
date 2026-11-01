@@ -85,6 +85,12 @@
           "request": {
             "method": "synchronizeAccounts"
           }
+        },
+        {
+          "duration": "PT45S",
+          "request": {
+            "method": "repairAccounts"
+          }
         }
       ]
     },

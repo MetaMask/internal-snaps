@@ -6,6 +6,7 @@ import type { IStateManager } from '@metamask/snap-networks-utils';
 import type { Json, SnapsProvider, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
+import snapManifest from '../../snap.manifest.json';
 import type {
   BitcoinAccount,
   Logger,
@@ -45,8 +46,6 @@ describe('CronHandler', () => {
       clientVersion: '1.0.0',
       platformVersion: '1.0.0',
     });
-    // Default the repair rescan to nothing pending so existing tests don't
-    // trigger a repair scan.
     mockState.getKey.mockResolvedValue({ pending: [] });
   });
 
@@ -283,7 +282,8 @@ describe('CronHandler', () => {
       );
     });
 
-    describe('repair rescan', () => {
+    describe('repairAccounts', () => {
+      const repairRequest = { method: 'repairAccounts' } as JsonRpcRequest;
       const buildTx = (txid: string): WalletTx =>
         mock<WalletTx>({
           txid: mock<WalletTx['txid']>({ toString: () => txid }),
@@ -307,14 +307,28 @@ describe('CronHandler', () => {
         mockAccount2.listTransactions.mockReturnValue([]);
       });
 
-      it('emits normal sync events before a pending repair and coalesces overlapping runs', async () => {
+      it('schedules repairs independently from regular synchronization', () => {
+        expect(
+          snapManifest.initialPermissions['endowment:cronjob'].jobs,
+        ).toStrictEqual([
+          { duration: 'PT30S', request: { method: 'synchronizeAccounts' } },
+          { duration: 'PT45S', request: { method: 'repairAccounts' } },
+        ]);
+      });
+
+      it('does not repair accounts during regular synchronization', async () => {
+        mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
+
+        await handler.route(request);
+
+        expect(mockAccountUseCases.synchronize).toHaveBeenCalled();
+        expect(mockAccountUseCases.fullScan).not.toHaveBeenCalled();
+        expect(mockState.getKey).not.toHaveBeenCalled();
+      });
+
+      it('coalesces repairs without blocking subsequent regular sync runs', async () => {
         (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-2']);
         mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
-        const transaction = buildTx('selected-account-transaction');
-        mockAccountUseCases.synchronize.mockResolvedValue({
-          account: mockAccount2,
-          transactionsToNotify: [transaction],
-        });
         let releaseRepair!: (result: SyncResult) => void;
         const repairResult = new Promise<SyncResult>((resolve) => {
           releaseRepair = resolve;
@@ -328,52 +342,144 @@ describe('CronHandler', () => {
           return repairResult;
         });
 
-        const firstRun = handler.synchronizeAccounts();
-        const secondRun = handler.synchronizeAccounts();
+        const firstRepair = handler.route(repairRequest);
+        const secondRepair = handler.route(repairRequest);
 
         try {
-          await repairStarted;
+          await Promise.race([repairStarted, firstRepair]);
+          await handler.synchronizeAccounts();
+          await handler.synchronizeAccounts();
 
-          expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(1);
           expect(mockAccountUseCases.fullScan).toHaveBeenCalledTimes(1);
-          expect(
-            mockSnapClient.emitAccountBalancesUpdatedEvent,
-          ).toHaveBeenCalledTimes(1);
-          expect(
-            mockSnapClient.emitAccountBalancesUpdatedEvent,
-          ).toHaveBeenCalledWith([mockAccount2]);
-          expect(
-            mockSnapClient.emitAccountTransactionsUpdatedEvent,
-          ).toHaveBeenCalledWith(mockAccount2, [transaction]);
+          expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(2);
           expect(mockState.setKey).not.toHaveBeenCalled();
         } finally {
           releaseRepair({ account: mockAccount1, transactionsToNotify: [] });
-          await Promise.all([firstRun, secondRun]);
+          await Promise.all([firstRepair, secondRepair]);
         }
 
-        expect(
-          mockSnapClient.emitAccountBalancesUpdatedEvent,
-        ).toHaveBeenLastCalledWith([mockAccount1]);
         expect(mockState.setKey).toHaveBeenCalledWith('rescanV1', {
           pending: [],
         });
       });
 
-      it('continues repairing accounts after normal account synchronization fails', async () => {
+      it('waits for an existing regular sync before starting repair', async () => {
+        (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-2']);
         mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
-        mockAccountUseCases.synchronize.mockRejectedValue(
-          new Error('sync failed'),
-        );
+        let releaseSynchronization!: (result: SyncResult) => void;
+        const syncResult = new Promise<SyncResult>((resolve) => {
+          releaseSynchronization = resolve;
+        });
+        let notifySyncStarted!: () => void;
+        const syncStarted = new Promise<void>((resolve) => {
+          notifySyncStarted = resolve;
+        });
+        mockAccountUseCases.synchronize.mockImplementation(async () => {
+          notifySyncStarted();
+          return syncResult;
+        });
+        const regularSynchronization = handler.synchronizeAccounts();
+        await syncStarted;
+        const repair = handler.route(repairRequest);
 
-        await handler.route(request);
+        try {
+          // Let the repair pass its status check and reach the in-flight sync.
+          await Promise.resolve();
+          await Promise.resolve();
+          expect(mockAccountUseCases.fullScan).not.toHaveBeenCalled();
+        } finally {
+          releaseSynchronization({
+            account: mockAccount2,
+            transactionsToNotify: [],
+          });
+          await Promise.all([regularSynchronization, repair]);
+        }
 
         expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount1);
+        expect(
+          mockSnapClient.emitAccountBalancesUpdatedEvent.mock
+            .invocationCallOrder[0],
+        ).toBeLessThan(
+          mockAccountUseCases.fullScan.mock.invocationCallOrder[0] as number,
+        );
+      });
+
+      it('does not start repair if the client locks while waiting for regular sync', async () => {
+        (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-2']);
+        mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
+        let releaseSynchronization!: (result: SyncResult) => void;
+        const syncResult = new Promise<SyncResult>((resolve) => {
+          releaseSynchronization = resolve;
+        });
+        mockAccountUseCases.synchronize.mockReturnValue(syncResult);
+
+        const regularSynchronization = handler.synchronizeAccounts();
+        const repair = handler.repairAccounts();
+        mockSnapClient.getClientStatus.mockResolvedValue({
+          active: true,
+          locked: true,
+          clientVersion: '1.0.0',
+          platformVersion: '1.0.0',
+        });
+
+        releaseSynchronization({
+          account: mockAccount2,
+          transactionsToNotify: [],
+        });
+        await Promise.all([regularSynchronization, repair]);
+
+        expect(mockAccountUseCases.fullScan).not.toHaveBeenCalled();
+        expect(mockState.getKey).not.toHaveBeenCalled();
+      });
+
+      it('retries a failed repair on the next repair job', async () => {
+        mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
+        mockAccountUseCases.fullScan.mockRejectedValueOnce(
+          new Error('scan failed'),
+        );
+
+        await handler.route(repairRequest);
+        expect(mockState.setKey).not.toHaveBeenCalled();
+
+        await handler.route(repairRequest);
+
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledTimes(2);
         expect(mockState.setKey).toHaveBeenCalledWith('rescanV1', {
           pending: [],
         });
-        expect(
-          mockSnapClient.emitAccountBalancesUpdatedEvent,
-        ).toHaveBeenCalledWith([mockAccount1]);
+      });
+
+      it('can repair after a failed regular sync and keeps future sync runs working', async () => {
+        mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
+        mockAccountUseCases.list.mockRejectedValueOnce(
+          new Error('list failed'),
+        );
+        const regularSynchronization = handler.synchronizeAccounts();
+        const repair = handler.route(repairRequest);
+
+        await expect(regularSynchronization).rejects.toThrow('list failed');
+        await repair;
+        await handler.synchronizeAccounts();
+
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledTimes(1);
+        expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(2);
+      });
+
+      it.each([
+        { active: false, locked: false },
+        { active: true, locked: true },
+      ])('does not repair when the client is %o', async (status) => {
+        mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
+        mockSnapClient.getClientStatus.mockResolvedValue({
+          ...status,
+          clientVersion: '1.0.0',
+          platformVersion: '1.0.0',
+        });
+
+        await handler.route(repairRequest);
+
+        expect(mockAccountUseCases.fullScan).not.toHaveBeenCalled();
+        expect(mockState.getKey).not.toHaveBeenCalled();
       });
 
       it('on first run, persists the full pending list, scans only the first account, and emits for missed transactions', async () => {
@@ -389,7 +495,7 @@ describe('CronHandler', () => {
           transactionsToNotify: [],
         });
 
-        await handler.route(request);
+        await handler.route(repairRequest);
 
         expect(mockState.getKey).toHaveBeenCalledWith('rescanV1');
         expect(mockAccountUseCases.fullScan).toHaveBeenCalledTimes(1);
@@ -422,8 +528,7 @@ describe('CronHandler', () => {
         expect(initialPersistOrder).toBeLessThan(scanOrder as number);
         expect(scanOrder).toBeLessThan(shortenedPersistOrder as number);
 
-        // The normal sync flow runs before the repair.
-        expect(mockAccountUseCases.synchronize).toHaveBeenCalled();
+        expect(mockAccountUseCases.synchronize).not.toHaveBeenCalled();
       });
 
       it('on a subsequent run, scans only the next pending account', async () => {
@@ -436,7 +541,7 @@ describe('CronHandler', () => {
           transactionsToNotify: [],
         });
 
-        await handler.route(request);
+        await handler.route(repairRequest);
 
         expect(mockAccountUseCases.fullScan).toHaveBeenCalledTimes(1);
         expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount2);
@@ -454,7 +559,7 @@ describe('CronHandler', () => {
           transactionsToNotify: [],
         });
 
-        await handler.route(request);
+        await handler.route(repairRequest);
 
         expect(mockState.setKey).toHaveBeenCalledWith('rescanV1', {
           pending: ['account-2'],
@@ -471,7 +576,7 @@ describe('CronHandler', () => {
       it('does not scan when every pending account has been deleted', async () => {
         mockState.getKey.mockResolvedValue({ pending: ['gone'] });
 
-        await handler.route(request);
+        await handler.route(repairRequest);
 
         // The pending list is pruned to nothing, and the repair pass ends
         // without scanning anything.
@@ -484,24 +589,21 @@ describe('CronHandler', () => {
       it('does nothing when nothing is pending, short-circuiting before list()', async () => {
         mockState.getKey.mockResolvedValue({ pending: [] });
 
-        await handler.route(request);
+        await handler.route(repairRequest);
 
         expect(mockAccountUseCases.fullScan).not.toHaveBeenCalled();
         expect(mockState.setKey).not.toHaveBeenCalled();
-        // The regular sync flow is the only caller of `list()` here — the
-        // repair path short-circuits on the empty pending list before
-        // reaching it.
-        expect(mockAccountUseCases.list).toHaveBeenCalledTimes(1);
+        expect(mockAccountUseCases.list).not.toHaveBeenCalled();
       });
 
-      it('reports a repair failure without shortening the pending list after normal sync', async () => {
+      it('reports a repair failure without shortening the pending list', async () => {
         mockState.getKey.mockResolvedValue({
           pending: ['account-1', 'account-2'],
         });
         const scanError = new Error('scan failed');
         mockAccountUseCases.fullScan.mockRejectedValue(scanError);
 
-        await handler.route(request);
+        await handler.route(repairRequest);
 
         expect(mockSnapClient.emitTrackingError).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -509,12 +611,11 @@ describe('CronHandler', () => {
             cause: scanError,
           }),
         );
-        // The failure is contained: the pending list is not shortened and
-        // the regular sync still runs.
+        // A failed repair remains pending for the next repair cron job.
         expect(mockState.setKey).not.toHaveBeenCalledWith('rescanV1', {
           pending: ['account-2'],
         });
-        expect(mockAccountUseCases.synchronize).toHaveBeenCalled();
+        expect(mockAccountUseCases.synchronize).not.toHaveBeenCalled();
       });
 
       it('treats malformed stored state as unset and reinitializes pending from the account list', async () => {
@@ -524,7 +625,7 @@ describe('CronHandler', () => {
           transactionsToNotify: [],
         });
 
-        await handler.route(request);
+        await handler.route(repairRequest);
 
         expect(mockState.setKey).toHaveBeenCalledWith('rescanV1', {
           pending: ['account-1', 'account-2'],
@@ -575,7 +676,7 @@ describe('CronHandler', () => {
         );
 
         await Promise.all([
-          stateHandler.route(request),
+          stateHandler.route(repairRequest),
           state.setKeyWith<SnapState['derivationPaths']>(
             'derivationPaths',
             (current) => ({ ...current, concurrent: 'account-2' }),
