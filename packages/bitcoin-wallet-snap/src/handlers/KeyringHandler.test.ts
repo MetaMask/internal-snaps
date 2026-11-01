@@ -656,6 +656,28 @@ describe('KeyringHandler', () => {
   });
 
   describe('getAccountBalances', () => {
+    it.each([
+      [1n, '0.00000001'],
+      [77n, '0.00000077'],
+    ])(
+      'returns a decimal balance for %s satoshis',
+      async (satoshis, amount) => {
+        const account = mock<BitcoinAccount>({
+          id: 'small-balance',
+          network: 'bitcoin',
+          balance: {
+            trusted_spendable: { to_sat: () => satoshis },
+          },
+          listUnspent: () => [],
+        });
+        mockAccounts.get.mockResolvedValue(account);
+
+        expect(await handler.getAccountBalances(account.id)).toStrictEqual({
+          [Caip19Asset.Bitcoin]: { amount, unit: 'BTC' },
+        });
+      },
+    );
+
     it('gets the account balance', async () => {
       mockAccounts.get.mockResolvedValue(mockAccount);
       const expectedResponse = {
@@ -802,6 +824,7 @@ describe('KeyringHandler', () => {
     const pagination = { limit: 10, next: null };
 
     const mockAmount = mock<Amount>({
+      to_sat: () => 2_100_000_000n,
       to_btc: () => 21,
     });
     const mockScriptPubkey = mock<ScriptBuf>({

@@ -1,5 +1,4 @@
 import type { AddressType } from '@metamask/bitcoindevkit';
-import { Amount } from '@metamask/bitcoindevkit';
 import {
   AccountCreationType,
   assertCreateAccountOptionIsSupported,
@@ -39,6 +38,7 @@ import type {
   AccountUseCases,
   CreateAccountParams,
 } from '../use-cases/AccountUseCases';
+import { formatBtcAmount } from '../utils/format-btc';
 import { NetworkStruct, networkToCaip19, scopeToNetwork } from './caip';
 import { CronMethod } from './CronHandler';
 import type { KeyringRequestHandler } from './KeyringRequestHandler';
@@ -277,9 +277,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     id: string,
   ): Promise<Record<CaipAssetType, Balance>> {
     const account = await this.#accountsUseCases.get(id);
-    const balance = Amount.from_sat(computeDisplayBalanceSats(account))
-      .to_btc()
-      .toString();
+    const balance = formatBtcAmount(computeDisplayBalanceSats(account));
 
     return {
       [networkToCaip19[account.network]]: {

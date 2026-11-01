@@ -149,14 +149,6 @@ export class CronHandler {
     // that coalesced callers share the run's outcome, including the reported
     // synchronization failures.
     await this.#syncCoalescer.run('synchronizeAccounts', async () => {
-      try {
-        await this.#repairNextAccount();
-      } catch (error) {
-        await this.#snapClient.emitTrackingError(
-          new Error('Account repair scan failed', { cause: error }),
-        );
-      }
-
       const selectedAccounts: Set<string> = new Set(
         await getSelectedAccounts(this.#snap),
       );
@@ -180,6 +172,15 @@ export class CronHandler {
         results,
         accounts.map(({ id }) => id),
       );
+
+      // Publish normal balance and activity updates before a slower repair scan.
+      try {
+        await this.#repairNextAccount();
+      } catch (error) {
+        await this.#snapClient.emitTrackingError(
+          new Error('Account repair scan failed', { cause: error }),
+        );
+      }
     });
   }
 

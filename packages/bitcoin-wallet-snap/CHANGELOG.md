@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Retry transient Bitcoin indexer, price API, and signed transaction broadcast failures with the shared fetch policy, and treat duplicate broadcasts as successful. ([#530](https://github.com/MetaMask/internal-snaps/pull/530))
 
+### Fixed
+
+- Fix formatting of small Bitcoin balances to avoid scientific notation.
+
 ## [3.2.0]
 
 ### Added
