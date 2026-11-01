@@ -6,6 +6,7 @@ import {
   getSyncFailuresFromSettledResult,
 } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
+import type { Describe } from 'superstruct';
 import { array, assert, is, object, string } from 'superstruct';
 
 import {
@@ -13,7 +14,7 @@ import {
   mapToTransactionType,
   TrackingSnapEvent,
 } from '../entities';
-import type { Logger, SnapClient, SyncResult } from '../entities';
+import type { Logger, RescanState, SnapClient, SyncResult } from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 
 export const CronMethod = {
@@ -37,7 +38,7 @@ export const FullScanAccountRequest = object({
   accountId: string(),
 });
 
-const RescanState = object({
+const RescanStateStruct: Describe<RescanState> = object({
   pending: array(string()),
 });
 
@@ -274,18 +275,20 @@ export class CronHandler {
    */
   async #repairNextAccount(): Promise<void> {
     const stored = await this.#snapClient.getState('rescanV1');
-    if (is(stored, RescanState) && stored.pending.length === 0) {
+    const hasValidRescanState = is(stored, RescanStateStruct);
+
+    if (hasValidRescanState && stored.pending.length === 0) {
       return;
     }
 
     const accounts = await this.#accountsUseCases.list();
     const liveIds = new Set(accounts.map((account) => account.id));
 
-    const pending = is(stored, RescanState)
+    const pending = hasValidRescanState
       ? stored.pending.filter((id) => liveIds.has(id))
       : accounts.map((account) => account.id);
 
-    if (!is(stored, RescanState) || pending.length !== stored.pending.length) {
+    if (!hasValidRescanState || pending.length !== stored.pending.length) {
       await this.#snapClient.setState('rescanV1', { pending });
     }
 

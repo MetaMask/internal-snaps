@@ -3,7 +3,6 @@ import type { LogLevel } from '@metamask/snap-networks-utils';
 
 export type SnapConfig = {
   logLevel: LogLevel;
-  encrypt: boolean;
   chain: ChainConfig;
   targetBlocksConfirmation: number; // Temporary global config to set the expected confirmation target, should eventually be a user setting
   fallbackFeeRate: number;

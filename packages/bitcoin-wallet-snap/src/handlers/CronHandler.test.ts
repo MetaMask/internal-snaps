@@ -9,6 +9,7 @@ import type {
   BitcoinAccount,
   Logger,
   SnapClient,
+  SnapState,
   SyncResult,
 } from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
@@ -296,7 +297,8 @@ describe('CronHandler', () => {
       });
 
       it('on first run, persists the full pending list, scans only the first account, and emits for missed transactions', async () => {
-        mockSnapClient.getState.mockResolvedValue(null);
+        const state: Pick<SnapState, 'rescanV1'> = {};
+        mockSnapClient.getState.mockResolvedValue(state.rescanV1 ?? null);
         const txBefore = buildTx('txid-existing');
         const txNew = buildTx('txid-new');
         mockAccount1.listTransactions
@@ -345,7 +347,10 @@ describe('CronHandler', () => {
       });
 
       it('on a subsequent run, scans only the next pending account', async () => {
-        mockSnapClient.getState.mockResolvedValue({ pending: ['account-2'] });
+        const state: Pick<SnapState, 'rescanV1'> = {
+          rescanV1: { pending: ['account-2'] },
+        };
+        mockSnapClient.getState.mockResolvedValue(state.rescanV1 ?? null);
         mockAccountUseCases.fullScan.mockResolvedValue({
           account: mockAccount2,
           transactionsToNotify: [],

@@ -1,5 +1,5 @@
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
-import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
+import { DEFAULT_METAMASK_ORIGIN, State } from '@metamask/snap-networks-utils';
 import type {
   OnAssetHistoricalPriceHandler,
   OnAssetsConversionHandler,
@@ -13,6 +13,7 @@ import type {
 } from '@metamask/snaps-sdk';
 
 import { configProvider } from './config';
+import type { SnapState } from './entities/snap';
 import {
   KeyringHandler,
   CronHandler,
@@ -38,8 +39,17 @@ import logger from './utils/logger';
 
 const { config } = configProvider;
 
-// Infra layer
-const snapClient = new SnapClientAdapter(logger, config.encrypt);
+const encryptedState = new State<Partial<SnapState>>({
+  encrypted: true,
+  defaultState: { accounts: {} },
+});
+
+const unencryptedState = new State<Partial<SnapState>>({
+  encrypted: false,
+  defaultState: { derivationPaths: {} },
+});
+
+const snapClient = new SnapClientAdapter(logger);
 const chainClient = new EsploraClientAdapter(config.chain, logger);
 const assetRatesClient = new PriceApiClientAdapter(config.priceApi, logger);
 const translator = new LocalTranslatorAdapter();

@@ -40,21 +40,14 @@ import { mapToTransaction } from '../handlers/mappings';
 import { trackError } from '../utils/errors';
 
 export class SnapClientAdapter implements SnapClient {
-  readonly #encrypt: boolean;
-
   readonly #logger: Logger;
 
-  constructor(logger: Logger, encrypt = false) {
+  constructor(logger: Logger) {
     this.#logger = logger;
-    this.#encrypt = encrypt;
   }
 
   decideToEncrypt(key?: string): boolean {
-    if (!key) {
-      return this.#encrypt;
-    }
-
-    return key.includes('accounts') || this.#encrypt;
+    return key?.includes('accounts') ?? false;
   }
 
   async getState(key?: string): Promise<Json | null> {

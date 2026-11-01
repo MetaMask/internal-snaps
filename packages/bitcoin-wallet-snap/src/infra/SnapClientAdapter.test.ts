@@ -49,6 +49,31 @@ describe('SnapClientAdapter', () => {
     jest.clearAllMocks();
   });
 
+  describe('state encryption', () => {
+    it.each([
+      ['accounts', true],
+      ['accounts.account-id.wallet', true],
+      ['derivationPaths', false],
+      ['rescanV1', false],
+      [undefined, false],
+    ])('preserves encryption for key %s', async (key, encrypted) => {
+      const { snapClient, mockRequest } = setupTest();
+      mockRequest.mockResolvedValue(null);
+
+      await snapClient.getState(key);
+      await snapClient.setState(key, {});
+
+      expect(mockRequest).toHaveBeenNthCalledWith(1, {
+        method: 'snap_getState',
+        params: { key, encrypted },
+      });
+      expect(mockRequest).toHaveBeenNthCalledWith(2, {
+        method: 'snap_setState',
+        params: { key, value: {}, encrypted },
+      });
+    });
+  });
+
   describe('emitTrackingEvent', () => {
     it("doesn't throw and logs when event tracking fails", async () => {
       const { snapClient, mockLogger, mockRequest } = setupTest();

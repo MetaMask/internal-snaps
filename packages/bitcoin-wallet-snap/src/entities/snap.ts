@@ -16,6 +16,12 @@ export type SnapState = {
   accounts: Record<string, AccountState | null>;
   // derivationPath -> accountId. Only needed for fast lookup.
   derivationPaths: Record<string, string>;
+  // Accounts awaiting a repair scan. Absent until the repair queue is initialized.
+  rescanV1?: RescanState;
+};
+
+export type RescanState = {
+  pending: string[];
 };
 
 /**
