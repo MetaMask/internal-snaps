@@ -40,42 +40,10 @@ import { mapToTransaction } from '../handlers/mappings';
 import { trackError } from '../utils/errors';
 
 export class SnapClientAdapter implements SnapClient {
-  readonly #encrypt: boolean;
-
   readonly #logger: Logger;
 
-  constructor(logger: Logger, encrypt = false) {
+  constructor(logger: Logger) {
     this.#logger = logger;
-    this.#encrypt = encrypt;
-  }
-
-  decideToEncrypt(key?: string): boolean {
-    if (!key) {
-      return this.#encrypt;
-    }
-
-    return key.includes('accounts') || this.#encrypt;
-  }
-
-  async getState(key?: string): Promise<Json | null> {
-    return snap.request({
-      method: 'snap_getState',
-      params: {
-        key,
-        encrypted: this.decideToEncrypt(key),
-      },
-    });
-  }
-
-  async setState(key?: string, newState: Json = {}): Promise<void> {
-    await snap.request({
-      method: 'snap_setState',
-      params: {
-        key,
-        value: newState,
-        encrypted: this.decideToEncrypt(key),
-      },
-    });
   }
 
   async getPrivateEntropy(derivationPath: string[]): Promise<JsonSLIP10Node> {
