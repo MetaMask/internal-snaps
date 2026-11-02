@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Persist accounts found by discovery before returning them to MetaMask, so later balance and transaction requests can load the accounts. ([#543](https://github.com/MetaMask/internal-snaps/pull/543))
 - Fix formatting of small Bitcoin balances to avoid scientific notation. ([#543](https://github.com/MetaMask/internal-snaps/pull/543))
 
 ## [3.2.0]

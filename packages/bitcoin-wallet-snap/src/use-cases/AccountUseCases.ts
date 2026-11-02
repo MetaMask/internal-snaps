@@ -329,6 +329,12 @@ export class AccountUseCases {
     // accounts with no tx history
     await this.#chain.fullScan(newAccount, 'discovery');
 
+    // MetaMask keeps active discovery results, so save the scanned wallet before
+    // returning it. Inactive candidates remain in memory and are discarded.
+    if (newAccount.listTransactions().length > 0) {
+      await this.#repository.insert(newAccount);
+    }
+
     this.#logger.info(
       'Bitcoin account discovered successfully. Request: %o',
       req,
