@@ -56,6 +56,7 @@ describe('WalletService', () => {
   let mockSignatureMonitor: SignatureMonitor;
   let mockAnalyticsService: AnalyticsService;
   let mockTransactionsService: TransactionsService;
+  let mockPendingTransactionClassifier: { classify: jest.Mock };
   let service: WalletService;
   const mockAccounts = [...MOCK_SOLANA_KEYRING_ACCOUNTS];
   let onCommitmentReachedCallback: (params: any) => Promise<void>;
@@ -88,15 +89,17 @@ describe('WalletService', () => {
       save: jest.fn(),
     } as unknown as TransactionsService;
 
+    mockPendingTransactionClassifier = {
+      classify: jest.fn().mockResolvedValue(undefined),
+    };
+
     service = new WalletService(
       mockConnection,
       mockSigner,
       mockSignatureMonitor,
       mockAnalyticsService,
       mockTransactionsService,
-      {
-        classify: jest.fn().mockResolvedValue(undefined),
-      } as unknown as PendingTransactionClassifier,
+      mockPendingTransactionClassifier as unknown as PendingTransactionClassifier,
       logger,
     );
 
@@ -482,6 +485,29 @@ describe('WalletService', () => {
                   address: fromAccount.address,
                 }),
               ],
+            }),
+          );
+        });
+
+        it('saves a placeholder when classification fails', async () => {
+          mockPendingTransactionClassifier.classify.mockRejectedValue(
+            new Error('decode failed'),
+          );
+
+          const result = await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            'https://metamask.io',
+          );
+
+          expect(result).toStrictEqual({ signature });
+          expect(mockTransactionsService.save).toHaveBeenCalledWith(
+            expect.objectContaining({
+              id: signature,
+              status: 'unconfirmed',
+              type: 'unknown',
+              to: [],
             }),
           );
         });

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `buildPendingTransaction` util and `PendingTransactionClassification`/`PendingTransactionMovement` types: the shared, chain-agnostic way for wallet snaps to build submit-time pending transactions, with a native-asset placeholder fallback when the snap cannot classify the transaction itself
+- Add `buildPendingTransaction` util and `PendingTransactionClassification`/`PendingTransactionMovement` types: the shared, chain-agnostic way for wallet snaps to build submit-time pending transactions, with a native-asset placeholder fallback when the snap cannot classify the transaction itself ([#547](https://github.com/MetaMask/internal-snaps/pull/547))
 
 ## [3.1.0]
 

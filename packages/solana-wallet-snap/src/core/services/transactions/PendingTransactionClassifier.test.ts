@@ -162,6 +162,66 @@ describe('PendingTransactionClassifier', () => {
     expect(result?.to).toStrictEqual([]);
   });
 
+  it('skips instructions it cannot parse and still classifies the transfer', async () => {
+    const transfer = getTransferSolInstruction({
+      amount: 1_500_000_000n,
+      destination: asAddress(RECIPIENT),
+      source: createNoopSigner(asAddress(SENDER.address)),
+    });
+    const unknownInstruction = {
+      programAddress: asAddress('4MangoMJqJ2firMokCjjGgoK8d4MXf8LGSMTkXM98hvM'),
+      accounts: [],
+      data: new Uint8Array([1, 2, 3]),
+    } as unknown as Instruction;
+
+    const message = pipe(
+      createTransactionMessage({ version: 0 }),
+      (tx) => setTransactionMessageFeePayer(asAddress(SENDER.address), tx),
+      (tx) => setTransactionMessageLifetimeUsingBlockhash(LIFETIME, tx),
+      (tx) => appendTransactionMessageInstruction(unknownInstruction, tx),
+      (tx) => appendTransactionMessageInstruction(transfer, tx),
+    );
+    const base64 = fromTransactionToBase64String(compileTransaction(message));
+
+    const result = await classifier.classify(base64, SENDER, Network.Mainnet);
+
+    expect(result?.type).toBe('send');
+    expect(result?.to).toHaveLength(1);
+  });
+
+  it('falls back to an empty unit when asset metadata cannot be resolved', async () => {
+    jest
+      .spyOn(mockAssetsService, 'getAccountAssetsByIDs')
+      .mockRejectedValue(new Error('assets unavailable'));
+    jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
+      getAccountInfo: jest.fn().mockReturnValue({
+        send: jest.fn().mockResolvedValue({
+          value: { data: { parsed: { info: { owner: RECIPIENT } } } },
+        }),
+      }),
+    } as unknown as ReturnType<SolanaConnection['getRpc']>);
+
+    const base64 = buildBase64Transaction(
+      getTransferCheckedInstruction({
+        source: asAddress(SENDER.address),
+        mint: asAddress(USDC_MINT),
+        destination: asAddress(RECIPIENT_TOKEN_ACCOUNT),
+        authority: asAddress(SENDER.address),
+        amount: 3_250_000n,
+        decimals: 6,
+      }),
+    );
+
+    const result = await classifier.classify(base64, SENDER, Network.Mainnet);
+
+    expect(result?.from[0]).toStrictEqual({
+      address: SENDER.address,
+      assetId: KnownCaip19Id.UsdcMainnet,
+      unit: '',
+      amount: '3.25',
+    });
+  });
+
   it('returns undefined for non-transfer transactions', async () => {
     const base64 = buildBase64Transaction(
       // A compute-budget instruction carries no movements.

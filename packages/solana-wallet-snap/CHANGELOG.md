@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Classify transactions at broadcast time by decoding their instructions (`PendingTransactionClassifier`), so the submit-time pending activity row carries the real type, counterparties, assets and amounts for self-describing transfers, on all submission paths (MetaMask flows and dApp requests alike); other transactions keep the native-asset placeholder. Pending transactions are now built via the shared `buildPendingTransaction` util from `@metamask/snap-networks-utils`
+- Classify transactions at broadcast time by decoding their instructions (`PendingTransactionClassifier`), so the submit-time pending activity row carries the real type, counterparties, assets and amounts for self-describing transfers, on all submission paths (MetaMask flows and dApp requests alike); other transactions keep the native-asset placeholder. Pending transactions are now built via the shared `buildPendingTransaction` util from `@metamask/snap-networks-utils` ([#547](https://github.com/MetaMask/internal-snaps/pull/547))
 
 ## [7.2.0]
 
