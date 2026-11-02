@@ -505,6 +505,101 @@ describe('WalletService', () => {
           );
         });
 
+        it('honors pending movements for MetaMask-originated requests', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            DEFAULT_METAMASK_ORIGIN,
+            {
+              pendingMovements: {
+                from: [
+                  {
+                    address: fromAccount.address,
+                    assetId:
+                      'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
+                    unit: 'SOL',
+                    amount: '1.5',
+                  },
+                ],
+                to: [
+                  {
+                    address: 'RecipientAddress11111111111111111111111',
+                    assetId:
+                      'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
+                    unit: 'SOL',
+                    amount: '1.5',
+                  },
+                ],
+              },
+            },
+          );
+
+          expect(mockTransactionsService.save).toHaveBeenCalledWith(
+            expect.objectContaining({
+              id: signature,
+              from: [
+                {
+                  address: fromAccount.address,
+                  asset: {
+                    unit: 'SOL',
+                    type: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
+                    amount: '1.5',
+                    fungible: true,
+                  },
+                },
+              ],
+              to: [
+                {
+                  address: 'RecipientAddress11111111111111111111111',
+                  asset: {
+                    unit: 'SOL',
+                    type: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
+                    amount: '1.5',
+                    fungible: true,
+                  },
+                },
+              ],
+            }),
+          );
+        });
+
+        it('ignores dApp-provided pending movements and saves a placeholder', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            'https://dapp.example.com',
+            {
+              pendingMovements: {
+                from: [
+                  {
+                    address: fromAccount.address,
+                    assetId:
+                      'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
+                    unit: 'SOL',
+                    amount: '999',
+                  },
+                ],
+                to: [],
+              },
+            },
+          );
+
+          expect(mockTransactionsService.save).toHaveBeenCalledWith(
+            expect.objectContaining({
+              id: signature,
+              from: [
+                expect.objectContaining({
+                  address: fromAccount.address,
+                  asset: expect.objectContaining({ amount: '0' }),
+                }),
+              ],
+              to: [],
+            }),
+          );
+        });
+
         it('classifies a same-chain swap from the swap asset ids on submitted and finalized', async () => {
           await service.signAndSendTransaction(
             fromAccount,

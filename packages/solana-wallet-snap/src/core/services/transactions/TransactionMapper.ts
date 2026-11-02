@@ -25,6 +25,10 @@ import { lamportsToSol } from '../../utils/conversion';
 import { trackError } from '../../utils/errors';
 import { tokenAddressToCaip19 } from '../../utils/tokenAddressToCaip19';
 import type { AssetMetadata } from '../assets/types';
+import type {
+  SolanaPendingTransactionMovement,
+  SolanaPendingTransactionMovements,
+} from '../wallet/structs';
 
 export class TransactionMapper {
   readonly #tokenHelper: TokenHelper;
@@ -56,14 +60,10 @@ export class TransactionMapper {
    * @param params.account - The account that initiated the transaction.
    * @param params.scope - The scope of the transaction.
    * @param params.transactionType - The classification resolved by the caller, if any.
-   * @param params.sendContext - Send-flow context (recipient, asset, amount)
-   * known only to the MetaMask send flow. When present, the pending
-   * transaction carries the real counterparty and amount instead of a
-   * native-asset placeholder.
-   * @param params.sendContext.toAddress - The recipient address.
-   * @param params.sendContext.assetId - The CAIP-19 ID of the asset sent.
-   * @param params.sendContext.unit - The display unit of the asset sent.
-   * @param params.sendContext.amount - The human-readable amount sent.
+   * @param params.movements - The asset movements the transaction represents,
+   * known only to the MetaMask flow that built it. When present, the pending
+   * transaction carries the real counterparties, assets and amounts instead
+   * of a native-asset placeholder.
    * @returns A minimal pending transaction in the keyring API format.
    */
   static createPendingTransaction({
@@ -71,34 +71,27 @@ export class TransactionMapper {
     account,
     scope,
     transactionType,
-    sendContext,
+    movements,
   }: {
     signature: string;
     account: ExtendedKeyringAccount;
     scope: Network;
     transactionType?: TransactionType;
-    sendContext?: {
-      toAddress: string;
-      assetId: CaipAssetType;
-      unit: string;
-      amount: string;
-    };
+    movements?: SolanaPendingTransactionMovements;
   }): Transaction {
     const timestamp = Math.floor(Date.now() / 1000);
 
-    const asset = sendContext
-      ? {
-          unit: sendContext.unit,
-          type: sendContext.assetId,
-          amount: sendContext.amount,
-          fungible: true as const,
-        }
-      : {
-          unit: Networks[scope].nativeToken.symbol,
-          type: Networks[scope].nativeToken.caip19Id,
-          amount: '0',
-          fungible: true as const,
-        };
+    const toParticipant = (
+      movement: SolanaPendingTransactionMovement,
+    ): Transaction['from'][number] => ({
+      address: movement.address,
+      asset: {
+        unit: movement.unit,
+        type: movement.assetId,
+        amount: movement.amount,
+        fungible: true as const,
+      },
+    });
 
     return {
       id: signature,
@@ -107,20 +100,20 @@ export class TransactionMapper {
       status: TransactionStatus.Unconfirmed,
       type: transactionType ?? TransactionType.Unknown,
       timestamp,
-      from: [
-        {
-          address: account.address,
-          asset,
-        },
-      ],
-      to: sendContext
-        ? [
+      from: movements
+        ? movements.from.map(toParticipant)
+        : [
             {
-              address: sendContext.toAddress,
-              asset,
+              address: account.address,
+              asset: {
+                unit: Networks[scope].nativeToken.symbol,
+                type: Networks[scope].nativeToken.caip19Id,
+                amount: '0',
+                fungible: true as const,
+              },
             },
-          ]
-        : [],
+          ],
+      to: movements ? movements.to.map(toParticipant) : [],
       fees: [],
       events: [
         {

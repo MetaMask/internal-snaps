@@ -148,6 +148,30 @@ const SolanaTransactionCommitmentStruct = enums([
   'finalized',
 ]);
 
+const SolanaPendingTransactionMovementStruct = type({
+  /** Address giving or receiving the asset. */
+  address: SanitizedSolanaAddressStruct,
+  /** CAIP-19 ID of the asset moved. */
+  assetId: CaipAssetTypeStruct,
+  /** Display unit of the asset. */
+  unit: string(),
+  /** Human-readable amount moved. */
+  amount: string(),
+});
+
+const SolanaPendingTransactionMovementsStruct = type({
+  from: array(SolanaPendingTransactionMovementStruct),
+  to: array(SolanaPendingTransactionMovementStruct),
+});
+
+export type SolanaPendingTransactionMovement = Infer<
+  typeof SolanaPendingTransactionMovementStruct
+>;
+
+export type SolanaPendingTransactionMovements = Infer<
+  typeof SolanaPendingTransactionMovementsStruct
+>;
+
 const SolanaSignTransactionOptionsStruct = type({
   /** Preflight commitment level. */
   preflightCommitment: optional(SolanaTransactionCommitmentStruct),
@@ -181,6 +205,13 @@ export const SolanaSignAndSendTransactionOptionsStruct = type({
    */
   sourceAssetId: optional(CaipAssetTypeStruct),
   destAssetId: optional(CaipAssetTypeStruct),
+  /**
+   * Movements describing the transaction's user-facing effect, used to render
+   * the optimistic pending activity row. Only honored for MetaMask-originated
+   * requests; dApp-provided values are ignored (they are display-only and
+   * would let a dApp dress up an arbitrary transaction).
+   */
+  pendingMovements: optional(SolanaPendingTransactionMovementsStruct),
 });
 
 export type SolanaSignAndSendTransactionOptions = Infer<

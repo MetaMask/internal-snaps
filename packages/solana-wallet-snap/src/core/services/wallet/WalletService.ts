@@ -386,6 +386,12 @@ export class WalletService {
           account,
           scope,
           transactionType: resolvedTransactionType,
+          // Only MetaMask-originated flows may describe their movements:
+          // a dApp could otherwise dress up an arbitrary transaction.
+          movements:
+            origin === DEFAULT_METAMASK_ORIGIN
+              ? options?.pendingMovements
+              : undefined,
         }),
       );
     } catch (error) {

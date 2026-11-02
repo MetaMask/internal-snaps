@@ -1860,17 +1860,24 @@ describe('TransactionMapper', () => {
   });
 
   describe('createPendingTransaction', () => {
-    it('uses the send context for recipient, asset and amount when provided', () => {
+    it('uses the provided movements for counterparties, assets and amounts', () => {
+      const movement = {
+        address: MOCK_SOLANA_KEYRING_ACCOUNT_1.address,
+        assetId: KnownCaip19Id.UsdcMainnet,
+        unit: 'USDC',
+        amount: '3.25',
+      };
+
       const result = TransactionMapper.createPendingTransaction({
         signature: 'signature-2',
         account: MOCK_SOLANA_KEYRING_ACCOUNT_0,
         scope: Network.Mainnet,
         transactionType: TransactionType.Send,
-        sendContext: {
-          toAddress: MOCK_SOLANA_KEYRING_ACCOUNT_1.address,
-          assetId: KnownCaip19Id.UsdcMainnet,
-          unit: 'USDC',
-          amount: '3.25',
+        movements: {
+          from: [
+            { ...movement, address: MOCK_SOLANA_KEYRING_ACCOUNT_0.address },
+          ],
+          to: [movement],
         },
       });
 

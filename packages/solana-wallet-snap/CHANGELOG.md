@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Save a rich submit-time pending transaction (recipient, asset, amount) for MetaMask-originated sends in `SendService.confirmSend`, deduplicating against the placeholder pending saved at broadcast by shared transaction id
+- Accept optional `pendingMovements` on `signAndSendTransaction` options and record them on the submit-time pending transaction, so any MetaMask-originated flow (send, swap, bridge) renders a complete pending row; honored only for MetaMask-originated requests, dApp-provided values are ignored
 
 ## [7.2.0]
 
