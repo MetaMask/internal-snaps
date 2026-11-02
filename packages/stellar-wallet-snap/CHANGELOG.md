@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Bump `@stellar/stellar-sdk` from `^17.2.1` to `^17.4.0` ([#545](https://github.com/MetaMask/internal-snaps/pull/545))
 - Retry transient Token API, Price API, and Security Alerts API failures with bounded timeouts and circuit breaking ([#534](https://github.com/MetaMask/internal-snaps/pull/534))
 
 ## [2.0.0]
