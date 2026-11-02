@@ -457,7 +457,7 @@ describe('transaction-xdr-decoder', () => {
       const fromAddress = accountAddress;
       const event = new xdr.ContractEvent({
         ext: xdr.ExtensionPoint.v0(),
-        contractId: undefined,
+        contractId: null,
         type: xdr.ContractEventType.system,
         body: xdr.ContractEventBody.v0(
           new xdr.ContractEventV0({
