@@ -1,5 +1,12 @@
 import type { Operation } from '@stellar/stellar-sdk';
-import { Asset, Networks, TransactionBuilder, xdr } from '@stellar/stellar-sdk';
+import {
+  Asset,
+  Networks,
+  TransactionBuilder,
+  encodeMuxedContractAddress,
+  nativeToScVal,
+  xdr,
+} from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
 
 import { KnownCaip2ChainId } from '../../api';
@@ -217,6 +224,22 @@ describe('transaction-xdr-decoder', () => {
       });
     });
 
+    it('parses a SEP-41 transfer invoke with a CAP-84 W… destination', () => {
+      const toMuxedContractId = encodeMuxedContractAddress(contractId, '42');
+      const operation = buildTransferInvokeOperation('transfer', [
+        fromAccountId,
+        toMuxedContractId,
+        '100',
+      ]);
+
+      expect(parseSep41TransferInvoke(operation, scope)).toStrictEqual({
+        assetId: toCaip19Sep41AssetId(scope, contractId),
+        fromAccountId,
+        toAccountId: toMuxedContractId,
+        amount: new BigNumber('100'),
+      });
+    });
+
     it('returns true from isSep41TransferInvoke for transfer', () => {
       const operation = buildTransferInvokeOperation('transfer', [
         fromAccountId,
@@ -424,6 +447,39 @@ describe('transaction-xdr-decoder', () => {
             parseTransferContractEventSafe(event, accountAddress, scope),
         }),
       ).toStrictEqual([]);
+    });
+
+    it('parses a SAC transfer event credited to a CAP-84 W… destination', () => {
+      const toMuxedContractId = encodeMuxedContractAddress(
+        'CASUP2OPFVEHCWGP2XLBXOV7DQIQIT42AQISG4MXAZGNLVFFN63X7WRT',
+        '7',
+      );
+      const fromAddress = accountAddress;
+      const event = new xdr.ContractEvent({
+        ext: xdr.ExtensionPoint.v0(),
+        contractId: null,
+        type: xdr.ContractEventType.system,
+        body: xdr.ContractEventBody.v0(
+          new xdr.ContractEventV0({
+            topics: [
+              nativeToScVal('transfer', { type: 'symbol' }),
+              nativeToScVal(fromAddress, { type: 'address' }),
+              nativeToScVal(toMuxedContractId, { type: 'address' }),
+              nativeToScVal('native'),
+            ],
+            data: nativeToScVal(100n, { type: 'i128' }),
+          }),
+        ),
+      });
+
+      expect(
+        parseTransferContractEventSafe(event, toMuxedContractId, scope),
+      ).toStrictEqual({
+        fromAddress,
+        toAddress: toMuxedContractId,
+        assetId: getSlip44AssetId(scope),
+        amount: new BigNumber('100'),
+      });
     });
   });
 });
