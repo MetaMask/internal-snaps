@@ -8,6 +8,8 @@ import {
 } from '../../../utils/errors';
 import { TokenApiClient } from './TokenApiClient';
 
+jest.mock('../../../utils/logger');
+
 const baseUrl = 'https://tokens.test';
 
 const classicAssetId =
@@ -28,8 +30,9 @@ const jsonResponse = (
   return {
     ok,
     status,
-    json: async () => body,
-  } as Response;
+    headers: { get: () => null },
+    text: async () => JSON.stringify(body),
+  } as unknown as Response;
 };
 
 const tokenMetadataResponse = (
@@ -98,14 +101,33 @@ describe('TokenApiClient', () => {
     });
 
     it('throws HttpResponseException when response is not ok', async () => {
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse([], { ok: false, status: 503 }),
-      );
+      mockFetch.mockResolvedValue(jsonResponse([], { ok: false, status: 503 }));
 
       const client = createClient();
       await expect(
         client.getAssetsByAssetIds([classicAssetId]),
       ).rejects.toThrow(HttpResponseException);
+      expect(mockFetch).toHaveBeenCalledTimes(4);
+    });
+
+    it('retries when reading the response body fails', async () => {
+      const body = [
+        tokenMetadataResponse(classicAssetId, {
+          name: 'USD Coin',
+          symbol: 'USDC',
+        }),
+      ];
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          text: jest.fn().mockRejectedValueOnce(new Error('Body failed')),
+        } as unknown as Response)
+        .mockResolvedValueOnce(jsonResponse(body));
+
+      expect(
+        await createClient().getAssetsByAssetIds([classicAssetId]),
+      ).toStrictEqual(body);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
     it('throws InvalidHttpResponseException when response body is invalid', async () => {
@@ -121,12 +143,13 @@ describe('TokenApiClient', () => {
       const networkError = Object.assign(new Error('network down'), {
         cause: { code: 'ECONNREFUSED' },
       });
-      mockFetch.mockRejectedValueOnce(networkError);
+      mockFetch.mockRejectedValue(networkError);
 
       const client = createClient();
       await expect(
         client.getAssetsByAssetIds([classicAssetId]),
       ).rejects.toThrow(HttpException);
+      expect(mockFetch).toHaveBeenCalledTimes(4);
     });
   });
 
@@ -175,7 +198,7 @@ describe('TokenApiClient', () => {
     });
 
     it('throws HttpResponseException on HTTP error', async () => {
-      mockFetch.mockResolvedValueOnce(
+      mockFetch.mockResolvedValue(
         jsonResponse({ data: [] }, { ok: false, status: 502 }),
       );
 
@@ -183,6 +206,7 @@ describe('TokenApiClient', () => {
       await expect(
         client.getAssetsByChainId(KnownCaip2ChainId.Mainnet),
       ).rejects.toThrow(HttpResponseException);
+      expect(mockFetch).toHaveBeenCalledTimes(4);
     });
 
     it('throws InvalidHttpResponseException when body does not match schema', async () => {
@@ -198,12 +222,13 @@ describe('TokenApiClient', () => {
       const networkError = Object.assign(new Error('network down'), {
         cause: { code: 'ECONNREFUSED' },
       });
-      mockFetch.mockRejectedValueOnce(networkError);
+      mockFetch.mockRejectedValue(networkError);
 
       const client = createClient();
       await expect(
         client.getAssetsByChainId(KnownCaip2ChainId.Mainnet),
       ).rejects.toThrow(HttpException);
+      expect(mockFetch).toHaveBeenCalledTimes(4);
     });
   });
 });

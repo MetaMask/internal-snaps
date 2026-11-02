@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Retry transient Token API, Price API, and Security Alerts API failures with bounded timeouts and circuit breaking ([#534](https://github.com/MetaMask/internal-snaps/pull/534))
+
+## [2.0.0]
+
 ### Added
 
 - **BREAKING:** Read account asset balances from AssetsController when the feature flag `networkAssetsSnapsMigrationStellar` is on ([#331](https://github.com/MetaMask/internal-snaps/pull/331), [#513](https://github.com/MetaMask/internal-snaps/pull/513))
@@ -25,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Keep in-progress memo edits in `memoDraft` so Back does not commit unsaved memo text on send confirmation. ([#406](https://github.com/MetaMask/internal-snaps/pull/406))
+- After a memo is saved, resume price updates, security scanning, and transaction rebuild and validation with the user preferences captured when the confirmation opened. ([#378](https://github.com/MetaMask/internal-snaps/pull/378))
 
 ## [1.3.0]
 
@@ -116,7 +123,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial package release ([#181](https://github.com/MetaMask/internal-snaps/pull/181))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.3.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@2.0.0...HEAD
+[2.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.3.0...@metamask/stellar-wallet-snap@2.0.0
 [1.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.2.0...@metamask/stellar-wallet-snap@1.3.0
 [1.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.1...@metamask/stellar-wallet-snap@1.2.0
 [1.1.1]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.0...@metamask/stellar-wallet-snap@1.1.1
