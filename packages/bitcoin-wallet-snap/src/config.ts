@@ -34,7 +34,6 @@ export const ConfigStruct = object({
       discovery: number(),
       scan: number(),
     }),
-    maxRetries: number(),
     url: object({
       bitcoin: defaultedUrlStruct('https://blockstream.info/api'),
       testnet: defaultedUrlStruct('https://blockstream.info/testnet/api'),
@@ -74,7 +73,6 @@ export const ENVIRONMENT = {
   chain: {
     parallelRequests: 5,
     stopGap: { discovery: 5, scan: 20 },
-    maxRetries: 3,
     url: {
       bitcoin: process.env.ESPLORA_BITCOIN,
       testnet: process.env.ESPLORA_TESTNET,
