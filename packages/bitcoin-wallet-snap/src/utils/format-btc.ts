@@ -9,10 +9,16 @@
  */
 export function formatBtcAmount(satoshis: bigint): string {
   const whole = satoshis / 100_000_000n;
-  const fraction = (satoshis % 100_000_000n)
-    .toString()
-    .padStart(8, '0')
-    .replace(/0+$/u, '');
+  const fraction = (satoshis % 100_000_000n).toString().padStart(8, '0');
 
-  return fraction ? `${whole}.${fraction}` : whole.toString();
+  // Trim at most eight digits directly to avoid the regex backtracking pattern
+  // flagged.
+  let fractionEnd = fraction.length;
+  while (fractionEnd > 0 && fraction[fractionEnd - 1] === '0') {
+    fractionEnd -= 1;
+  }
+
+  return fractionEnd > 0
+    ? `${whole}.${fraction.slice(0, fractionEnd)}`
+    : whole.toString();
 }

@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Retry transient Bitcoin indexer, price API, and signed transaction broadcast failures with the shared fetch policy, and treat duplicate broadcasts as successful. ([#530](https://github.com/MetaMask/internal-snaps/pull/530))
-- Run Bitcoin account repairs separately from regular balance and activity updates. ([#543](https://github.com/MetaMask/internal-snaps/pull/543))
 
 ### Fixed
 

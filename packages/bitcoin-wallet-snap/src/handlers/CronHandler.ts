@@ -26,7 +26,6 @@ import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 
 export const CronMethod = {
   SynchronizeAccounts: 'synchronizeAccounts',
-  RepairAccounts: 'repairAccounts',
   RefreshRates: 'refreshRates',
   SyncSelectedAccounts: 'syncSelectedAccounts',
   FullScanAccount: 'fullScanAccount',
@@ -64,8 +63,6 @@ export class CronHandler {
   readonly #logger: Logger;
 
   readonly #syncCoalescer = new InFlightCoalescer();
-
-  #synchronization: Promise<void> | undefined;
 
   constructor(
     accounts: AccountUseCases,
@@ -128,9 +125,6 @@ export class CronHandler {
       case CronMethod.SynchronizeAccounts: {
         return this.synchronizeAccounts();
       }
-      case CronMethod.RepairAccounts: {
-        return this.repairAccounts();
-      }
       case CronMethod.RefreshRates: {
         assert(params, SendFormRefreshRatesRequest);
         return this.#sendFlowUseCases.refresh(params.interfaceId);
@@ -149,64 +143,37 @@ export class CronHandler {
   }
 
   async synchronizeAccounts(): Promise<void> {
-    // Sync triggers stack up (the 30s cronjob, `onActive`, background
-    // events), so concurrent invocations share one in-flight run instead of
-    // duplicating network fetches, state writes, and keyring events. Note
-    // that coalesced callers share the run's outcome, including the reported
-    // synchronization failures.
-    const synchronization = this.#syncCoalescer.run(
-      'synchronizeAccounts',
-      async () => {
-        const selectedAccounts: Set<string> = new Set(
-          await getSelectedAccounts(this.#snap),
-        );
+    // Keep regular synchronization and repair in one coalesced run so a later
+    // synchronization cannot publish newer data before this run's repair finishes.
+    await this.#syncCoalescer.run('synchronizeAccounts', async () => {
+      const selectedAccounts: Set<string> = new Set(
+        await getSelectedAccounts(this.#snap),
+      );
 
-        const accounts = (await this.#accountsUseCases.list()).filter(
-          (account) => {
-            return selectedAccounts.has(account.id);
-          },
-        );
+      const accounts = (await this.#accountsUseCases.list()).filter(
+        (account) => {
+          return selectedAccounts.has(account.id);
+        },
+      );
 
-        const results = await Promise.allSettled(
-          accounts.map(async (account) =>
-            this.#accountsUseCases.synchronize(account, 'cron'),
-          ),
-        );
+      const results = await Promise.allSettled(
+        accounts.map(async (account) =>
+          this.#accountsUseCases.synchronize(account, 'cron'),
+        ),
+      );
 
-        await this.#finishSync(results);
+      await this.#finishSync(results);
 
-        await this.#reportSyncFailures(
-          'synchronizeAccounts: Account synchronization failures',
-          results,
-          accounts.map(({ id }) => id),
-        );
-      },
-    );
+      await this.#reportSyncFailures(
+        'synchronizeAccounts: Account synchronization failures',
+        results,
+        accounts.map(({ id }) => id),
+      );
 
-    this.#synchronization = synchronization;
-    try {
-      await synchronization;
-    } finally {
-      if (this.#synchronization === synchronization) {
-        this.#synchronization = undefined;
-      }
-    }
-  }
-
-  /**
-   * Runs one queued repair independently of regular synchronization. Overlapping
-   * repair jobs share one run. An existing regular sync finishes first, while
-   * subsequent regular sync calls never wait for the repair.
-   */
-  async repairAccounts(): Promise<void> {
-    await this.#syncCoalescer.run('repairAccounts', async () => {
+      // Publish normal balance and activity updates before the slower repair scan.
       try {
-        // A failed regular sync must not prevent the independently scheduled repair.
-        await this.#synchronization?.catch(() => undefined);
-
-        // The client may have locked or become inactive while waiting for sync.
+        // Normal synchronization may have taken long enough for the client to lock.
         const { active, locked } = await this.#snapClient.getClientStatus();
-
         if (!active || locked) {
           return;
         }
