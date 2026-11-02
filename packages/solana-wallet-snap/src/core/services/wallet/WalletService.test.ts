@@ -25,6 +25,7 @@ import { MOCK_EXECUTION_SCENARIOS } from '../signer/mocks/scenarios';
 import type { Signer } from '../signer/Signer';
 import type { SignatureMonitor } from '../subscriptions';
 import type { TransactionsService } from '../transactions';
+import type { PendingTransactionClassifier } from '../transactions/PendingTransactionClassifier';
 import {
   MOCK_SIGN_AND_SEND_TRANSACTION_REQUEST,
   MOCK_SIGN_IN_REQUEST,
@@ -93,6 +94,9 @@ describe('WalletService', () => {
       mockSignatureMonitor,
       mockAnalyticsService,
       mockTransactionsService,
+      {
+        classify: jest.fn().mockResolvedValue(undefined),
+      } as unknown as PendingTransactionClassifier,
       logger,
     );
 
@@ -502,101 +506,6 @@ describe('WalletService', () => {
             scope,
             DEFAULT_METAMASK_ORIGIN,
             TransactionType.TokenApprove,
-          );
-        });
-
-        it('honors pending movements for MetaMask-originated requests', async () => {
-          await service.signAndSendTransaction(
-            fromAccount,
-            transactionMessageBase64Encoded,
-            scope,
-            DEFAULT_METAMASK_ORIGIN,
-            {
-              pendingMovements: {
-                from: [
-                  {
-                    address: fromAccount.address,
-                    assetId:
-                      'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
-                    unit: 'SOL',
-                    amount: '1.5',
-                  },
-                ],
-                to: [
-                  {
-                    address: 'RecipientAddress11111111111111111111111',
-                    assetId:
-                      'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
-                    unit: 'SOL',
-                    amount: '1.5',
-                  },
-                ],
-              },
-            },
-          );
-
-          expect(mockTransactionsService.save).toHaveBeenCalledWith(
-            expect.objectContaining({
-              id: signature,
-              from: [
-                {
-                  address: fromAccount.address,
-                  asset: {
-                    unit: 'SOL',
-                    type: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
-                    amount: '1.5',
-                    fungible: true,
-                  },
-                },
-              ],
-              to: [
-                {
-                  address: 'RecipientAddress11111111111111111111111',
-                  asset: {
-                    unit: 'SOL',
-                    type: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
-                    amount: '1.5',
-                    fungible: true,
-                  },
-                },
-              ],
-            }),
-          );
-        });
-
-        it('ignores dApp-provided pending movements and saves a placeholder', async () => {
-          await service.signAndSendTransaction(
-            fromAccount,
-            transactionMessageBase64Encoded,
-            scope,
-            'https://dapp.example.com',
-            {
-              pendingMovements: {
-                from: [
-                  {
-                    address: fromAccount.address,
-                    assetId:
-                      'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
-                    unit: 'SOL',
-                    amount: '999',
-                  },
-                ],
-                to: [],
-              },
-            },
-          );
-
-          expect(mockTransactionsService.save).toHaveBeenCalledWith(
-            expect.objectContaining({
-              id: signature,
-              from: [
-                expect.objectContaining({
-                  address: fromAccount.address,
-                  asset: expect.objectContaining({ amount: '0' }),
-                }),
-              ],
-              to: [],
-            }),
           );
         });
 

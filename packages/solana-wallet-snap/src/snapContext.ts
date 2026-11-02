@@ -54,6 +54,7 @@ import { registerStateMigration } from './core/services/state/registerStateMigra
 import { DEFAULT_UNENCRYPTED_STATE } from './core/services/state/stateTypes';
 import type { UnencryptedStateValue } from './core/services/state/stateTypes';
 import { TransactionScanService } from './core/services/transaction-scan/TransactionScanService';
+import { PendingTransactionClassifier } from './core/services/transactions/PendingTransactionClassifier';
 import { WalletService } from './core/services/wallet/WalletService';
 import type { CoreMessenger } from './core/types/core-messenger';
 import { trackError } from './core/utils/errors';
@@ -264,7 +265,7 @@ const walletService = new WalletService(
   signatureMonitor,
   analyticsService,
   transactionsService,
-  logger,
+  new PendingTransactionClassifier(connection, assetsService, logger),
 );
 
 const keyring = new SolanaKeyring({

@@ -134,24 +134,6 @@ export class SendService {
 
     const base64EncodedTransaction = fromTransactionToBase64String(transaction);
 
-    // Describe the send's movements so the optimistic pending activity row
-    // carries the real recipient, asset and amount. The wallet service only
-    // honors these for MetaMask-originated requests.
-    let unit: string = Networks[scope].nativeToken.symbol;
-    if (!isNativeSend) {
-      try {
-        unit =
-          (
-            await this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
-              assetId,
-            ])
-          )[assetId]?.symbol ?? '';
-      } catch (error) {
-        this.#logger.warn('Failed to resolve asset unit', error);
-        unit = '';
-      }
-    }
-
     const keyringRequest: KeyringRequest = {
       id: globalThis.crypto.randomUUID(),
       scope,
@@ -165,12 +147,6 @@ export class SendService {
           },
           transaction: base64EncodedTransaction,
           scope,
-          options: {
-            pendingMovements: {
-              from: [{ address: account.address, assetId, unit, amount }],
-              to: [{ address: toAddress, assetId, unit, amount }],
-            },
-          },
         },
       },
     };

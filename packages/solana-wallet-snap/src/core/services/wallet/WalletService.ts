@@ -1,7 +1,8 @@
 import type { SLIP10Node } from '@metamask/key-tree';
-import { SolMethod } from '@metamask/keyring-api';
+import { SolMethod, TransactionStatus } from '@metamask/keyring-api';
 import type { TransactionType } from '@metamask/keyring-api';
 import {
+  buildPendingTransaction,
   DEFAULT_METAMASK_ORIGIN,
   normalizeError,
   resolveFlowTransactionType,
@@ -31,6 +32,7 @@ import {
 } from '@solana/kit';
 
 import type { Caip10Address, Network } from '../../constants/solana';
+import { Networks } from '../../constants/solana';
 import type { DecompileTransactionMessageFetchingLookupTablesConfig } from '../../sdk-extensions/codecs';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
 import { addressToCaip10 } from '../../utils/addressToCaip10';
@@ -47,8 +49,8 @@ import { Base58Struct, Base64Struct } from '../../validation/structs';
 import type { SolanaConnection } from '../connection';
 import type { Signer } from '../signer/Signer';
 import type { SignatureMonitor } from '../subscriptions';
-import { TransactionMapper } from '../transactions';
 import type { TransactionsService } from '../transactions';
+import type { PendingTransactionClassifier } from '../transactions/PendingTransactionClassifier';
 import {
   SolanaSignAndSendTransactionResponseStruct,
   SolanaSignInResponseStruct,
@@ -100,6 +102,8 @@ export class WalletService {
 
   readonly #transactionsService: TransactionsService;
 
+  readonly #pendingTransactionClassifier: PendingTransactionClassifier;
+
   readonly #logger: Logger;
 
   constructor(
@@ -108,6 +112,7 @@ export class WalletService {
     signatureMonitor: SignatureMonitor,
     analyticsService: AnalyticsService,
     transactionsService: TransactionsService,
+    pendingTransactionClassifier: PendingTransactionClassifier,
     _logger = logger,
   ) {
     this.#connection = connection;
@@ -115,6 +120,7 @@ export class WalletService {
     this.#signatureMonitor = signatureMonitor;
     this.#analyticsService = analyticsService;
     this.#transactionsService = transactionsService;
+    this.#pendingTransactionClassifier = pendingTransactionClassifier;
     this.#logger = _logger.withPrefix('[👛 WalletService]');
   }
 
@@ -380,18 +386,24 @@ export class WalletService {
     // signature monitor replaces it with the fully mapped transaction once the
     // signature reaches the desired commitment.
     try {
+      // Classify by decoding the transaction ourselves: clients never supply
+      // display data, so a dApp cannot dress up an arbitrary transaction.
+      const classification = await this.#pendingTransactionClassifier
+        .classify(transactionMessageBase64Encoded, account, scope)
+        .catch(() => undefined);
+
       await this.#transactionsService.save(
-        TransactionMapper.createPendingTransaction({
-          signature,
+        buildPendingTransaction({
+          id: signature,
           account,
           scope,
-          transactionType: resolvedTransactionType,
-          // Only MetaMask-originated flows may describe their movements:
-          // a dApp could otherwise dress up an arbitrary transaction.
-          movements:
-            origin === DEFAULT_METAMASK_ORIGIN
-              ? options?.pendingMovements
-              : undefined,
+          nativeAsset: {
+            symbol: Networks[scope].nativeToken.symbol,
+            assetId: Networks[scope].nativeToken.caip19Id,
+          },
+          classification,
+          type: resolvedTransactionType,
+          status: TransactionStatus.Unconfirmed,
         }),
       );
     } catch (error) {

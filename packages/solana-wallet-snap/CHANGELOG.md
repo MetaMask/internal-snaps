@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Accept optional `pendingMovements` on `signAndSendTransaction` options and record them on the submit-time pending transaction, so any MetaMask-originated flow (send, swap, bridge) renders a complete pending row; honored only for MetaMask-originated requests, dApp-provided values are ignored
+- Classify transactions at broadcast time by decoding their instructions (`PendingTransactionClassifier`), so the submit-time pending activity row carries the real type, counterparties, assets and amounts for self-describing transfers, on all submission paths (MetaMask flows and dApp requests alike); other transactions keep the native-asset placeholder. Pending transactions are now built via the shared `buildPendingTransaction` util from `@metamask/snap-networks-utils`
 
 ## [7.2.0]
 

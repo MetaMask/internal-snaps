@@ -85,9 +85,7 @@ describe('SendService', () => {
 
     mockKeyring = {
       getAccountOrThrow: jest.fn().mockResolvedValue(mockAccount),
-      submitRequest: jest
-        .fn()
-        .mockResolvedValue({ signature: 'mock-signature' }),
+      submitRequest: jest.fn().mockResolvedValue({ success: true }),
     } as unknown as SolanaKeyring;
 
     mockRecipientClassifier = {
@@ -155,24 +153,6 @@ describe('SendService', () => {
         amount: '1.5',
         network: Network.Mainnet,
       });
-      const expectedMovements = {
-        from: [
-          {
-            address: mockAccount.address,
-            assetId: Networks[Network.Mainnet].nativeToken.caip19Id,
-            unit: 'SOL',
-            amount: '1.5',
-          },
-        ],
-        to: [
-          {
-            address: MOCK_SOLANA_KEYRING_ACCOUNT_1.address,
-            assetId: Networks[Network.Mainnet].nativeToken.caip19Id,
-            unit: 'SOL',
-            amount: '1.5',
-          },
-        ],
-      };
       expect(mockKeyring.submitRequest).toHaveBeenCalledWith({
         id: globalThis.crypto.randomUUID(),
         scope: Network.Mainnet,
@@ -184,92 +164,10 @@ describe('SendService', () => {
             account: { address: mockAccount.address },
             transaction: 'base64-encoded-tx',
             scope: Network.Mainnet,
-            options: { pendingMovements: expectedMovements },
           },
         },
       });
-      expect(result).toStrictEqual({ signature: 'mock-signature' });
-    });
-
-    it('resolves the SPL token unit in the pending movements', async () => {
-      jest.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
-        [KnownCaip19Id.UsdcMainnet]: { symbol: 'USDC' } as AssetEntity,
-      });
-
-      const tokenRequest: OnConfirmSendRequest = {
-        ...mockRequest,
-        params: {
-          ...mockRequest.params,
-          assetId: KnownCaip19Id.UsdcMainnet,
-        },
-      };
-
-      await sendService.confirmSend(tokenRequest);
-
-      expect(mockKeyring.submitRequest).toHaveBeenCalledWith(
-        expect.objectContaining({
-          request: expect.objectContaining({
-            params: expect.objectContaining({
-              options: {
-                pendingMovements: {
-                  from: [
-                    {
-                      address: mockAccount.address,
-                      assetId: KnownCaip19Id.UsdcMainnet,
-                      unit: 'USDC',
-                      amount: '1.5',
-                    },
-                  ],
-                  to: [
-                    {
-                      address: MOCK_SOLANA_KEYRING_ACCOUNT_1.address,
-                      assetId: KnownCaip19Id.UsdcMainnet,
-                      unit: 'USDC',
-                      amount: '1.5',
-                    },
-                  ],
-                },
-              },
-            }),
-          }),
-        }),
-      );
-    });
-
-    it('still submits when the asset unit cannot be resolved', async () => {
-      jest
-        .spyOn(mockAssetsService, 'getAccountAssetsByIDs')
-        .mockRejectedValue(new Error('assets unavailable'));
-
-      const tokenRequest: OnConfirmSendRequest = {
-        ...mockRequest,
-        params: {
-          ...mockRequest.params,
-          assetId: KnownCaip19Id.UsdcMainnet,
-        },
-      };
-
-      const result = await sendService.confirmSend(tokenRequest);
-
-      expect(result).toStrictEqual({ signature: 'mock-signature' });
-      expect(mockKeyring.submitRequest).toHaveBeenCalledWith(
-        expect.objectContaining({
-          request: expect.objectContaining({
-            params: expect.objectContaining({
-              options: {
-                pendingMovements: expect.objectContaining({
-                  to: [
-                    expect.objectContaining({
-                      unit: '',
-                      assetId: KnownCaip19Id.UsdcMainnet,
-                    }),
-                  ],
-                }),
-              },
-            }),
-          }),
-        }),
-      );
+      expect(result).toStrictEqual({ success: true });
     });
 
     it('confirms SPL token send transaction successfully', async () => {
@@ -292,7 +190,7 @@ describe('SendService', () => {
         network: Network.Mainnet,
         mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
       });
-      expect(result).toStrictEqual({ signature: 'mock-signature' });
+      expect(result).toStrictEqual({ success: true });
     });
 
     it('handles errors from keyring.getAccountOrThrow', async () => {

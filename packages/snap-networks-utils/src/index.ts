@@ -49,6 +49,11 @@ export {
   resolveFlowTransactionType,
   resolveUnifiedSwapTransactionType,
 } from './utils/transactionType/transactionType';
+export { buildPendingTransaction } from './utils/pendingTransaction/pendingTransaction';
+export type {
+  PendingTransactionClassification,
+  PendingTransactionMovement,
+} from './utils/pendingTransaction/pendingTransaction';
 export { buildUrl } from './utils/buildUrl/buildUrl';
 export type { BuildUrlParams } from './utils/buildUrl/buildUrl';
 export {
