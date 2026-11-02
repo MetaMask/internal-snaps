@@ -16,8 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Bump `@stellar/stellar-sdk` from `^17.2.1` to `^17.4.0`
-- Accept CAP-84 muxed contract addresses (`W…`) in SEP-41 transfer parsing and address validation
+- Bump `@stellar/stellar-sdk` from `^17.2.1` to `^17.4.0` ([#545](https://github.com/MetaMask/internal-snaps/pull/545))
+- Accept CAP-84 muxed contract addresses (`W…`) in SEP-41 transfer parsing and address validation  ([#546](https://github.com/MetaMask/internal-snaps/pull/546))
   - `signTransaction` confirmation and contract-event receive parsing accept `W…` destinations alongside `G…` / `C…`.
   - MetaMask send UI for entering a `W…` recipient is unchanged.
 - Stop falling back to Soroban RPC and Horizon for asset metadata ([#505](https://github.com/MetaMask/internal-snaps/pull/505))
