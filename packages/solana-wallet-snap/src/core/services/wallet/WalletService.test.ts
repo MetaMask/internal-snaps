@@ -25,6 +25,7 @@ import { MOCK_EXECUTION_SCENARIOS } from '../signer/mocks/scenarios';
 import type { Signer } from '../signer/Signer';
 import type { SignatureMonitor } from '../subscriptions';
 import type { TransactionsService } from '../transactions';
+import type { PendingTransactionClassifier } from '../transactions/PendingTransactionClassifier';
 import {
   MOCK_SIGN_AND_SEND_TRANSACTION_REQUEST,
   MOCK_SIGN_IN_REQUEST,
@@ -55,6 +56,7 @@ describe('WalletService', () => {
   let mockSignatureMonitor: SignatureMonitor;
   let mockAnalyticsService: AnalyticsService;
   let mockTransactionsService: TransactionsService;
+  let mockPendingTransactionClassifier: { classify: jest.Mock };
   let service: WalletService;
   const mockAccounts = [...MOCK_SOLANA_KEYRING_ACCOUNTS];
   let onCommitmentReachedCallback: (params: any) => Promise<void>;
@@ -87,12 +89,17 @@ describe('WalletService', () => {
       save: jest.fn(),
     } as unknown as TransactionsService;
 
+    mockPendingTransactionClassifier = {
+      classify: jest.fn().mockResolvedValue(undefined),
+    };
+
     service = new WalletService(
       mockConnection,
       mockSigner,
       mockSignatureMonitor,
       mockAnalyticsService,
       mockTransactionsService,
+      mockPendingTransactionClassifier as unknown as PendingTransactionClassifier,
       logger,
     );
 
@@ -478,6 +485,29 @@ describe('WalletService', () => {
                   address: fromAccount.address,
                 }),
               ],
+            }),
+          );
+        });
+
+        it('saves a placeholder when classification fails', async () => {
+          mockPendingTransactionClassifier.classify.mockRejectedValue(
+            new Error('decode failed'),
+          );
+
+          const result = await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            'https://metamask.io',
+          );
+
+          expect(result).toStrictEqual({ signature });
+          expect(mockTransactionsService.save).toHaveBeenCalledWith(
+            expect.objectContaining({
+              id: signature,
+              status: 'unconfirmed',
+              type: 'unknown',
+              to: [],
             }),
           );
         });
