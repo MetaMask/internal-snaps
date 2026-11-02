@@ -23,6 +23,7 @@ import { mockLogger } from '../__mocks__/logger';
 import { createMockConnection } from '../__mocks__/mockConnection';
 import type { AssetsService } from '../assets';
 import type { SolanaConnection } from '../connection';
+import type { TransactionsService } from '../transactions/TransactionsService';
 import type { RecipientClassifier } from './RecipientClassifier';
 import { SendService } from './SendService';
 import type { SendSolBuilder } from './SendSolBuilder';
@@ -67,6 +68,7 @@ describe('SendService', () => {
   let mockSendSolBuilder: SendSolBuilder;
   let mockSendSplTokenBuilder: SendSplTokenBuilder;
   let mockAssetsService: AssetsService;
+  let mockTransactionsService: TransactionsService;
   let mockRecipientClassifier: RecipientClassifier;
 
   const mockAccount: ExtendedKeyringAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
@@ -85,7 +87,9 @@ describe('SendService', () => {
 
     mockKeyring = {
       getAccountOrThrow: jest.fn().mockResolvedValue(mockAccount),
-      submitRequest: jest.fn().mockResolvedValue({ success: true }),
+      submitRequest: jest
+        .fn()
+        .mockResolvedValue({ signature: 'mock-signature' }),
     } as unknown as SolanaKeyring;
 
     mockRecipientClassifier = {
@@ -112,6 +116,10 @@ describe('SendService', () => {
       getAccountAssetsByIDs: jest.fn(),
     } as unknown as AssetsService;
 
+    mockTransactionsService = {
+      save: jest.fn().mockResolvedValue(undefined),
+    } as unknown as TransactionsService;
+
     (fromTransactionToBase64String as jest.Mock).mockReturnValue(
       'base64-encoded-tx',
     );
@@ -125,6 +133,7 @@ describe('SendService', () => {
       mockSendSolBuilder,
       mockSendSplTokenBuilder,
       mockAssetsService,
+      mockTransactionsService,
     );
   });
 
@@ -167,7 +176,84 @@ describe('SendService', () => {
           },
         },
       });
-      expect(result).toStrictEqual({ success: true });
+      expect(result).toStrictEqual({ signature: 'mock-signature' });
+    });
+
+    it('saves a rich pending transaction with the send-flow context', async () => {
+      await sendService.confirmSend(mockRequest);
+
+      expect(mockTransactionsService.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'mock-signature',
+          account: mockAccount.id,
+          chain: Network.Mainnet,
+          status: 'unconfirmed',
+          type: 'send',
+          from: [
+            {
+              address: mockAccount.address,
+              asset: {
+                unit: 'SOL',
+                type: Networks[Network.Mainnet].nativeToken.caip19Id,
+                amount: '1.5',
+                fungible: true,
+              },
+            },
+          ],
+          to: [
+            {
+              address: MOCK_SOLANA_KEYRING_ACCOUNT_1.address,
+              asset: {
+                unit: 'SOL',
+                type: Networks[Network.Mainnet].nativeToken.caip19Id,
+                amount: '1.5',
+                fungible: true,
+              },
+            },
+          ],
+        }),
+      );
+    });
+
+    it('resolves the SPL token unit for the rich pending transaction', async () => {
+      jest.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
+        [KnownCaip19Id.UsdcMainnet]: { symbol: 'USDC' } as AssetEntity,
+      });
+
+      const tokenRequest: OnConfirmSendRequest = {
+        ...mockRequest,
+        params: {
+          ...mockRequest.params,
+          assetId: KnownCaip19Id.UsdcMainnet,
+        },
+      };
+
+      await sendService.confirmSend(tokenRequest);
+
+      expect(mockTransactionsService.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: [
+            {
+              address: MOCK_SOLANA_KEYRING_ACCOUNT_1.address,
+              asset: expect.objectContaining({
+                unit: 'USDC',
+                type: KnownCaip19Id.UsdcMainnet,
+                amount: '1.5',
+              }),
+            },
+          ],
+        }),
+      );
+    });
+
+    it('still resolves when saving the rich pending transaction fails', async () => {
+      jest
+        .spyOn(mockTransactionsService, 'save')
+        .mockRejectedValue(new Error('state write failed'));
+
+      const result = await sendService.confirmSend(mockRequest);
+
+      expect(result).toStrictEqual({ signature: 'mock-signature' });
     });
 
     it('confirms SPL token send transaction successfully', async () => {
@@ -190,7 +276,7 @@ describe('SendService', () => {
         network: Network.Mainnet,
         mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
       });
-      expect(result).toStrictEqual({ success: true });
+      expect(result).toStrictEqual({ signature: 'mock-signature' });
     });
 
     it('handles errors from keyring.getAccountOrThrow', async () => {

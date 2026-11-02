@@ -56,6 +56,14 @@ export class TransactionMapper {
    * @param params.account - The account that initiated the transaction.
    * @param params.scope - The scope of the transaction.
    * @param params.transactionType - The classification resolved by the caller, if any.
+   * @param params.sendContext - Send-flow context (recipient, asset, amount)
+   * known only to the MetaMask send flow. When present, the pending
+   * transaction carries the real counterparty and amount instead of a
+   * native-asset placeholder.
+   * @param params.sendContext.toAddress - The recipient address.
+   * @param params.sendContext.assetId - The CAIP-19 ID of the asset sent.
+   * @param params.sendContext.unit - The display unit of the asset sent.
+   * @param params.sendContext.amount - The human-readable amount sent.
    * @returns A minimal pending transaction in the keyring API format.
    */
   static createPendingTransaction({
@@ -63,13 +71,34 @@ export class TransactionMapper {
     account,
     scope,
     transactionType,
+    sendContext,
   }: {
     signature: string;
     account: ExtendedKeyringAccount;
     scope: Network;
     transactionType?: TransactionType;
+    sendContext?: {
+      toAddress: string;
+      assetId: CaipAssetType;
+      unit: string;
+      amount: string;
+    };
   }): Transaction {
     const timestamp = Math.floor(Date.now() / 1000);
+
+    const asset = sendContext
+      ? {
+          unit: sendContext.unit,
+          type: sendContext.assetId,
+          amount: sendContext.amount,
+          fungible: true as const,
+        }
+      : {
+          unit: Networks[scope].nativeToken.symbol,
+          type: Networks[scope].nativeToken.caip19Id,
+          amount: '0',
+          fungible: true as const,
+        };
 
     return {
       id: signature,
@@ -81,15 +110,17 @@ export class TransactionMapper {
       from: [
         {
           address: account.address,
-          asset: {
-            unit: Networks[scope].nativeToken.symbol,
-            type: Networks[scope].nativeToken.caip19Id,
-            amount: '0',
-            fungible: true,
-          },
+          asset,
         },
       ],
-      to: [],
+      to: sendContext
+        ? [
+            {
+              address: sendContext.toAddress,
+              asset,
+            },
+          ]
+        : [],
       fees: [],
       events: [
         {

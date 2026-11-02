@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Save a rich submit-time pending transaction (recipient, asset, amount) for MetaMask-originated sends in `SendService.confirmSend`, deduplicating against the placeholder pending saved at broadcast by shared transaction id
+
 ## [7.2.0]
 
 ### Added

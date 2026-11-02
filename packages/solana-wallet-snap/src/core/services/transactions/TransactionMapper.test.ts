@@ -1,7 +1,11 @@
+import { TransactionType } from '@metamask/keyring-api';
 import { address as asAddress, lamports } from '@solana/kit';
 
 import { KnownCaip19Id, Network, Networks } from '../../constants/solana';
-import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../test/mocks/solana-keyring-accounts';
+import {
+  MOCK_SOLANA_KEYRING_ACCOUNT_0,
+  MOCK_SOLANA_KEYRING_ACCOUNT_1,
+} from '../../test/mocks/solana-keyring-accounts';
 import { EXPECTED_FAILED_SWAP_DATA } from '../../test/mocks/transactions-data/failed-swap';
 import { EXPECTED_NATIVE_SOL_TRANSFER_DATA } from '../../test/mocks/transactions-data/native-sol-transfer';
 import { EXPECTED_NATIVE_SOL_TRANSFER_TO_SELF_DATA } from '../../test/mocks/transactions-data/native-sol-transfer-to-self';
@@ -1856,6 +1860,45 @@ describe('TransactionMapper', () => {
   });
 
   describe('createPendingTransaction', () => {
+    it('uses the send context for recipient, asset and amount when provided', () => {
+      const result = TransactionMapper.createPendingTransaction({
+        signature: 'signature-2',
+        account: MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        scope: Network.Mainnet,
+        transactionType: TransactionType.Send,
+        sendContext: {
+          toAddress: MOCK_SOLANA_KEYRING_ACCOUNT_1.address,
+          assetId: KnownCaip19Id.UsdcMainnet,
+          unit: 'USDC',
+          amount: '3.25',
+        },
+      });
+
+      expect(result.type).toBe('send');
+      expect(result.from).toStrictEqual([
+        {
+          address: MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
+          asset: {
+            unit: 'USDC',
+            type: KnownCaip19Id.UsdcMainnet,
+            amount: '3.25',
+            fungible: true,
+          },
+        },
+      ]);
+      expect(result.to).toStrictEqual([
+        {
+          address: MOCK_SOLANA_KEYRING_ACCOUNT_1.address,
+          asset: {
+            unit: 'USDC',
+            type: KnownCaip19Id.UsdcMainnet,
+            amount: '3.25',
+            fungible: true,
+          },
+        },
+      ]);
+    });
+
     it('creates a minimal unconfirmed transaction for the signature', () => {
       const before = Math.floor(Date.now() / 1000);
 

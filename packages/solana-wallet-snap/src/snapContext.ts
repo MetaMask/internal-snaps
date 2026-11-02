@@ -286,6 +286,7 @@ const sendService = new SendService(
   sendSolBuilder,
   sendSplTokenBuilder,
   assetsService,
+  transactionsService,
 );
 
 const approveTokenService = new ApproveTokenService(

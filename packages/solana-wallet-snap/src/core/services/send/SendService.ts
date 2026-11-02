@@ -1,5 +1,5 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
-import { SolMethod } from '@metamask/keyring-api';
+import { SolMethod, TransactionType } from '@metamask/keyring-api';
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   Logger,
@@ -19,6 +19,8 @@ import { useCache } from '../../utils/caching';
 import { solToLamports } from '../../utils/conversion';
 import type { AssetsService } from '../assets';
 import type { SolanaConnection } from '../connection';
+import { TransactionMapper } from '../transactions/TransactionMapper';
+import type { TransactionsService } from '../transactions/TransactionsService';
 import type { RecipientClassifier } from './RecipientClassifier';
 import { SendFeeCalculator } from './SendFeeCalculator';
 import type { SendSolBuilder } from './SendSolBuilder';
@@ -47,6 +49,8 @@ export class SendService {
 
   readonly #assetsService: AssetsService;
 
+  readonly #transactionsService: TransactionsService;
+
   readonly #cacheTtlsMilliseconds = {
     minimumBalanceForRentExemption: 5 * Duration.Minute,
   };
@@ -60,6 +64,7 @@ export class SendService {
     sendSolBuilder: SendSolBuilder,
     sendSplTokenBuilder: SendSplTokenBuilder,
     assetsService: AssetsService,
+    transactionsService: TransactionsService,
   ) {
     this.#connection = connection;
     this.#keyring = keyring;
@@ -69,6 +74,7 @@ export class SendService {
     this.#sendSolBuilder = sendSolBuilder;
     this.#sendSplTokenBuilder = sendSplTokenBuilder;
     this.#assetsService = assetsService;
+    this.#transactionsService = transactionsService;
   }
 
   async #getCachedMinimumBalanceForRentExemption(
@@ -153,7 +159,37 @@ export class SendService {
 
     this.#logger.log('Submitting keyring request', keyringRequest);
 
-    return this.#keyring.submitRequest(keyringRequest);
+    const result = await this.#keyring.submitRequest(keyringRequest);
+
+    // Enrich the placeholder pending transaction saved during broadcast with
+    // the recipient/asset/amount known only to this send flow. Both share the
+    // signature as id, so the client's id-dedup keeps this richer entry.
+    try {
+      const { signature } = result as { signature: string };
+
+      const unit = isNativeSend
+        ? Networks[scope].nativeToken.symbol
+        : ((
+            await this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
+              assetId,
+            ])
+          )[assetId]?.symbol ?? '');
+
+      await this.#transactionsService.save(
+        TransactionMapper.createPendingTransaction({
+          signature,
+          account,
+          scope,
+          transactionType: TransactionType.Send,
+          sendContext: { toAddress, assetId, unit, amount },
+        }),
+      );
+    } catch (error) {
+      // The transaction is already broadcast; never fail the send over this.
+      this.#logger.warn('Failed to save rich pending transaction', error);
+    }
+
+    return result;
   }
 
   /**
