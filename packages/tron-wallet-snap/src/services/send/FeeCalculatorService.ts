@@ -812,6 +812,30 @@ export class FeeCalculatorService {
   }
 
   /**
+   * Conservative TRX reserve for activating an unknown recipient account.
+   *
+   * A send whose destination is not known yet cannot assess whether the
+   * recipient is activated, so callers reserve the full activation cost:
+   * the `getCreateNewAccountFeeInSystemContract` burn plus the
+   * `getCreateAccountFee` Bandwidth shortfall, assuming the sender has no
+   * staked Bandwidth to cover the account creation.
+   *
+   * @param scope - The network scope to resolve chain parameters for.
+   * @returns Promise<BigNumber> - The activation reserve in TRX.
+   */
+  async getAccountActivationReserve(scope: Network): Promise<BigNumber> {
+    const chainParameters = await this.#getChainParameters(scope);
+    const { activationFeeTrx, createAccountFeeTrx } =
+      this.#getActivationFeeParams(chainParameters);
+
+    const reserve = activationFeeTrx.plus(createAccountFeeTrx);
+
+    this.#logger.log(`Account activation reserve: ${reserve.toString()} TRX`);
+
+    return reserve;
+  }
+
+  /**
    * Calculate memo/note fee for the transaction.
    * Per Tron protocol, adding a memo/note incurs a flat 1 TRX fee.
    * The memo is stored in `raw_data.data` at the transaction level,

@@ -57,6 +57,7 @@ import {
   ComputeFeeRequestStruct,
   ComputeFeeResponseStruct,
   ComputeStakeFeeRequestStruct,
+  GetMaxSendableAmountRequestStruct,
   OnAddressInputRequestStruct,
   OnAmountInputRequestStruct,
   OnConfirmSendRequestStruct,
@@ -279,6 +280,8 @@ export class ClientRequestHandler {
         return this.#handleConfirmSend(request);
       case ClientRequestMethod.ComputeFee:
         return this.#handleComputeFee(request);
+      case ClientRequestMethod.GetMaxSendableAmount:
+        return this.#handleGetMaxSendableAmount(request);
       case ClientRequestMethod.ComputeStakeFee:
         return this.#handleComputeStakeFee(request);
       /**
@@ -919,6 +922,197 @@ export class ClientRequestHandler {
     assert(result, ComputeFeeResponseStruct);
 
     return result;
+  }
+
+  /**
+   * Computes the maximum safe amount that can be sent for the given asset,
+   * with its fee quote.
+   *
+   * The sent asset and the account resources are read fresh, so the result
+   * never acts on stale balances. For native TRX sends the maximum leaves
+   * enough TRX to cover the network fees and the account activation; for
+   * TRC-20 sends the account must hold enough TRX to cover the transfer fee,
+   * and the whole token balance can be sent.
+   *
+   * When `toAddress` is omitted, the conservative case is assumed: the
+   * destination may be an unactivated account, so the quoted fees include an
+   * account activation reserve.
+   *
+   * @param request - The JSON-RPC request containing the method and parameters.
+   * @returns The maximum sendable amount, the asset balance, and the fee quote.
+   * @throws {InvalidParamsError} If the params are invalid.
+   */
+  async #handleGetMaxSendableAmount(request: JsonRpcRequest): Promise<Json> {
+    assertOrThrow(
+      request,
+      GetMaxSendableAmountRequestStruct,
+      new InvalidParamsError(),
+    );
+
+    const { accountId, assetId, toAddress } = request.params;
+
+    const account = await this.#accountsService.findByIdOrThrow(accountId);
+
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
+
+    /**
+     * Fetch the sent asset and the account resources fresh, so the maximum
+     * never acts on stale balances.
+     */
+    const [asset, nativeTokenAsset, bandwidthAsset, energyAsset] =
+      await this.#assetsService.fetchAccountAssetsByIDs(account, [
+        assetId,
+        Networks[scope].nativeToken.id,
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
+
+    if (!asset) {
+      return {
+        valid: false,
+        errors: [{ code: SendErrorCodes.InsufficientBalance }],
+        maxAmount: '0',
+        balance: '0',
+        fees: [],
+      };
+    }
+
+    const nativeTokenId = Networks[scope].nativeToken.id;
+    const isNativeToken = asset.assetType === nativeTokenId;
+
+    const assetBalance = new BigNumber(asset.uiAmount);
+    const nativeTokenBalance = nativeTokenAsset
+      ? new BigNumber(nativeTokenAsset.uiAmount)
+      : ZERO;
+    const availableEnergy = energyAsset
+      ? new BigNumber(energyAsset.rawAmount)
+      : ZERO;
+    const availableBandwidth = bandwidthAsset
+      ? new BigNumber(bandwidthAsset.rawAmount)
+      : ZERO;
+
+    if (!isNativeToken && assetBalance.isLessThanOrEqualTo(ZERO)) {
+      return {
+        valid: false,
+        errors: [{ code: SendErrorCodes.InsufficientBalance }],
+        maxAmount: '0',
+        balance: asset.uiAmount,
+        fees: [],
+      };
+    }
+
+    /**
+     * The send fees do not depend on the amount, so the transaction is built
+     * with the full balance as the amount: it yields the largest (most
+     * conservative) transaction size, and the fee quote stays valid for the
+     * maximum.
+     */
+    /**
+     * The fee limit is the same one `confirmSend` uses, so the quote matches
+     * the transaction that will actually be signed.
+     */
+    const transaction = await this.#sendService.buildTransaction({
+      fromAccountId: account.id,
+      toAddress: toAddress ?? account.address,
+      asset,
+      amount: isNativeToken ? nativeTokenBalance : assetBalance,
+      feeLimit: FEE_LIMIT,
+    });
+
+    const quotedFees = await this.#feeCalculatorService.computeFee({
+      scope,
+      transaction,
+      availableEnergy,
+      availableBandwidth,
+      feeLimit: FEE_LIMIT,
+    });
+
+    /**
+     * The destination is unknown: reserve the account activation cost on top
+     * of the quoted fees, so the maximum covers the worst case. TRC-20
+     * transfers never activate an account, so no reserve is added for them.
+     */
+    let fees = quotedFees;
+    if (!toAddress && isNativeToken) {
+      const activationReserve =
+        await this.#feeCalculatorService.getAccountActivationReserve(scope);
+
+      fees = quotedFees.map((fee) =>
+        fee.asset.type === nativeTokenId
+          ? {
+              ...fee,
+              asset: {
+                ...fee.asset,
+                amount: new BigNumber(fee.asset.amount)
+                  .plus(activationReserve)
+                  .toString(),
+              },
+            }
+          : fee,
+      );
+    }
+
+    /**
+     * The fee calculation already takes into account the energy and
+     * bandwidth consumption and the account activation (when the destination
+     * is known and not activated), so the TRX fee is everything the send
+     * needs on top of the amount.
+     */
+    const trxFee = new BigNumber(
+      fees.find((fee) => fee.asset.type === nativeTokenId)?.asset.amount ?? '0',
+    );
+
+    if (isNativeToken) {
+      const maxAmount = nativeTokenBalance.minus(trxFee);
+
+      if (maxAmount.isLessThanOrEqualTo(ZERO)) {
+        return {
+          valid: false,
+          errors: [
+            {
+              code: nativeTokenBalance.isGreaterThan(ZERO)
+                ? SendErrorCodes.InsufficientBalanceToCoverFee
+                : SendErrorCodes.InsufficientBalance,
+            },
+          ],
+          maxAmount: '0',
+          balance: asset.uiAmount,
+          fees,
+        };
+      }
+
+      return {
+        valid: true,
+        errors: [],
+        maxAmount: maxAmount
+          .decimalPlaces(asset.decimals, BigNumber.ROUND_DOWN)
+          .toFixed(),
+        balance: asset.uiAmount,
+        fees,
+      };
+    }
+
+    /**
+     * Sending a TRC-20 token does not consume TRX beyond the fees, but the
+     * account must hold enough TRX to cover the transfer fee.
+     */
+    if (trxFee.isGreaterThan(nativeTokenBalance)) {
+      return {
+        valid: false,
+        errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
+        maxAmount: '0',
+        balance: asset.uiAmount,
+        fees,
+      };
+    }
+
+    return {
+      valid: true,
+      errors: [],
+      maxAmount: asset.uiAmount,
+      balance: asset.uiAmount,
+      fees,
+    };
   }
 
   /**

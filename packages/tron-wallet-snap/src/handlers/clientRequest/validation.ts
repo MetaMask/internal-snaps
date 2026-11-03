@@ -220,6 +220,38 @@ export const ComputeStakeFeeRequestStruct = object({
   params: ComputeStakeFeeRequestParamsStruct,
 });
 
+/**
+ * getMaxSendableAmount request validation.
+ */
+export const GetMaxSendableAmountRequestParamsStruct = object({
+  accountId: UuidStruct,
+  assetId: CaipAssetTypeStruct,
+  toAddress: optional(TronAddressStruct),
+});
+
+export const GetMaxSendableAmountRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.GetMaxSendableAmount),
+  params: GetMaxSendableAmountRequestParamsStruct,
+});
+
+/**
+ * getMaxSendableAmount response validation: the maximum safe amount to send,
+ * the asset balance, and the fee quote for the send, plus the usual
+ * validation response.
+ */
+export const GetMaxSendableAmountResponseStruct = object({
+  ...ValidationResponseStruct.schema,
+  maxAmount: string(),
+  balance: string(),
+  fees: ComputeFeeResponseStruct,
+});
+
+export type GetMaxSendableAmountResponse = Infer<
+  typeof GetMaxSendableAmountResponseStruct
+>;
+
 export const OnUnstakeAmountInputRequestParamsStruct = object({
   accountId: UuidStruct,
   assetId: NativeCaipAssetTypeStruct,
