@@ -220,6 +220,24 @@ export const ComputeStakeFeeRequestStruct = object({
   params: ComputeStakeFeeRequestParamsStruct,
 });
 
+/**
+ * computeSendFee request validation. The destination is optional: when
+ * omitted, the fees are quoted for a transfer to the sender's own address.
+ */
+export const ComputeSendFeeRequestParamsStruct = object({
+  fromAccountId: UuidStruct,
+  toAddress: optional(TronAddressStruct),
+  amount: PositiveNumberStringStruct,
+  assetId: CaipAssetTypeStruct,
+});
+
+export const ComputeSendFeeRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.ComputeSendFee),
+  params: ComputeSendFeeRequestParamsStruct,
+});
+
 export const OnUnstakeAmountInputRequestParamsStruct = object({
   accountId: UuidStruct,
   assetId: NativeCaipAssetTypeStruct,

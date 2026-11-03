@@ -5,6 +5,7 @@ export const ClientRequestMethod = {
    */
   ConfirmSend: 'confirmSend',
   ComputeFee: 'computeFee',
+  ComputeSendFee: 'computeSendFee',
   OnAddressInput: 'onAddressInput',
   OnAmountInput: 'onAmountInput',
   /**

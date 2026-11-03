@@ -56,6 +56,7 @@ import {
   ClaimUnstakedTrxRequestStruct,
   ComputeFeeRequestStruct,
   ComputeFeeResponseStruct,
+  ComputeSendFeeRequestStruct,
   ComputeStakeFeeRequestStruct,
   OnAddressInputRequestStruct,
   OnAmountInputRequestStruct,
@@ -279,6 +280,8 @@ export class ClientRequestHandler {
         return this.#handleConfirmSend(request);
       case ClientRequestMethod.ComputeFee:
         return this.#handleComputeFee(request);
+      case ClientRequestMethod.ComputeSendFee:
+        return this.#handleComputeSendFee(request);
       case ClientRequestMethod.ComputeStakeFee:
         return this.#handleComputeStakeFee(request);
       /**
@@ -919,6 +922,89 @@ export class ClientRequestHandler {
     assert(result, ComputeFeeResponseStruct);
 
     return result;
+  }
+
+  /**
+   * Quotes the fees of a send transaction from its parameters, mirroring
+   * `computeStakeFee` for sends. The transaction is built internally and the
+   * fees are returned without signing, broadcasting, or opening any UI.
+   *
+   * When `toAddress` is omitted, the transaction is built to the sender's own
+   * address and the quote covers the transfer itself.
+   *
+   * @param request - The JSON-RPC request containing the method and parameters.
+   * @returns The fee breakdown for the send transaction, or a validation
+   * failure when the account cannot cover the amount.
+   * @throws {InvalidParamsError} If the params are invalid.
+   */
+  async #handleComputeSendFee(request: JsonRpcRequest): Promise<Json> {
+    assertOrThrow(
+      request,
+      ComputeSendFeeRequestStruct,
+      new InvalidParamsError(),
+    );
+
+    const { fromAccountId, toAddress, amount, assetId } = request.params;
+
+    const account = await this.#accountsService.findByIdOrThrow(fromAccountId);
+
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
+
+    const asset = await this.#assetsService.getAccountAssetByID(
+      fromAccountId,
+      assetId,
+    );
+
+    const amountBN = new BigNumber(amount);
+
+    /**
+     * Check if the account has enough of the asset to send.
+     */
+    if (!asset || amountBN.isGreaterThan(new BigNumber(asset.uiAmount))) {
+      return {
+        valid: false,
+        errors: [{ code: SendErrorCodes.InsufficientBalance }],
+      };
+    }
+
+    /**
+     * Get available Energy and Bandwidth from account assets.
+     */
+    const [bandwidthAsset, energyAsset] =
+      await this.#assetsService.getAccountAssetsByIDs(fromAccountId, [
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
+
+    /**
+     * Build the send transaction to quote its fees. The fee limit is the same
+     * one `confirmSend` uses, so the quote matches the transaction that will
+     * actually be signed. Without a destination, the transfer is built to the
+     * sender's own address.
+     */
+    const transaction = await this.#sendService.buildTransaction({
+      fromAccountId,
+      toAddress: toAddress ?? account.address,
+      asset,
+      amount: amountBN,
+      feeLimit: FEE_LIMIT,
+    });
+
+    const fees = await this.#feeCalculatorService.computeFee({
+      scope,
+      transaction,
+      availableEnergy: energyAsset
+        ? new BigNumber(energyAsset.rawAmount)
+        : ZERO,
+      availableBandwidth: bandwidthAsset
+        ? new BigNumber(bandwidthAsset.rawAmount)
+        : ZERO,
+      feeLimit: FEE_LIMIT,
+    });
+
+    assert(fees, ComputeFeeResponseStruct);
+
+    return fees;
   }
 
   /**

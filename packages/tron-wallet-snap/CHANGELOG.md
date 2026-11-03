@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add the `computeSendFee` client request method, quoting the fees of a TRX, TRC-10, or TRC-20 send from its parameters without signing or broadcasting ([#548](https://github.com/MetaMask/internal-snaps/pull/548))
+
 ## [4.3.0]
 
 ### Changed
