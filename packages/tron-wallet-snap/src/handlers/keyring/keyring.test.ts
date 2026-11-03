@@ -700,7 +700,7 @@ describe('KeyringHandler', () => {
       ]);
       expect(
         mockAssetsService.fetchAccountAssetsFromTrongrid,
-      ).toHaveBeenCalledWith(mockAccount);
+      ).toHaveBeenCalledWith(mockAccount, { bypassOpenCircuit: true });
       expect(mockAssetsService.saveMany).toHaveBeenCalledWith([
         mockLiveAsset,
         mockShastaAsset,
@@ -740,7 +740,7 @@ describe('KeyringHandler', () => {
       });
       expect(
         mockAssetsService.fetchAccountAssetsFromTrongrid,
-      ).toHaveBeenCalledWith(mockAccount);
+      ).toHaveBeenCalledWith(mockAccount, { bypassOpenCircuit: true });
       expect(mockAssetsService.saveMany).toHaveBeenCalledWith([
         mockLiveAsset,
         mockShastaAsset,

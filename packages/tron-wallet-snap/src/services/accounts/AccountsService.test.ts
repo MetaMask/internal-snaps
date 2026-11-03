@@ -11,7 +11,7 @@ import type {
 import { AccountCreationType, TrxAccountType } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import type { Logger } from '@metamask/snap-networks-utils';
-import { LogLevel } from '@metamask/snap-networks-utils';
+import { BrokenCircuitError, LogLevel } from '@metamask/snap-networks-utils';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
@@ -1164,6 +1164,52 @@ describe('AccountsService', () => {
           // The healthy account's assets are still saved.
           expect(mockAssetsService.saveManyAndEmit).toHaveBeenCalledWith(
             healthyAssets,
+          );
+        },
+      );
+    });
+
+    it('does not report accounts short-circuited by an open circuit (v5)', async () => {
+      const shortCircuited: TronKeyringAccount = {
+        id: 'sync-open-circuit-id',
+        address: 'TSyncOpenCircuit12345678901',
+        type: TrxAccountType.Eoa,
+        options: {},
+        methods: [],
+        scopes: [],
+        entropySource: 'e1',
+        derivationPath: "m/44'/195'/0'/0/0",
+        index: 0,
+      };
+      const failing: TronKeyringAccount = {
+        ...shortCircuited,
+        id: 'sync-fail-id',
+        address: 'TSyncFail123456789012345678',
+        derivationPath: "m/44'/195'/0'/0/1",
+        index: 1,
+      };
+
+      await withAccountsService(
+        async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
+          mockConfigProvider.config = {
+            ...MOCK_CONFIG,
+            activeNetworks: [Network.Mainnet],
+          };
+          mockAssetsService.fetchAccountAssets
+            .mockRejectedValueOnce(
+              new Error('Failed to fetch account info', {
+                cause: new BrokenCircuitError(),
+              }),
+            )
+            .mockRejectedValueOnce(new Error('grpc unavailable'));
+
+          await accountsService.synchronize([shortCircuited, failing]);
+
+          expect(trackError).toHaveBeenCalledTimes(1);
+          const tracked = (trackError as jest.Mock).mock.calls[0][0] as Error;
+          expect(tracked.message).toBe(
+            'Failed to fetch assets (1 failed): ' +
+              'sync-fail-id: Error: grpc unavailable',
           );
         },
       );
