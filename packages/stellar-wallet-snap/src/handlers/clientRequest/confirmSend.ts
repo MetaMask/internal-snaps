@@ -376,9 +376,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     return this.#parseConfirmSendDialogResult(result);
   }
 
-  #parseConfirmSendDialogResult(
-    result: DialogResult,
-  ): ConfirmSendDialogResult {
+  #parseConfirmSendDialogResult(result: DialogResult): ConfirmSendDialogResult {
     // Bare `true` from the Snap dialog: confirmed, and no memo was returned.
     if (result === true) {
       return { confirmed: true };
