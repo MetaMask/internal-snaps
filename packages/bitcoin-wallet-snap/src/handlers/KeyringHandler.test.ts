@@ -23,6 +23,7 @@ import {
 import { mock } from 'jest-mock-extended';
 import { assert } from 'superstruct';
 
+import snapManifest from '../../snap.manifest.json';
 import type { BitcoinAccount, Logger, SnapClient } from '../entities';
 import { AccountCapability, CurrencyUnit } from '../entities';
 import type { AccountUseCases } from '../use-cases/AccountUseCases';
@@ -442,25 +443,42 @@ describe('KeyringHandler', () => {
           listTransactions: jest.fn().mockReturnValue(hasTxs ? [{}] : []),
         });
 
-      it('discovers then returns the account when it has on-chain history', async () => {
-        mockAccounts.discover.mockResolvedValue(buildDiscoveredAccount(true));
+      it.each([0, 5])(
+        'creates active accounts and returns their persisted IDs at index %s',
+        async (groupIndex) => {
+          mockAccounts.discover.mockResolvedValue(buildDiscoveredAccount(true));
+          mockAccounts.createMany.mockResolvedValue([
+            buildMockAccount(groupIndex),
+          ]);
 
-        const result = await handler.createAccounts({
-          type: AccountCreationType.Bip44Discover,
-          groupIndex: 0,
-          entropySource,
-        });
+          const result = await handler.createAccounts({
+            type: AccountCreationType.Bip44Discover,
+            groupIndex,
+            entropySource,
+          });
 
-        expect(mockAccounts.discover).toHaveBeenCalledWith({
-          network: 'bitcoin',
-          entropySource,
-          index: 0,
-          addressType: 'p2wpkh',
-        });
-        expect(mockAccounts.delete).not.toHaveBeenCalled();
-        expect(result).toHaveLength(1);
-        expect(result[0]?.id).toBe('discovered-id');
-      });
+          expect(mockAccounts.discover).toHaveBeenCalledWith({
+            network: 'bitcoin',
+            entropySource,
+            index: groupIndex,
+            addressType: 'p2wpkh',
+          });
+          expect(mockAccounts.createMany).toHaveBeenCalledTimes(1);
+          expect(mockAccounts.createMany).toHaveBeenCalledWith([
+            {
+              network: 'bitcoin',
+              entropySource,
+              index: groupIndex,
+              addressType: 'p2wpkh',
+              synchronize: false,
+            },
+          ]);
+          expect(mockAccounts.delete).not.toHaveBeenCalled();
+          expect(result).toHaveLength(1);
+          expect(result[0]?.id).toBe(`id-${groupIndex}`);
+          expect(mnemonicGroupIndex(expectDefined(result[0]))).toBe(groupIndex);
+        },
+      );
 
       it('returns empty array when no on-chain history', async () => {
         mockAccounts.discover.mockResolvedValue(buildDiscoveredAccount(false));
@@ -472,8 +490,76 @@ describe('KeyringHandler', () => {
         });
 
         expect(mockAccounts.discover).toHaveBeenCalled();
+        expect(mockAccounts.createMany).not.toHaveBeenCalled();
         expect(mockAccounts.delete).not.toHaveBeenCalled();
         expect(result).toHaveLength(0);
+      });
+
+      describe('multiple scopes', () => {
+        const { scopes } =
+          snapManifest.initialPermissions['endowment:keyring'].capabilities;
+        const originalScopes = [...scopes];
+
+        beforeEach(() => {
+          scopes.push(BtcScope.Testnet, BtcScope.Regtest);
+        });
+
+        afterEach(() => {
+          scopes.splice(0, scopes.length, ...originalScopes);
+        });
+
+        it.each([true, false])(
+          'creates active scopes in a single batch (testnet active: %s)',
+          async (testnetActive) => {
+            mockAccounts.discover
+              .mockResolvedValueOnce(buildDiscoveredAccount(true))
+              .mockResolvedValueOnce(buildDiscoveredAccount(testnetActive))
+              .mockResolvedValueOnce(buildDiscoveredAccount(false));
+
+            const mainnetAccount = buildMockAccount(0);
+            const testnetAccount = buildMockAccount(0);
+            testnetAccount.id = 'testnet-id';
+            testnetAccount.network = 'testnet';
+            testnetAccount.derivationPath = ['myEntropy', "84'", "1'", "0'"];
+            const persistedAccounts = testnetActive
+              ? [mainnetAccount, testnetAccount]
+              : [mainnetAccount];
+            mockAccounts.createMany.mockResolvedValue(persistedAccounts);
+
+            const result = await handler.createAccounts({
+              type: AccountCreationType.Bip44Discover,
+              groupIndex: 0,
+              entropySource,
+            });
+
+            expect(mockAccounts.discover).toHaveBeenCalledTimes(3);
+            for (const [index, network] of [
+              'bitcoin',
+              'testnet',
+              'regtest',
+            ].entries()) {
+              expect(mockAccounts.discover).toHaveBeenNthCalledWith(index + 1, {
+                network,
+                entropySource,
+                index: 0,
+                addressType: 'p2wpkh',
+              });
+            }
+            expect(mockAccounts.createMany).toHaveBeenCalledTimes(1);
+            expect(mockAccounts.createMany).toHaveBeenCalledWith(
+              persistedAccounts.map(({ network }) => ({
+                network,
+                entropySource,
+                index: 0,
+                addressType: 'p2wpkh',
+                synchronize: false,
+              })),
+            );
+            expect(result.map(({ id }) => id)).toStrictEqual(
+              persistedAccounts.map(({ id }) => id),
+            );
+          },
+        );
       });
 
       it('propagates errors from discover as SnapError', async () => {
@@ -487,6 +573,22 @@ describe('KeyringHandler', () => {
             entropySource,
           }),
         ).rejects.toThrow('discover error');
+        expect(mockAccounts.createMany).not.toHaveBeenCalled();
+      });
+
+      it('propagates errors from persisting active accounts as SnapError', async () => {
+        mockAccounts.discover.mockResolvedValue(buildDiscoveredAccount(true));
+        mockAccounts.createMany.mockRejectedValue(
+          new Error('Storage unavailable'),
+        );
+
+        await expect(
+          handler.createAccounts({
+            type: AccountCreationType.Bip44Discover,
+            groupIndex: 0,
+            entropySource,
+          }),
+        ).rejects.toThrow('Storage unavailable');
       });
     });
 

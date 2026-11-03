@@ -128,10 +128,10 @@ export class KeyringHandler implements KeyringSnapRpc {
       }
 
       if (options.type === AccountCreationType.Bip44Discover) {
-        // For each supported scope, discover at this index. Accounts with
-        // on-chain activity are kept; those without are discarded in-memory.
+        // Discover at this index for every supported scope, then persist active
+        // accounts in one batch through the idempotent creation flow.
         // Returning [] signals end-of-discovery to the client.
-        const discovered: KeyringAccount[] = [];
+        const requests: CreateAccountParams[] = [];
 
         for (const scope of SUPPORTED_SCOPES) {
           const network = scopeToNetwork[scope];
@@ -143,11 +143,22 @@ export class KeyringHandler implements KeyringSnapRpc {
           });
 
           if (account.listTransactions().length > 0) {
-            discovered.push(mapToKeyringAccount(account));
+            requests.push({
+              network,
+              entropySource,
+              index: options.groupIndex,
+              addressType,
+              synchronize: false,
+            });
           }
         }
 
-        return discovered;
+        if (requests.length === 0) {
+          return [];
+        }
+
+        const created = await this.#accountsUseCases.createMany(requests);
+        return created.map(mapToKeyringAccount);
       }
 
       // Build the index range. For Bip44DeriveIndex the range is a single

@@ -311,7 +311,7 @@ export class AccountUseCases {
     const { addressType, network } = req;
     const derivationPath = getAccountDerivationPath(req);
 
-    // Idempotent account creation + ensures only one account per derivation path
+    // Reuse a stored account for this derivation path and network.
     const account = await this.#repository.getByDerivationPath(derivationPath);
     if (account?.network === network) {
       this.#logger.debug('Account already exists: %s,', account.id);
@@ -328,12 +328,6 @@ export class AccountUseCases {
     // has any previous activity since later on we filter out
     // accounts with no tx history
     await this.#chain.fullScan(newAccount, 'discovery');
-
-    // MetaMask keeps active discovery results, so save the scanned wallet before
-    // returning it. Inactive candidates remain in memory and are discarded.
-    if (newAccount.listTransactions().length > 0) {
-      await this.#repository.insert(newAccount);
-    }
 
     this.#logger.info(
       'Bitcoin account discovered successfully. Request: %o',

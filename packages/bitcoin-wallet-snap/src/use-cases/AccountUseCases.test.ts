@@ -299,39 +299,15 @@ describe('AccountUseCases', () => {
       mockAccount.listTransactions.mockReturnValue([]);
     });
 
-    it('keeps an active discovered account available for later lookups', async () => {
-      let storedAccount: BitcoinAccount | null = null;
-      mockAccount.id = 'discovered-account';
+    it('returns the scanned candidate without persisting it', async () => {
       mockAccount.listTransactions.mockReturnValue([mock<WalletTx>()]);
-      mockRepository.get.mockImplementation(async () => storedAccount);
-      mockRepository.getByDerivationPath.mockImplementation(
-        async () => storedAccount,
-      );
-      mockRepository.insert.mockImplementation(async (account) => {
-        storedAccount = account;
-        return account;
-      });
 
       const discovered = await useCases.discover(discoverParams);
 
-      expect(await useCases.get(discovered.id)).toBe(discovered);
-      expect(await useCases.discover(discoverParams)).toBe(discovered);
-      expect(mockRepository.create).toHaveBeenCalledTimes(1);
+      expect(discovered).toBe(mockAccount);
       expect(mockChain.fullScan).toHaveBeenCalledWith(discovered, 'discovery');
-    });
-
-    it('does not persist an inactive discovery candidate', async () => {
-      await useCases.discover(discoverParams);
-
       expect(mockRepository.insert).not.toHaveBeenCalled();
-    });
-
-    it('does not return an active account when persistence fails', async () => {
-      const error = new Error('Storage unavailable');
-      mockAccount.listTransactions.mockReturnValue([mock<WalletTx>()]);
-      mockRepository.insert.mockRejectedValue(error);
-
-      await expect(useCases.discover(discoverParams)).rejects.toBe(error);
+      expect(mockRepository.insertMany).not.toHaveBeenCalled();
     });
 
     it.each([
