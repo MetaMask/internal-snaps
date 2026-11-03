@@ -15,6 +15,7 @@ import {
 } from '@metamask/snaps-sdk/jsx';
 
 import { Networks } from '../../../../constants';
+import { TRANSACTION_TAPOS_EXPIRED } from '../../../../services/transaction-scan/isTransactionDeadlinePassedError';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';
@@ -47,12 +48,13 @@ export const ConfirmTransactionRequest = ({
   const translate = i18n(preferences.locale);
 
   /**
-   * Only disable confirm button upon first load (FetchStatus.Loading)
-   * as opposed to subsequent loads (FetchStatus.Fetching)
+   * Block the initial scan load and locally invalid transactions. Remote
+   * simulation failures and background refreshes do not block confirmation.
    */
   const shouldDisableConfirmButton =
     scanFetchStatus === FetchStatus.Loading ||
-    scan?.simulationStatus === SimulationStatus.Failed;
+    scan?.error?.type === TRANSACTION_TAPOS_EXPIRED ||
+    scan?.error?.type === 'MALFORMED_TRANSACTION';
 
   let estimatedChangesSection: ComponentOrElement | null = null;
   if (preferences.simulateOnChainActions) {
