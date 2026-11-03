@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `onAmountInput` now estimates send fees when `toAddress` is absent. Native TRX includes the account activation reserve, while TRC-20 sends validate the transfer fee without an activation reserve ([#554](https://github.com/MetaMask/internal-snaps/pull/554))
+- Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for TRX and TRC-20 assets. The maximum leaves enough TRX for the network fees and account activation (native sends) or the transfer fee (TRC-20), and the destination is conservatively assumed unactivated when omitted ([#555](https://github.com/MetaMask/internal-snaps/pull/555))
 
 ## [4.3.1]
 

@@ -57,6 +57,7 @@ import {
   ComputeFeeRequestStruct,
   ComputeFeeResponseStruct,
   ComputeStakeFeeRequestStruct,
+  GetMaxSendableAmountRequestStruct,
   OnAddressInputRequestStruct,
   OnAmountInputRequestStruct,
   OnConfirmSendRequestStruct,
@@ -279,6 +280,8 @@ export class ClientRequestHandler {
         return this.#handleConfirmSend(request);
       case ClientRequestMethod.ComputeFee:
         return this.#handleComputeFee(request);
+      case ClientRequestMethod.GetMaxSendableAmount:
+        return this.#handleGetMaxSendableAmount(request);
       case ClientRequestMethod.ComputeStakeFee:
         return this.#handleComputeStakeFee(request);
       /**
@@ -933,6 +936,134 @@ export class ClientRequestHandler {
     assert(result, ComputeFeeResponseStruct);
 
     return result;
+  }
+
+  /**
+   * Computes the maximum amount that can be sent for the given asset.
+   *
+   * It uses the same balance source, fee limit, and fee/reserve helpers as
+   * `onAmountInput`. For native TRX the maximum leaves enough TRX for the
+   * network fees and, when the destination is unknown, the account activation
+   * reserve. For TRC-20 the account must hold enough TRX for the transfer fee.
+   *
+   * @param request - The JSON-RPC request containing the method and parameters.
+   * @returns The maximum sendable amount, or 0 when no amount can pass.
+   * @throws {InvalidParamsError} If the params are invalid.
+   */
+  async #handleGetMaxSendableAmount(request: JsonRpcRequest): Promise<Json> {
+    assertOrThrow(
+      request,
+      GetMaxSendableAmountRequestStruct,
+      new InvalidParamsError(),
+    );
+
+    const { accountId, assetId, toAddress } = request.params;
+
+    const account = await this.#accountsService.findByIdOrThrow(accountId);
+
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
+
+    const [asset, nativeTokenAsset, bandwidthAsset, energyAsset] =
+      await this.#assetsService.getAccountAssetsByIDs(accountId, [
+        assetId,
+        Networks[scope].nativeToken.id,
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
+
+    if (!asset) {
+      return { amount: '0' };
+    }
+
+    const nativeTokenId = Networks[scope].nativeToken.id;
+    const isNativeToken = asset.assetType === nativeTokenId;
+
+    const assetBalance = new BigNumber(asset.uiAmount);
+    const nativeTokenBalance = nativeTokenAsset
+      ? new BigNumber(nativeTokenAsset.uiAmount)
+      : ZERO;
+    const availableEnergy = energyAsset
+      ? new BigNumber(energyAsset.rawAmount)
+      : ZERO;
+    const availableBandwidth = bandwidthAsset
+      ? new BigNumber(bandwidthAsset.rawAmount)
+      : ZERO;
+
+    const sentBalance = isNativeToken ? nativeTokenBalance : assetBalance;
+    if (sentBalance.isLessThanOrEqualTo(ZERO)) {
+      return { amount: '0' };
+    }
+
+    /**
+     * The send fees do not depend on the amount, so the transaction is built
+     * with the full balance as the amount: it yields the largest (most
+     * conservative) transaction size, and the fee quote stays valid for the
+     * maximum. The fee limit is the same one `confirmSend` uses.
+     */
+    const transaction = await this.#sendService.buildTransaction({
+      fromAccountId: account.id,
+      toAddress: toAddress ?? account.address,
+      asset,
+      amount: sentBalance,
+      feeLimit: FEE_LIMIT,
+    });
+
+    const quotedFees = await this.#feeCalculatorService.computeFee({
+      scope,
+      transaction,
+      availableEnergy,
+      availableBandwidth,
+      feeLimit: FEE_LIMIT,
+    });
+
+    /**
+     * The destination is unknown: reserve the account activation cost on top
+     * of the quoted fees, so the maximum covers the worst case. TRC-20
+     * transfers never activate an account, so no reserve is added for them.
+     */
+    let fees = quotedFees;
+    if (!toAddress && isNativeToken) {
+      const activationReserve =
+        await this.#feeCalculatorService.getAccountActivationReserve(scope);
+
+      fees = quotedFees.map((fee) =>
+        fee.asset.type === nativeTokenId
+          ? {
+              ...fee,
+              asset: {
+                ...fee.asset,
+                amount: new BigNumber(fee.asset.amount)
+                  .plus(activationReserve)
+                  .toString(),
+              },
+            }
+          : fee,
+      );
+    }
+
+    const trxFee = new BigNumber(
+      fees.find((fee) => fee.asset.type === nativeTokenId)?.asset.amount ?? '0',
+    );
+
+    if (isNativeToken) {
+      const maxAmount = nativeTokenBalance.minus(trxFee);
+
+      if (maxAmount.isLessThanOrEqualTo(ZERO)) {
+        return { amount: '0' };
+      }
+
+      return {
+        amount: maxAmount
+          .decimalPlaces(asset.decimals, BigNumber.ROUND_DOWN)
+          .toFixed(),
+      };
+    }
+
+    if (trxFee.isGreaterThan(nativeTokenBalance)) {
+      return { amount: '0' };
+    }
+
+    return { amount: asset.uiAmount };
   }
 
   /**
