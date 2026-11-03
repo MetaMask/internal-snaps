@@ -296,6 +296,18 @@ describe('AccountUseCases', () => {
 
     beforeEach(() => {
       mockRepository.create.mockResolvedValue(mockAccount);
+      mockAccount.listTransactions.mockReturnValue([]);
+    });
+
+    it('returns the scanned candidate without persisting it', async () => {
+      mockAccount.listTransactions.mockReturnValue([mock<WalletTx>()]);
+
+      const discovered = await useCases.discover(discoverParams);
+
+      expect(discovered).toBe(mockAccount);
+      expect(mockChain.fullScan).toHaveBeenCalledWith(discovered, 'discovery');
+      expect(mockRepository.insert).not.toHaveBeenCalled();
+      expect(mockRepository.insertMany).not.toHaveBeenCalled();
     });
 
     it.each([
@@ -411,6 +423,7 @@ describe('AccountUseCases', () => {
       expect(mockRepository.getByDerivationPath).toHaveBeenCalled();
       expect(mockRepository.create).toHaveBeenCalled();
       expect(mockChain.fullScan).toHaveBeenCalled();
+      expect(mockRepository.insert).not.toHaveBeenCalled();
     });
   });
 

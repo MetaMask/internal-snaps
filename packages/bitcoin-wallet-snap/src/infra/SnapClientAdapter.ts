@@ -1,5 +1,4 @@
 import type { WalletTx } from '@metamask/bitcoindevkit';
-import { Amount } from '@metamask/bitcoindevkit';
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import { SLIP10Node } from '@metamask/key-tree';
 import {
@@ -38,6 +37,7 @@ import {
 } from '../handlers';
 import { mapToTransaction } from '../handlers/mappings';
 import { trackError } from '../utils/errors';
+import { formatBtcAmount } from '../utils/format-btc';
 
 export class SnapClientAdapter implements SnapClient {
   readonly #logger: Logger;
@@ -75,9 +75,7 @@ export class SnapClientAdapter implements SnapClient {
         ...acc,
         [account.id]: {
           [networkToCaip19[account.network]]: {
-            amount: Amount.from_sat(computeDisplayBalanceSats(account))
-              .to_btc()
-              .toString(),
+            amount: formatBtcAmount(computeDisplayBalanceSats(account)),
             unit: networkToCurrencyUnit[account.network],
           },
         },

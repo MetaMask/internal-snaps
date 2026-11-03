@@ -143,20 +143,9 @@ export class CronHandler {
   }
 
   async synchronizeAccounts(): Promise<void> {
-    // Sync triggers stack up (the 30s cronjob, `onActive`, background
-    // events), so concurrent invocations share one in-flight run instead of
-    // duplicating network fetches, state writes, and keyring events. Note
-    // that coalesced callers share the run's outcome, including the reported
-    // synchronization failures.
+    // Keep regular synchronization and repair in one coalesced run so a later
+    // synchronization cannot publish newer data before this run's repair finishes.
     await this.#syncCoalescer.run('synchronizeAccounts', async () => {
-      try {
-        await this.#repairNextAccount();
-      } catch (error) {
-        await this.#snapClient.emitTrackingError(
-          new Error('Account repair scan failed', { cause: error }),
-        );
-      }
-
       const selectedAccounts: Set<string> = new Set(
         await getSelectedAccounts(this.#snap),
       );
@@ -180,6 +169,21 @@ export class CronHandler {
         results,
         accounts.map(({ id }) => id),
       );
+
+      // Publish normal balance and activity updates before the slower repair scan.
+      try {
+        // Normal synchronization may have taken long enough for the client to lock.
+        const { active, locked } = await this.#snapClient.getClientStatus();
+        if (!active || locked) {
+          return;
+        }
+
+        await this.#repairNextAccount();
+      } catch (error) {
+        await this.#snapClient.emitTrackingError(
+          new Error('Account repair scan failed', { cause: error }),
+        );
+      }
     });
   }
 

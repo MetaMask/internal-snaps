@@ -311,7 +311,7 @@ export class AccountUseCases {
     const { addressType, network } = req;
     const derivationPath = getAccountDerivationPath(req);
 
-    // Idempotent account creation + ensures only one account per derivation path
+    // Reuse a stored account for this derivation path and network.
     const account = await this.#repository.getByDerivationPath(derivationPath);
     if (account?.network === network) {
       this.#logger.debug('Account already exists: %s,', account.id);
