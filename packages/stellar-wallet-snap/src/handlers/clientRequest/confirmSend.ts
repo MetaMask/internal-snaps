@@ -16,12 +16,7 @@ import type {
   AssetMetadataService,
   StellarAssetMetadata,
 } from '../../services/asset-metadata';
-import {
-  InsufficientBalanceException,
-  InsufficientBalanceToCoverFeeException,
-  KeyringTransactionType,
-  TransactionValidationException,
-} from '../../services/transaction';
+import { KeyringTransactionType } from '../../services/transaction';
 import type {
   Transaction,
   TransactionService,
@@ -40,7 +35,6 @@ import {
   isSep41Id,
   isSlip44Id,
   toSmallestUnit,
-  trackError,
 } from '../../utils';
 import type {
   AccountResolver,
@@ -64,38 +58,8 @@ import {
 
 type ConfirmSendDialogResult = {
   confirmed: boolean;
-  memo?: string | null;
+  memo?: string;
 };
-
-/**
- * Parses the confirm-send dialog result (`{ confirmed, memo? }`, with boolean compat).
- *
- * @param result - Dialog result from `snap_resolveInterface`.
- * @returns Normalized confirmation + optional memo from the UI.
- */
-function parseConfirmSendDialogResult(
-  result: DialogResult,
-): ConfirmSendDialogResult {
-  if (result === true) {
-    return { confirmed: true };
-  }
-  if (result === false || result === null) {
-    return { confirmed: false };
-  }
-  if (!isObject(result)) {
-    return { confirmed: false };
-  }
-
-  const confirmed = Boolean(result.confirmed);
-  const { memo: memoValue } = result;
-  if (typeof memoValue === 'string' && memoValue.trim()) {
-    return { confirmed, memo: memoValue.trim() };
-  }
-  if (memoValue === null) {
-    return { confirmed, memo: null };
-  }
-  return { confirmed };
-}
 
 /**
  * Confirms and submits a send transaction for Unified Non-EVM Send.
@@ -152,8 +116,9 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
    *
    * @param resolved - Keyring account, live on-chain snapshot, and wallet.
    * @param request - JSON-RPC request with send params (`scope` is derived from `assetId`).
-   * @returns `{ valid: true, errors: [], transactionId }` on success, or `{ valid: false, errors }` for post-confirm validation failures or unexpected errors.
+   * @returns `{ valid: true, errors: [], transactionId }` on success, or `{ valid: false, errors }` when the amount is invalid before confirmation.
    * @throws {UserRejectedRequestError} If the user rejects a valid confirmation, or after the pre-submit error confirmation is dismissed (that dialog only supports reject).
+   * @throws When refresh, signing, or submission fails after the user confirms.
    */
   protected async execute(
     resolved: ResolvedActivatedAccount,
@@ -284,45 +249,13 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         transactionId,
       };
     } catch (error: unknown) {
-      // User rejection must propagate so MetaMask can dismiss the send flow.
-      if (error instanceof UserRejectedRequestError) {
-        throw error;
+      // User rejection is rethrown as-is. Other failures are logged here, then
+      // rethrown so `withCatchAndThrowSnapError` can track them once.
+      if (!(error instanceof UserRejectedRequestError)) {
+        this.#logger.warn('Failed to confirm send transaction', { error });
       }
 
-      // Unexpected errors are swallowed into `{ valid: false }`, so track them for debugging.
-      await trackError(error);
-
-      // Expected validation failures are user-facing outcomes; return them without tracking.
-      if (error instanceof InsufficientBalanceException) {
-        return {
-          valid: false,
-          errors: [{ code: MultiChainSendErrorCodes.InsufficientBalance }],
-        };
-      }
-      if (error instanceof InsufficientBalanceToCoverFeeException) {
-        return {
-          valid: false,
-          errors: [
-            { code: MultiChainSendErrorCodes.InsufficientBalanceToCoverFee },
-          ],
-        };
-      }
-      if (error instanceof TransactionValidationException) {
-        return {
-          valid: false,
-          errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-        };
-      }
-
-      this.#logger.warn(
-        'Failed to confirm send transaction due to unexpected issue',
-        { error },
-      );
-
-      return {
-        valid: false,
-        errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-      };
+      throw error;
     }
   }
 
@@ -440,7 +373,26 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         } as ContextWithPrices['tokenPrices'],
       });
 
-    return parseConfirmSendDialogResult(result);
+    return this.#parseConfirmSendDialogResult(result);
+  }
+
+  #parseConfirmSendDialogResult(
+    result: DialogResult,
+  ): ConfirmSendDialogResult {
+    // Bare `true` from the Snap dialog: confirmed, and no memo was returned.
+    if (result === true) {
+      return { confirmed: true };
+    }
+    // Cancel, dismiss, or a non-object payload: the user did not confirm.
+    if (result === false || result === null || !isObject(result)) {
+      return { confirmed: false };
+    }
+
+    const confirmed = Boolean(result.confirmed);
+    const memo = typeof result.memo === 'string' ? result.memo.trim() : '';
+
+    // Blank, null, or a non-string memo is the same as no memo.
+    return memo ? { confirmed, memo } : { confirmed };
   }
 
   /**
