@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `onAmountInput` now estimates send fees when `toAddress` is not provided ([#554](https://github.com/MetaMask/internal-snaps/pull/554))
+  - Previously, `onAmountInput` returned true for all cases when `toAddress` was not provided
+  - The calculation for native TRX transfers now adds a pessimistic account activation fee on top of the estimated transfer fee
+
 ## [4.4.0]
 
 ### Added
