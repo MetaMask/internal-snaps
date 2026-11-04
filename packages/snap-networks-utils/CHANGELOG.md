@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add the shared unified send flow helpers: `SendFlowMethod`, `SendFlowErrorCodes`, the validation and max-sendable response structs, `createSendFlowStructs`, and `SendFlowRequestRouter`. The router owns method dispatch, request validation, and validation-response validation while each network snap supplies chain-specific CAIP-19 asset, address, amount, and transaction structs ([#556](https://github.com/MetaMask/internal-snaps/pull/556))
+
 ## [3.2.0]
 
 ### Added

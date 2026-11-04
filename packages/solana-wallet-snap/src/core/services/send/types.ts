@@ -1,3 +1,4 @@
+import { SendFlowErrorCodes } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 
 import type {
@@ -15,12 +16,7 @@ export type OnAmountInputRequest = Infer<typeof OnAmountInputRequestStruct>;
 
 export type ValidationResponse = Infer<typeof ValidationResponseStruct>;
 
-export const SendErrorCodes = {
-  Required: 'Required',
-  Invalid: 'Invalid',
-  InsufficientBalanceToCoverFee: 'InsufficientBalanceToCoverFee',
-  InsufficientBalance: 'InsufficientBalance',
-} as const;
+export const SendErrorCodes = SendFlowErrorCodes;
 
 export type SendErrorCodes =
   (typeof SendErrorCodes)[keyof typeof SendErrorCodes];

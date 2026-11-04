@@ -2,11 +2,13 @@ import { FeeType, TransactionType } from '@metamask/keyring-api';
 import {
   DEFAULT_METAMASK_ORIGIN,
   normalizeError,
+  SendFlowRequestRouter,
 } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
-import { assert, create } from '@metamask/superstruct';
+import type { Infer } from '@metamask/superstruct';
+import { assert } from '@metamask/superstruct';
 import { bytesToHex } from '@metamask/utils';
 import {
   address as asAddress,
@@ -22,7 +24,10 @@ import { FeeCalculator } from '../../fees';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
 import type { AccountsService, ApproveTokenService } from '../../services';
 import type { SendService } from '../../services/send/SendService';
-import type { OnAddressInputRequest } from '../../services/send/types';
+import type {
+  OnAmountInputRequest,
+  OnConfirmSendRequest,
+} from '../../services/send/types';
 import type {
   SolanaSignMessageBatchRequest,
   SolanaSignMessageBatchResult,
@@ -51,6 +56,7 @@ import {
   SignProofOfOwnershipResponseStruct,
   SignRewardsMessageRequestStruct,
   ValidationResponseStruct,
+  sendFlowStructs,
 } from './validation';
 import type {
   ComputeFeeResponse,
@@ -71,6 +77,11 @@ function isSignMessageBatchError(
   return Object.hasOwn(signedMessage, 'error');
 }
 
+type OnAddressInputParams = Infer<typeof OnAddressInputRequestStruct>['params'];
+type OnAmountInputParams = Infer<typeof OnAmountInputRequestStruct>['params'];
+type OnConfirmSendParams = Infer<typeof OnConfirmSendRequestStruct>['params'];
+type ComputeFeeParams = Infer<typeof ComputeFeeRequestStruct>['params'];
+
 export class ClientRequestHandler {
   readonly #accountsService: AccountsService;
 
@@ -81,6 +92,8 @@ export class ClientRequestHandler {
   readonly #sendService: SendService;
 
   readonly #approveTokenService: ApproveTokenService;
+
+  readonly #sendFlowRouter: SendFlowRequestRouter;
 
   constructor(
     accountsService: AccountsService,
@@ -94,6 +107,19 @@ export class ClientRequestHandler {
     this.#logger = logger.withPrefix('[👋 ClientRequestHandler]');
     this.#sendService = sendService;
     this.#approveTokenService = approveTokenService;
+    this.#sendFlowRouter = new SendFlowRequestRouter({
+      structs: sendFlowStructs,
+      handlers: {
+        onAddressInput: async (params): Promise<Json> =>
+          this.#handleOnAddressInput(params as OnAddressInputParams),
+        onAmountInput: async (params, request): Promise<Json> =>
+          this.#handleOnAmountInput(params as OnAmountInputParams, request),
+        confirmSend: async (params, request): Promise<Json> =>
+          this.#handleConfirmSend(params as OnConfirmSendParams, request),
+        computeFee: async (params): Promise<Json> =>
+          this.#handleComputeFee(params as ComputeFeeParams),
+      },
+    });
   }
 
   /**
@@ -108,6 +134,11 @@ export class ClientRequestHandler {
   async handle(request: JsonRpcRequest): Promise<Json> {
     this.#logger.log('Handling client request', request);
 
+    const sendFlowResponse = await this.#sendFlowRouter.handle(request);
+    if (sendFlowResponse !== undefined) {
+      return sendFlowResponse;
+    }
+
     const { method } = request;
 
     switch (method) {
@@ -115,16 +146,8 @@ export class ClientRequestHandler {
       case ClientRequestMethod.SignAndSendTransactionWithoutConfirmation:
         return this.#handleSignAndSendWithoutConfirmation(request);
 
-      case ClientRequestMethod.ConfirmSend:
-        return this.#handleConfirmSend(request);
       case ClientRequestMethod.SignAndSendTransaction:
         return this.#handleSignAndSendTransaction(request);
-      case ClientRequestMethod.ComputeFee:
-        return this.#handleComputeFee(request);
-      case ClientRequestMethod.OnAddressInput:
-        return this.#handleOnAddressInput(request);
-      case ClientRequestMethod.OnAmountInput:
-        return this.#handleOnAmountInput(request);
       case ClientRequestMethod.SignRewardsMessage:
         return this.#handleSignRewardsMessage(request);
       case ClientRequestMethod.SignCardMessage:
@@ -225,42 +248,27 @@ export class ClientRequestHandler {
   /**
    * Handles the confirmation of a send transaction.
    *
+   * @param _params - The validated send params.
    * @param request - The JSON-RPC request containing the method and parameters.
    * @returns The response to the JSON-RPC request.
    * @throws {InvalidParamsError} If the params are invalid.
    */
-  async #handleConfirmSend(request: JsonRpcRequest): Promise<Json> {
-    try {
-      assert(request, OnConfirmSendRequestStruct);
-    } catch (error) {
-      const errorToThrow = new InvalidParamsError() as Error;
-      errorToThrow.cause = error;
-      throw errorToThrow;
-    }
-    const result = await this.#sendService.confirmSend(request);
-
-    return result;
+  async #handleConfirmSend(
+    _params: OnConfirmSendParams,
+    request: JsonRpcRequest,
+  ): Promise<Json> {
+    return await this.#sendService.confirmSend(request as OnConfirmSendRequest);
   }
 
   /**
    * Handles the computation of a fee for a transaction.
    *
-   * @param request - The JSON-RPC request containing the method and parameters.
+   * @param params - The validated compute fee params.
    * @returns The response to the JSON-RPC request.
    * @throws {InvalidParamsError} If the params are invalid.
    */
-  async #handleComputeFee(request: JsonRpcRequest): Promise<Json> {
-    try {
-      assert(request, ComputeFeeRequestStruct);
-    } catch (error) {
-      const errorToThrow = new InvalidParamsError() as Error;
-      errorToThrow.cause = error;
-      throw errorToThrow;
-    }
-
-    const {
-      params: { transaction, scope },
-    } = request;
+  async #handleComputeFee(params: ComputeFeeParams): Promise<Json> {
+    const { transaction, scope } = params;
 
     const { baseFee, priorityFee } = FeeCalculator.calculateFee(transaction);
 
@@ -296,24 +304,15 @@ export class ClientRequestHandler {
   /**
    * Handles the input of an address.
    *
-   * @param request - The JSON-RPC request containing the method and parameters.
+   * @param params - The validated address params.
    * @returns The response to the JSON-RPC request.
    * @throws {InvalidParamsError} If the params are invalid.
    */
-  async #handleOnAddressInput(request: JsonRpcRequest): Promise<Json> {
-    let parsed: OnAddressInputRequest;
-    try {
-      parsed = create(request, OnAddressInputRequestStruct);
-    } catch (error) {
-      const errorToThrow = new InvalidParamsError() as Error;
-      errorToThrow.cause = error;
-      throw errorToThrow;
-    }
-
-    const {
-      params: { value, scope },
-    } = parsed;
-    const result = await this.#sendService.onAddressInput(value, scope);
+  async #handleOnAddressInput(params: OnAddressInputParams): Promise<Json> {
+    const result = await this.#sendService.onAddressInput(
+      params.value,
+      params.scope,
+    );
 
     assert(result, ValidationResponseStruct);
 
@@ -323,20 +322,18 @@ export class ClientRequestHandler {
   /**
    * Handles the input of an amount.
    *
+   * @param _params - The validated amount params.
    * @param request - The JSON-RPC request containing the method and parameters.
    * @returns The response to the JSON-RPC request.
    * @throws {InvalidParamsError} If the params are invalid.
    */
-  async #handleOnAmountInput(request: JsonRpcRequest): Promise<Json> {
-    try {
-      assert(request, OnAmountInputRequestStruct);
-    } catch (error) {
-      const errorToThrow = new InvalidParamsError() as Error;
-      errorToThrow.cause = error;
-      throw errorToThrow;
-    }
-
-    const result = await this.#sendService.onAmountInput(request);
+  async #handleOnAmountInput(
+    _params: OnAmountInputParams,
+    request: JsonRpcRequest,
+  ): Promise<Json> {
+    const result = await this.#sendService.onAmountInput(
+      request as OnAmountInputRequest,
+    );
 
     assert(result, ValidationResponseStruct);
 

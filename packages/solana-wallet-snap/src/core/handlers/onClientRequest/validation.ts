@@ -1,8 +1,10 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
 import {
+  createSendFlowStructs,
   parseProofOfOwnershipMessage as parseSharedProofOfOwnershipMessage,
   ProofOfOwnershipBatchErrorStruct as SignProofOfOwnershipBatchErrorStruct,
   ProofOfOwnershipBatchRequestParamsStruct as SignProofOfOwnershipBatchRequestParamsStruct,
+  SendFlowValidationResponseStruct,
   UuidStruct,
 } from '@metamask/snap-networks-utils';
 import type { ProofOfOwnershipMessage } from '@metamask/snap-networks-utils';
@@ -10,7 +12,6 @@ import { literal } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import {
   array,
-  boolean,
   defaulted,
   enums,
   is,
@@ -25,11 +26,11 @@ import {
   JsonRpcIdStruct,
   JsonRpcVersionStruct,
   StrictHexStruct,
+  parseCaipAssetType,
 } from '@metamask/utils';
 import { getBase64Codec, getUtf8Codec, pipe } from '@solana/kit';
 
-import { Network } from '../../constants/solana';
-import { SendErrorCodes } from '../../services/send/types';
+import { Network, isSupportedNetwork } from '../../constants/solana';
 import {
   ScopeStringStruct,
   SolanaSignAndSendTransactionInputStruct,
@@ -419,16 +420,7 @@ export const ApproveCardAmountResponseStruct = object({
   signature: Base58Struct,
 });
 
-export const ValidationResponseStruct = object({
-  valid: boolean(),
-  errors: array(
-    object({
-      code: enums(
-        Object.values(SendErrorCodes) as [SendErrorCodes, ...SendErrorCodes[]],
-      ),
-    }),
-  ),
-});
+export const ValidationResponseStruct = SendFlowValidationResponseStruct;
 
 export type ValidationResponse = Infer<typeof ValidationResponseStruct>;
 
@@ -567,3 +559,24 @@ export const SignProofOfOwnershipBatchResponseStruct = object({
 export type SignProofOfOwnershipBatchResponse = Infer<
   typeof SignProofOfOwnershipBatchResponseStruct
 >;
+
+/**
+ * CAIP-19 asset struct that only accepts assets on a supported Solana chain.
+ */
+export const SolanaCaipAssetTypeStruct = refine(
+  CaipAssetTypeStruct,
+  'solana-caip-asset-id',
+  (assetId) => isSupportedNetwork(parseCaipAssetType(assetId).chainId),
+);
+
+/**
+ * Params structs for the unified send flow methods.
+ */
+export const sendFlowStructs = createSendFlowStructs({
+  assetId: SolanaCaipAssetTypeStruct,
+  address: SolanaAddressStruct,
+  overrides: {
+    OnAddressInputParams: OnAddressInputRequestParamsStruct,
+    ComputeFeeParams: ComputeFeeRequestParamsStruct,
+  },
+});

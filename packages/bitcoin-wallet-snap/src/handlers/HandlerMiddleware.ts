@@ -10,6 +10,7 @@ import {
   SnapError,
   getErrorMessage,
 } from '@metamask/snaps-sdk';
+import { StructError as MetamaskStructError } from '@metamask/superstruct';
 import { StructError } from 'superstruct';
 
 import type { Translator, Logger, SnapClient } from '../entities';
@@ -107,7 +108,10 @@ export class HandlerMiddleware {
           throw new InternalError(errMsg, error.data);
         }
       } else {
-        if (error instanceof StructError) {
+        if (
+          error instanceof StructError ||
+          error instanceof MetamaskStructError
+        ) {
           const errMsg = messages['error.0']?.message ?? 'Invalid format';
           throw new InvalidInputError(
             `${errMsg}: ${error.message}`,

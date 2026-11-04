@@ -3,10 +3,12 @@ import { getBase64Codec, getUtf8Codec, pipe } from '@solana/kit';
 
 import {
   CardMessageStruct,
+  SolanaCaipAssetTypeStruct,
   parseCardMessage,
   parseProofOfOwnershipMessage,
   ProofOfOwnershipMessageStruct,
   RewardsMessageStruct,
+  sendFlowStructs,
 } from './validation';
 
 describe('validation', () => {
@@ -390,5 +392,39 @@ describe('validation', () => {
         expect(is(value, ProofOfOwnershipMessageStruct)).toBe(false);
       },
     );
+  });
+});
+
+describe('send flow validation', () => {
+  it('accepts CAIP-19 assets on a supported Solana chain', () => {
+    expect(
+      is(
+        'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
+        SolanaCaipAssetTypeStruct,
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects CAIP-19 assets from another chain', () => {
+    expect(is('tron:728126428/slip44:195', SolanaCaipAssetTypeStruct)).toBe(
+      false,
+    );
+  });
+
+  it('rejects malformed CAIP-19 asset IDs', () => {
+    expect(is('not-an-asset-id', SolanaCaipAssetTypeStruct)).toBe(false);
+  });
+
+  it('builds the shared onAmountInput params from the Solana asset struct', () => {
+    expect(
+      is(
+        {
+          accountId: '0e6a1f4a-6f6c-4a1e-9f3d-1a2b3c4d5e6f',
+          assetId: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
+          value: '1.5',
+        },
+        sendFlowStructs.OnAmountInputParams,
+      ),
+    ).toBe(true);
   });
 });

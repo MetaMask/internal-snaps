@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Use the shared unified send flow router, method names, request structs, error codes, and validation response type from `@metamask/snap-networks-utils`. Unified send flow asset IDs must now belong to a supported Solana chain ([#556](https://github.com/MetaMask/internal-snaps/pull/556))
+
 ## [7.2.0]
 
 ### Added

@@ -1,11 +1,13 @@
+import { SendFlowMethod } from '@metamask/snap-networks-utils';
+
 export const ClientRequestMethod = {
+  OnAddressInput: SendFlowMethod.OnAddressInput,
+  OnAmountInput: SendFlowMethod.OnAmountInput,
+  ConfirmSend: SendFlowMethod.ConfirmSend,
+  ComputeFee: SendFlowMethod.ComputeFee,
   SignAndSendTransactionWithoutConfirmation:
     'signAndSendTransactionWithoutConfirmation',
-  ConfirmSend: 'confirmSend',
   SignAndSendTransaction: 'signAndSendTransaction',
-  ComputeFee: 'computeFee',
-  OnAddressInput: 'onAddressInput',
-  OnAmountInput: 'onAmountInput',
   SignRewardsMessage: 'signRewardsMessage',
   SignCardMessage: 'signCardMessage',
   ApproveCardAmount: 'approveCardAmount',

@@ -1,4 +1,6 @@
+import { InvalidInputError } from '@metamask/snaps-sdk';
 import type { GetPreferencesResult } from '@metamask/snaps-sdk';
+import { create, object, string } from '@metamask/superstruct';
 import { mock } from 'jest-mock-extended';
 
 import { BaseError, ExternalServiceError } from '../entities';
@@ -101,6 +103,20 @@ describe('HandlerMiddleware', () => {
       );
       expect(mockLogger.error).toHaveBeenCalledWith(thrown);
       expect(mockTrackError).toHaveBeenCalledWith(thrown);
+    });
+
+    it('wraps a @metamask/superstruct StructError as an invalid input error', async () => {
+      let error: Error | undefined;
+      try {
+        create({}, object({ value: string() }));
+      } catch (caught) {
+        error = caught as Error;
+      }
+
+      expect(error).toBeDefined();
+      await expect(
+        middleware.handle(jest.fn().mockRejectedValue(error)),
+      ).rejects.toThrow(InvalidInputError);
     });
 
     it('handles error successfully if instance of BaseError', async () => {

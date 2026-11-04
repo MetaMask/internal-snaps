@@ -3,6 +3,8 @@ import { Address, Amount } from '@metamask/bitcoindevkit';
 import { BtcMethod } from '@metamask/keyring-api';
 import {
   parseProofOfOwnershipMessage as parseSharedProofOfOwnershipMessage,
+  SendFlowErrorCodes,
+  SendFlowMethod,
   UuidStruct,
 } from '@metamask/snap-networks-utils';
 import type { ProofOfOwnershipMessage } from '@metamask/snap-networks-utils';
@@ -28,13 +30,13 @@ import type { BitcoinAccount, CodifiedError, Logger } from '../entities';
 import { ValidationError } from '../entities';
 
 export const RpcMethod = {
+  OnAddressInput: SendFlowMethod.OnAddressInput,
+  OnAmountInput: SendFlowMethod.OnAmountInput,
+  ConfirmSend: SendFlowMethod.ConfirmSend,
+  ComputeFee: SendFlowMethod.ComputeFee,
   StartSendTransactionFlow: 'startSendTransactionFlow',
   SignAndSendTransaction: 'signAndSendTransaction',
-  ComputeFee: 'computeFee',
   VerifyMessage: 'verifyMessage',
-  OnAddressInput: 'onAddressInput',
-  OnAmountInput: 'onAmountInput',
-  ConfirmSend: 'confirmSend',
   SignRewardsMessage: 'signRewardsMessage',
   SignProofOfOwnership: 'signProofOfOwnership',
   /**
@@ -46,12 +48,7 @@ export const RpcMethod = {
 
 export type RpcMethod = (typeof RpcMethod)[keyof typeof RpcMethod];
 
-export const SendErrorCodes = {
-  Required: 'Required',
-  Invalid: 'Invalid',
-  InsufficientBalance: 'InsufficientBalance',
-  InsufficientBalanceToCoverFee: 'InsufficientBalanceToCoverFee',
-} as const;
+export const SendErrorCodes = SendFlowErrorCodes;
 
 export type SendErrorCodes =
   (typeof SendErrorCodes)[keyof typeof SendErrorCodes];
