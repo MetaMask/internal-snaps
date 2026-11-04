@@ -26,6 +26,18 @@ export type BlockchainClient = {
   fullScan(account: BitcoinAccount, mode?: 'discovery' | 'scan'): Promise<void>;
 
   /**
+   * Complete a discovery-gap full scan that found activity to the standard
+   * gap. Only the addresses the standard gap adds beyond what the discovery
+   * scan already fetched are checked; the standard-gap full scan runs only if
+   * one of them has history or the check fails, so a used account keeps its
+   * full address coverage without refetching the addresses already scanned.
+   * Note that this operation may modify the account in place.
+   *
+   * @param account - the account the discovery-gap scan was applied to.
+   */
+  extendDiscoveryScan(account: BitcoinAccount): Promise<void>;
+
+  /**
    * Perform a sync operation on the account.
    * Note that this operation modifies the account in place.
    *

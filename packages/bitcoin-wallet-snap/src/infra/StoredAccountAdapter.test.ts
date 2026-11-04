@@ -69,4 +69,16 @@ describe('StoredAccountAdapter', () => {
       expect(() => adapter().isMine(mockScript)).toThrow(WalletError);
     });
   });
+
+  describe('gap scan indexes', () => {
+    it('throws a WalletError since stored metadata cannot derive addresses', () => {
+      expect(() => adapter().peekKeychainAddress('internal', 0)).toThrow(
+        WalletError,
+      );
+      expect(() => adapter().lastUsedIndex('external')).toThrow(WalletError);
+      expect(() => adapter().lastRevealedIndex('external')).toThrow(
+        WalletError,
+      );
+    });
+  });
 });

@@ -1,6 +1,7 @@
 import type {
   FeeEstimates,
   Network,
+  ScriptBuf,
   Transaction,
 } from '@metamask/bitcoindevkit';
 import { EsploraClient } from '@metamask/bitcoindevkit';
@@ -22,6 +23,7 @@ import type {
   BitcoinAccount,
   ChainConfig,
   BlockchainClient,
+  Keychain,
 } from '../entities';
 
 /**
@@ -53,6 +55,24 @@ type EsploraTx = {
  */
 function toEsploraRestUrl(url: string): string {
   return url.replace(/\/+$/u, '').replace(/\/v1$/u, '');
+}
+
+const KEYCHAINS: Keychain[] = ['external', 'internal'];
+
+/**
+ * Computes the Electrum/Esplora script hash of an output script: the SHA-256
+ * of the script, byte-reversed, hex-encoded (the key of `/scripthash/:hash`).
+ *
+ * @param script - The output script bytes.
+ * @returns The script hash.
+ */
+export async function toScripthash(script: Uint8Array): Promise<string> {
+  const digest = new Uint8Array(
+    await globalThis.crypto.subtle.digest('SHA-256', script),
+  );
+  return Array.from(digest.reverse(), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
 }
 
 const ALREADY_BROADCAST_PATTERN =
@@ -119,6 +139,8 @@ export class EsploraClientAdapter implements BlockchainClient {
 
   readonly #policies: Record<Network, FetchPolicy>;
 
+  readonly #logger: Logger;
+
   // Funding addresses are resolved while mapping transactions, which runs on
   // every sync/event emission. Cache by network + txid so a receive is only
   // looked up once instead of on each notification.
@@ -150,6 +172,7 @@ export class EsploraClientAdapter implements BlockchainClient {
     };
 
     this.#config = config;
+    this.#logger = logger;
   }
 
   async fullScan(
@@ -179,6 +202,94 @@ export class EsploraClientAdapter implements BlockchainClient {
         error,
       );
     }
+  }
+
+  async extendDiscoveryScan(account: BitcoinAccount): Promise<void> {
+    let hasHistory: boolean;
+    try {
+      hasHistory = await this.#hasHistoryInGapExtension(account);
+    } catch (error) {
+      // Never leave the account with the discovery gap only: fall back to the
+      // standard-gap full scan (which surfaces its own failure).
+      this.#logger.warn(
+        `[esplora ${account.network}] standard-gap check failed, running the standard-gap scan`,
+        error,
+      );
+      hasHistory = true;
+    }
+    if (hasHistory) {
+      await this.fullScan(account, 'scan');
+    }
+  }
+
+  /**
+   * Lists, per keychain, the scripts a standard-gap full scan covers beyond
+   * the discovery-gap scan just applied to the account. A gap scan covers up
+   * to `last active index + stop gap` (indexes `0..stopGap-1` when nothing is
+   * active), so the discovery scan already fetched up to
+   * `lastUsed + discovery`. The upper bound also accounts for revealed
+   * addresses, so the check never covers less than the standard-gap scan.
+   *
+   * @param account - The account.
+   * @returns The scripts to check.
+   */
+  #gapExtensionScripts(account: BitcoinAccount): ScriptBuf[] {
+    const { discovery, scan } = this.#config.stopGap;
+    const scripts: ScriptBuf[] = [];
+    for (const keychain of KEYCHAINS) {
+      const lastUsed = account.lastUsedIndex(keychain) ?? -1;
+      const lastRevealed = account.lastRevealedIndex(keychain) ?? -1;
+      const first = lastUsed + discovery + 1;
+      const last = Math.max(lastUsed, lastRevealed) + scan;
+      for (let index = first; index <= last; index++) {
+        scripts.push(
+          account.peekKeychainAddress(keychain, index).address.script_pubkey,
+        );
+      }
+    }
+    return scripts;
+  }
+
+  async #hasHistoryInGapExtension(account: BitcoinAccount): Promise<boolean> {
+    const scripts = this.#gapExtensionScripts(account);
+    const batchSize = Math.max(1, this.#config.parallelRequests);
+    for (let start = 0; start < scripts.length; start += batchSize) {
+      const results = await Promise.all(
+        scripts
+          .slice(start, start + batchSize)
+          .map(async (script) =>
+            this.#scriptHasHistory(account.network, script),
+          ),
+      );
+      if (results.some(Boolean)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Whether an address has any transaction history, from the Esplora REST
+   * API. The request goes through the network's shared fetch policy (retries,
+   * circuit breaker, and per-attempt timeout).
+   *
+   * @param network - Network of the address.
+   * @param script - Output script of the address.
+   * @returns `true` unless the indexer reports an empty history.
+   */
+  async #scriptHasHistory(
+    network: Network,
+    script: ScriptBuf,
+  ): Promise<boolean> {
+    const scripthash = await toScripthash(script.as_bytes());
+    const body = await fetchWithPolicy(
+      this.#policies[network],
+      `${this.#restUrls[network]}/scripthash/${scripthash}/txs`,
+    );
+    const history = JSON.parse(body) as unknown;
+    // Anything but an empty list counts as history: the caller then runs the
+    // standard-gap full scan.
+    return !Array.isArray(history) || history.length > 0;
   }
 
   async sync(account: BitcoinAccount): Promise<void> {
