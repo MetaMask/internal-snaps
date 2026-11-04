@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.3.1]
+
 ### Fixed
 
 - Allow transaction confirmation after remote simulation failures while retaining security warnings and checks for locally invalid transactions. ([#552](https://github.com/MetaMask/internal-snaps/pull/552))
@@ -134,7 +136,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump `@metamask/snaps-sdk` from `^11.1.1` to `^11.2.0` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 - Bump `@metamask/superstruct` from `^3.2.1` to `^3.4.1` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.3.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.3.1...HEAD
+[4.3.1]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.3.0...@metamask/tron-wallet-snap@4.3.1
 [4.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.2.0...@metamask/tron-wallet-snap@4.3.0
 [4.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.1.0...@metamask/tron-wallet-snap@4.2.0
 [4.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.0.0...@metamask/tron-wallet-snap@4.1.0
