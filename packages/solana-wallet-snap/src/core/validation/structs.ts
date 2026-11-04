@@ -1,6 +1,9 @@
 import { CaipAssetTypeStruct, SolMethod } from '@metamask/keyring-api';
 import { ExportAccountOptionsStruct } from '@metamask/keyring-api/v2';
-import { UuidStruct } from '@metamask/snap-networks-utils';
+import {
+  PositiveNumberStringStruct,
+  UuidStruct,
+} from '@metamask/snap-networks-utils';
 import type { Struct } from '@metamask/superstruct';
 import {
   array,
@@ -18,10 +21,7 @@ import { address } from '@solana/kit';
 
 import { Network } from '../constants/solana';
 
-export const PositiveNumberStringStruct = pattern(
-  string(),
-  /^(?!0\d)(\d+(\.\d+)?)$/u,
-);
+export { PositiveNumberStringStruct };
 
 /**
  * Keyring validations

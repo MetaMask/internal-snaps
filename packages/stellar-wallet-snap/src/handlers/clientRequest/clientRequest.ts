@@ -1,13 +1,19 @@
+import { SendFlowRequestRouter } from '@metamask/snap-networks-utils';
 import { MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/utils';
 import { ensureError } from '@metamask/utils';
 
-import type { ClientRequestMethod } from './api';
-import { ClientRequestMethodStruct } from './api';
+import {
+  ClientRequestMethod,
+  ClientRequestMethodStruct,
+  stellarSendFlowStructs,
+} from './api';
 import type { IClientRequestHandler } from './base';
 
 export class ClientRequestHandler {
   readonly #handlers: Record<ClientRequestMethod, IClientRequestHandler>;
+
+  readonly #sendFlowRouter: SendFlowRequestRouter;
 
   constructor({
     handlers,
@@ -15,6 +21,19 @@ export class ClientRequestHandler {
     handlers: Record<ClientRequestMethod, IClientRequestHandler>;
   }) {
     this.#handlers = handlers;
+    this.#sendFlowRouter = new SendFlowRequestRouter({
+      structs: stellarSendFlowStructs,
+      handlers: {
+        onAddressInput: async (_params, request): Promise<Json> =>
+          this.#handlers[ClientRequestMethod.OnAddressInput].handle(request),
+        onAmountInput: async (_params, request): Promise<Json> =>
+          this.#handlers[ClientRequestMethod.OnAmountInput].handle(request),
+        confirmSend: async (_params, request): Promise<Json> =>
+          this.#handlers[ClientRequestMethod.ConfirmSend].handle(request),
+        computeFee: async (_params, request): Promise<Json> =>
+          this.#handlers[ClientRequestMethod.ComputeFee].handle(request),
+      },
+    });
   }
 
   /**
@@ -28,6 +47,11 @@ export class ClientRequestHandler {
    * @throws {InvalidParamsError} If the params are invalid.
    */
   async handle(request: JsonRpcRequest): Promise<Json> {
+    const sendFlowResponse = await this.#sendFlowRouter.handle(request);
+    if (sendFlowResponse !== undefined) {
+      return sendFlowResponse;
+    }
+
     return (await this.#handleClientRequest(request)) ?? null;
   }
 

@@ -1,12 +1,11 @@
+import {
+  SendFlowErrorCodes,
+  SendFlowMethod,
+} from '@metamask/snap-networks-utils';
+
 export const ClientRequestMethod = {
+  ...SendFlowMethod,
   SignAndSendTransaction: 'signAndSendTransaction',
-  /**
-   * Unified non-EVM Send
-   */
-  ConfirmSend: 'confirmSend',
-  ComputeFee: 'computeFee',
-  OnAddressInput: 'onAddressInput',
-  OnAmountInput: 'onAmountInput',
   /**
    * Staking + Unstaking
    */
@@ -35,12 +34,7 @@ export const ClientRequestMethod = {
 export type ClientRequestMethod =
   (typeof ClientRequestMethod)[keyof typeof ClientRequestMethod];
 
-export const SendErrorCodes = {
-  Required: 'Required',
-  Invalid: 'Invalid',
-  InsufficientBalance: 'InsufficientBalance',
-  InsufficientBalanceToCoverFee: 'InsufficientBalanceToCoverFee',
-} as const;
+export const SendErrorCodes = SendFlowErrorCodes;
 
 export type SendErrorCodes =
   (typeof SendErrorCodes)[keyof typeof SendErrorCodes];

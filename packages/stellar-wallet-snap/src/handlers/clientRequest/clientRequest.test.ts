@@ -10,7 +10,7 @@ describe('ClientRequestHandler', () => {
     mockHandle.mockReset();
     return new ClientRequestHandler({
       handlers: {
-        [ClientRequestMethod.ComputeFee]: { handle: mockHandle },
+        [ClientRequestMethod.ConfirmSend]: { handle: mockHandle },
       } as never,
     });
   }
@@ -18,7 +18,13 @@ describe('ClientRequestHandler', () => {
   const request = {
     jsonrpc: '2.0',
     id: 1,
-    method: ClientRequestMethod.ComputeFee,
+    method: ClientRequestMethod.ConfirmSend,
+    params: {
+      fromAccountId: '11111111-1111-4111-8111-111111111111',
+      toAddress: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+      assetId: 'stellar:pubnet/slip44:148',
+      amount: '1',
+    },
   } as const;
 
   it('routes the request to the handler for its method', async () => {

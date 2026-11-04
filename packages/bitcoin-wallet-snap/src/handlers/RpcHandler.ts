@@ -3,12 +3,22 @@ import {
   DEFAULT_METAMASK_ORIGIN,
   normalizeError,
   resolveFlowTransactionType,
+  SendFlowRequestRouter,
+  UuidStruct,
+  createSendFlowStructs,
 } from '@metamask/snap-networks-utils';
 import type {
   ProofOfOwnershipBatchRequestItem,
   ProofOfOwnershipBatchResponse,
 } from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
+import {
+  enums as enumsV3,
+  object as objectV3,
+  refine as refineV3,
+  string as stringV3,
+} from '@metamask/superstruct';
+import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
 import type { CaipAssetType } from '@metamask/utils';
 import { Verifier } from 'bip322-js';
 import {
@@ -39,18 +49,10 @@ import { scopeToNetwork } from './caip';
 import type { TransactionFee } from './mappings';
 import { mapPsbtToTransaction, mapToTransactionFees } from './mappings';
 import { parsePsbt } from './parsers';
-import type {
-  ConfirmSendRequest,
-  OnAddressInputRequest,
-  OnAmountInputRequest,
-} from './types';
 import type { ValidationResponse } from './validation';
 import {
   NO_ERRORS_RESPONSE,
   INVALID_RESPONSE,
-  ConfirmSendRequestStruct,
-  OnAddressInputRequestStruct,
-  OnAmountInputRequestStruct,
   RpcMethod,
   SendErrorCodes,
   validateAmount,
@@ -139,12 +141,57 @@ function isSignProofOfOwnershipMessageBatchError(
   return Object.hasOwn(signedMessage, 'error');
 }
 
+const BitcoinCaipAssetTypeStruct = refineV3(
+  CaipAssetTypeStruct,
+  'bitcoin-caip-asset-id',
+  (assetId) => parseCaipAssetType(assetId).chainId.startsWith('bip122:'),
+);
+
+const bitcoinSendFlowStructs = createSendFlowStructs({
+  // Bitcoin validates amounts and addresses inside the handlers so it can
+  // return an invalid response instead of an invalid params error.
+  address: stringV3(),
+  amount: stringV3(),
+  assetId: BitcoinCaipAssetTypeStruct,
+  overrides: {
+    OnAddressInputParams: objectV3({
+      value: stringV3(),
+      accountId: UuidStruct,
+    }),
+    ComputeFeeParams: objectV3({
+      accountId: stringV3(),
+      transaction: stringV3(),
+      scope: enumsV3(Object.values(BtcScope)),
+    }),
+  },
+});
+
+type OnAddressInputParams = { value: string; accountId: string };
+type OnAmountInputParams = {
+  value: string;
+  accountId: string;
+  assetId: CaipAssetType;
+};
+type ConfirmSendParams = {
+  fromAccountId: string;
+  toAddress: string;
+  amount: string;
+  assetId: CaipAssetType;
+};
+type ComputeFeeParams = {
+  accountId: string;
+  transaction: string;
+  scope: BtcScope;
+};
+
 export class RpcHandler {
   readonly #logger: Logger;
 
   readonly #sendFlowUseCases: SendFlowUseCases;
 
   readonly #accountUseCases: AccountUseCases;
+
+  readonly #sendFlowRouter: SendFlowRequestRouter;
 
   constructor(
     sendFlow: SendFlowUseCases,
@@ -154,12 +201,33 @@ export class RpcHandler {
     this.#logger = logger;
     this.#sendFlowUseCases = sendFlow;
     this.#accountUseCases = accounts;
+    this.#sendFlowRouter = new SendFlowRequestRouter({
+      structs: bitcoinSendFlowStructs,
+      // Preserve the existing Bitcoin behaviour of surfacing the raw request
+      // validation error with its format details.
+      createInvalidParamsError: (error): Error => error as Error,
+      handlers: {
+        onAddressInput: async (params): Promise<Json> =>
+          this.#onAddressInput(params as OnAddressInputParams),
+        onAmountInput: async (params): Promise<Json> =>
+          this.#onAmountInput(params as OnAmountInputParams),
+        confirmSend: async (params): Promise<Json> =>
+          this.#confirmSend(params as ConfirmSendParams),
+        computeFee: async (params): Promise<Json> =>
+          this.#computeFee(params as ComputeFeeParams),
+      },
+    });
   }
 
   async route(origin: string, request: JsonRpcRequest): Promise<Json> {
     const { method, params } = request;
     if (!params) {
       throw new FormatError('Missing params');
+    }
+
+    const sendFlowResponse = await this.#sendFlowRouter.handle(request);
+    if (sendFlowResponse !== undefined) {
+      return sendFlowResponse;
     }
 
     switch (method as RpcMethod) {
@@ -175,26 +243,6 @@ export class RpcHandler {
           origin,
           params.options,
         );
-      }
-      case RpcMethod.ComputeFee: {
-        assert(params, ComputeFeeRequest);
-        return this.#computeFee(
-          params.accountId,
-          params.transaction,
-          params.scope,
-        );
-      }
-      case RpcMethod.OnAddressInput: {
-        assert(params, OnAddressInputRequestStruct);
-        return this.#onAddressInput(params);
-      }
-      case RpcMethod.OnAmountInput: {
-        assert(params, OnAmountInputRequestStruct);
-        return this.#onAmountInput(params);
-      }
-      case RpcMethod.ConfirmSend: {
-        assert(params, ConfirmSendRequestStruct);
-        return await this.#confirmSend(params);
       }
       case RpcMethod.VerifyMessage: {
         assert(params, VerifyMessageRequest);
@@ -299,11 +347,11 @@ export class RpcHandler {
     return { transactionId: txid.toString(), canBeMalleable };
   }
 
-  async #computeFee(
-    accountId: string,
-    transaction: string,
-    scope: BtcScope,
-  ): Promise<TransactionFee[]> {
+  async #computeFee({
+    accountId,
+    transaction,
+    scope,
+  }: ComputeFeeParams): Promise<TransactionFee[]> {
     const psbt = parsePsbt(transaction);
     const amount = await this.#accountUseCases.computeFee(accountId, psbt);
 
@@ -311,7 +359,7 @@ export class RpcHandler {
   }
 
   async #onAddressInput(
-    request: OnAddressInputRequest,
+    request: OnAddressInputParams,
   ): Promise<ValidationResponse> {
     const { value, accountId } = request;
 
@@ -334,7 +382,7 @@ export class RpcHandler {
   }
 
   async #onAmountInput(
-    request: OnAmountInputRequest,
+    request: OnAmountInputParams,
   ): Promise<ValidationResponse> {
     const { value, accountId } = request;
 
@@ -380,7 +428,7 @@ export class RpcHandler {
     }
   }
 
-  async #confirmSend(request: ConfirmSendRequest): Promise<Json> {
+  async #confirmSend(request: ConfirmSendParams): Promise<Json> {
     try {
       const account = await this.#accountUseCases.get(request.fromAccountId);
 

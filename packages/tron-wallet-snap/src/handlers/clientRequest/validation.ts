@@ -3,6 +3,8 @@ import {
   parseProofOfOwnershipMessage as parseSharedProofOfOwnershipMessage,
   ProofOfOwnershipBatchRequestParamsStruct as SignProofOfOwnershipBatchRequestParamsStruct,
   ProofOfOwnershipBatchResponseStruct as SignProofOfOwnershipBatchResponseStruct,
+  SendFlowGetMaxSendableAmountResponseStruct,
+  SendFlowValidationResponseStruct,
   UuidStruct,
 } from '@metamask/snap-networks-utils';
 import type { ProofOfOwnershipMessage } from '@metamask/snap-networks-utils';
@@ -32,7 +34,7 @@ import {
   ScopeStringStruct,
   TronAddressStruct,
 } from '../../validation/structs';
-import { ClientRequestMethod, SendErrorCodes } from './types';
+import { ClientRequestMethod } from './types';
 
 /**
  * Validates one proof-of-ownership batch request item.
@@ -127,14 +129,7 @@ export const OnAmountInputRequestStruct = object({
   params: OnAmountInputRequestParamsStruct,
 });
 
-export const ValidationResponseStruct = object({
-  valid: boolean(),
-  errors: array(
-    object({
-      code: enums(Object.values(SendErrorCodes)),
-    }),
-  ),
-});
+export const ValidationResponseStruct = SendFlowValidationResponseStruct;
 
 export type ValidationResponse = Infer<typeof ValidationResponseStruct>;
 
@@ -219,6 +214,33 @@ export const ComputeStakeFeeRequestStruct = object({
   method: literal(ClientRequestMethod.ComputeStakeFee),
   params: ComputeStakeFeeRequestParamsStruct,
 });
+
+/**
+ * getMaxSendableAmount request validation.
+ */
+export const GetMaxSendableAmountRequestParamsStruct = object({
+  accountId: UuidStruct,
+  assetId: CaipAssetTypeStruct,
+  toAddress: optional(TronAddressStruct),
+});
+
+export const GetMaxSendableAmountRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.GetMaxSendableAmount),
+  params: GetMaxSendableAmountRequestParamsStruct,
+});
+
+/**
+ * getMaxSendableAmount response validation: the maximum amount that makes
+ * onAmountInput pass, or 0 when no amount can pass.
+ */
+export const GetMaxSendableAmountResponseStruct =
+  SendFlowGetMaxSendableAmountResponseStruct;
+
+export type GetMaxSendableAmountResponse = Infer<
+  typeof GetMaxSendableAmountResponseStruct
+>;
 
 export const OnUnstakeAmountInputRequestParamsStruct = object({
   accountId: UuidStruct,

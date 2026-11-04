@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Use the shared unified send flow router, method names, error codes, and validation response type from `@metamask/snap-networks-utils` for `onAddressInput`, `onAmountInput`, `confirmSend`, and `computeFee` ([#556](https://github.com/MetaMask/internal-snaps/pull/556))
+
 ## [3.3.0]
 
 ### Changed

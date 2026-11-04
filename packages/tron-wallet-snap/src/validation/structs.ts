@@ -6,7 +6,10 @@ import {
   TrxAccountType,
 } from '@metamask/keyring-api';
 import { ExportAccountOptionsStruct } from '@metamask/keyring-api/v2';
-import { UuidStruct } from '@metamask/snap-networks-utils';
+import {
+  PositiveNumberStringStruct,
+  UuidStruct,
+} from '@metamask/snap-networks-utils';
 import type { Infer, Struct } from '@metamask/superstruct';
 import {
   array,
@@ -40,10 +43,7 @@ import {
   TokenCaipAssetTypeStruct,
 } from '../services/assets/types';
 
-export const PositiveNumberStringStruct = pattern(
-  string(),
-  /^(?!0\d)(\d+(\.\d+)?)$/u,
-);
+export { PositiveNumberStringStruct };
 
 /**
  * Keyring validations

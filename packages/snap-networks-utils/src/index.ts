@@ -227,3 +227,31 @@ export type {
   TrackErrorCapableProvider,
   TrackErrorFn,
 } from './utils/errors';
+export {
+  PositiveNumberStringStruct,
+  Base64Struct,
+  SendFlowValidationResponseStruct,
+  SendFlowGetMaxSendableAmountResponseStruct,
+  createSendFlowStructs,
+} from './utils/sendFlow/structs';
+export type {
+  SendFlowStructs,
+  SendFlowParamStructOverrides,
+  CreateSendFlowStructsOptions,
+} from './utils/sendFlow/structs';
+export {
+  SendFlowRequestRouter,
+  isSendFlowMethod,
+} from './utils/sendFlow/router';
+export { SendFlowMethod, SendFlowErrorCodes } from './utils/sendFlow/types';
+export type {
+  SendFlowErrorCode,
+  SendFlowValidationResponse,
+  SendFlowGetMaxSendableAmountResponse,
+  SendFlowHandlers,
+  SendFlowOnAddressInputParams,
+  SendFlowOnAmountInputParams,
+  SendFlowGetMaxSendableAmountParams,
+  SendFlowConfirmSendParams,
+  SendFlowComputeFeeParams,
+} from './utils/sendFlow/types';

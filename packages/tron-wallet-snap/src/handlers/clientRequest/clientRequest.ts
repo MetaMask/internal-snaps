@@ -2,6 +2,8 @@ import { TransactionStatus } from '@metamask/keyring-api';
 import {
   DEFAULT_METAMASK_ORIGIN,
   normalizeError,
+  SendFlowRequestRouter,
+  createSendFlowStructs,
 } from '@metamask/snap-networks-utils';
 import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
@@ -10,7 +12,8 @@ import {
   MethodNotFoundError,
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
-import { assert } from '@metamask/superstruct';
+import type { Infer } from '@metamask/superstruct';
+import { assert, object, string } from '@metamask/superstruct';
 import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
@@ -46,6 +49,10 @@ import { parseTronCaipAssetType } from '../../utils/caip';
 import { trxToSun } from '../../utils/conversion';
 import { resolveTransactionType } from '../../utils/transactionType';
 import {
+  TronAddressStruct,
+  TronCaipAssetTypeStruct,
+} from '../../validation/structs';
+import {
   assertTransactionSignerConsistency,
   assertTransactionStructure,
 } from '../../validation/transaction';
@@ -54,12 +61,12 @@ import { ClientRequestMethod, SendErrorCodes } from './types';
 import {
   ClaimTrxStakingRewardsRequestStruct,
   ClaimUnstakedTrxRequestStruct,
-  ComputeFeeRequestStruct,
+  ComputeFeeRequestParamsStruct,
   ComputeFeeResponseStruct,
   ComputeStakeFeeRequestStruct,
-  OnAddressInputRequestStruct,
-  OnAmountInputRequestStruct,
-  OnConfirmSendRequestStruct,
+  GetMaxSendableAmountRequestParamsStruct,
+  OnAmountInputRequestParamsStruct,
+  OnConfirmSendRequestParamsStruct,
   OnConfirmStakeRequestStruct,
   OnConfirmUnstakeRequestStruct,
   OnStakeAmountInputRequestStruct,
@@ -77,6 +84,25 @@ type TransactionRawData = TronwebTypes.Transaction['raw_data'] & {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   fee_limit?: number;
 };
+
+const tronSendFlowStructs = createSendFlowStructs({
+  address: TronAddressStruct,
+  assetId: TronCaipAssetTypeStruct,
+  overrides: {
+    // onAddressInput returns an invalid response (instead of an invalid params
+    // error) so keep validating the address inside the handler.
+    OnAddressInputParams: object({ value: string() }),
+    OnAmountInputParams: OnAmountInputRequestParamsStruct,
+    ComputeFeeParams: ComputeFeeRequestParamsStruct,
+  },
+});
+
+type OnAmountInputParams = Infer<typeof OnAmountInputRequestParamsStruct>;
+type ConfirmSendParams = Infer<typeof OnConfirmSendRequestParamsStruct>;
+type ComputeFeeParams = Infer<typeof ComputeFeeRequestParamsStruct>;
+type GetMaxSendableAmountParams = Infer<
+  typeof GetMaxSendableAmountRequestParamsStruct
+>;
 
 /**
  * Validated proof-of-ownership signing request with its original input index.
@@ -205,6 +231,8 @@ export class ClientRequestHandler {
 
   readonly #transactionExpirationRefresherService: TransactionExpirationRefresherService;
 
+  readonly #sendFlowRouter: SendFlowRequestRouter;
+
   constructor({
     logger,
     accountsService,
@@ -245,6 +273,23 @@ export class ClientRequestHandler {
     this.#transactionsService = transactionsService;
     this.#transactionExpirationRefresherService =
       transactionExpirationRefresherService;
+    this.#sendFlowRouter = new SendFlowRequestRouter({
+      structs: tronSendFlowStructs,
+      handlers: {
+        onAddressInput: async ({ value }): Promise<Json> =>
+          this.#handleOnAddressInput(value),
+        onAmountInput: async (params): Promise<Json> =>
+          this.#handleOnAmountInput(params as OnAmountInputParams),
+        getMaxSendableAmount: async (params): Promise<Json> =>
+          this.#handleGetMaxSendableAmount(
+            params as GetMaxSendableAmountParams,
+          ),
+        confirmSend: async (params): Promise<Json> =>
+          this.#handleConfirmSend(params as ConfirmSendParams),
+        computeFee: async (params): Promise<Json> =>
+          this.#handleComputeFee(params as ComputeFeeParams),
+      },
+    });
   }
 
   /**
@@ -260,6 +305,11 @@ export class ClientRequestHandler {
   async handle(request: JsonRpcRequest): Promise<Json> {
     this.#logger.log('Handling client request', request);
 
+    const sendFlowResponse = await this.#sendFlowRouter.handle(request);
+    if (sendFlowResponse !== undefined) {
+      return sendFlowResponse;
+    }
+
     const { method } = request;
 
     switch (method as ClientRequestMethod) {
@@ -271,14 +321,6 @@ export class ClientRequestHandler {
       /**
        * Unified non-EVM Send
        */
-      case ClientRequestMethod.OnAddressInput:
-        return this.#handleOnAddressInput(request);
-      case ClientRequestMethod.OnAmountInput:
-        return this.#handleOnAmountInput(request);
-      case ClientRequestMethod.ConfirmSend:
-        return this.#handleConfirmSend(request);
-      case ClientRequestMethod.ComputeFee:
-        return this.#handleComputeFee(request);
       case ClientRequestMethod.ComputeStakeFee:
         return this.#handleComputeStakeFee(request);
       /**
@@ -459,12 +501,12 @@ export class ClientRequestHandler {
   /**
    * Handles the input of an address.
    *
-   * @param request - The JSON-RPC request containing the method and parameters.
+   * @param value - The address to validate.
    * @returns The response to the JSON-RPC request.
    */
-  async #handleOnAddressInput(request: JsonRpcRequest): Promise<Json> {
+  async #handleOnAddressInput(value: string): Promise<Json> {
     try {
-      assert(request, OnAddressInputRequestStruct);
+      assert(value, TronAddressStruct);
       return {
         valid: true,
         errors: [],
@@ -485,14 +527,12 @@ export class ClientRequestHandler {
    * - If native TRX + full amount, we need bandwidth
    * -
    *
-   * @param request - The JSON-RPC request containing amount and asset details.
+   * @param params - The amount input params.
    * @returns Validation result with balance and sufficiency status.
    */
-  async #handleOnAmountInput(request: JsonRpcRequest): Promise<Json> {
+  async #handleOnAmountInput(params: OnAmountInputParams): Promise<Json> {
     try {
-      assert(request, OnAmountInputRequestStruct);
-
-      const { accountId, assetId, value, toAddress } = request.params;
+      const { accountId, assetId, value, toAddress } = params;
 
       const account = await this.#accountsService.findById(accountId);
 
@@ -538,24 +578,21 @@ export class ClientRequestHandler {
         };
       }
 
-      if (!toAddress) {
-        return {
-          valid: true,
-          errors: [],
-        };
-      }
-
       /**
-       * Estimate the fees
+       * Estimate the fees. When the destination is unknown, build against the
+       * sender's own (activated) account and reserve the activation cost
+       * separately, so validation covers the worst case.
        */
+      const nativeTokenId = Networks[scope].nativeToken.id;
+      const isNativeToken = assetId === nativeTokenId;
       const sendTransaction = await this.#sendService.buildTransaction({
         fromAccountId: accountId,
-        toAddress,
+        toAddress: toAddress ?? account.address,
         asset,
         amount: valueBN,
         feeLimit: FEE_LIMIT,
       });
-      const fees = await this.#feeCalculatorService.computeFee({
+      const quotedFees = await this.#feeCalculatorService.computeFee({
         scope,
         transaction: sendTransaction,
         availableEnergy: energyBalance,
@@ -563,11 +600,29 @@ export class ClientRequestHandler {
         feeLimit: FEE_LIMIT,
       });
 
+      let fees = quotedFees;
+      if (!toAddress && isNativeToken) {
+        const activationReserve =
+          await this.#feeCalculatorService.getAccountActivationReserve(scope);
+        fees = quotedFees.map((fee) =>
+          fee.asset.type === nativeTokenId
+            ? {
+                ...fee,
+                asset: {
+                  ...fee.asset,
+                  amount: new BigNumber(fee.asset.amount)
+                    .plus(activationReserve)
+                    .toString(),
+                },
+              }
+            : fee,
+        );
+      }
+
       /**
        * The fee calculation already takes into account the energy and bandwidth consumption,
        * so we only need to make sure we have enough TRX to cover overages.
        */
-      const nativeTokenId = Networks[scope].nativeToken.id;
       const trxFee = new BigNumber(
         fees.find((fee) => fee.asset.type === nativeTokenId)?.asset.amount ??
           '0',
@@ -577,8 +632,7 @@ export class ClientRequestHandler {
        * Don't forget that we can also be sending TRX so we must add the fees to the amount that will be
        * sent.
        */
-      const totalTrxToSpend =
-        assetId === nativeTokenId ? valueBN.plus(trxFee) : trxFee;
+      const totalTrxToSpend = isNativeToken ? valueBN.plus(trxFee) : trxFee;
 
       if (totalTrxToSpend.isGreaterThan(nativeTokenBalance)) {
         return {
@@ -604,17 +658,11 @@ export class ClientRequestHandler {
   /**
    * Handles the confirmation and sending of a transaction.
    *
-   * @param request - The JSON-RPC request containing transaction details.
+   * @param params - The confirm send params.
    * @returns The transaction result with hash and status.
    */
-  async #handleConfirmSend(request: JsonRpcRequest): Promise<Json> {
-    assertOrThrow(
-      request,
-      OnConfirmSendRequestStruct,
-      new InvalidParamsError(),
-    );
-
-    const { fromAccountId, toAddress, amount, assetId } = request.params;
+  async #handleConfirmSend(params: ConfirmSendParams): Promise<Json> {
+    const { fromAccountId, toAddress, amount, assetId } = params;
 
     const account = await this.#accountsService.findById(fromAccountId);
 
@@ -759,21 +807,17 @@ export class ClientRequestHandler {
    * Handles the computation of a fee for a TRON transaction.
    * Returns used energy, used bandwidth, and the additional TRX cost breakdown for overages.
    *
-   * @param request - The JSON-RPC request containing the method and parameters.
+   * @param params - The compute fee params.
    * @returns The response to the JSON-RPC request with the detailed fee breakdown.
    * @throws {InvalidParamsError} If the params are invalid.
    */
-  async #handleComputeFee(request: JsonRpcRequest): Promise<Json> {
-    assertOrThrow(request, ComputeFeeRequestStruct, new InvalidParamsError());
-
+  async #handleComputeFee(params: ComputeFeeParams): Promise<Json> {
     const {
-      params: {
-        scope,
-        transaction: transactionBase64,
-        accountId,
-        options: { type, feeLimit },
-      },
-    } = request;
+      scope,
+      transaction: transactionBase64,
+      accountId,
+      options: { type, feeLimit },
+    } = params;
 
     /**
      * Recreate the transaction object from base64-encoded raw data.
@@ -919,6 +963,130 @@ export class ClientRequestHandler {
     assert(result, ComputeFeeResponseStruct);
 
     return result;
+  }
+
+  /**
+   * Computes the maximum amount that can be sent for the given asset.
+   *
+   * It uses the same balance source, fee limit, and fee/reserve helpers as
+   * `onAmountInput`. For native TRX the maximum leaves enough TRX for the
+   * network fees and, when the destination is unknown, the account activation
+   * reserve. For TRC-20 the account must hold enough TRX for the transfer fee.
+   *
+   * @param params - The get max sendable amount params.
+   * @returns The maximum sendable amount, or 0 when no amount can pass.
+   * @throws {InvalidParamsError} If the params are invalid.
+   */
+  async #handleGetMaxSendableAmount(
+    params: GetMaxSendableAmountParams,
+  ): Promise<Json> {
+    const { accountId, assetId, toAddress } = params;
+
+    const account = await this.#accountsService.findByIdOrThrow(accountId);
+
+    const { chainId: scope } = parseTronCaipAssetType(assetId);
+
+    const [asset, nativeTokenAsset, bandwidthAsset, energyAsset] =
+      await this.#assetsService.getAccountAssetsByIDs(accountId, [
+        assetId,
+        Networks[scope].nativeToken.id,
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
+
+    if (!asset) {
+      return { amount: '0' };
+    }
+
+    const nativeTokenId = Networks[scope].nativeToken.id;
+    const isNativeToken = asset.assetType === nativeTokenId;
+
+    const assetBalance = new BigNumber(asset.uiAmount);
+    const nativeTokenBalance = nativeTokenAsset
+      ? new BigNumber(nativeTokenAsset.uiAmount)
+      : ZERO;
+    const availableEnergy = energyAsset
+      ? new BigNumber(energyAsset.rawAmount)
+      : ZERO;
+    const availableBandwidth = bandwidthAsset
+      ? new BigNumber(bandwidthAsset.rawAmount)
+      : ZERO;
+
+    const sentBalance = isNativeToken ? nativeTokenBalance : assetBalance;
+    if (sentBalance.isLessThanOrEqualTo(ZERO)) {
+      return { amount: '0' };
+    }
+
+    /**
+     * The send fees do not depend on the amount, so the transaction is built
+     * with the full balance as the amount: it yields the largest (most
+     * conservative) transaction size, and the fee quote stays valid for the
+     * maximum. The fee limit is the same one `confirmSend` uses.
+     */
+    const transaction = await this.#sendService.buildTransaction({
+      fromAccountId: account.id,
+      toAddress: toAddress ?? account.address,
+      asset,
+      amount: sentBalance,
+      feeLimit: FEE_LIMIT,
+    });
+
+    const quotedFees = await this.#feeCalculatorService.computeFee({
+      scope,
+      transaction,
+      availableEnergy,
+      availableBandwidth,
+      feeLimit: FEE_LIMIT,
+    });
+
+    /**
+     * The destination is unknown: reserve the account activation cost on top
+     * of the quoted fees, so the maximum covers the worst case. TRC-20
+     * transfers never activate an account, so no reserve is added for them.
+     */
+    let fees = quotedFees;
+    if (!toAddress && isNativeToken) {
+      const activationReserve =
+        await this.#feeCalculatorService.getAccountActivationReserve(scope);
+
+      fees = quotedFees.map((fee) =>
+        fee.asset.type === nativeTokenId
+          ? {
+              ...fee,
+              asset: {
+                ...fee.asset,
+                amount: new BigNumber(fee.asset.amount)
+                  .plus(activationReserve)
+                  .toString(),
+              },
+            }
+          : fee,
+      );
+    }
+
+    const trxFee = new BigNumber(
+      fees.find((fee) => fee.asset.type === nativeTokenId)?.asset.amount ?? '0',
+    );
+
+    if (isNativeToken) {
+      const maxAmount = nativeTokenBalance.minus(trxFee);
+
+      if (maxAmount.isLessThanOrEqualTo(ZERO)) {
+        return { amount: '0' };
+      }
+
+      return {
+        amount: maxAmount
+          .decimalPlaces(asset.decimals, BigNumber.ROUND_DOWN)
+          .toFixed(),
+      };
+    }
+
+    if (trxFee.isGreaterThan(nativeTokenBalance)) {
+      return { amount: '0' };
+    }
+
+    return { amount: asset.uiAmount };
   }
 
   /**

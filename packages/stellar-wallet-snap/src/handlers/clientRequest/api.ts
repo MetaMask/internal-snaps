@@ -1,8 +1,12 @@
 import { AssetStruct, FeeType } from '@metamask/keyring-api';
 import {
+  SendFlowErrorCodes,
+  SendFlowMethod,
+  SendFlowValidationResponseStruct,
   ProofOfOwnershipBatchErrorStruct as SignProofOfOwnershipBatchErrorStruct,
   ProofOfOwnershipBatchRequestParamsStruct,
   UuidStruct,
+  createSendFlowStructs,
 } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
@@ -60,13 +64,12 @@ export { ProofOfOwnershipBatchErrorStruct as SignProofOfOwnershipBatchErrorStruc
  * Enum for the client request method.
  */
 export const ClientRequestMethod = {
-  /** -------------------------------- Wallet Standard -------------------------------- */
-  OnAddressInput: 'onAddressInput',
-  OnAmountInput: 'onAmountInput',
-  ConfirmSend: 'confirmSend',
+  OnAddressInput: SendFlowMethod.OnAddressInput,
+  OnAmountInput: SendFlowMethod.OnAmountInput,
+  ConfirmSend: SendFlowMethod.ConfirmSend,
   // Standard multichain workflow for bridge
   SignAndSendTransaction: 'signAndSendTransaction',
-  ComputeFee: 'computeFee',
+  ComputeFee: SendFlowMethod.ComputeFee,
   /**
    * Silent proof-of-ownership signing for `@metamask/profile-metrics-controller`.
    * SIP-31 client-only.
@@ -84,12 +87,7 @@ export const ClientRequestMethod = {
 export type ClientRequestMethod =
   (typeof ClientRequestMethod)[keyof typeof ClientRequestMethod];
 
-export const MultiChainSendErrorCodes = {
-  Required: 'Required',
-  Invalid: 'Invalid',
-  InsufficientBalance: 'InsufficientBalance',
-  InsufficientBalanceToCoverFee: 'InsufficientBalanceToCoverFee',
-} as const;
+export const MultiChainSendErrorCodes = SendFlowErrorCodes;
 
 export type MultiChainSendErrorCodes =
   (typeof MultiChainSendErrorCodes)[keyof typeof MultiChainSendErrorCodes];
@@ -209,6 +207,13 @@ export const SignAndSendTransactionJsonRpcResponseStruct = object({
   transactionId: StellarTransactionHashStruct,
 });
 
+/**
+ * Validation struct for the onAddressInput params.
+ */
+export const OnAddressInputParamsStruct = object({
+  value: StellarAddressStruct,
+});
+
 /*
  * Validation struct for the onAddressInput JSON-RPC request.
  */
@@ -216,25 +221,17 @@ export const OnAddressInputJsonRpcRequestStruct = assign(
   JsonRpcRequestStruct,
   object({
     method: literal(ClientRequestMethod.OnAddressInput),
-    params: object({
-      value: StellarAddressStruct,
-    }),
+    params: OnAddressInputParamsStruct,
   }),
 );
 
 /**
  * Validation struct for the onAddressInput JSON-RPC response.
  */
-export const OnAddressInputJsonRpcResponseStruct = object({
-  valid: boolean(),
-  errors: array(
-    object({
-      code: string(),
-    }),
-  ),
-});
+export const OnAddressInputJsonRpcResponseStruct =
+  SendFlowValidationResponseStruct;
 
-const OnAmountInputParamsWireStruct = object({
+export const OnAmountInputParamsWireStruct = object({
   accountId: UuidStruct,
   assetId: union([
     KnownCaip19ClassicAssetStruct,
@@ -297,16 +294,10 @@ export const OnAmountInputJsonRpcRequestStruct = refine(
 /**
  * Validation struct for the onAmountInput JSON-RPC response.
  */
-export const OnAmountInputJsonRpcResponseStruct = object({
-  valid: boolean(),
-  errors: array(
-    object({
-      code: string(),
-    }),
-  ),
-});
+export const OnAmountInputJsonRpcResponseStruct =
+  SendFlowValidationResponseStruct;
 
-const ConfirmSendParamsStruct = object({
+export const ConfirmSendParamsStruct = object({
   fromAccountId: UuidStruct,
   toAddress: StellarAddressStruct,
   assetId: union([
@@ -382,22 +373,24 @@ export const ConfirmSendJsonRpcResponseStruct = object({
 /**
  * Validation struct for the computeFee JSON-RPC request.
  */
+export const ComputeFeeParamsStruct = object({
+  transaction: SwapTransactionXdrStruct,
+  accountId: UuidStruct,
+  scope: KnownCaip2ChainIdStruct,
+  options: optional(
+    object({
+      visible: optional(boolean()),
+      type: optional(string()),
+      feeLimit: optional(min(integer(), 0)),
+    }),
+  ),
+});
+
 export const ComputeFeeJsonRpcRequestStruct = assign(
   JsonRpcRequestStruct,
   object({
     method: literal(ClientRequestMethod.ComputeFee),
-    params: object({
-      transaction: SwapTransactionXdrStruct,
-      accountId: UuidStruct,
-      scope: KnownCaip2ChainIdStruct,
-      options: optional(
-        object({
-          visible: optional(boolean()),
-          type: optional(string()),
-          feeLimit: optional(min(integer(), 0)),
-        }),
-      ),
-    }),
+    params: ComputeFeeParamsStruct,
   }),
 );
 
@@ -636,3 +629,18 @@ export type SignProofOfOwnershipBatchJsonRpcRequest = Infer<
 export type SignProofOfOwnershipBatchJsonRpcResponse = Infer<
   typeof SignProofOfOwnershipBatchJsonRpcResponseStruct
 >;
+
+/**
+ * Params structs for the unified send flow methods.
+ */
+export const stellarSendFlowStructs = createSendFlowStructs({
+  address: StellarAddressStruct,
+  overrides: {
+    // onAddressInput returns an invalid response (instead of an invalid params
+    // error), so keep validating the address inside the handler.
+    OnAddressInputParams: object({ value: string() }),
+    OnAmountInputParams: OnAmountInputParamsWireStruct,
+    ConfirmSendParams: ConfirmSendParamsStruct,
+    ComputeFeeParams: ComputeFeeParamsStruct,
+  },
+});

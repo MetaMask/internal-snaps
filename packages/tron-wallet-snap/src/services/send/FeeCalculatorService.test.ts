@@ -182,6 +182,63 @@ async function withFeeCalculatorService<ReturnValue>(
 }
 
 describe('FeeCalculatorService', () => {
+  describe('getAccountActivationReserve', () => {
+    it('reserves the default activation cost when the chain parameters lack the keys', async () => {
+      await withFeeCalculatorService(
+        async ({ feeCalculatorService, trongridApiClient }) => {
+          trongridApiClient.getChainParameters.mockResolvedValue([]);
+
+          const reserve =
+            await feeCalculatorService.getAccountActivationReserve(
+              Network.Mainnet,
+            );
+
+          // Default: getCreateNewAccountFeeInSystemContract (1 TRX)
+          // + getCreateAccountFee Bandwidth shortfall (0.1 TRX)
+          expect(reserve.toString()).toBe('1.1');
+        },
+      );
+    });
+
+    it('uses the live chain parameters', async () => {
+      await withFeeCalculatorService(
+        async ({ feeCalculatorService, trongridApiClient }) => {
+          trongridApiClient.getChainParameters.mockResolvedValue([
+            {
+              key: 'getCreateNewAccountFeeInSystemContract',
+              value: 2_000_000,
+            },
+            { key: 'getCreateAccountFee', value: 200_000 },
+          ]);
+
+          const reserve =
+            await feeCalculatorService.getAccountActivationReserve(
+              Network.Mainnet,
+            );
+
+          expect(reserve.toString()).toBe('2.2');
+        },
+      );
+    });
+
+    it('throws when neither live nor cached chain parameters are available', async () => {
+      await withFeeCalculatorService(
+        async ({ feeCalculatorService, trongridApiClient }) => {
+          trongridApiClient.getChainParameters.mockRejectedValue(
+            new Error('network error'),
+          );
+          trongridApiClient.peekCachedChainParameters.mockResolvedValue(
+            undefined,
+          );
+
+          await expect(
+            feeCalculatorService.getAccountActivationReserve(Network.Mainnet),
+          ).rejects.toThrow(FeeUnavailableError);
+        },
+      );
+    });
+  });
+
   describe('computeFee', () => {
     const expectedMainnetBandwidthFee = {
       type: FeeType.Base,
