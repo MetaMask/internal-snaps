@@ -32,6 +32,7 @@ const networkConfigStruct = object({
   rpcUrl: UrlStruct,
   horizonUrl: UrlStruct,
   explorerBaseUrl: UrlStruct,
+  timeout: parseIntegerStruct(100, 10_000),
 });
 
 /**
