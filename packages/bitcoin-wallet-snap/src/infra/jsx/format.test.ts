@@ -1,11 +1,19 @@
-import { displayOrigin } from './format';
+import { CurrencyUnit } from '../../entities';
+import { displayAmount, displayOrigin } from './format';
 
 jest.mock('@metamask/bitcoindevkit', () => ({
-  Amount: {
-    from_sat: jest.fn(),
-  },
   BdkErrorCode: {},
 }));
+
+describe('displayAmount', () => {
+  it('displays one satoshi as a plain decimal', () => {
+    expect(displayAmount(1n)).toBe('0.00000001');
+  });
+
+  it('preserves the currency suffix', () => {
+    expect(displayAmount(77n, CurrencyUnit.Bitcoin)).toBe('0.00000077 BTC');
+  });
+});
 
 describe('displayOrigin', () => {
   it('returns the known label for the internal "metamask" origin', () => {

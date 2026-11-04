@@ -89,12 +89,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [22.x, 24.x]
+        node-version: [22.x, 26.x]
     outputs:
       child-workspace-packages: ${{ steps.workspace-packages.outputs.child-workspace-packages }}
     steps:
       - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@f424d21e0622377e7cea0e1bcfdd096d338ed64e # v3.5.1
+        uses: MetaMask/action-checkout-and-setup@097d47e741dfa9c09ee779a020b8851875e72904 # v3.5.2
         with:
           is-high-risk-environment: false
           cache-node-modules: true
@@ -113,7 +113,7 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        node-version: [24.x]
+        node-version: [26.x]
         script:
           - lint:tsc
           - lint:eslint
@@ -123,7 +123,7 @@ jobs:
           - readme-content:check
     steps:
       - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@f424d21e0622377e7cea0e1bcfdd096d338ed64e # v3.5.1
+        uses: MetaMask/action-checkout-and-setup@097d47e741dfa9c09ee779a020b8851875e72904 # v3.5.2
         with:
           is-high-risk-environment: false
           node-version: ${{ matrix.node-version }}
@@ -140,11 +140,11 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        node-version: [24.x]
+        node-version: [26.x]
         package: ${{ fromJson(needs.prepare.outputs.child-workspace-packages) }}
     steps:
       - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@f424d21e0622377e7cea0e1bcfdd096d338ed64e # v3.5.1
+        uses: MetaMask/action-checkout-and-setup@097d47e741dfa9c09ee779a020b8851875e72904 # v3.5.2
         with:
           is-high-risk-environment: false
           node-version: ${{ matrix.node-version }}
@@ -168,10 +168,10 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        node-version: [24.x]
+        node-version: [26.x]
     steps:
       - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@f424d21e0622377e7cea0e1bcfdd096d338ed64e # v3.5.1
+        uses: MetaMask/action-checkout-and-setup@097d47e741dfa9c09ee779a020b8851875e72904 # v3.5.2
         with:
           is-high-risk-environment: false
           node-version: ${{ matrix.node-version }}
@@ -199,10 +199,10 @@ jobs:
       contents: read
     strategy:
       matrix:
-        node-version: [24.x]
+        node-version: [26.x]
     steps:
       - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@f424d21e0622377e7cea0e1bcfdd096d338ed64e # v3.5.1
+        uses: MetaMask/action-checkout-and-setup@097d47e741dfa9c09ee779a020b8851875e72904 # v3.5.2
         with:
           is-high-risk-environment: false
           node-version: ${{ matrix.node-version }}
@@ -237,10 +237,10 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        node-version: [24.x]
+        node-version: [26.x]
     steps:
       - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@f424d21e0622377e7cea0e1bcfdd096d338ed64e # v3.5.1
+        uses: MetaMask/action-checkout-and-setup@097d47e741dfa9c09ee779a020b8851875e72904 # v3.5.2
         with:
           is-high-risk-environment: false
           node-version: ${{ matrix.node-version }}
@@ -254,11 +254,11 @@ jobs:
     needs: [prepare, build]
     strategy:
       matrix:
-        node-version: [22.x, 24.x]
+        node-version: [22.x, 26.x]
         package: ${{ fromJson(needs.prepare.outputs.child-workspace-packages) }}
     steps:
       - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@f424d21e0622377e7cea0e1bcfdd096d338ed64e # v3.5.1
+        uses: MetaMask/action-checkout-and-setup@097d47e741dfa9c09ee779a020b8851875e72904 # v3.5.2
         with:
           is-high-risk-environment: false
           node-version: ${{ matrix.node-version }}

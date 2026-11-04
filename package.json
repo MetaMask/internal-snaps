@@ -38,7 +38,7 @@
     "workspaces:list-versions": "./scripts/list-workspace-versions.sh"
   },
   "devDependencies": {
-    "@lavamoat/allow-scripts": "^4.0.0",
+    "@lavamoat/allow-scripts": "^5.1.0",
     "@lavamoat/preinstall-always-fail": "^2.1.0",
     "@metamask/create-release-branch": "^4.2.2",
     "@metamask/eslint-config": "^15.0.1",
@@ -79,7 +79,7 @@
     "tsx": "^4.20.5",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.48.0",
-    "yargs": "^17.7.2"
+    "yargs": "^17.7.3"
   },
   "resolutions": {
     "@metamask/snaps-execution-environments": "11.3.0",

@@ -454,7 +454,7 @@ describe('ConfirmSendHandler', () => {
     });
   });
 
-  it('returns invalid when refreshed transaction fee exceeds the 20% buffer', async () => {
+  it('throws when refreshed transaction fee exceeds the 20% buffer', async () => {
     const {
       handler,
       wallet,
@@ -495,10 +495,9 @@ describe('ConfirmSendHandler', () => {
       exceedsBufferTransaction,
     );
 
-    expect(await handler.handle(baseRequest())).toStrictEqual({
-      valid: false,
-      errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-    });
+    await expect(handler.handle(baseRequest())).rejects.toThrow(
+      TransactionValidationException,
+    );
     expect(signTransactionSpy).not.toHaveBeenCalled();
     expect(sendTransaction).not.toHaveBeenCalled();
   });
@@ -701,7 +700,7 @@ describe('ConfirmSendHandler', () => {
       expect(sendTransaction).toHaveBeenCalled();
     });
 
-    it('returns invalid when RequiresMemo recovery confirms without a memo', async () => {
+    it('throws when RequiresMemo recovery confirms without a memo', async () => {
       const {
         handler,
         transaction,
@@ -720,10 +719,9 @@ describe('ConfirmSendHandler', () => {
       );
       renderConfirmationDialog.mockResolvedValueOnce({ confirmed: true });
 
-      expect(await handler.handle(baseRequest())).toStrictEqual({
-        valid: false,
-        errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-      });
+      await expect(handler.handle(baseRequest())).rejects.toThrow(
+        RequiresMemoException,
+      );
       expect(createValidatedSendTransaction).toHaveBeenCalledWith(
         expect.objectContaining({
           destination: destinationAddress,
@@ -812,7 +810,7 @@ describe('ConfirmSendHandler', () => {
     );
   });
 
-  it('returns error codes without a second confirmation when refresh fails after approval', async () => {
+  it('throws without a second confirmation when refresh fails after approval', async () => {
     const {
       handler,
       createValidatedSendTransaction,
@@ -824,10 +822,9 @@ describe('ConfirmSendHandler', () => {
       new InsufficientBalanceException('0', '1'),
     );
 
-    expect(await handler.handle(baseRequest())).toStrictEqual({
-      valid: false,
-      errors: [{ code: MultiChainSendErrorCodes.InsufficientBalance }],
-    });
+    await expect(handler.handle(baseRequest())).rejects.toThrow(
+      InsufficientBalanceException,
+    );
     expect(renderConfirmationDialog).toHaveBeenCalledTimes(1);
     expect(renderConfirmationDialog).toHaveBeenCalledWith(
       expect.objectContaining({

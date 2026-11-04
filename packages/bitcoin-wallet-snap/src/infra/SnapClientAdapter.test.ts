@@ -1,5 +1,9 @@
 import type { Amount, WalletTx } from '@metamask/bitcoindevkit';
-import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
+import {
+  KeyringEvent,
+  TransactionStatus,
+  TransactionType,
+} from '@metamask/keyring-api';
 import { getJsonError } from '@metamask/snaps-sdk';
 import { mock } from 'jest-mock-extended';
 
@@ -8,15 +12,7 @@ import { TrackingSnapEvent } from '../entities';
 import logger from '../utils/logger';
 import { SnapClientAdapter } from './SnapClientAdapter';
 
-jest.mock('@metamask/bitcoindevkit', () => ({
-  Amount: {
-    from_sat: jest.fn(() => ({
-      to_btc: jest.fn(() => ({
-        toString: jest.fn(() => '0'),
-      })),
-    })),
-  },
-}));
+jest.mock('@metamask/bitcoindevkit', () => ({}));
 
 jest.mock('../utils/logger', () => ({
   __esModule: true,
@@ -522,6 +518,42 @@ describe('SnapClientAdapter', () => {
         'Failed to end trace',
         traceError,
       );
+    });
+  });
+
+  describe('emitAccountBalancesUpdatedEvent', () => {
+    it.each([
+      [1n, '0.00000001'],
+      [77n, '0.00000077'],
+    ])('emits a decimal balance for %s satoshis', async (satoshis, amount) => {
+      const { snapClient, mockRequest } = setupTest();
+      const account = mock<BitcoinAccount>({
+        id: 'small-balance',
+        network: 'bitcoin',
+        balance: {
+          trusted_spendable: { to_sat: jest.fn().mockReturnValue(satoshis) },
+        },
+        listUnspent: () => [],
+      });
+
+      await snapClient.emitAccountBalancesUpdatedEvent([account]);
+
+      expect(mockRequest).toHaveBeenCalledWith({
+        method: 'snap_manageAccounts',
+        params: {
+          method: KeyringEvent.AccountBalancesUpdated,
+          params: {
+            balances: {
+              [account.id]: {
+                'bip122:000000000019d6689c085ae165831e93/slip44:0': {
+                  amount,
+                  unit: 'BTC',
+                },
+              },
+            },
+          },
+        },
+      });
     });
   });
 
