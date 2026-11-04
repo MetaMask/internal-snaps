@@ -12,7 +12,6 @@ import { Network, Networks, ZERO } from '../../../../constants';
 import snapContext from '../../../../context';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
 import { EXPIRED_TRANSACTION_SCAN } from '../../../../services/transaction-scan/buildExpiredScanResult';
-import type { TransactionScanResult } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';
 import { sunToTrx } from '../../../../utils/conversion';
@@ -179,7 +178,34 @@ export async function render(
     context.tokenPricesFetchStatus = FetchStatus.Error;
   }
 
-  // Create initial interface with loading state
+  const securityScanEnabled =
+    Boolean(transactionScanService) &&
+    (useSecurityAlerts || simulateOnChainActions);
+
+  const checkTransactionExpiration = async (): Promise<boolean> => {
+    try {
+      return await snapContext.transactionExpirationRefresherService.isTransactionExpired(
+        {
+          scope,
+          rawData,
+        },
+      );
+    } catch (error) {
+      logger.error('Error checking transaction expiration:', error);
+      await snapClient.trackError(error as Error);
+      return false;
+    }
+  };
+
+  if (!securityScanEnabled) {
+    // Check local validity before exposing an enabled Confirm button when
+    // scans are disabled. Expiry remains independent of scan preferences.
+    const isExpired = await checkTransactionExpiration();
+    context.scan = isExpired ? EXPIRED_TRANSACTION_SCAN : null;
+    context.scanFetchStatus = FetchStatus.Fetched;
+  }
+
+  // Create the initial interface, waiting for a scan only when enabled.
   const id = await snapClient.createInterface(
     <ConfirmSignTransaction context={context} />,
     context,
@@ -193,12 +219,8 @@ export async function render(
     id,
   );
 
-  const securityScanEnabled =
-    Boolean(transactionScanService) &&
-    (useSecurityAlerts || simulateOnChainActions);
-
   try {
-    let scan: TransactionScanResult | null = null;
+    let { scan } = context;
 
     if (securityScanEnabled) {
       const options: SecurityAlertsScanOption[] = [];
@@ -224,26 +246,9 @@ export async function render(
       }
     }
 
-    // Local TAPOS-expiry check. The security-API simulation does not validate
-    // Tron TAPOS fields (expiration / ref block), so the snap surfaces protocol
-    // expiry itself. This is independent of the security preferences: an expired
-    // transaction won't broadcast regardless of the contract simulation result,
-    // so it takes precedence over a benign scan.
-    try {
-      const expired =
-        await snapContext.transactionExpirationRefresherService.isTransactionExpired(
-          {
-            scope,
-            rawData,
-          },
-        );
-
-      if (expired) {
-        scan = EXPIRED_TRANSACTION_SCAN;
-      }
-    } catch (error) {
-      logger.error('Error checking transaction expiration:', error);
-      await snapClient.trackError(error as Error);
+    // A local TAPOS expiry takes precedence over any remote scan result.
+    if (securityScanEnabled && (await checkTransactionExpiration())) {
+      scan = EXPIRED_TRANSACTION_SCAN;
     }
 
     context.scan = scan;

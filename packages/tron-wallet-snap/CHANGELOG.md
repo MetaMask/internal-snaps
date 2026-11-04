@@ -7,10 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Align transaction security warning copy and scan-loading behavior with user preferences. ([#557](https://github.com/MetaMask/internal-snaps/pull/557))
+
 ## [4.3.1]
 
 ### Fixed
 
+- Align transaction security warning copy and scan-loading behavior with user preferences. ([#557](https://github.com/MetaMask/internal-snaps/pull/557))
 - Allow transaction confirmation after remote simulation failures while retaining security warnings and checks for locally invalid transactions. ([#552](https://github.com/MetaMask/internal-snaps/pull/552))
 
 ## [4.3.0]
