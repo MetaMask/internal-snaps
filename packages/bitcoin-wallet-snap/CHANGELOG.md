@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- refactor(bitcoin): use shared state class ([#542](https://github.com/MetaMask/internal-snaps/pull/542))
+- Release/19.0.0 ([#510](https://github.com/MetaMask/internal-snaps/pull/510))
+- Release/18.0.0 ([#491](https://github.com/MetaMask/internal-snaps/pull/491))
+- refactor(bitcoin): use shared Metamask origin constant ([#481](https://github.com/MetaMask/internal-snaps/pull/481))
+- Release/17.0.0 ([#467](https://github.com/MetaMask/internal-snaps/pull/467))
+- feat(snap-networks-utils): add shared createFetchPolicy in networks utils ([#462](https://github.com/MetaMask/internal-snaps/pull/462))
+- chore(deps): bump `concurrently`, `oxfmt`, `ts-jest`, `proxy-addr` ([#445](https://github.com/MetaMask/internal-snaps/pull/445))
+
 ### Changed
 
 - Retry transient Bitcoin indexer, price API, and signed transaction broadcast failures with the shared fetch policy, and treat duplicate broadcasts as successful. ([#530](https://github.com/MetaMask/internal-snaps/pull/530))

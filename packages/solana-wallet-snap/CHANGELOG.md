@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- fix(solana): remove obsolete MetaMask origin fallback ([#533](https://github.com/MetaMask/internal-snaps/pull/533))
+
 ## [7.2.0]
 
 ### Added
