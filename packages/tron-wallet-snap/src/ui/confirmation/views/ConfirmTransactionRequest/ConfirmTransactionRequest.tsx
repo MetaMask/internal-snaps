@@ -92,7 +92,7 @@ export const ConfirmTransactionRequest = ({
     <Container>
       <Box>
         {/* Security Alert */}
-        {preferences.useSecurityAlerts ? (
+        {preferences.useSecurityAlerts || scan?.error ? (
           <TransactionAlert
             {...getTransactionAlertProps({
               preferences,

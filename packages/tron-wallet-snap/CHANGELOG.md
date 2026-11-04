@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Allow transaction confirmation after remote simulation failures while retaining security warnings and checks for locally invalid transactions. ([#522](https://github.com/MetaMask/internal-snaps/pull/552))
+- Allow transaction confirmation after remote simulation failures while retaining security warnings and checks for locally invalid transactions. ([#552](https://github.com/MetaMask/internal-snaps/pull/552))
 
 ## [4.3.0]
 

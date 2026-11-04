@@ -212,7 +212,7 @@ describe('ConfirmTransactionRequest', () => {
   );
 
   it.each([TRANSACTION_TAPOS_EXPIRED, 'MALFORMED_TRANSACTION'])(
-    'keeps confirm disabled for local validation failure %s with security alerts off',
+    'shows an error banner and keeps confirm disabled for local validation failure %s with security alerts off',
     (type) => {
       const context: ConfirmTransactionRequestContext = {
         ...baseContext,
@@ -228,6 +228,9 @@ describe('ConfirmTransactionRequest', () => {
       const serialized = JSON.stringify(ConfirmTransactionRequest({ context }));
 
       expect(serialized).toContain('"disabled":true');
+      expect(serialized).toContain('confirmation.simulationErrorTitle');
+      expect(serialized).toContain('confirmation.simulationErrorSubtitle');
+      expect(serialized).toContain('"severity":"warning"');
     },
   );
 
