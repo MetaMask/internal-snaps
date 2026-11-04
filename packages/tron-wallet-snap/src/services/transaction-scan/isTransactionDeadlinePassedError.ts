@@ -24,9 +24,8 @@ export const TRANSACTION_TAPOS_EXPIRED = 'TransactionTaposExpired';
  *
  * Used only to select the friendly banner copy in the confirmation dialog's
  * `TransactionAlert` (via `getErrorMessage`). It does NOT control the submit
- * button: the button is disabled for every failed simulation, including the
- * expired/TAPOS-expired case, so the user is blocked from confirming a
- * transaction that won't broadcast.
+ * button: locally detected TAPOS expiry blocks confirmation, while remote
+ * simulation failures, including contract deadline failures, do not.
  *
  * @param error - The transaction scan error, if any.
  * @returns Whether the error is an expired/deadline failure.

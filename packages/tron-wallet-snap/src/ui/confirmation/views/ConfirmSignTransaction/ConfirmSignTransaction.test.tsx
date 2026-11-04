@@ -189,7 +189,7 @@ describe('ConfirmSignTransaction', () => {
     );
   });
 
-  it('disables the confirm button when the scan fails on a deadline (expired)', () => {
+  it('allows confirmation when the remote simulation reports a contract deadline failure', () => {
     expect(
       isConfirmDisabled(
         buildContext({
@@ -200,21 +200,63 @@ describe('ConfirmSignTransaction', () => {
           }),
         }),
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it('disables the confirm button for other failed simulations', () => {
+  it.each([FetchStatus.Fetched, FetchStatus.Fetching, FetchStatus.Error])(
+    'allows confirmation after a remote simulation failure when the scan is %s',
+    (scanFetchStatus) => {
+      expect(
+        isConfirmDisabled(
+          buildContext({
+            scanFetchStatus,
+            scan: buildScanResult({
+              status: 'ERROR',
+              simulationStatus: SimulationStatus.Failed,
+              error: otherError,
+            }),
+          }),
+        ),
+      ).toBe(false);
+    },
+  );
+
+  it.each([TRANSACTION_TAPOS_EXPIRED, 'MALFORMED_TRANSACTION'])(
+    'keeps confirm disabled for local validation failure %s with security alerts off',
+    (type) => {
+      expect(
+        isConfirmDisabled(
+          buildContext({
+            preferences: { ...mockPreferences, useSecurityAlerts: false },
+            scan: buildScanResult({
+              status: 'ERROR',
+              simulationStatus: SimulationStatus.Failed,
+              error: { type, code: null, message: null },
+            }),
+          }),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it('keeps the initial scan load and local insufficient balance blocking after a remote failure', () => {
+    const scan = buildScanResult({
+      status: 'ERROR',
+      simulationStatus: SimulationStatus.Failed,
+      error: otherError,
+    });
+
     expect(
       isConfirmDisabled(
-        buildContext({
-          scan: buildScanResult({
-            status: 'ERROR',
-            simulationStatus: SimulationStatus.Failed,
-            error: otherError,
-          }),
-        }),
+        buildContext({ scan, scanFetchStatus: FetchStatus.Loading }),
       ),
     ).toBe(true);
+    expect(
+      isConfirmDisabled(buildContext({ scan, isInsufficientBalance: true })),
+    ).toBe(true);
+    expect(renderTexts(buildContext({ scan }))).toContain(
+      SIMULATION_ERROR_TITLE,
+    );
   });
 
   it('renders the expiry banner with the friendly message even when security alerts are off', () => {
