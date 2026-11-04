@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `onAmountInput` now estimates send fees when `toAddress` is absent. Native TRX includes the account activation reserve, while TRC-20 sends validate the transfer fee without an activation reserve ([#554](https://github.com/MetaMask/internal-snaps/pull/554))
+
 ## [4.3.1]
 
 ### Fixed

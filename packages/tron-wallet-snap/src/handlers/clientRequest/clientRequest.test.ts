@@ -163,7 +163,9 @@ type WithClientRequestHandlerCallback<ReturnValue> = (payload: {
   mockSendService: MockMethods<
     'buildTransaction' | 'validateSend' | 'signAndSendTransaction'
   >;
-  mockFeeCalculatorService: MockMethods<'computeFee'>;
+  mockFeeCalculatorService: MockMethods<
+    'computeFee' | 'getAccountActivationReserve'
+  >;
   mockStakingService: MockMethods<
     'claimUnstakedTrx' | 'claimTrxStakingRewards'
   >;
@@ -223,8 +225,11 @@ async function withClientRequestHandler<ReturnValue>(
     signAndSendTransaction: jest.fn(),
   };
 
-  const mockFeeCalculatorService: MockMethods<'computeFee'> = {
+  const mockFeeCalculatorService: MockMethods<
+    'computeFee' | 'getAccountActivationReserve'
+  > = {
     computeFee: jest.fn(),
+    getAccountActivationReserve: jest.fn(),
   };
   const mockStakingService: MockMethods<
     'claimUnstakedTrx' | 'claimTrxStakingRewards'
@@ -2230,6 +2235,17 @@ describe('ClientRequestHandler - onAmountInput', () => {
     iconUrl: Networks[scope].nativeToken.iconUrl,
   });
 
+  const createTokenAsset = (uiAmount: string): AssetEntity => ({
+    assetType: 'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+    keyringAccountId: TEST_ACCOUNT_ID,
+    network: scope,
+    symbol: 'USDT',
+    decimals: 6,
+    rawAmount: trxToSun(uiAmount),
+    uiAmount,
+    iconUrl: '',
+  });
+
   const createResourceAsset = (
     assetType: ResourceAsset['assetType'],
     uiAmount: string,
@@ -2282,7 +2298,7 @@ describe('ClientRequestHandler - onAmountInput', () => {
       raw_data_hex: 'mock-hex',
     });
 
-  it('returns valid and skips fee validation when toAddress is missing', async () => {
+  it('estimates fees conservatively when toAddress is missing', async () => {
     await withClientRequestHandler(
       async ({
         handler,
@@ -2314,15 +2330,238 @@ describe('ClientRequestHandler - onAmountInput', () => {
           createResourceAsset(Networks[scope].bandwidth.id, '5000', '5000'),
           createResourceAsset(Networks[scope].energy.id, '100000', '100000'),
         ];
+        const builtTransaction = createMockTransferTransaction();
+        const mockFees: ComputeFeeResult = [
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '1',
+              fungible: true,
+            },
+          },
+        ];
 
         mockAccountsService.findById.mockResolvedValue(mockAccount);
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue(mockAssets);
+        mockSendService.buildTransaction.mockResolvedValue(builtTransaction);
+        mockFeeCalculatorService.computeFee.mockResolvedValue(mockFees);
+        mockFeeCalculatorService.getAccountActivationReserve.mockResolvedValue(
+          BigNumber('1.1'),
+        );
 
         const result = await handler.handle(request);
 
         expect(result).toStrictEqual({ valid: true, errors: [] });
-        expect(mockSendService.buildTransaction).not.toHaveBeenCalled();
-        expect(mockFeeCalculatorService.computeFee).not.toHaveBeenCalled();
+        expect(mockSendService.buildTransaction).toHaveBeenCalledWith({
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: mockAccount.address,
+          asset: mockAsset,
+          amount: new BigNumber('10'),
+          feeLimit: FEE_LIMIT,
+        });
+        expect(
+          mockFeeCalculatorService.getAccountActivationReserve,
+        ).toHaveBeenCalledWith(scope);
+      },
+    );
+  });
+
+  it('returns insufficient balance to cover fee when toAddress is missing and the activation reserve cannot be covered', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request: OnAmountInputRequest = {
+          jsonrpc: '2.0' as const,
+          id: '2',
+          method: ClientRequestMethod.OnAmountInput,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: nativeTokenId,
+            value: '9',
+          },
+        };
+
+        const mockAsset = createNativeAsset('10', '10000000');
+        const mockAssets: [
+          NativeAsset,
+          NativeAsset,
+          ResourceAsset,
+          ResourceAsset,
+        ] = [
+          mockAsset,
+          mockAsset,
+          createResourceAsset(Networks[scope].bandwidth.id, '0', '0'),
+          createResourceAsset(Networks[scope].energy.id, '0', '0'),
+        ];
+        const mockFees: ComputeFeeResult = [
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '1',
+              fungible: true,
+            },
+          },
+        ];
+
+        mockAccountsService.findById.mockResolvedValue(mockAccount);
+        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue(mockAssets);
+        mockSendService.buildTransaction.mockResolvedValue(
+          createMockTransferTransaction(),
+        );
+        mockFeeCalculatorService.computeFee.mockResolvedValue(mockFees);
+        mockFeeCalculatorService.getAccountActivationReserve.mockResolvedValue(
+          BigNumber('1.1'),
+        );
+
+        const result = await handler.handle(request);
+
+        expect(result).toStrictEqual({
+          valid: false,
+          errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
+        });
+      },
+    );
+  });
+
+  it('estimates the transfer fee without an activation reserve for TRC-20 when toAddress is missing', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const assetId =
+          'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
+        const request: OnAmountInputRequest = {
+          jsonrpc: '2.0' as const,
+          id: '3',
+          method: ClientRequestMethod.OnAmountInput,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId,
+            value: '50',
+          },
+        };
+
+        const tokenAsset = createTokenAsset('50');
+        const mockAssets: [
+          AssetEntity,
+          NativeAsset,
+          ResourceAsset,
+          ResourceAsset,
+        ] = [
+          tokenAsset,
+          createNativeAsset('10', '10000000'),
+          createResourceAsset(Networks[scope].bandwidth.id, '0', '0'),
+          createResourceAsset(Networks[scope].energy.id, '0', '0'),
+        ];
+        const mockFees: ComputeFeeResult = [
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '1',
+              fungible: true,
+            },
+          },
+        ];
+
+        mockAccountsService.findById.mockResolvedValue(mockAccount);
+        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue(mockAssets);
+        mockSendService.buildTransaction.mockResolvedValue(
+          createMockTransferTransaction(),
+        );
+        mockFeeCalculatorService.computeFee.mockResolvedValue(mockFees);
+
+        const result = await handler.handle(request);
+
+        expect(result).toStrictEqual({ valid: true, errors: [] });
+        expect(mockSendService.buildTransaction).toHaveBeenCalledWith(
+          expect.objectContaining({
+            toAddress: mockAccount.address,
+            asset: tokenAsset,
+          }),
+        );
+        expect(
+          mockFeeCalculatorService.getAccountActivationReserve,
+        ).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it('returns insufficient balance to cover fee for TRC-20 when toAddress is missing and TRX cannot cover the transfer fee', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const assetId =
+          'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
+        const request: OnAmountInputRequest = {
+          jsonrpc: '2.0' as const,
+          id: '4',
+          method: ClientRequestMethod.OnAmountInput,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId,
+            value: '50',
+          },
+        };
+
+        const mockAssets: [
+          AssetEntity,
+          NativeAsset,
+          ResourceAsset,
+          ResourceAsset,
+        ] = [
+          createTokenAsset('50'),
+          createNativeAsset('0.5', '500000'),
+          createResourceAsset(Networks[scope].bandwidth.id, '0', '0'),
+          createResourceAsset(Networks[scope].energy.id, '0', '0'),
+        ];
+        const mockFees: ComputeFeeResult = [
+          {
+            type: FeeType.Base,
+            asset: {
+              unit: 'TRX',
+              type: nativeTokenId,
+              amount: '1',
+              fungible: true,
+            },
+          },
+        ];
+
+        mockAccountsService.findById.mockResolvedValue(mockAccount);
+        mockAssetsService.getAccountAssetsByIDs.mockResolvedValue(mockAssets);
+        mockSendService.buildTransaction.mockResolvedValue(
+          createMockTransferTransaction(),
+        );
+        mockFeeCalculatorService.computeFee.mockResolvedValue(mockFees);
+
+        const result = await handler.handle(request);
+
+        expect(result).toStrictEqual({
+          valid: false,
+          errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
+        });
+        expect(
+          mockFeeCalculatorService.getAccountActivationReserve,
+        ).not.toHaveBeenCalled();
       },
     );
   });

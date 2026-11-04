@@ -538,24 +538,21 @@ export class ClientRequestHandler {
         };
       }
 
-      if (!toAddress) {
-        return {
-          valid: true,
-          errors: [],
-        };
-      }
-
       /**
-       * Estimate the fees
+       * Estimate the fees. When the destination is unknown, build against the
+       * sender's own (activated) account and reserve the activation cost
+       * separately, so validation covers the worst case.
        */
+      const nativeTokenId = Networks[scope].nativeToken.id;
+      const isNativeToken = assetId === nativeTokenId;
       const sendTransaction = await this.#sendService.buildTransaction({
         fromAccountId: accountId,
-        toAddress,
+        toAddress: toAddress ?? account.address,
         asset,
         amount: valueBN,
         feeLimit: FEE_LIMIT,
       });
-      const fees = await this.#feeCalculatorService.computeFee({
+      const quotedFees = await this.#feeCalculatorService.computeFee({
         scope,
         transaction: sendTransaction,
         availableEnergy: energyBalance,
@@ -563,11 +560,29 @@ export class ClientRequestHandler {
         feeLimit: FEE_LIMIT,
       });
 
+      let fees = quotedFees;
+      if (!toAddress && isNativeToken) {
+        const activationReserve =
+          await this.#feeCalculatorService.getAccountActivationReserve(scope);
+        fees = quotedFees.map((fee) =>
+          fee.asset.type === nativeTokenId
+            ? {
+                ...fee,
+                asset: {
+                  ...fee.asset,
+                  amount: new BigNumber(fee.asset.amount)
+                    .plus(activationReserve)
+                    .toString(),
+                },
+              }
+            : fee,
+        );
+      }
+
       /**
        * The fee calculation already takes into account the energy and bandwidth consumption,
        * so we only need to make sure we have enough TRX to cover overages.
        */
-      const nativeTokenId = Networks[scope].nativeToken.id;
       const trxFee = new BigNumber(
         fees.find((fee) => fee.asset.type === nativeTokenId)?.asset.amount ??
           '0',
@@ -577,8 +592,7 @@ export class ClientRequestHandler {
        * Don't forget that we can also be sending TRX so we must add the fees to the amount that will be
        * sent.
        */
-      const totalTrxToSpend =
-        assetId === nativeTokenId ? valueBN.plus(trxFee) : trxFee;
+      const totalTrxToSpend = isNativeToken ? valueBN.plus(trxFee) : trxFee;
 
       if (totalTrxToSpend.isGreaterThan(nativeTokenBalance)) {
         return {
