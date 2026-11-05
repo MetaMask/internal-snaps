@@ -3,7 +3,7 @@ import type {
   Logger,
   Serializable,
 } from '@metamask/snap-networks-utils';
-import { useCache } from '@metamask/snap-networks-utils';
+import { createFetchPolicy, useCache } from '@metamask/snap-networks-utils';
 import {
   Address,
   Horizon as StellarHorizon,
@@ -47,6 +47,7 @@ import {
   SIMULATION_ACCOUNT,
   StellarRouterContract,
 } from './MultiCall';
+import { HorizonClient, RpcClient } from './NetworkClient';
 import {
   baseInclusionFee,
   isAccountNotFoundError,
@@ -63,12 +64,9 @@ export class NetworkService {
 
   readonly #cache: ICache<Serializable>;
 
-  readonly #horizonClientMap = new Map<
-    KnownCaip2ChainId,
-    StellarHorizon.Server
-  >();
+  readonly #horizonClientMap = new Map<KnownCaip2ChainId, HorizonClient>();
 
-  readonly #rpcClientMap = new Map<KnownCaip2ChainId, rpc.Server>();
+  readonly #rpcClientMap = new Map<KnownCaip2ChainId, RpcClient>();
 
   constructor({
     logger,
@@ -81,24 +79,42 @@ export class NetworkService {
     this.#cache = cache;
   }
 
-  #getHorizonClient(scope: KnownCaip2ChainId): StellarHorizon.Server {
+  #getHorizonClient(scope: KnownCaip2ChainId): HorizonClient {
     let client = this.#horizonClientMap.get(scope);
     if (!client) {
-      client = new StellarHorizon.Server(
+      client = new HorizonClient(
+        createFetchPolicy({
+          service: 'stellar_horizon',
+          chainIdCaip: scope,
+          logger: this.#logger,
+        }),
         this.#getNetworkConfig(scope).horizonUrl,
+        this.#getNetworkConfig(scope).timeout,
       );
       this.#horizonClientMap.set(scope, client);
     }
     return client;
   }
 
-  #getRpcClient(scope: KnownCaip2ChainId): rpc.Server {
+  #getRpcClient(scope: KnownCaip2ChainId): RpcClient {
     let client = this.#rpcClientMap.get(scope);
     if (!client) {
-      client = new rpc.Server(this.#getNetworkConfig(scope).rpcUrl);
+      client = new RpcClient(
+        createFetchPolicy({
+          service: 'stellar_rpc',
+          chainIdCaip: scope,
+          logger: this.#logger,
+        }),
+        this.#getNetworkConfig(scope).rpcUrl,
+        this.#getNetworkConfig(scope).timeout,
+      );
       this.#rpcClientMap.set(scope, client);
     }
     return client;
+  }
+
+  #getRawRpcClient(scope: KnownCaip2ChainId): rpc.Server {
+    return new rpc.Server(this.#getNetworkConfig(scope).rpcUrl);
   }
 
   #getNetworkConfig(scope: KnownCaip2ChainId): NetworkConfig {
@@ -434,7 +450,9 @@ export class NetworkService {
 
     try {
       const multiCall = new MultiCall({
-        rpcClient: this.#getRpcClient(scope),
+        simulateTransaction: this.#getRpcClient(scope).simulateTransaction.bind(
+          this.#getRpcClient(scope),
+        ),
         routerContract: StellarRouterContract.V1,
         // Caller for `exec` on the router; first funded user account is typical; else the shared sim account.
         simulationAccount: accounts[0] ?? SIMULATION_ACCOUNT,
@@ -534,10 +552,10 @@ export class NetworkService {
     pollTransaction?: boolean;
   }): Promise<string> {
     try {
-      const client = this.#getRpcClient(scope);
-      const executedTransaction = await client.sendTransaction(
-        transaction.getRaw(),
-      );
+      // Raw RPC client is used to avoid the fetch policy installed on the RPC client.
+      const executedTransaction = await this.#getRawRpcClient(
+        scope,
+      ).sendTransaction(transaction.getRaw());
 
       if (executedTransaction.status === 'TRY_AGAIN_LATER') {
         // Not queued — do not return the hash as a successful submit.

@@ -1210,7 +1210,14 @@ describe('NetworkService', () => {
   describe('#getHorizonClient', () => {
     it('creates and returns a new Horizon client when it is not already created', async () => {
       const { fetchBaseFeeSpy } = getHorizonClientSpies();
-      fetchBaseFeeSpy.mockResolvedValue(100);
+      fetchBaseFeeSpy.mockImplementation(function (
+        this: StellarHorizon.Server,
+      ) {
+        expect(this.httpClient.defaults.timeout).toBe(
+          AppConfig.networks[scope].timeout,
+        );
+        return 100;
+      });
 
       await networkService.getBaseFee(scope);
 
@@ -1230,10 +1237,15 @@ describe('NetworkService', () => {
   describe('#getRpcClient', () => {
     it('creates and returns a new RPC client when it is not already created', async () => {
       const { pollTransactionSpy } = getRpcServerSpies();
-      pollTransactionSpy.mockResolvedValue({
-        status: StellarRpc.Api.GetTransactionStatus.SUCCESS,
-        txHash: testTransactionHash,
-      } as unknown as StellarRpc.Api.GetSuccessfulTransactionResponse);
+      pollTransactionSpy.mockImplementation(function (this: StellarRpc.Server) {
+        expect(this.httpClient.defaults.timeout).toBe(
+          AppConfig.networks[scope].timeout,
+        );
+        return {
+          status: StellarRpc.Api.GetTransactionStatus.SUCCESS,
+          txHash: testTransactionHash,
+        } as StellarRpc.Api.GetSuccessfulTransactionResponse;
+      });
 
       await networkService.pollTransaction(testTransactionHash, scope);
       expect(pollTransactionSpy).toHaveBeenCalled();
