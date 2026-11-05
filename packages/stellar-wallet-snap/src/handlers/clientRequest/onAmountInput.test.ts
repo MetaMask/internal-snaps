@@ -130,7 +130,7 @@ describe('OnAmountInputHandler', () => {
     overrides: Partial<
       Pick<
         OnAmountInputJsonRpcRequest['params'],
-        'accountId' | 'assetId' | 'value' | 'to'
+        'accountId' | 'assetId' | 'value' | 'toAddress'
       >
     > = {},
   ) {
@@ -221,10 +221,10 @@ describe('OnAmountInputHandler', () => {
     );
   });
 
-  it('uses the sender as destination even when params.to is set', async () => {
+  it('uses the sender as destination even when params.toAddress is set', async () => {
     const { handler, onChainAccount, createValidatedSendTransaction } = setup();
 
-    await handler.handle(baseRequest({ to: destinationAddress }));
+    await handler.handle(baseRequest({ toAddress: destinationAddress }));
 
     expect(createValidatedSendTransaction).toHaveBeenCalledWith({
       onChainAccount,

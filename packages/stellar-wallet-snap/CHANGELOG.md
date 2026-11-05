@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Retry transient RPC and Horizon failures with bounded timeouts and circuit breaking ([#551](https://github.com/MetaMask/internal-snaps/pull/551))
   - Transaction submission still uses the raw RPC client and does not apply the fetch policy.
 
+### Fixed
+
+- Fix `onAmountInput` to accept optional destination as `toAddress` instead of `to` ([#558](https://github.com/MetaMask/internal-snaps/pull/558))
+
 ## [2.0.0]
 
 ### Added
