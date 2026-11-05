@@ -16,6 +16,7 @@ import type { ComputeFeeResult } from '../../../../services/send/types';
 import type { UnencryptedStateValue } from '../../../../services/state/stateTypes';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';
+import { assertTransactionStructure } from '../../../../validation/transaction';
 import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
 import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from './types';
@@ -95,6 +96,8 @@ export async function render(
 
   const { transactionRawData } = incomingContext;
 
+  assertTransactionStructure(transactionRawData);
+
   // 1. Initial context with loading state
   const context: ConfirmTransactionRequestContext = {
     ...DEFAULT_CONFIRMATION_CONTEXT,
@@ -110,7 +113,15 @@ export async function render(
     // keep defaults
   }
 
-  const { useSecurityAlerts } = context.preferences;
+  const { useSecurityAlerts, simulateOnChainActions } = context.preferences;
+
+  const securityScanEnabled =
+    Boolean(transactionScanService) &&
+    (useSecurityAlerts || simulateOnChainActions);
+
+  if (!securityScanEnabled) {
+    context.scanFetchStatus = FetchStatus.Fetched;
+  }
 
   /**
    * Resolve icon URLs for fee assets from known asset metadata.
@@ -132,11 +143,13 @@ export async function render(
     id,
   );
 
-  // 3. Perform security scan (always needed for estimated changes simulation)
-  if (transactionScanService) {
-    // Always request simulation for estimated changes;
-    // conditionally add validation based on user preference
-    const options: SecurityAlertsScanOption[] = ['simulation'];
+  // 3. Scan only when security alerts or simulation are enabled.
+  if (securityScanEnabled) {
+    const options: SecurityAlertsScanOption[] = [];
+
+    if (simulateOnChainActions) {
+      options.push('simulation');
+    }
 
     if (useSecurityAlerts) {
       options.push('validation');
@@ -164,9 +177,6 @@ export async function render(
       context.scan = null;
       context.scanFetchStatus = FetchStatus.Error;
     }
-  } else {
-    // No scan service available, mark as fetched immediately
-    context.scanFetchStatus = FetchStatus.Fetched;
   }
 
   // Ensure interface ID is stored before updating
@@ -193,7 +203,7 @@ export async function render(
     });
   }
 
-  // Schedule security scan background refresh (every 20 seconds)
+  // Refresh transaction validity and any enabled scans every 20 seconds.
   if (transactionScanService) {
     await snapClient.scheduleBackgroundEvent({
       method: BackgroundEventMethod.RefreshConfirmationSend,

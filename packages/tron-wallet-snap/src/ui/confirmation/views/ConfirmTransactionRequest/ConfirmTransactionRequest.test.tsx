@@ -98,17 +98,78 @@ describe('ConfirmTransactionRequest', () => {
     );
   });
 
-  it('renders the scan-in-progress banner while the scan is fetching', () => {
-    const context: ConfirmTransactionRequestContext = {
-      ...baseContext,
-      scanFetchStatus: FetchStatus.Fetching,
-      scan: null,
-    };
+  it.each([
+    [FetchStatus.Loading, true],
+    [FetchStatus.Fetching, false],
+  ])(
+    'sets loading banner visibility when the scan is %s',
+    (scanFetchStatus, visible) => {
+      const context: ConfirmTransactionRequestContext = {
+        ...baseContext,
+        scanFetchStatus,
+        scan: null,
+      };
 
-    const serialized = JSON.stringify(ConfirmTransactionRequest({ context }));
+      const serialized = JSON.stringify(ConfirmTransactionRequest({ context }));
 
-    expect(serialized).toContain('confirmation.securityScanInProgressTitle');
-    expect(serialized).toContain('"severity":"info"');
+      expect(
+        serialized.includes('confirmation.securityScanInProgressTitle'),
+      ).toBe(visible);
+      expect(serialized.includes('"severity":"info"')).toBe(visible);
+    },
+  );
+
+  it.each([
+    ['Warning', 'confirmation.validationWarningTitle'],
+    ['Malicious', 'confirmation.validationErrorTitle'],
+  ] as const)(
+    'preserves the %s presentation during background refresh',
+    (type, title) => {
+      const context: ConfirmTransactionRequestContext = {
+        ...baseContext,
+        scanFetchStatus: FetchStatus.Fetching,
+        scan: { ...mockScanResult, validation: { type, reason: null } },
+      };
+
+      const serialized = JSON.stringify(ConfirmTransactionRequest({ context }));
+
+      expect(serialized).not.toContain(
+        'confirmation.securityScanInProgressTitle',
+      );
+      expect(serialized).not.toContain('"disabled":true');
+      expect(serialized).toContain(title);
+    },
+  );
+
+  it('renders no banner for a benign scan during background refresh', () => {
+    const serialized = JSON.stringify(
+      ConfirmTransactionRequest({
+        context: { ...baseContext, scanFetchStatus: FetchStatus.Fetching },
+      }),
+    );
+
+    expect(serialized).not.toContain('"type":"Banner"');
+    expect(serialized).not.toContain('"disabled":true');
+  });
+
+  it('uses warning copy separately from malicious copy', () => {
+    const serialized = JSON.stringify(
+      ConfirmTransactionRequest({
+        context: {
+          ...baseContext,
+          scan: {
+            ...mockScanResult,
+            validation: { type: 'Warning', reason: null },
+          },
+        },
+      }),
+    );
+
+    expect(serialized).toContain('confirmation.validationWarningTitle');
+    expect(serialized).toContain('confirmation.validationWarningSubtitle');
+    expect(serialized).not.toContain('confirmation.validationErrorTitle');
+    expect(serialized).toContain('"severity":"warning"');
+    expect(serialized).not.toContain('"disabled":true');
   });
 
   it('renders the security alert banner for malicious validations', () => {
@@ -181,7 +242,7 @@ describe('ConfirmTransactionRequest', () => {
 
   it.each([
     [FetchStatus.Fetched, 'confirmation.simulationErrorTitle'],
-    [FetchStatus.Fetching, 'confirmation.securityScanInProgressTitle'],
+    [FetchStatus.Fetching, 'confirmation.simulationErrorTitle'],
     [FetchStatus.Error, 'confirmation.simulationTitleAPIError'],
   ])(
     'enables confirm after a remote simulation failure when the scan is %s',

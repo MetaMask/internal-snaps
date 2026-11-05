@@ -301,15 +301,18 @@ describe('ConfirmSignTransaction', () => {
       return { texts: collectTexts(tree), serialized: JSON.stringify(tree) };
     };
 
-    it.each([FetchStatus.Loading, FetchStatus.Fetching])(
-      'renders the scan-in-progress info banner while the scan is %s',
-      (scanFetchStatus) => {
+    it.each([
+      [FetchStatus.Loading, true],
+      [FetchStatus.Fetching, false],
+    ])(
+      'sets loading banner visibility when the scan is %s',
+      (scanFetchStatus, visible) => {
         const { texts, serialized } = render(
           buildContext({ scanFetchStatus, scan: null }),
         );
 
-        expect(texts).toContain(SCAN_IN_PROGRESS_TITLE);
-        expect(serialized).toContain('"severity":"info"');
+        expect(texts.includes(SCAN_IN_PROGRESS_TITLE)).toBe(visible);
+        expect(serialized.includes('"severity":"info"')).toBe(visible);
       },
     );
 
@@ -336,7 +339,7 @@ describe('ConfirmSignTransaction', () => {
       expect(serialized).toContain('"severity":"danger"');
     });
 
-    it('renders warning validations as a warning banner', () => {
+    it('renders the target warning', () => {
       const { texts, serialized } = render(
         buildContext({
           scan: buildScanResult({
@@ -345,9 +348,33 @@ describe('ConfirmSignTransaction', () => {
         }),
       );
 
-      expect(texts).toContain(MALICIOUS_TITLE);
+      expect(texts).toContain('This request may be risky');
+      expect(texts).toContain(
+        'Only continue if you trust this site and/or every address involved.',
+      );
+
       expect(serialized).toContain('"severity":"warning"');
+      expect(serialized).not.toContain('"disabled":true');
     });
+
+    it.each([
+      ['Warning', 'This request may be risky'],
+      ['Malicious', MALICIOUS_TITLE],
+    ] as const)(
+      'preserves the %s presentation during background refresh',
+      (type, title) => {
+        const { texts, serialized } = render(
+          buildContext({
+            scanFetchStatus: FetchStatus.Fetching,
+            scan: buildScanResult({ validation: { type, reason: null } }),
+          }),
+        );
+
+        expect(texts).not.toContain(SCAN_IN_PROGRESS_TITLE);
+        expect(serialized).not.toContain('"disabled":true');
+        expect(texts).toContain(title);
+      },
+    );
 
     it('renders scan errors before validation findings', () => {
       const { texts } = render(
@@ -363,11 +390,14 @@ describe('ConfirmSignTransaction', () => {
       expect(texts).not.toContain(MALICIOUS_TITLE);
     });
 
-    it('renders no banner for benign validations', () => {
-      const { serialized } = render(buildContext());
+    it.each([FetchStatus.Fetched, FetchStatus.Fetching])(
+      'renders no banner for benign validations when the scan is %s',
+      (scanFetchStatus) => {
+        const { serialized } = render(buildContext({ scanFetchStatus }));
 
-      expect(serialized).not.toContain('"type":"Banner"');
-    });
+        expect(serialized).not.toContain('"type":"Banner"');
+      },
+    );
   });
 
   it('shows unsupported-contract copy for skipped simulations of unknown contracts', () => {

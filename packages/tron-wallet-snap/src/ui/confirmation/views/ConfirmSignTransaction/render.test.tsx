@@ -241,9 +241,143 @@ async function withSnapContext<ReturnValue>(
 }
 
 describe('ConfirmSignTransaction render', () => {
+  it.each([
+    [true, true, FetchStatus.Loading],
+    [true, false, FetchStatus.Loading],
+    [false, true, FetchStatus.Loading],
+    [false, false, FetchStatus.Fetched],
+  ])(
+    'sets initial scan state with security alerts %s and simulation %s',
+    async (useSecurityAlerts, simulateOnChainActions, scanFetchStatus) => {
+      await withSnapContext(async ({ mockSnapClient }) => {
+        mockSnapClient.getPreferences.mockResolvedValue({
+          ...mockPreferences,
+          useSecurityAlerts,
+          simulateOnChainActions,
+        });
+        mockSnapClient.createInterface.mockImplementation(
+          async (ui, context) => {
+            expect(context).toMatchObject({ scanFetchStatus });
+            expect(JSON.stringify(ui).includes('"disabled":true')).toBe(
+              scanFetchStatus === FetchStatus.Loading,
+            );
+            return 'interface-id-123';
+          },
+        );
+
+        await render(
+          {
+            id: '00000000-0000-4000-8000-000000000001',
+            origin: 'https://example.com',
+            account: mockAccount.id,
+            scope: Network.Mainnet,
+            request: {
+              method: TronMultichainMethod.SignTransaction,
+              params: {
+                address: mockAccount.address,
+                transaction: {
+                  rawDataHex: toHex('transaction'),
+                  type: 'TransferContract',
+                },
+              },
+            },
+          },
+          mockAccount,
+          {
+            contract: [],
+            ref_block_bytes: '0000',
+            ref_block_hash: '0000000000000000',
+            expiration: 60000,
+            timestamp: 0,
+          },
+        );
+
+        expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
+      });
+    },
+  );
+
+  it.each(['expiry', 'insufficient balance'])(
+    'keeps local %s blocking on the initial screen with scans disabled',
+    async (blocker) => {
+      await withSnapContext(
+        async ({
+          mockSnapClient,
+          mockTransactionExpirationRefresherService,
+          mockAssetsService,
+        }) => {
+          mockSnapClient.getPreferences.mockResolvedValue({
+            ...mockPreferences,
+            useSecurityAlerts: false,
+            simulateOnChainActions: false,
+          });
+          mockTransactionExpirationRefresherService.isTransactionExpired.mockResolvedValue(
+            blocker === 'expiry',
+          );
+          if (blocker === 'insufficient balance') {
+            mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+              { ...mockAssets[0], rawAmount: '0' } as AssetEntity,
+              ...mockAssets.slice(1),
+            ]);
+          }
+          mockSnapClient.createInterface.mockImplementation(
+            async (ui, context) => {
+              expect(context).toMatchObject({
+                scanFetchStatus: FetchStatus.Fetched,
+              });
+              expect(JSON.stringify(ui)).toContain('"disabled":true');
+              expect(JSON.stringify(ui)).not.toContain(
+                'Checking for security issues',
+              );
+              expect(context).toMatchObject(
+                blocker === 'expiry'
+                  ? { scan: { error: { type: 'TransactionTaposExpired' } } }
+                  : { isInsufficientBalance: true },
+              );
+              return 'interface-id-123';
+            },
+          );
+
+          await render(
+            {
+              id: '00000000-0000-4000-8000-000000000001',
+              origin: 'https://example.com',
+              account: mockAccount.id,
+              scope: Network.Mainnet,
+              request: {
+                method: TronMultichainMethod.SignTransaction,
+                params: {
+                  address: mockAccount.address,
+                  transaction: {
+                    rawDataHex: toHex('transaction'),
+                    type: 'TransferContract',
+                  },
+                },
+              },
+            },
+            mockAccount,
+            {
+              contract: [],
+              ref_block_bytes: '0000',
+              ref_block_hash: '0000000000000000',
+              expiration: 60000,
+              timestamp: 0,
+            },
+          );
+
+          expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
+        },
+      );
+    },
+  );
+
   it('renders the confirmation dialog with security scan', async () => {
     await withSnapContext(
-      async ({ mockSnapClient, mockTransactionScanService }) => {
+      async ({
+        mockSnapClient,
+        mockTransactionScanService,
+        mockTransactionExpirationRefresherService,
+      }) => {
         const testOrigin = 'https://example.com';
         const testTransaction = toHex('mock-transaction-data');
 
@@ -305,6 +439,14 @@ describe('ConfirmSignTransaction render', () => {
 
         // Verify interface was updated with scan results
         expect(mockSnapClient.updateInterface).toHaveBeenCalled();
+        // A transaction can expire while a remote scan is in flight.
+        expect(
+          mockTransactionExpirationRefresherService.isTransactionExpired.mock
+            .invocationCallOrder[0],
+        ).toBeGreaterThan(
+          mockTransactionScanService.scanTransaction.mock
+            .invocationCallOrder[0] ?? 0,
+        );
       },
     );
   });
