@@ -33,14 +33,14 @@ import { ClientRequestMethod } from './api';
 import type { ComputeFeeJsonRpcRequest } from './api';
 import { ComputeFeeHandler } from './computeFee';
 
-jest.mock('../../utils/logger');
+vi.mock('../../utils/logger');
 
 describe('ComputeFeeHandler', () => {
   const accountId = '11111111-1111-4111-8111-111111111111';
   const scope = KnownCaip2ChainId.Mainnet;
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   function setup() {
@@ -79,24 +79,24 @@ describe('ComputeFeeHandler', () => {
       onChainAccountService,
       walletService,
     });
-    const resolveAccountSpy = jest
+    const resolveAccountSpy = vi
       .spyOn(AccountService.prototype, 'resolveAccount')
       .mockResolvedValue({ account });
-    const resolveOnChainAccountSpy = jest
+    const resolveOnChainAccountSpy = vi
       .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
       .mockResolvedValue(onChainAccount);
-    const resolveWalletSpy = jest
+    const resolveWalletSpy = vi
       .spyOn(WalletService.prototype, 'resolveWallet')
       .mockResolvedValue(wallet);
 
     const { transactionService } = createMockTransactionService();
-    const createValidatedSwapTransaction = jest
+    const createValidatedSwapTransaction = vi
       .spyOn(TransactionService.prototype, 'createValidatedSwapTransaction')
       .mockResolvedValue(transaction);
-    const sendTransaction = jest
+    const sendTransaction = vi
       .spyOn(TransactionService.prototype, 'sendTransaction')
       .mockRejectedValue(new Error('sendTransaction must not be called'));
-    const signTransactionSpy = jest.spyOn(wallet, 'signTransaction');
+    const signTransactionSpy = vi.spyOn(wallet, 'signTransaction');
 
     const handler = new ComputeFeeHandler({
       logger,

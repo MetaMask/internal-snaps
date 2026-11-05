@@ -23,20 +23,18 @@ import { Duration, scheduleBackgroundEvent } from '../../utils/snap';
 import { BackgroundEventMethod } from './api';
 import { TrackTransactionHandler } from './trackTransaction';
 
-jest.mock('../../utils/logger');
-jest.mock('../../utils/snap', () => {
-  const actual = jest.requireActual('../../utils/snap');
+vi.mock('../../utils/logger');
+vi.mock('../../utils/snap', async () => {
+  const actual = await vi.importActual('../../utils/snap');
   return {
     ...actual,
-    scheduleBackgroundEvent: jest.fn().mockResolvedValue('scheduled'),
-    getClientStatus: jest
-      .fn()
-      .mockResolvedValue({ active: true, locked: false }),
+    scheduleBackgroundEvent: vi.fn().mockResolvedValue('scheduled'),
+    getClientStatus: vi.fn().mockResolvedValue({ active: true, locked: false }),
   };
 });
-jest.mock('../../utils/errors', () => ({
-  ...jest.requireActual('../../utils/errors'),
-  trackError: jest.fn().mockResolvedValue(undefined),
+vi.mock('../../utils/errors', async () => ({
+  ...(await vi.importActual('../../utils/errors')),
+  trackError: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe('TrackTransactionHandler', () => {
@@ -46,13 +44,13 @@ describe('TrackTransactionHandler', () => {
   const accountId = '22222222-2222-4222-8222-222222222222';
   const receiverAddress =
     'GDTF7ERUQVTX23ZD6NY5XRYC5IQAKWFVTQ6IXSMEZWGVNDDGPYCVHRZP';
-  const trackTransactionFinalized = jest.fn().mockResolvedValue(undefined);
+  const trackTransactionFinalized = vi.fn().mockResolvedValue(undefined);
 
   beforeEach(() => {
-    jest.mocked(scheduleBackgroundEvent).mockClear();
-    jest.mocked(scheduleBackgroundEvent).mockResolvedValue('scheduled');
-    jest.mocked(trackError).mockClear();
-    jest.mocked(trackError).mockResolvedValue(undefined);
+    vi.mocked(scheduleBackgroundEvent).mockClear();
+    vi.mocked(scheduleBackgroundEvent).mockResolvedValue('scheduled');
+    vi.mocked(trackError).mockClear();
+    vi.mocked(trackError).mockResolvedValue(undefined);
     trackTransactionFinalized.mockClear();
   });
 
@@ -84,20 +82,17 @@ describe('TrackTransactionHandler', () => {
       1,
     );
 
-    const findById = jest
+    const findById = vi
       .spyOn(AccountService.prototype, 'findById')
       .mockResolvedValue(account);
 
-    const findByAddressAndScope = jest
+    const findByAddressAndScope = vi
       .spyOn(AccountService.prototype, 'findByAddressAndScope')
       .mockResolvedValue(null);
 
-    const getTransaction = jest.spyOn(
-      NetworkService.prototype,
-      'getTransaction',
-    );
+    const getTransaction = vi.spyOn(NetworkService.prototype, 'getTransaction');
 
-    const synchronize = jest
+    const synchronize = vi
       .spyOn(SynchronizeService.prototype, 'synchronize')
       .mockResolvedValue(undefined);
 
@@ -281,7 +276,7 @@ describe('TrackTransactionHandler', () => {
     });
 
     expect(scheduleBackgroundEvent).not.toHaveBeenCalled();
-    expect(jest.mocked(trackError)).toHaveBeenCalledWith(
+    expect(vi.mocked(trackError)).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'boom' }),
     );
   });

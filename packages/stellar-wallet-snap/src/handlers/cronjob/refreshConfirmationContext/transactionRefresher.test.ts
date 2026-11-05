@@ -34,7 +34,7 @@ import type { ConfirmationContextRefreshResult } from './api';
 import { ConfirmationContextRefresherKey } from './api';
 import { ConfirmationTransactionRefresher } from './transactionRefresher';
 
-jest.mock('../../../utils/logger');
+vi.mock('../../../utils/logger');
 
 describe('ConfirmationTransactionRefresher', () => {
   const scope = KnownCaip2ChainId.Testnet;
@@ -105,18 +105,18 @@ describe('ConfirmationTransactionRefresher', () => {
 
   function setup() {
     const accountResolver = {
-      resolveAccount: jest
+      resolveAccount: vi
         .fn()
         .mockResolvedValue({ onChainAccount: { accountId, scope } }),
     };
     const transactionService = {
-      createValidatedSendTransaction: jest.fn().mockResolvedValue(transaction),
-      createValidatedChangeTrustTransaction: jest
+      createValidatedSendTransaction: vi.fn().mockResolvedValue(transaction),
+      createValidatedChangeTrustTransaction: vi
         .fn()
         .mockResolvedValue(transaction),
     };
     const assetMetadataService = {
-      resolve: jest.fn().mockResolvedValue({ units: [{ decimals: 7 }] }),
+      resolve: vi.fn().mockResolvedValue({ units: [{ decimals: 7 }] }),
     };
 
     const refresher = new ConfirmationTransactionRefresher({
@@ -406,8 +406,8 @@ describe('ConfirmationTransactionRefresher', () => {
   it('rebuilds when the stored envelope has expired', async () => {
     const { refresher, transactionService } = setup();
     const mockNow = 1_700_000_000_000;
-    jest.useFakeTimers();
-    jest.setSystemTime(mockNow);
+    vi.useFakeTimers();
+    vi.setSystemTime(mockNow);
 
     try {
       const expiredTransaction = buildMockClassicTransaction(
@@ -419,7 +419,7 @@ describe('ConfirmationTransactionRefresher', () => {
         ],
         { networkPassphrase: Networks.TESTNET, timeout: 1 },
       );
-      jest.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(2000);
 
       const result = await refresher.refresh(
         createTransactionContext({
@@ -439,7 +439,7 @@ describe('ConfirmationTransactionRefresher', () => {
         }),
       );
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
   });
 

@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest';
+
 import { KnownCaip2ChainId } from '../../api';
 import { mockBip32Node } from '../../utils/__mocks__/fixtures';
 import { getBip32Entropy, getDefaultEntropySource } from '../../utils/snap';
@@ -15,51 +17,51 @@ import {
   DerivedAccountAddressMismatchException,
 } from './exceptions';
 
-jest.mock('../../utils/logger');
-jest.mock('../../utils/snap');
+vi.mock('../../utils/logger');
+vi.mock('../../utils/snap');
 
 describe('AccountService', () => {
   let accountService: AccountService;
 
   beforeEach(() => {
     // Mock the entropy source to let the wallet service derive the address
-    jest.mocked(getBip32Entropy).mockResolvedValue(mockBip32Node);
+    vi.mocked(getBip32Entropy).mockResolvedValue(mockBip32Node);
     accountService = mockAccountService().accountService;
   });
 
   type AccountsRepositorySpies = {
-    saveSpy: jest.SpiedFunction<AccountsRepository['save']>;
-    saveManySpy: jest.SpiedFunction<AccountsRepository['saveMany']>;
-    deleteSpy: jest.SpiedFunction<AccountsRepository['delete']>;
-    getAllSpy: jest.SpiedFunction<AccountsRepository['getAll']>;
+    saveSpy: Mock<AccountsRepository['save']>;
+    saveManySpy: Mock<AccountsRepository['saveMany']>;
+    deleteSpy: Mock<AccountsRepository['delete']>;
+    getAllSpy: Mock<AccountsRepository['getAll']>;
   };
 
   const getAccountsRepositorySpies = (): AccountsRepositorySpies => {
     return {
-      saveSpy: jest.spyOn(AccountsRepository.prototype, 'save'),
-      saveManySpy: jest.spyOn(AccountsRepository.prototype, 'saveMany'),
-      deleteSpy: jest.spyOn(AccountsRepository.prototype, 'delete'),
-      getAllSpy: jest.spyOn(AccountsRepository.prototype, 'getAll'),
+      saveSpy: vi.spyOn(AccountsRepository.prototype, 'save'),
+      saveManySpy: vi.spyOn(AccountsRepository.prototype, 'saveMany'),
+      deleteSpy: vi.spyOn(AccountsRepository.prototype, 'delete'),
+      getAllSpy: vi.spyOn(AccountsRepository.prototype, 'getAll'),
     };
   };
 
   type WalletServiceSpies = {
-    deriveAddressSpy: jest.SpiedFunction<WalletService['deriveAddress']>;
+    deriveAddressSpy: Mock<WalletService['deriveAddress']>;
   };
 
   const getWalletServiceSpies = (): WalletServiceSpies => ({
-    deriveAddressSpy: jest.spyOn(WalletService.prototype, 'deriveAddress'),
+    deriveAddressSpy: vi.spyOn(WalletService.prototype, 'deriveAddress'),
   });
 
   describe('batchCreate', () => {
     it('derives, persists in range order, and calls save once', async () => {
       const entropySource = 'entropy-source-default';
-      const walletResolver = jest.fn(
+      const walletResolver = vi.fn(
         async (index: number) => ({ address: `address-${index}` }) as Wallet,
       );
       const { saveManySpy, getAllSpy } = getAccountsRepositorySpies();
       getAllSpy.mockResolvedValue([]);
-      jest.mocked(getDefaultEntropySource).mockResolvedValue(entropySource);
+      vi.mocked(getDefaultEntropySource).mockResolvedValue(entropySource);
 
       const result = await accountService.batchCreate({
         entropySource,
@@ -99,7 +101,7 @@ describe('AccountService', () => {
       const entropySource = 'entropy-source-batch';
       const existing = generateMockStellarKeyringAccounts(3, entropySource);
       const onlyMiddle = existing[1] as StellarKeyringAccount;
-      const walletResolver = jest.fn(
+      const walletResolver = vi.fn(
         async (index: number) => ({ address: `address-${index}` }) as Wallet,
       );
       const { saveManySpy, getAllSpy } = getAccountsRepositorySpies();
@@ -124,12 +126,12 @@ describe('AccountService', () => {
 
     it('derives a large inclusive range without throwing', async () => {
       const entropySource = 'entropy-source-default';
-      const walletResolver = jest.fn(
+      const walletResolver = vi.fn(
         async (index: number) => ({ address: `address-${index}` }) as Wallet,
       );
       const { saveManySpy, getAllSpy } = getAccountsRepositorySpies();
       getAllSpy.mockResolvedValue([]);
-      jest.mocked(getDefaultEntropySource).mockResolvedValue(entropySource);
+      vi.mocked(getDefaultEntropySource).mockResolvedValue(entropySource);
 
       const result = await accountService.batchCreate({
         entropySource,

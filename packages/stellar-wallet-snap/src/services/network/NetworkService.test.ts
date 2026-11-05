@@ -50,7 +50,7 @@ import {
 import { MultiCall } from './MultiCall';
 import { NetworkService } from './NetworkService';
 
-jest.mock('../../utils/logger');
+vi.mock('../../utils/logger');
 
 describe('NetworkService', () => {
   let networkService: NetworkService;
@@ -60,7 +60,7 @@ describe('NetworkService', () => {
   let scope: KnownCaip2ChainId;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     networkService = new NetworkService({
       logger,
       cache: new InMemoryCache(logger),
@@ -514,13 +514,11 @@ describe('NetworkService', () => {
 
   describe('getHorizonTransactionInclusionStatus', () => {
     it('returns pending when Horizon returns NotFoundError', async () => {
-      const transactionsSpy = jest
+      const transactionsSpy = vi
         .spyOn(StellarHorizon.Server.prototype, 'transactions')
         .mockReturnValue({
-          transaction: jest.fn().mockReturnValue({
-            call: jest
-              .fn()
-              .mockRejectedValue(new NotFoundError('not found', {})),
+          transaction: vi.fn().mockReturnValue({
+            call: vi.fn().mockRejectedValue(new NotFoundError('not found', {})),
           }),
         } as never);
 
@@ -534,11 +532,11 @@ describe('NetworkService', () => {
     });
 
     it('returns success when Horizon record is successful', async () => {
-      const call = jest.fn().mockResolvedValue({ successful: true });
-      const transactionsSpy = jest
+      const call = vi.fn().mockResolvedValue({ successful: true });
+      const transactionsSpy = vi
         .spyOn(StellarHorizon.Server.prototype, 'transactions')
         .mockReturnValue({
-          transaction: jest.fn().mockReturnValue({ call }),
+          transaction: vi.fn().mockReturnValue({ call }),
         } as never);
 
       const result = await networkService.getHorizonTransactionInclusionStatus(
@@ -552,11 +550,11 @@ describe('NetworkService', () => {
     });
 
     it('returns failed when Horizon record is not successful', async () => {
-      const call = jest.fn().mockResolvedValue({ successful: false });
-      const transactionsSpy = jest
+      const call = vi.fn().mockResolvedValue({ successful: false });
+      const transactionsSpy = vi
         .spyOn(StellarHorizon.Server.prototype, 'transactions')
         .mockReturnValue({
-          transaction: jest.fn().mockReturnValue({ call }),
+          transaction: vi.fn().mockReturnValue({ call }),
         } as never);
 
       const result = await networkService.getHorizonTransactionInclusionStatus(
@@ -569,11 +567,11 @@ describe('NetworkService', () => {
     });
 
     it('throws NetworkServiceException when Horizon responds with a non-404 error', async () => {
-      const call = jest.fn().mockRejectedValue(new Error('timeout'));
-      const transactionsSpy = jest
+      const call = vi.fn().mockRejectedValue(new Error('timeout'));
+      const transactionsSpy = vi
         .spyOn(StellarHorizon.Server.prototype, 'transactions')
         .mockReturnValue({
-          transaction: jest.fn().mockReturnValue({ call }),
+          transaction: vi.fn().mockReturnValue({ call }),
         } as never);
 
       await expect(
@@ -594,11 +592,11 @@ describe('NetworkService', () => {
         transaction: tx,
         feeCharged: '321',
       });
-      const call = jest.fn().mockResolvedValue(horizonRecord);
-      const transactionsSpy = jest
+      const call = vi.fn().mockResolvedValue(horizonRecord);
+      const transactionsSpy = vi
         .spyOn(StellarHorizon.Server.prototype, 'transactions')
         .mockReturnValue({
-          transaction: jest.fn().mockReturnValue({ call }),
+          transaction: vi.fn().mockReturnValue({ call }),
         } as never);
 
       const result = await networkService.getTransaction(tx.id, scope);
@@ -611,13 +609,13 @@ describe('NetworkService', () => {
     });
 
     it('throws TransactionNotFoundException when record is not found', async () => {
-      const call = jest
+      const call = vi
         .fn()
         .mockRejectedValue(new NotFoundError('not found', {}));
-      const transactionsSpy = jest
+      const transactionsSpy = vi
         .spyOn(StellarHorizon.Server.prototype, 'transactions')
         .mockReturnValue({
-          transaction: jest.fn().mockReturnValue({ call }),
+          transaction: vi.fn().mockReturnValue({ call }),
         } as never);
 
       await expect(
@@ -676,7 +674,7 @@ describe('NetworkService', () => {
           pagingToken: '22',
         }),
       ];
-      const call = jest
+      const call = vi
         .fn()
         .mockResolvedValue(buildMockHorizonTransactionPage(records));
       const transactionsSpy = mockHorizonAccountTransactions(call);
@@ -744,7 +742,7 @@ describe('NetworkService', () => {
           pagingToken: '44',
         }),
       ];
-      const call = jest
+      const call = vi
         .fn()
         .mockResolvedValue(buildMockHorizonTransactionPage(records));
       const transactionsSpy = mockHorizonAccountTransactions(call);
@@ -789,16 +787,16 @@ describe('NetworkService', () => {
         }),
       ];
 
-      const page3Next = jest
+      const page3Next = vi
         .fn()
         .mockResolvedValue(buildMockHorizonTransactionPage([]));
       const page3 = buildMockHorizonTransactionPage(page3Records, page3Next);
-      const page2Next = jest.fn().mockResolvedValue(page3);
+      const page2Next = vi.fn().mockResolvedValue(page3);
       const page2 = buildMockHorizonTransactionPage(page2Records, page2Next);
-      const page1Next = jest.fn().mockResolvedValue(page2);
+      const page1Next = vi.fn().mockResolvedValue(page2);
       const page1 = buildMockHorizonTransactionPage(page1Records, page1Next);
 
-      const call = jest.fn().mockResolvedValue(page1);
+      const call = vi.fn().mockResolvedValue(page1);
       const transactionsSpy = mockHorizonAccountTransactions(call);
 
       const result = await networkService.getTransactions({
@@ -827,7 +825,7 @@ describe('NetworkService', () => {
     it('returns empty array when the first page has no records', async () => {
       const accountAddress = generateStellarAddress();
       const lastScanToken = 'cursor-abc';
-      const call = jest
+      const call = vi
         .fn()
         .mockResolvedValue(buildMockHorizonTransactionPage([]));
       const transactionsSpy = mockHorizonAccountTransactions(call);
@@ -854,7 +852,7 @@ describe('NetworkService', () => {
           pagingToken: '55',
         }),
       ];
-      const call = jest
+      const call = vi
         .fn()
         .mockResolvedValue(buildMockHorizonTransactionPage(records));
       const transactionsSpy = mockHorizonAccountTransactions(call);
@@ -875,7 +873,7 @@ describe('NetworkService', () => {
     });
 
     it('throws NetworkServiceException when Horizon page fetch fails', async () => {
-      const call = jest.fn().mockRejectedValue(new Error('Horizon error'));
+      const call = vi.fn().mockRejectedValue(new Error('Horizon error'));
       const transactionsSpy = mockHorizonAccountTransactions(call);
 
       await expect(
@@ -1074,7 +1072,7 @@ describe('NetworkService', () => {
 
     it('throws SimulationException with stringified error when simulation error payload is not a string', async () => {
       const { simulateTransactionSpy } = getRpcServerSpies();
-      const isSimErrorSpy = jest
+      const isSimErrorSpy = vi
         .spyOn(StellarRpc.Api, 'isSimulationError')
         .mockReturnValue(true);
       simulateTransactionSpy.mockResolvedValue({
@@ -1151,7 +1149,7 @@ describe('NetworkService', () => {
 
     it('uses cache so simulateTransaction runs once for identical transfer context', async () => {
       const mockInvoke = createMockInvokeHostFunctionTransaction();
-      const simulateTxSpy = jest
+      const simulateTxSpy = vi
         .spyOn(NetworkService.prototype, 'simulateTransaction')
         .mockResolvedValue(mockInvoke);
       const fromAccountId = generateStellarAddress();
@@ -1181,7 +1179,7 @@ describe('NetworkService', () => {
 
     it('runs simulateTransaction again when refreshCache is true', async () => {
       const mockInvoke = createMockInvokeHostFunctionTransaction();
-      const simulateTxSpy = jest
+      const simulateTxSpy = vi
         .spyOn(NetworkService.prototype, 'simulateTransaction')
         .mockResolvedValue(mockInvoke);
       const fromAccountId = generateStellarAddress();
@@ -1286,7 +1284,7 @@ describe('NetworkService', () => {
     });
 
     it('maps multicall simulation vector to per-account balances on mainnet', async () => {
-      const simResultSpy = jest
+      const simResultSpy = vi
         .spyOn(MultiCall.prototype, 'simResult')
         .mockResolvedValue([BigInt('100'), BigInt('200')]);
 
@@ -1303,7 +1301,7 @@ describe('NetworkService', () => {
     });
 
     it('maps failed multicall cells to null', async () => {
-      const simResultSpy = jest
+      const simResultSpy = vi
         .spyOn(MultiCall.prototype, 'simResult')
         .mockResolvedValue([BigInt('1'), {}]);
 
@@ -1319,7 +1317,7 @@ describe('NetworkService', () => {
     });
 
     it('throws NetworkServiceException when multicall result length does not match expected grid size', async () => {
-      const simResultSpy = jest
+      const simResultSpy = vi
         .spyOn(MultiCall.prototype, 'simResult')
         .mockResolvedValue([BigInt('1')]);
 
@@ -1335,7 +1333,7 @@ describe('NetworkService', () => {
     });
 
     it('throws NetworkServiceException when multicall simulation throws', async () => {
-      const simResultSpy = jest
+      const simResultSpy = vi
         .spyOn(MultiCall.prototype, 'simResult')
         .mockRejectedValue(new Error('simulation failed'));
 
@@ -1351,7 +1349,7 @@ describe('NetworkService', () => {
     });
 
     it('returns empty object on testnet (batch SEP-41 balances not supported)', async () => {
-      const simResultSpy = jest.spyOn(MultiCall.prototype, 'simResult');
+      const simResultSpy = vi.spyOn(MultiCall.prototype, 'simResult');
 
       const result = await networkService.getSep41AssetBalances({
         accounts: [account],
@@ -1369,7 +1367,7 @@ describe('NetworkService', () => {
     const account = 'GDYTQGVA3NCXM5JPVMOHLDUAHMI3OQ2B2YI25BXYKROAGXXT2T3ZGHE6';
 
     it('returns cached balances without a second multicall when invoked twice with the same params', async () => {
-      const simResultSpy = jest
+      const simResultSpy = vi
         .spyOn(MultiCall.prototype, 'simResult')
         .mockResolvedValue([BigInt('42')]);
       const params = {

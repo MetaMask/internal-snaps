@@ -28,14 +28,14 @@ import {
   ResolveAccountSource,
 } from './accountResolver';
 
-jest.mock('../utils/logger');
+vi.mock('../utils/logger');
 
 describe('AccountResolver', () => {
   const keyringAccountId = '22222222-2222-4222-8222-222222222222';
   const scope = KnownCaip2ChainId.Mainnet;
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   function setup() {
@@ -59,17 +59,17 @@ describe('AccountResolver', () => {
       horizonSource(mockRawAccount, scope),
     );
 
-    const resolveAccountSpy = jest
+    const resolveAccountSpy = vi
       .spyOn(AccountService.prototype, 'resolveAccount')
       .mockResolvedValue({ account });
-    const resolveOnChainAccountSpy = jest
+    const resolveOnChainAccountSpy = vi
       .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
       .mockResolvedValue(onChainAccount);
-    const getOnChainAccountSnapshotSpy = jest.spyOn(
+    const getOnChainAccountSnapshotSpy = vi.spyOn(
       OnChainAccountService.prototype,
       'getOnChainAccountSnapshot',
     );
-    const resolveWalletSpy = jest
+    const resolveWalletSpy = vi
       .spyOn(WalletService.prototype, 'resolveWallet')
       .mockResolvedValue(wallet);
 

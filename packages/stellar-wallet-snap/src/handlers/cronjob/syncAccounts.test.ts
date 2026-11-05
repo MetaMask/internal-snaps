@@ -1,3 +1,5 @@
+import type { Mocked } from 'vitest';
+
 import { AppConfig } from '../../config';
 import type {
   AccountService,
@@ -10,8 +12,8 @@ import { logger } from '../../utils/logger';
 import { BackgroundEventMethod } from './api';
 import { SyncAccountsHandler } from './syncAccounts';
 
-jest.mock('../../utils/logger');
-jest.mock('../../utils/snap');
+vi.mock('../../utils/logger');
+vi.mock('../../utils/snap');
 
 describe('SyncAccountsHandler', () => {
   const mockEntropySourceId = 'entropy-source-1';
@@ -21,17 +23,16 @@ describe('SyncAccountsHandler', () => {
   ) as [StellarKeyringAccount, StellarKeyringAccount];
 
   const setupTest = () => {
-    const accountService: jest.Mocked<
+    const accountService: Mocked<
       Pick<AccountService, 'getAllSelected' | 'findByIds'>
     > = {
-      getAllSelected: jest.fn(),
-      findByIds: jest.fn(),
+      getAllSelected: vi.fn(),
+      findByIds: vi.fn(),
     };
-    const synchronizeService: jest.Mocked<
-      Pick<SynchronizeService, 'synchronize'>
-    > = {
-      synchronize: jest.fn(),
-    };
+    const synchronizeService: Mocked<Pick<SynchronizeService, 'synchronize'>> =
+      {
+        synchronize: vi.fn(),
+      };
 
     const handler = new SyncAccountsHandler({
       logger,

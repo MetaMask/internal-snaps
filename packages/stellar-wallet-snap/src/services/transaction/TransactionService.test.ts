@@ -45,10 +45,10 @@ import {
 import { KeyringTransactionType } from './KeyringTransactionBuilder';
 import { TransactionBuilder } from './TransactionBuilder';
 
-jest.mock('../../utils/logger');
-jest.mock('../../utils/snap');
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: jest.fn(),
+vi.mock('../../utils/logger');
+vi.mock('../../utils/snap');
+vi.mock('@metamask/keyring-snap-sdk', () => ({
+  emitSnapKeyringEvent: vi.fn(),
 }));
 
 /**
@@ -183,12 +183,12 @@ describe('TransactionService', () => {
         code: 'USDC',
         issuer: getTestWallet().address,
       } as const;
-      const loadOnChainAccountsSpy = jest.spyOn(
+      const loadOnChainAccountsSpy = vi.spyOn(
         NetworkService.prototype,
         'loadOnChainAccountsSafe',
       );
       loadOnChainAccountsSpy.mockResolvedValue([]);
-      const simulateTransactionSpy = jest.spyOn(
+      const simulateTransactionSpy = vi.spyOn(
         NetworkService.prototype,
         'simulateTransaction',
       );
@@ -234,12 +234,12 @@ describe('TransactionService', () => {
 
     it('validates a Soroban invoke swap transaction', async () => {
       const { transactionService } = createMockTransactionService();
-      const loadOnChainAccountsSpy = jest.spyOn(
+      const loadOnChainAccountsSpy = vi.spyOn(
         NetworkService.prototype,
         'loadOnChainAccountsSafe',
       );
       loadOnChainAccountsSpy.mockResolvedValue([]);
-      const simulateTransactionSpy = jest.spyOn(
+      const simulateTransactionSpy = vi.spyOn(
         NetworkService.prototype,
         'simulateTransaction',
       );
@@ -274,7 +274,7 @@ describe('TransactionService', () => {
 
       const txId =
         '7d4b0c5ef7498b223f45a10f461060fb64f53eb13caf18e8dc7de95a8cf9c0e1';
-      const savePendingKeyringTransactionSpy = jest
+      const savePendingKeyringTransactionSpy = vi
         .spyOn(transactionService, 'savePendingKeyringTransaction')
         .mockResolvedValue(
           generateMockTransactions(1, {
@@ -318,9 +318,10 @@ describe('TransactionService', () => {
         'safe-save-error-entropy',
       ) as [StellarKeyringAccount];
 
-      jest
-        .spyOn(transactionService, 'savePendingKeyringTransaction')
-        .mockRejectedValue(new Error('save failed'));
+      vi.spyOn(
+        transactionService,
+        'savePendingKeyringTransaction',
+      ).mockRejectedValue(new Error('save failed'));
 
       const result = await transactionService.savePendingKeyringTransactionSafe(
         {
@@ -354,11 +355,11 @@ describe('TransactionService', () => {
     let scope: KnownCaip2ChainId;
 
     const getNetworkServiceSpies = () => ({
-      getAccountSpy: jest.spyOn(NetworkService.prototype, 'getAccount'),
+      getAccountSpy: vi.spyOn(NetworkService.prototype, 'getAccount'),
     });
 
     const getTransactionBuilderSpies = () => ({
-      rebuildTxnWithNewSeqSpy: jest.spyOn(
+      rebuildTxnWithNewSeqSpy: vi.spyOn(
         TransactionBuilder.prototype,
         'rebuildTxnWithNewSeq',
       ),
@@ -384,7 +385,7 @@ describe('TransactionService', () => {
     it('returns hash when send succeeds on first attempt', async () => {
       const { transactionService, transactionBuilder } =
         createMockTransactionService();
-      const sendSpy = jest.spyOn(NetworkService.prototype, 'send');
+      const sendSpy = vi.spyOn(NetworkService.prototype, 'send');
       sendSpy.mockResolvedValue('abc123hash');
 
       const testTransaction = transactionBuilder.changeTrust({
@@ -438,7 +439,7 @@ describe('TransactionService', () => {
     it('resigns and retries once when send fails with txBadSeq', async () => {
       const { transactionService, transactionBuilder } =
         createMockTransactionService();
-      const sendSpy = jest.spyOn(NetworkService.prototype, 'send');
+      const sendSpy = vi.spyOn(NetworkService.prototype, 'send');
       sendSpy
         .mockRejectedValueOnce(
           new TransactionRetryableException(scope, 'txBadSeq'),
@@ -486,7 +487,7 @@ describe('TransactionService', () => {
     it('rethrows txBadSeq when transaction source is not the wallet account', async () => {
       const { transactionService, transactionBuilder } =
         createMockTransactionService();
-      const sendSpy = jest.spyOn(NetworkService.prototype, 'send');
+      const sendSpy = vi.spyOn(NetworkService.prototype, 'send');
       sendSpy.mockRejectedValue(
         new TransactionRetryableException(scope, 'txBadSeq'),
       );
@@ -562,12 +563,13 @@ describe('TransactionService', () => {
         horizonSource(destAcc, KnownCaip2ChainId.Mainnet),
       );
 
-      jest
-        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
-        .mockResolvedValue(destOnChain);
-      jest
-        .spyOn(NetworkService.prototype, 'getBaseFee')
-        .mockResolvedValue(new BigNumber('100'));
+      vi.spyOn(
+        NetworkService.prototype,
+        'loadOnChainAccount',
+      ).mockResolvedValue(destOnChain);
+      vi.spyOn(NetworkService.prototype, 'getBaseFee').mockResolvedValue(
+        new BigNumber('100'),
+      );
 
       const tx = await transactionService.createValidatedSendTransaction({
         onChainAccount: sourceOnChain,
@@ -607,12 +609,13 @@ describe('TransactionService', () => {
         horizonSource(destAcc, KnownCaip2ChainId.Mainnet),
       );
 
-      jest
-        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
-        .mockResolvedValue(destOnChain);
-      jest
-        .spyOn(NetworkService.prototype, 'getBaseFee')
-        .mockResolvedValue(new BigNumber('100'));
+      vi.spyOn(
+        NetworkService.prototype,
+        'loadOnChainAccount',
+      ).mockResolvedValue(destOnChain);
+      vi.spyOn(NetworkService.prototype, 'getBaseFee').mockResolvedValue(
+        new BigNumber('100'),
+      );
 
       const tx = await transactionService.createValidatedSendTransaction({
         onChainAccount: sourceOnChain,
@@ -642,17 +645,18 @@ describe('TransactionService', () => {
         horizonSource(sourceAcc, KnownCaip2ChainId.Mainnet),
       );
 
-      jest
-        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
-        .mockRejectedValue(
-          new AccountNotActivatedException(
-            unfundedDestination,
-            KnownCaip2ChainId.Mainnet,
-          ),
-        );
-      jest
-        .spyOn(NetworkService.prototype, 'getBaseFee')
-        .mockResolvedValue(new BigNumber('100'));
+      vi.spyOn(
+        NetworkService.prototype,
+        'loadOnChainAccount',
+      ).mockRejectedValue(
+        new AccountNotActivatedException(
+          unfundedDestination,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      );
+      vi.spyOn(NetworkService.prototype, 'getBaseFee').mockResolvedValue(
+        new BigNumber('100'),
+      );
 
       const tx = await transactionService.createValidatedSendTransaction({
         onChainAccount: sourceOnChain,
@@ -691,22 +695,25 @@ describe('TransactionService', () => {
         horizonSource(destAcc, KnownCaip2ChainId.Mainnet),
       );
 
-      jest
-        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
-        .mockResolvedValue(destOnChain);
-      jest
-        .spyOn(NetworkService.prototype, 'getBaseFee')
-        .mockResolvedValue(new BigNumber('100'));
-      jest
-        .spyOn(NetworkService.prototype, 'simulateTransaction')
-        .mockImplementation(async (transaction) => transaction);
-      jest
-        .spyOn(NetworkService.prototype, 'getSep41AssetBalances')
-        .mockResolvedValue({
-          [sourceWallet.address]: {
-            [USDC_SEP41]: new BigNumber(1_000_000),
-          },
-        });
+      vi.spyOn(
+        NetworkService.prototype,
+        'loadOnChainAccount',
+      ).mockResolvedValue(destOnChain);
+      vi.spyOn(NetworkService.prototype, 'getBaseFee').mockResolvedValue(
+        new BigNumber('100'),
+      );
+      vi.spyOn(
+        NetworkService.prototype,
+        'simulateTransaction',
+      ).mockImplementation(async (transaction) => transaction);
+      vi.spyOn(
+        NetworkService.prototype,
+        'getSep41AssetBalances',
+      ).mockResolvedValue({
+        [sourceWallet.address]: {
+          [USDC_SEP41]: new BigNumber(1_000_000),
+        },
+      });
 
       const tx = await transactionService.createValidatedSendTransaction({
         onChainAccount: sourceOnChain,
@@ -747,14 +754,15 @@ describe('TransactionService', () => {
         horizonSource(sourceAcc, KnownCaip2ChainId.Mainnet),
       );
 
-      jest
-        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
-        .mockRejectedValue(
-          new AccountNotActivatedException(
-            unfundedDestination,
-            KnownCaip2ChainId.Mainnet,
-          ),
-        );
+      vi.spyOn(
+        NetworkService.prototype,
+        'loadOnChainAccount',
+      ).mockRejectedValue(
+        new AccountNotActivatedException(
+          unfundedDestination,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      );
 
       const error = await transactionService
         .createValidatedSendTransaction({
@@ -793,14 +801,15 @@ describe('TransactionService', () => {
         horizonSource(sourceAcc, KnownCaip2ChainId.Mainnet),
       );
 
-      jest
-        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
-        .mockRejectedValue(
-          new AccountNotActivatedException(
-            unfundedDestination,
-            KnownCaip2ChainId.Mainnet,
-          ),
-        );
+      vi.spyOn(
+        NetworkService.prototype,
+        'loadOnChainAccount',
+      ).mockRejectedValue(
+        new AccountNotActivatedException(
+          unfundedDestination,
+          KnownCaip2ChainId.Mainnet,
+        ),
+      );
 
       const error = await transactionService
         .createValidatedSendTransaction({
@@ -851,12 +860,13 @@ describe('TransactionService', () => {
         horizonSource(destAcc, KnownCaip2ChainId.Mainnet),
       );
 
-      jest
-        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
-        .mockResolvedValue(destOnChain);
-      jest
-        .spyOn(NetworkService.prototype, 'getBaseFee')
-        .mockResolvedValue(new BigNumber('100'));
+      vi.spyOn(
+        NetworkService.prototype,
+        'loadOnChainAccount',
+      ).mockResolvedValue(destOnChain);
+      vi.spyOn(NetworkService.prototype, 'getBaseFee').mockResolvedValue(
+        new BigNumber('100'),
+      );
 
       const result =
         await transactionService.createDraftSendTransactionForConfirm({
@@ -898,12 +908,13 @@ describe('TransactionService', () => {
         KnownCaip2ChainId.Mainnet,
       );
 
-      jest
-        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
-        .mockResolvedValue(destOnChain);
-      jest
-        .spyOn(NetworkService.prototype, 'getBaseFee')
-        .mockResolvedValue(new BigNumber('100'));
+      vi.spyOn(
+        NetworkService.prototype,
+        'loadOnChainAccount',
+      ).mockResolvedValue(destOnChain);
+      vi.spyOn(NetworkService.prototype, 'getBaseFee').mockResolvedValue(
+        new BigNumber('100'),
+      );
 
       const result =
         await transactionService.createDraftSendTransactionForConfirm({
@@ -945,12 +956,13 @@ describe('TransactionService', () => {
         KnownCaip2ChainId.Mainnet,
       );
 
-      jest
-        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
-        .mockResolvedValue(destOnChain);
-      jest
-        .spyOn(NetworkService.prototype, 'getBaseFee')
-        .mockResolvedValue(new BigNumber('100'));
+      vi.spyOn(
+        NetworkService.prototype,
+        'loadOnChainAccount',
+      ).mockResolvedValue(destOnChain);
+      vi.spyOn(NetworkService.prototype, 'getBaseFee').mockResolvedValue(
+        new BigNumber('100'),
+      );
 
       const result =
         await transactionService.createDraftSendTransactionForConfirm({
@@ -993,12 +1005,13 @@ describe('TransactionService', () => {
         KnownCaip2ChainId.Mainnet,
       );
 
-      jest
-        .spyOn(NetworkService.prototype, 'loadOnChainAccount')
-        .mockResolvedValue(destOnChain);
-      jest
-        .spyOn(NetworkService.prototype, 'getBaseFee')
-        .mockResolvedValue(new BigNumber('100'));
+      vi.spyOn(
+        NetworkService.prototype,
+        'loadOnChainAccount',
+      ).mockResolvedValue(destOnChain);
+      vi.spyOn(NetworkService.prototype, 'getBaseFee').mockResolvedValue(
+        new BigNumber('100'),
+      );
 
       const result =
         await transactionService.createDraftSendTransactionForConfirm({

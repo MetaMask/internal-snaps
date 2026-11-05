@@ -1,4 +1,5 @@
 import { Address, Keypair, Networks, hash, xdr } from '@stellar/stellar-sdk';
+import type { Mock } from 'vitest';
 
 import { KnownCaip2ChainId } from '../../api';
 import { buildAuthEntryPreimageXdr } from '../../api/__mocks__/xdr.fixtures';
@@ -16,7 +17,7 @@ import type { SignAuthEntryRequest } from './api';
 import { Sep43ErrorCode } from './exceptions';
 import { SignAuthEntryHandler } from './signAuthEntry';
 
-jest.mock('../../utils/logger');
+vi.mock('../../utils/logger');
 
 describe('SignAuthEntryHandler', () => {
   /**
@@ -29,7 +30,7 @@ describe('SignAuthEntryHandler', () => {
     handler: SignAuthEntryHandler;
     mockAccount: StellarKeyringAccount;
     wallet: Wallet;
-    renderConfirmationDialog: jest.Mock;
+    renderConfirmationDialog: Mock;
   } {
     const wallet = getTestWallet();
     const accountId = globalThis.crypto.randomUUID();
@@ -48,15 +49,15 @@ describe('SignAuthEntryHandler', () => {
       walletService,
     });
 
-    jest
-      .spyOn(AccountService.prototype, 'resolveAccount')
-      .mockResolvedValue({ account: mockAccount });
+    vi.spyOn(AccountService.prototype, 'resolveAccount').mockResolvedValue({
+      account: mockAccount,
+    });
 
-    jest
-      .spyOn(WalletService.prototype, 'resolveWallet')
-      .mockResolvedValue(wallet);
+    vi.spyOn(WalletService.prototype, 'resolveWallet').mockResolvedValue(
+      wallet,
+    );
 
-    const renderConfirmationDialog = jest.fn();
+    const renderConfirmationDialog = vi.fn();
     const confirmationUIController = {
       renderConfirmationDialog,
     } as Pick<

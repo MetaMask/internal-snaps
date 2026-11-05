@@ -1,5 +1,6 @@
 import type { UserInputEvent } from '@metamask/snaps-sdk';
 import { UserInputEventType } from '@metamask/snaps-sdk';
+import type { Mock } from 'vitest';
 
 import {
   ConfirmationContextRefresherKey,
@@ -14,14 +15,14 @@ import { renderConfirmationView } from '../render';
 import { MemoEditFormNames } from './constants';
 import { createEventHandlers } from './events';
 
-jest.mock('../render', () => ({
-  renderConfirmationView: jest.fn(() => 'RENDERED'),
+vi.mock('../render', () => ({
+  renderConfirmationView: vi.fn(() => 'RENDERED'),
 }));
 
-jest.mock('../../../../utils', () => ({
-  ...jest.requireActual('../../../../utils'),
-  getInterfaceContextIfExists: jest.fn().mockResolvedValue(null),
-  updateInterfaceIfExists: jest.fn().mockResolvedValue(true),
+vi.mock('../../../../utils', async () => ({
+  ...(await vi.importActual('../../../../utils')),
+  getInterfaceContextIfExists: vi.fn().mockResolvedValue(null),
+  updateInterfaceIfExists: vi.fn().mockResolvedValue(true),
 }));
 
 const formSubmitEvent = (memo: string): UserInputEvent => ({
@@ -60,21 +61,19 @@ const liveSendContext = {
 
 describe('MemoEdit event handlers', () => {
   const handlers = createEventHandlers();
-  let scheduleSpy: jest.SpiedFunction<
+  let scheduleSpy: Mock<
     typeof RefreshConfirmationContextHandler.scheduleBackgroundEvent
   >;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    scheduleSpy = jest
+    vi.clearAllMocks();
+    scheduleSpy = vi
       .spyOn(RefreshConfirmationContextHandler, 'scheduleBackgroundEvent')
       .mockResolvedValue('new-event-id');
-    jest.mocked(getInterfaceContextIfExists).mockResolvedValue(null);
-    jest
-      .mocked(renderConfirmationView)
-      .mockReturnValue(
-        'RENDERED' as unknown as ReturnType<typeof renderConfirmationView>,
-      );
+    vi.mocked(getInterfaceContextIfExists).mockResolvedValue(null);
+    vi.mocked(renderConfirmationView).mockReturnValue(
+      'RENDERED' as unknown as ReturnType<typeof renderConfirmationView>,
+    );
   });
 
   afterEach(() => {
@@ -120,7 +119,7 @@ describe('MemoEdit event handlers', () => {
 
   describe('Save', () => {
     it('restarts open-time enabled refresher keys using the latest event id', async () => {
-      jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
+      vi.mocked(getInterfaceContextIfExists).mockResolvedValue({
         ...liveSendContext,
         backgroundEventId: 'latest-event',
       });
@@ -158,7 +157,7 @@ describe('MemoEdit event handlers', () => {
 
     it('schedules only preference-enabled keys from the open-time snapshot', async () => {
       const transactionOnly = [ConfirmationContextRefresherKey.Transaction];
-      jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
+      vi.mocked(getInterfaceContextIfExists).mockResolvedValue({
         ...liveSendContext,
         transactionsFetchStatus: FetchStatus.Error,
         enabledRefresherKeys: transactionOnly,
@@ -202,7 +201,7 @@ describe('MemoEdit event handlers', () => {
     it('replaces the live event id during an in-flight tick so cron ownership aborts', async () => {
       // Click/open still see the in-flight tick id; Save must cancel that id and
       // persist a new one so the orphan tick observes ownership loss.
-      jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
+      vi.mocked(getInterfaceContextIfExists).mockResolvedValue({
         ...liveSendContext,
         scanFetchStatus: FetchStatus.Fetched,
         memoScreen: true,
@@ -237,7 +236,7 @@ describe('MemoEdit event handlers', () => {
     });
 
     it('restarts when clearing a memo so Confirm cannot stay enabled on stale success', async () => {
-      jest.mocked(getInterfaceContextIfExists).mockResolvedValue({
+      vi.mocked(getInterfaceContextIfExists).mockResolvedValue({
         ...liveSendContext,
         scanFetchStatus: FetchStatus.Fetched,
         memo: 'exchange-ref',
@@ -324,9 +323,7 @@ describe('MemoEdit event handlers', () => {
     });
 
     it('shows a save error when scheduling fails', async () => {
-      jest
-        .mocked(getInterfaceContextIfExists)
-        .mockResolvedValue(liveSendContext);
+      vi.mocked(getInterfaceContextIfExists).mockResolvedValue(liveSendContext);
       scheduleSpy.mockRejectedValueOnce(new Error('schedule failed'));
 
       await handlers[MemoEditFormNames.Form]?.({

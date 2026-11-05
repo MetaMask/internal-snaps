@@ -1,4 +1,5 @@
 import type { JsonRpcRequest } from '@metamask/utils';
+import type { Mock, MockInstance } from 'vitest';
 
 import { AccountService } from '../../services/account';
 import type { StellarKeyringAccount } from '../../services/account';
@@ -10,7 +11,7 @@ import { logger } from '../../utils/logger';
 import { ClientRequestMethod } from './api';
 import { SignProofOfOwnershipBatchHandler } from './signProofOfOwnershipBatch';
 
-jest.mock('../../utils/logger');
+vi.mock('../../utils/logger');
 
 describe('SignProofOfOwnershipBatchHandler', () => {
   const accountId1 = '11111111-1111-4111-8111-111111111111';
@@ -24,9 +25,9 @@ describe('SignProofOfOwnershipBatchHandler', () => {
     account2: StellarKeyringAccount;
     wallet1: ReturnType<typeof getTestWallet>;
     wallet2: ReturnType<typeof getTestWallet>;
-    findByIdsSpy: jest.SpyInstance;
-    getWalletResolverSpy: jest.SpyInstance;
-    walletResolver: jest.Mock;
+    findByIdsSpy: MockInstance;
+    getWalletResolverSpy: MockInstance;
+    walletResolver: Mock;
     buildProofMessage: (proofAddress: string, proofNonce?: string) => string;
     createRequest: (
       items: { accountId: string; message: string }[],
@@ -34,7 +35,7 @@ describe('SignProofOfOwnershipBatchHandler', () => {
   };
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   function setup(): SetupResult {
@@ -54,14 +55,14 @@ describe('SignProofOfOwnershipBatchHandler', () => {
     );
 
     const { accountService, walletService } = mockOnChainAccountService();
-    const findByIdsSpy = jest
+    const findByIdsSpy = vi
       .spyOn(AccountService.prototype, 'findByIds')
       .mockResolvedValue([account2, account1]);
-    const walletResolver = jest
+    const walletResolver = vi
       .fn()
       .mockResolvedValueOnce(wallet1)
       .mockResolvedValueOnce(wallet2);
-    const getWalletResolverSpy = jest
+    const getWalletResolverSpy = vi
       .spyOn(WalletService.prototype, 'getWalletResolver')
       .mockResolvedValue(walletResolver);
 

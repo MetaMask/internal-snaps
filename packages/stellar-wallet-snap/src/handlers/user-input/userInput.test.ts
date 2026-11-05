@@ -2,58 +2,65 @@ import { logger } from '../../utils/logger';
 import type { UserInputUiEventHandler } from './api';
 import { UserInputHandler } from './userInput';
 
-const mockEventHandler = jest.fn();
-
 type MockEventsModule = {
   createEventHandlers: () => Record<string, UserInputUiEventHandler>;
 };
 
-/**
- * Builds a mocked `events` module exposing the given UI event handlers.
- *
- * @param handlers - The UI event handlers keyed by event name.
- * @returns The mocked module.
- */
-function mockEventsModule(
-  handlers: Record<string, UserInputUiEventHandler> = {},
-): MockEventsModule {
-  return { createEventHandlers: (): typeof handlers => handlers };
-}
+const { mockEventHandler, mockEventsModule } = vi.hoisted(() => {
+  const eventHandler = vi.fn();
 
-jest.mock('../../utils/logger');
+  /**
+   * Builds a mocked `events` module exposing the given UI event handlers.
+   *
+   * @param handlers - The UI event handlers keyed by event name.
+   * @returns The mocked module.
+   */
+  function createMockEventsModule(
+    handlers: Record<string, UserInputUiEventHandler> = {},
+  ): MockEventsModule {
+    return { createEventHandlers: (): typeof handlers => handlers };
+  }
 
-jest.mock(
+  return {
+    mockEventHandler: eventHandler,
+    mockEventsModule: createMockEventsModule,
+  };
+});
+
+vi.mock('../../utils/logger');
+
+vi.mock(
   '../../ui/confirmation/views/ConfirmSignMessage/events',
   (): MockEventsModule =>
     mockEventsModule({
       testEvent: async (...args): Promise<void> => mockEventHandler(...args),
     }),
 );
-jest.mock(
+vi.mock(
   '../../ui/confirmation/views/ConfirmSendTransaction/events',
   (): MockEventsModule => mockEventsModule(),
 );
-jest.mock(
+vi.mock(
   '../../ui/confirmation/views/ConfirmSignAuthEntry/events',
   (): MockEventsModule => mockEventsModule(),
 );
-jest.mock(
+vi.mock(
   '../../ui/confirmation/views/ConfirmSignChangeTrustOptIn/events',
   (): MockEventsModule => mockEventsModule(),
 );
-jest.mock(
+vi.mock(
   '../../ui/confirmation/views/ConfirmSignChangeTrustOptOut/events',
   (): MockEventsModule => mockEventsModule(),
 );
-jest.mock(
+vi.mock(
   '../../ui/confirmation/views/ConfirmSignTransaction/events',
   (): MockEventsModule => mockEventsModule(),
 );
-jest.mock(
+vi.mock(
   '../../ui/confirmation/views/MaliciousAcknowledgement/events',
   (): MockEventsModule => mockEventsModule(),
 );
-jest.mock('../../ui/confirmation/views/MemoEdit/events', (): MockEventsModule =>
+vi.mock('../../ui/confirmation/views/MemoEdit/events', (): MockEventsModule =>
   mockEventsModule(),
 );
 

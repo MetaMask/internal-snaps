@@ -20,13 +20,13 @@ import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { createMockTransactionService } from '../transaction/__mocks__/transaction.fixtures';
 import { SynchronizeService } from './SynchronizeService';
 
-jest.mock('../../utils/logger');
-jest.mock('../../utils', () => ({
-  ...jest.requireActual('../../utils'),
-  scheduleBackgroundEvent: jest.fn().mockResolvedValue('scheduled'),
+vi.mock('../../utils/logger');
+vi.mock('../../utils', async () => ({
+  ...(await vi.importActual('../../utils')),
+  scheduleBackgroundEvent: vi.fn().mockResolvedValue('scheduled'),
 }));
 
-const scheduleBackgroundEventMock = jest.mocked(scheduleBackgroundEvent);
+const scheduleBackgroundEventMock = vi.mocked(scheduleBackgroundEvent);
 
 describe('SynchronizeService', () => {
   const scope = KnownCaip2ChainId.Mainnet;
@@ -58,10 +58,10 @@ describe('SynchronizeService', () => {
     const { transactionService } = createMockTransactionService();
     const { service: assetMetadataService } = createMockAssetMetadataService();
     const sep41Assets = getMockSep41Assets();
-    const synchronizeIfStaleSpy = jest
+    const synchronizeIfStaleSpy = vi
       .spyOn(assetMetadataService, 'synchronizeIfStale')
       .mockResolvedValue(undefined);
-    const getSep41AssetsSpy = jest
+    const getSep41AssetsSpy = vi
       .spyOn(assetMetadataService, 'getAssetsByScopeAndType')
       .mockResolvedValue(sep41Assets);
     const service = new SynchronizeService({
@@ -79,13 +79,13 @@ describe('SynchronizeService', () => {
       sep41Assets,
       synchronizeIfStaleSpy,
       getSep41AssetsSpy,
-      onChainSynchronizeSpy: jest
+      onChainSynchronizeSpy: vi
         .spyOn(onChainAccountService, 'synchronize')
         .mockResolvedValue(undefined),
-      transactionSynchronizeSpy: jest
+      transactionSynchronizeSpy: vi
         .spyOn(transactionService, 'synchronize')
         .mockResolvedValue(undefined),
-      resolveOnChainAccountSpy: jest.spyOn(
+      resolveOnChainAccountSpy: vi.spyOn(
         onChainAccountService,
         'resolveOnChainAccount',
       ),
@@ -499,7 +499,7 @@ describe('SynchronizeService', () => {
 
   it('delegates asset synchronization to AssetMetadataService', async () => {
     const { service, assetMetadataService } = setup();
-    const synchronizeSpy = jest
+    const synchronizeSpy = vi
       .spyOn(assetMetadataService, 'synchronize')
       .mockResolvedValue(undefined);
 
@@ -510,7 +510,7 @@ describe('SynchronizeService', () => {
 
   it('logs and does not throw when asset synchronization fails', async () => {
     const { service, assetMetadataService } = setup();
-    const synchronizeSpy = jest
+    const synchronizeSpy = vi
       .spyOn(assetMetadataService, 'synchronize')
       .mockRejectedValue(new Error('token api down'));
 

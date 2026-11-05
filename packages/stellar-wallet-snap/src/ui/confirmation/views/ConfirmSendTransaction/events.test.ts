@@ -4,9 +4,9 @@ import { UserInputEventType } from '@metamask/snaps-sdk';
 import { resolveInterface } from '../../../../utils';
 import { ConfirmSendTransactionFormNames, createEventHandlers } from './events';
 
-jest.mock('../../../../utils', () => ({
-  ...jest.requireActual('../../../../utils'),
-  resolveInterface: jest.fn(),
+vi.mock('../../../../utils', async () => ({
+  ...(await vi.importActual('../../../../utils')),
+  resolveInterface: vi.fn(),
 }));
 
 const buttonEvent = (name: string): UserInputEvent => ({
@@ -18,7 +18,7 @@ describe('ConfirmSendTransaction event handlers', () => {
   const handlers = createEventHandlers();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('resolves confirm with memo from context.memo', async () => {

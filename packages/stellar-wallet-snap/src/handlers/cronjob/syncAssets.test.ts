@@ -1,17 +1,19 @@
+import type { Mocked } from 'vitest';
+
 import { KnownCaip2ChainId } from '../../api';
 import type { SynchronizeService } from '../../services/sync/SynchronizeService';
 import { logger } from '../../utils/logger';
 import { BackgroundEventMethod } from './api';
 import { SyncAssetsHandler } from './syncAssets';
 
-jest.mock('../../utils/logger');
+vi.mock('../../utils/logger');
 
 describe('SyncAssetsHandler', () => {
   const setupTest = () => {
-    const synchronizeService: jest.Mocked<
+    const synchronizeService: Mocked<
       Pick<SynchronizeService, 'synchronizeAssets'>
     > = {
-      synchronizeAssets: jest.fn(),
+      synchronizeAssets: vi.fn(),
     };
 
     const handler = new SyncAssetsHandler({

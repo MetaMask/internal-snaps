@@ -14,7 +14,7 @@ import type { SignMessageRequest } from './api';
 import { Sep43ErrorCode } from './exceptions';
 import { SignMessageHandler } from './signMessage';
 
-jest.mock('../../utils/logger');
+vi.mock('../../utils/logger');
 
 describe('SignMessageHandler', () => {
   /**
@@ -41,15 +41,15 @@ describe('SignMessageHandler', () => {
       walletService,
     });
 
-    jest
-      .spyOn(AccountService.prototype, 'resolveAccount')
-      .mockResolvedValue({ account: mockAccount });
+    vi.spyOn(AccountService.prototype, 'resolveAccount').mockResolvedValue({
+      account: mockAccount,
+    });
 
-    jest
-      .spyOn(WalletService.prototype, 'resolveWallet')
-      .mockResolvedValue(wallet);
+    vi.spyOn(WalletService.prototype, 'resolveWallet').mockResolvedValue(
+      wallet,
+    );
 
-    const renderConfirmationDialog = jest.fn();
+    const renderConfirmationDialog = vi.fn();
     const confirmationUIController = {
       renderConfirmationDialog,
     } as Pick<

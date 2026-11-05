@@ -22,15 +22,15 @@ import type {
 import { ConfirmationContextRefresherKey } from './api';
 import { RefreshConfirmationContextHandler } from './handler';
 
-jest.mock('../../../utils/logger');
-jest.mock('../../../utils/snap', () => {
-  const actual = jest.requireActual('../../../utils/snap');
+vi.mock('../../../utils/logger');
+vi.mock('../../../utils/snap', async () => {
+  const actual = await vi.importActual('../../../utils/snap');
   return {
     ...actual,
-    getInterfaceContextIfExists: jest.fn(),
-    scheduleBackgroundEvent: jest.fn().mockResolvedValue('scheduled'),
-    cancelBackgroundEvent: jest.fn().mockResolvedValue(undefined),
-    cancelBackgroundEventIfExists: jest.fn().mockResolvedValue(undefined),
+    getInterfaceContextIfExists: vi.fn(),
+    scheduleBackgroundEvent: vi.fn().mockResolvedValue('scheduled'),
+    cancelBackgroundEvent: vi.fn().mockResolvedValue(undefined),
+    cancelBackgroundEventIfExists: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -38,10 +38,10 @@ describe('RefreshConfirmationContextHandler', () => {
   const baseContext = createConfirmationDataContext();
 
   beforeEach(() => {
-    jest.mocked(scheduleBackgroundEvent).mockClear();
-    jest.mocked(scheduleBackgroundEvent).mockResolvedValue('scheduled');
-    jest.mocked(cancelBackgroundEventIfExists).mockClear();
-    jest.mocked(getInterfaceContextIfExists).mockReset();
+    vi.mocked(scheduleBackgroundEvent).mockClear();
+    vi.mocked(scheduleBackgroundEvent).mockResolvedValue('scheduled');
+    vi.mocked(cancelBackgroundEventIfExists).mockClear();
+    vi.mocked(getInterfaceContextIfExists).mockReset();
   });
 
   function createMockRefresher(
@@ -50,16 +50,16 @@ describe('RefreshConfirmationContextHandler', () => {
   ): IConfirmationContextRefresher {
     return {
       key,
-      shouldFetch: jest.fn().mockReturnValue(true),
-      recoveryResult: jest.fn().mockReturnValue(null),
-      refresh: jest.fn().mockResolvedValue(null),
-      isValidContext: jest.fn().mockReturnValue(true),
+      shouldFetch: vi.fn().mockReturnValue(true),
+      recoveryResult: vi.fn().mockReturnValue(null),
+      refresh: vi.fn().mockResolvedValue(null),
+      isValidContext: vi.fn().mockReturnValue(true),
       ...overrides,
     };
   }
 
   function setup(refreshers: readonly IConfirmationContextRefresher[]) {
-    const updateConfirmation = jest.fn().mockResolvedValue(undefined);
+    const updateConfirmation = vi.fn().mockResolvedValue(undefined);
     const confirmationUIController = {
       updateConfirmation,
     } as unknown as ConfirmationUXController;
@@ -103,7 +103,7 @@ describe('RefreshConfirmationContextHandler', () => {
   });
 
   it('returns early when the interface no longer exists', async () => {
-    jest.mocked(getInterfaceContextIfExists).mockResolvedValue(null);
+    vi.mocked(getInterfaceContextIfExists).mockResolvedValue(null);
 
     const refresher = createMockRefresher(
       ConfirmationContextRefresherKey.Prices,
@@ -123,12 +123,12 @@ describe('RefreshConfirmationContextHandler', () => {
   });
 
   it('skips refresh when a refresher rejects the context shape', async () => {
-    jest.mocked(getInterfaceContextIfExists).mockResolvedValue(baseContext);
+    vi.mocked(getInterfaceContextIfExists).mockResolvedValue(baseContext);
 
     const refresher = createMockRefresher(
       ConfirmationContextRefresherKey.Prices,
       {
-        isValidContext: jest.fn().mockReturnValue(false),
+        isValidContext: vi.fn().mockReturnValue(false),
       },
     );
     const { handler, updateConfirmation } = setup([refresher]);
@@ -145,12 +145,12 @@ describe('RefreshConfirmationContextHandler', () => {
   });
 
   it('returns early when every refresher is idle', async () => {
-    jest.mocked(getInterfaceContextIfExists).mockResolvedValue(baseContext);
+    vi.mocked(getInterfaceContextIfExists).mockResolvedValue(baseContext);
 
     const refresher = createMockRefresher(
       ConfirmationContextRefresherKey.Prices,
       {
-        refresh: jest.fn().mockResolvedValue(null),
+        refresh: vi.fn().mockResolvedValue(null),
       },
     );
     const { handler, updateConfirmation } = setup([refresher]);
@@ -170,8 +170,7 @@ describe('RefreshConfirmationContextHandler', () => {
   });
 
   it('uses recoveryResult without calling refresh when shouldFetch is false', async () => {
-    jest
-      .mocked(getInterfaceContextIfExists)
+    vi.mocked(getInterfaceContextIfExists)
       .mockResolvedValueOnce(baseContext)
       .mockResolvedValueOnce(baseContext);
 
@@ -183,15 +182,15 @@ describe('RefreshConfirmationContextHandler', () => {
     const pricesRefresher = createMockRefresher(
       ConfirmationContextRefresherKey.Prices,
       {
-        shouldFetch: jest.fn().mockReturnValue(false),
-        recoveryResult: jest.fn().mockReturnValue(recoveryPatch),
+        shouldFetch: vi.fn().mockReturnValue(false),
+        recoveryResult: vi.fn().mockReturnValue(recoveryPatch),
       },
     );
     const scanRefresher = createMockRefresher(
       ConfirmationContextRefresherKey.Scan,
       {
-        shouldFetch: jest.fn().mockReturnValue(true),
-        refresh: jest.fn().mockResolvedValue(null),
+        shouldFetch: vi.fn().mockReturnValue(true),
+        refresh: vi.fn().mockResolvedValue(null),
       },
     );
 
@@ -232,8 +231,7 @@ describe('RefreshConfirmationContextHandler', () => {
     const latestContext = createConfirmationDataContext({
       tokenPricesFetchStatus: FetchStatus.Fetching,
     });
-    jest
-      .mocked(getInterfaceContextIfExists)
+    vi.mocked(getInterfaceContextIfExists)
       .mockResolvedValueOnce(baseContext)
       .mockResolvedValueOnce(latestContext);
 
@@ -248,7 +246,7 @@ describe('RefreshConfirmationContextHandler', () => {
     const refresher = createMockRefresher(
       ConfirmationContextRefresherKey.Prices,
       {
-        refresh: jest.fn().mockResolvedValue(patch),
+        refresh: vi.fn().mockResolvedValue(patch),
       },
     );
     const { handler, updateConfirmation } = setup([refresher]);
@@ -278,15 +276,14 @@ describe('RefreshConfirmationContextHandler', () => {
   });
 
   it('re-renders without rescheduling when no refresher requests it', async () => {
-    jest
-      .mocked(getInterfaceContextIfExists)
+    vi.mocked(getInterfaceContextIfExists)
       .mockResolvedValueOnce(baseContext)
       .mockResolvedValueOnce(baseContext);
 
     const refresher = createMockRefresher(
       ConfirmationContextRefresherKey.Prices,
       {
-        refresh: jest.fn().mockResolvedValue({
+        refresh: vi.fn().mockResolvedValue({
           result: { tokenPricesFetchStatus: FetchStatus.Error },
           reschedule: false,
         }),
@@ -306,22 +303,21 @@ describe('RefreshConfirmationContextHandler', () => {
   });
 
   it('applies patches from fulfilled refreshers when another rejects unexpectedly', async () => {
-    jest
-      .mocked(getInterfaceContextIfExists)
+    vi.mocked(getInterfaceContextIfExists)
       .mockResolvedValueOnce(baseContext)
       .mockResolvedValueOnce(baseContext);
 
     const successful = createMockRefresher(
       ConfirmationContextRefresherKey.Prices,
       {
-        refresh: jest.fn().mockResolvedValue({
+        refresh: vi.fn().mockResolvedValue({
           result: { tokenPricesFetchStatus: FetchStatus.Fetched },
           reschedule: false,
         }),
       },
     );
     const failing = createMockRefresher(ConfirmationContextRefresherKey.Scan, {
-      refresh: jest.fn().mockRejectedValue(new Error('unexpected')),
+      refresh: vi.fn().mockRejectedValue(new Error('unexpected')),
     });
 
     const { handler, updateConfirmation } = setup([successful, failing]);
@@ -349,15 +345,14 @@ describe('RefreshConfirmationContextHandler', () => {
   });
 
   it('runs the transaction refresher first and feeds its patch to the remaining refreshers', async () => {
-    jest
-      .mocked(getInterfaceContextIfExists)
+    vi.mocked(getInterfaceContextIfExists)
       .mockResolvedValueOnce(baseContext)
       .mockResolvedValueOnce(baseContext);
 
     const transactionRefresher = createMockRefresher(
       ConfirmationContextRefresherKey.Transaction,
       {
-        refresh: jest.fn().mockResolvedValue({
+        refresh: vi.fn().mockResolvedValue({
           result: { securityScanRequest: { transaction: 'FRESH_XDR' } },
           reschedule: true,
         }),
@@ -366,7 +361,7 @@ describe('RefreshConfirmationContextHandler', () => {
     const scanRefresher = createMockRefresher(
       ConfirmationContextRefresherKey.Scan,
       {
-        refresh: jest.fn().mockResolvedValue({
+        refresh: vi.fn().mockResolvedValue({
           result: { scanFetchStatus: FetchStatus.Fetched },
           reschedule: true,
         }),
@@ -413,12 +408,12 @@ describe('RefreshConfirmationContextHandler', () => {
   });
 
   it('does not run a refresher when its key is omitted from refresherKeys', async () => {
-    jest.mocked(getInterfaceContextIfExists).mockResolvedValue(baseContext);
+    vi.mocked(getInterfaceContextIfExists).mockResolvedValue(baseContext);
 
     const pricesRefresher = createMockRefresher(
       ConfirmationContextRefresherKey.Prices,
       {
-        refresh: jest.fn().mockResolvedValue({
+        refresh: vi.fn().mockResolvedValue({
           result: { tokenPricesFetchStatus: FetchStatus.Fetched },
           reschedule: false,
         }),
@@ -427,11 +422,11 @@ describe('RefreshConfirmationContextHandler', () => {
     const scanRefresher = createMockRefresher(
       ConfirmationContextRefresherKey.Scan,
       {
-        refresh: jest.fn().mockResolvedValue({
+        refresh: vi.fn().mockResolvedValue({
           result: { scanFetchStatus: FetchStatus.Fetched },
           reschedule: false,
         }),
-        isValidContext: jest.fn().mockReturnValue(false),
+        isValidContext: vi.fn().mockReturnValue(false),
       },
     );
 
@@ -457,15 +452,14 @@ describe('RefreshConfirmationContextHandler', () => {
   });
 
   it('skips the security scan and does not reschedule when a refresher pauses', async () => {
-    jest
-      .mocked(getInterfaceContextIfExists)
+    vi.mocked(getInterfaceContextIfExists)
       .mockResolvedValueOnce(baseContext)
       .mockResolvedValueOnce(baseContext);
 
     const transactionRefresher = createMockRefresher(
       ConfirmationContextRefresherKey.Transaction,
       {
-        refresh: jest.fn().mockResolvedValue({
+        refresh: vi.fn().mockResolvedValue({
           result: {
             transactionsFetchStatus: FetchStatus.Error,
             scanFetchStatus: FetchStatus.Error,
@@ -478,7 +472,7 @@ describe('RefreshConfirmationContextHandler', () => {
     const pricesRefresher = createMockRefresher(
       ConfirmationContextRefresherKey.Prices,
       {
-        refresh: jest.fn().mockResolvedValue({
+        refresh: vi.fn().mockResolvedValue({
           result: { tokenPricesFetchStatus: FetchStatus.Fetched },
           reschedule: true,
         }),
@@ -487,7 +481,7 @@ describe('RefreshConfirmationContextHandler', () => {
     const scanRefresher = createMockRefresher(
       ConfirmationContextRefresherKey.Scan,
       {
-        refresh: jest.fn().mockResolvedValue({
+        refresh: vi.fn().mockResolvedValue({
           result: { scanFetchStatus: FetchStatus.Fetched },
           reschedule: true,
         }),
@@ -540,15 +534,14 @@ describe('RefreshConfirmationContextHandler', () => {
         memo: 'exchange-ref',
         memoScreen: false,
       });
-      jest
-        .mocked(getInterfaceContextIfExists)
+      vi.mocked(getInterfaceContextIfExists)
         .mockResolvedValueOnce(startedContext)
         .mockResolvedValueOnce(afterSaveContext);
 
       const refresher = createMockRefresher(
         ConfirmationContextRefresherKey.Prices,
         {
-          refresh: jest.fn().mockResolvedValue({
+          refresh: vi.fn().mockResolvedValue({
             result: { tokenPricesFetchStatus: FetchStatus.Fetched },
             reschedule: true,
           }),
@@ -572,15 +565,14 @@ describe('RefreshConfirmationContextHandler', () => {
       const context = createConfirmationDataContext({
         backgroundEventId: 'same-chain-event',
       });
-      jest
-        .mocked(getInterfaceContextIfExists)
+      vi.mocked(getInterfaceContextIfExists)
         .mockResolvedValueOnce(context)
         .mockResolvedValueOnce(context);
 
       const refresher = createMockRefresher(
         ConfirmationContextRefresherKey.Prices,
         {
-          refresh: jest.fn().mockResolvedValue({
+          refresh: vi.fn().mockResolvedValue({
             result: { tokenPricesFetchStatus: FetchStatus.Fetched },
             reschedule: true,
           }),

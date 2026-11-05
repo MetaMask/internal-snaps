@@ -38,10 +38,10 @@ import { ClientRequestMethod } from './api';
 import type { SignAndSendTransactionJsonRpcRequest } from './api';
 import { SignAndSendTransactionHandler } from './signAndSendTransaction';
 
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: jest.fn(),
+vi.mock('@metamask/keyring-snap-sdk', () => ({
+  emitSnapKeyringEvent: vi.fn(),
 }));
-jest.mock('../../utils/logger');
+vi.mock('../../utils/logger');
 
 describe('SignAndSendTransactionHandler', () => {
   const accountId = '11111111-1111-4111-8111-111111111111';
@@ -50,7 +50,7 @@ describe('SignAndSendTransactionHandler', () => {
     '7d4b0c5ef7498b223f45a10f461060fb64f53eb13caf18e8dc7de95a8cf9c0e1';
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   function setup() {
@@ -88,19 +88,19 @@ describe('SignAndSendTransactionHandler', () => {
       onChainAccountService,
       walletService,
     });
-    const resolveAccountSpy = jest
+    const resolveAccountSpy = vi
       .spyOn(AccountService.prototype, 'resolveAccount')
       .mockResolvedValue({ account });
-    const resolveOnChainAccountSpy = jest
+    const resolveOnChainAccountSpy = vi
       .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
       .mockResolvedValue(onChainAccount);
-    const resolveWalletSpy = jest
+    const resolveWalletSpy = vi
       .spyOn(WalletService.prototype, 'resolveWallet')
       .mockResolvedValue(wallet);
 
     const { transactionService } = createMockTransactionService();
     const { service: assetMetadataService } = createMockAssetMetadataService();
-    const assetMetadataResolve = jest
+    const assetMetadataResolve = vi
       .spyOn(AssetMetadataService.prototype, 'resolve')
       .mockImplementation(async (assetId) => {
         const metadata = generateMockStellarAssetMetadata()[assetId];
@@ -109,22 +109,22 @@ describe('SignAndSendTransactionHandler', () => {
         }
         return metadata;
       });
-    const createValidatedSwapTransaction = jest
+    const createValidatedSwapTransaction = vi
       .spyOn(TransactionService.prototype, 'createValidatedSwapTransaction')
       .mockResolvedValue(transaction);
-    const sendTransaction = jest
+    const sendTransaction = vi
       .spyOn(TransactionService.prototype, 'sendTransaction')
       .mockResolvedValue(transactionId);
-    const savePendingKeyringTransaction = jest.spyOn(
+    const savePendingKeyringTransaction = vi.spyOn(
       TransactionService.prototype,
       'savePendingKeyringTransactionSafe',
     );
-    const scheduleBackgroundEvent = jest
+    const scheduleBackgroundEvent = vi
       .spyOn(TrackTransactionHandler, 'scheduleBackgroundEvent')
       .mockResolvedValue(undefined);
-    const signTransactionSpy = jest.spyOn(wallet, 'signTransaction');
+    const signTransactionSpy = vi.spyOn(wallet, 'signTransaction');
 
-    const trackTransactionSubmittedSpy = jest.fn().mockResolvedValue(undefined);
+    const trackTransactionSubmittedSpy = vi.fn().mockResolvedValue(undefined);
 
     const handler = new SignAndSendTransactionHandler({
       logger,

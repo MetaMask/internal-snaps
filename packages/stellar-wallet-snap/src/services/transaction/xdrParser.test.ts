@@ -141,7 +141,7 @@ describe('transaction-xdr-decoder', () => {
 
     it('returns undefined for credit asset when Asset.fromOperation fails', () => {
       const asset = new Asset('USDC', usdcIssuer).toXdrObject();
-      jest.spyOn(Asset, 'fromOperation').mockImplementation(() => {
+      vi.spyOn(Asset, 'fromOperation').mockImplementation(() => {
         throw new Error('Invalid asset type: assetTypePoolShare');
       });
 

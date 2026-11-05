@@ -7,14 +7,14 @@ import { renderConfirmationView } from '../render';
 import { MaliciousAcknowledgementFormNames } from './constants';
 import { createEventHandlers } from './events';
 
-jest.mock('../render', () => ({
-  renderConfirmationView: jest.fn(() => 'RENDERED'),
+vi.mock('../render', () => ({
+  renderConfirmationView: vi.fn(() => 'RENDERED'),
 }));
 
-jest.mock('../../../../utils', () => ({
-  ...jest.requireActual('../../../../utils'),
-  resolveInterface: jest.fn(),
-  updateInterfaceIfExists: jest.fn(),
+vi.mock('../../../../utils', async () => ({
+  ...(await vi.importActual('../../../../utils')),
+  resolveInterface: vi.fn(),
+  updateInterfaceIfExists: vi.fn(),
 }));
 
 const INTERFACE_ID = 'interface-id';
@@ -42,12 +42,10 @@ describe('malicious acknowledgement events', () => {
   const handlers = createEventHandlers();
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest
-      .mocked(renderConfirmationView)
-      .mockReturnValue(
-        'RENDERED' as unknown as ReturnType<typeof renderConfirmationView>,
-      );
+    vi.clearAllMocks();
+    vi.mocked(renderConfirmationView).mockReturnValue(
+      'RENDERED' as unknown as ReturnType<typeof renderConfirmationView>,
+    );
   });
 
   it('opens the acknowledgement screen on "Review alerts"', async () => {
