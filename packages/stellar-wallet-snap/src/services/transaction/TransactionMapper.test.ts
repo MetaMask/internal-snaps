@@ -52,7 +52,6 @@ import { Transaction } from './Transaction';
 import { TransactionMapper } from './TransactionMapper';
 import * as transactionUtils from './utils';
 
-
 function toHorizonTransaction(
   transaction: Transaction,
   overrides: Partial<Horizon.ServerApi.TransactionRecord> = {},

@@ -34,7 +34,6 @@ import type { ConfirmationContextRefreshResult } from './api';
 import { ConfirmationContextRefresherKey } from './api';
 import { ConfirmationTransactionRefresher } from './transactionRefresher';
 
-
 describe('ConfirmationTransactionRefresher', () => {
   const scope = KnownCaip2ChainId.Testnet;
   const accountId = '11111111-1111-4111-8111-111111111111';

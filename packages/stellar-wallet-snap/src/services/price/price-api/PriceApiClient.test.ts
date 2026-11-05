@@ -8,7 +8,6 @@ import {
 } from '../../../utils/errors';
 import { PriceApiClient } from './PriceApiClient';
 
-
 const jsonResponse = (
   body: unknown,
   init: { ok?: boolean; status?: number } = {},

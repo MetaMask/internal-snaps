@@ -10,10 +10,10 @@ import {
   getInterfaceContextIfExists,
   updateInterfaceIfExists,
 } from '../../../../utils';
+import * as SnapUtils from '../../../../utils/snap';
 import { ConfirmationInterfaceKey, FetchStatus } from '../../api';
 import { renderConfirmationView } from '../render';
 import * as ConfirmationRender from '../render';
-import * as SnapUtils from '../../../../utils/snap';
 import { MemoEditFormNames } from './constants';
 import { createEventHandlers } from './events';
 

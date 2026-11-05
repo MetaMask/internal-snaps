@@ -33,7 +33,6 @@ import { ClientRequestMethod } from './api';
 import type { ComputeFeeJsonRpcRequest } from './api';
 import { ComputeFeeHandler } from './computeFee';
 
-
 describe('ComputeFeeHandler', () => {
   const accountId = '11111111-1111-4111-8111-111111111111';
   const scope = KnownCaip2ChainId.Mainnet;

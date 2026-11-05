@@ -6,7 +6,6 @@ import { logger } from '../../utils/logger';
 import { BackgroundEventMethod } from './api';
 import { SyncAssetsHandler } from './syncAssets';
 
-
 describe('SyncAssetsHandler', () => {
   const setupTest = () => {
     const synchronizeService: Mocked<

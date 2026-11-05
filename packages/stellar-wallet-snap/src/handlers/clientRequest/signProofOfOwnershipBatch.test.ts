@@ -11,7 +11,6 @@ import { logger } from '../../utils/logger';
 import { ClientRequestMethod } from './api';
 import { SignProofOfOwnershipBatchHandler } from './signProofOfOwnershipBatch';
 
-
 describe('SignProofOfOwnershipBatchHandler', () => {
   const accountId1 = '11111111-1111-4111-8111-111111111111';
   const accountId2 = '22222222-2222-4222-8222-222222222222';

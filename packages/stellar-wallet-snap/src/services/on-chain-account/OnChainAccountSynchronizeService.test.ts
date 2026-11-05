@@ -72,7 +72,6 @@ const classicBalanceEntry = (
   },
 });
 
-
 /**
  * Simulates persisted `onChainAccounts` data the repository reads via `findByKeyringAccountIds`:
  * `latest` moves forward on each `saveSnapshot`; one find invocation can read a frozen post–first-save

@@ -12,7 +12,6 @@ import { logger } from '../../utils/logger';
 import { BackgroundEventMethod } from './api';
 import { SyncAccountsHandler } from './syncAccounts';
 
-
 describe('SyncAccountsHandler', () => {
   const mockEntropySourceId = 'entropy-source-1';
   const [firstAccount, secondAccount] = generateMockStellarKeyringAccounts(

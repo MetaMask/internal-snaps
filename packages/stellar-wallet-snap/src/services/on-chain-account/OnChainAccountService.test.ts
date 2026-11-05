@@ -39,7 +39,6 @@ import type { OnChainAccountSerializableFull } from './OnChainAccountSerializabl
 import { OnChainAccountService } from './OnChainAccountService';
 import { OnChainAccountSynchronizeService } from './OnChainAccountSynchronizeService';
 
-
 describe('OnChainAccountService', () => {
   const seed = hexToBytes(
     '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',

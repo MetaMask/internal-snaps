@@ -50,7 +50,6 @@ import {
 import { MultiCall } from './MultiCall';
 import { NetworkService } from './NetworkService';
 
-
 describe('NetworkService', () => {
   let networkService: NetworkService;
 

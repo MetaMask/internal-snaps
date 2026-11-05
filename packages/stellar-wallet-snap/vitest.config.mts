@@ -97,10 +97,7 @@ export default defineConfig({
       deps: {
         // Published ESM namespaces cannot be spied. Inlining makes Vitest
         // transform them so `vi.spyOn` can replace an export in place.
-        inline: [
-          '@metamask/keyring-snap-sdk',
-          '@metamask/keyring-snap-sdk/v2',
-        ],
+        inline: ['@metamask/keyring-snap-sdk', '@metamask/keyring-snap-sdk/v2'],
       },
     },
     include: ['src/**/*.{test,spec}.{ts,tsx}'],

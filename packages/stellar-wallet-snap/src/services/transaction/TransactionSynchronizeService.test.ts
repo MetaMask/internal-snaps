@@ -39,7 +39,6 @@ import { TransactionMapper } from './TransactionMapper';
 import { TransactionRepository } from './TransactionRepository';
 import { TransactionSynchronizeService } from './TransactionSynchronizeService';
 
-
 function buildOnChainPaymentTransaction(params: {
   sourceAddress: string;
   destinationAddress: string;

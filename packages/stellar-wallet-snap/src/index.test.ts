@@ -26,7 +26,6 @@ const {
   mockCronjobHandle: vi.fn(),
 }));
 
-
 vi.mock('./context', () => ({
   keyringHandler: {
     handle: async (...args: unknown[]): Promise<unknown> =>

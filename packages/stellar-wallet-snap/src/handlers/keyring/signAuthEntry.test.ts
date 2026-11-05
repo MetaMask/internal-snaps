@@ -17,7 +17,6 @@ import type { SignAuthEntryRequest } from './api';
 import { Sep43ErrorCode } from './exceptions';
 import { SignAuthEntryHandler } from './signAuthEntry';
 
-
 describe('SignAuthEntryHandler', () => {
   /**
    * Builds a {@link SignAuthEntryHandler} with mocked account / wallet

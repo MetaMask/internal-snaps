@@ -9,7 +9,6 @@ import {
 } from '../../../utils/errors';
 import { TokenApiClient } from './TokenApiClient';
 
-
 const baseUrl = 'https://tokens.test';
 
 const classicAssetId =

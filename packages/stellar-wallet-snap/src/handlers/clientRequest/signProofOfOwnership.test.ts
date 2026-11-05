@@ -11,7 +11,6 @@ import { AccountResolver } from '../accountResolver';
 import { ClientRequestMethod } from './api';
 import { SignProofOfOwnershipHandler } from './signProofOfOwnership';
 
-
 describe('SignProofOfOwnershipHandler', () => {
   const accountId = '11111111-1111-4111-8111-111111111111';
   const nonce = 'a1b2c3d4e5f6789012345678';

@@ -29,7 +29,6 @@ import {
 import type { StellarTransactionScanResponse } from './api';
 import { TransactionScanService } from './TransactionScanService';
 
-
 const FIXTURE_ACCOUNT_ADDRESS =
   'GA7UCNSASSOPQYTRGJ2NC7TDBSXHMWK6JHS7AO6X2ZQAIQSTB5ELNFSO';
 const USDC_ISSUER = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';

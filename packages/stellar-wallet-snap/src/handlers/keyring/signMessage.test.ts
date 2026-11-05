@@ -14,7 +14,6 @@ import type { SignMessageRequest } from './api';
 import { Sep43ErrorCode } from './exceptions';
 import { SignMessageHandler } from './signMessage';
 
-
 describe('SignMessageHandler', () => {
   /**
    * Builds a {@link SignMessageHandler} with mocked account / wallet

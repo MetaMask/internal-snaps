@@ -46,7 +46,6 @@ import {
 import { KeyringTransactionType } from './KeyringTransactionBuilder';
 import { TransactionBuilder } from './TransactionBuilder';
 
-
 /**
  * Horizon account response fixture with optional SEP-29 `data_attr`.
  *
