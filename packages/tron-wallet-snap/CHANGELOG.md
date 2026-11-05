@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Align transaction security warning copy and scan-loading behavior with user preferences. ([#557](https://github.com/MetaMask/internal-snaps/pull/557))
+- Remove the TronWeb self-send validation patch while keeping the `HttpProvider` trailing-slash fix required by Infura URLs. Tron rejects self-transfers of TRX and TRC-10 at the node, so the patch only bypassed TronWeb's client-side validation and made self-sends fail later with a generic transaction error. ([#560](https://github.com/MetaMask/internal-snaps/pull/560))
 
 ## [4.3.1]
 
