@@ -207,7 +207,7 @@ module.exports = defineConfig({
           expectWorkspaceFieldRegex(
             workspace,
             'scripts.test',
-            /vitest run --coverage --reporter=dot && yarn coverage:ratchet$/u,
+            /vitest run --coverage --reporter=dot --silent && yarn coverage:ratchet$/u,
           );
           expectWorkspaceFieldRegex(
             workspace,
@@ -222,7 +222,7 @@ module.exports = defineConfig({
           expectWorkspaceFieldRegex(
             workspace,
             'scripts.test:watch',
-            /vitest --coverage$/u,
+            /vitest --coverage --silent$/u,
           );
         } else {
           // All non-root packages must run Jest with the silent reporter. Extra

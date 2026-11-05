@@ -14,7 +14,7 @@ delete globalThis.Response;
 // @ts-expect-error isomorphic-fetch ships without type declarations.
 await import('isomorphic-fetch');
 
-config();
+config({ quiet: true });
 
 // Set default environment for tests if not already set
 // eslint-disable-next-line no-restricted-globals

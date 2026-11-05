@@ -41,11 +41,11 @@
     "publish:preview": "yarn npm publish --tag preview",
     "serve": "mm-snap serve",
     "start": "node scripts/update-manifest-local.js && concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
-    "test": "vitest run --coverage --reporter=dot && yarn coverage:ratchet",
+    "test": "vitest run --coverage --reporter=dot --silent && yarn coverage:ratchet",
     "coverage:ratchet": "[ -n \"$CI\" ] || node ./scripts/coverage-ratchet.mjs",
     "test:clean": "rimraf node_modules/.vite node_modules/.vitest",
     "test:verbose": "vitest run --coverage --reporter=verbose",
-    "test:watch": "vitest --coverage"
+    "test:watch": "vitest --coverage --silent"
   },
   "devDependencies": {
     "@metamask/assets-controller": "^19.1.0",
