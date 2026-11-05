@@ -83,26 +83,28 @@ export default defineConfig({
     },
   },
   test: {
+    // Performance: no DOM. jsdom/happy-dom would build a window this suite never uses.
     environment: 'node',
     globals: true,
-    // Node has no DOM to rebuild per file. Sharing the module graph across
-    // files in a worker is the fast path; `threads` keeps that state in one
-    // heap instead of a child process per worker. `vitest doctor` measured
-    // this pool as the fastest it compares, with 4 workers slightly ahead
-    // of the default.
+    // Performance: one heap per worker. `forks` starts a child process per worker.
     pool: 'threads',
+    // Performance: reuse the module graph across files. Isolation re-imports
+    // every dependency per file, which was most of the runtime.
     isolate: false,
+    // Performance: `vitest doctor` measured 4 workers fastest. Extra workers
+    // queue transforms on the single Vite server and get slower.
     maxWorkers: 4,
     server: {
       deps: {
-        // Published ESM namespaces cannot be spied. Inlining makes Vitest
-        // transform them so `vi.spyOn` can replace an export in place.
+        // With `isolate: false`, the first import of this package is reused.
+        // A later file's `vi.mock` would not replace it, so tests use `vi.spyOn`.
+        // Spying the published ESM fails unless Vitest inlines and transforms it.
         inline: ['@metamask/keyring-snap-sdk', '@metamask/keyring-snap-sdk/v2'],
       },
     },
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     setupFiles: [
-      resolve(packageRoot, 'jest.setup.ts'),
+      resolve(packageRoot, 'vitest.setup.ts'),
       resolve(repoRoot, 'tests/setupAfterEnv/index.ts'),
     ],
     // Same lifecycle as `resetMocks` / `restoreMocks` in `jest.config.packages.js`.
