@@ -571,7 +571,7 @@ describe('OnAmountInputJsonRpcRequestStruct', () => {
           ...baseWireRequest.params,
           assetId: slip44AssetId,
           value: '1.0000001',
-          to: stellarAddress,
+          toAddress: stellarAddress,
         },
       },
       expectedScope: 'stellar:pubnet',
