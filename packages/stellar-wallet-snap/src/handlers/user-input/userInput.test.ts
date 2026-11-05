@@ -1,74 +1,21 @@
+import * as SignMessageEvents from '../../ui/confirmation/views/ConfirmSignMessage/events';
 import { logger } from '../../utils/logger';
-import type { UserInputUiEventHandler } from './api';
 import { UserInputHandler } from './userInput';
 
-type MockEventsModule = {
-  createEventHandlers: () => Record<string, UserInputUiEventHandler>;
-};
-
-const { mockEventHandler, mockEventsModule } = vi.hoisted(() => {
-  const eventHandler = vi.fn();
-
-  /**
-   * Builds a mocked `events` module exposing the given UI event handlers.
-   *
-   * @param handlers - The UI event handlers keyed by event name.
-   * @returns The mocked module.
-   */
-  function createMockEventsModule(
-    handlers: Record<string, UserInputUiEventHandler> = {},
-  ): MockEventsModule {
-    return { createEventHandlers: (): typeof handlers => handlers };
-  }
-
-  return {
-    mockEventHandler: eventHandler,
-    mockEventsModule: createMockEventsModule,
-  };
-});
-
-vi.mock('../../utils/logger');
-
-vi.mock(
-  '../../ui/confirmation/views/ConfirmSignMessage/events',
-  (): MockEventsModule =>
-    mockEventsModule({
-      testEvent: async (...args): Promise<void> => mockEventHandler(...args),
-    }),
-);
-vi.mock(
-  '../../ui/confirmation/views/ConfirmSendTransaction/events',
-  (): MockEventsModule => mockEventsModule(),
-);
-vi.mock(
-  '../../ui/confirmation/views/ConfirmSignAuthEntry/events',
-  (): MockEventsModule => mockEventsModule(),
-);
-vi.mock(
-  '../../ui/confirmation/views/ConfirmSignChangeTrustOptIn/events',
-  (): MockEventsModule => mockEventsModule(),
-);
-vi.mock(
-  '../../ui/confirmation/views/ConfirmSignChangeTrustOptOut/events',
-  (): MockEventsModule => mockEventsModule(),
-);
-vi.mock(
-  '../../ui/confirmation/views/ConfirmSignTransaction/events',
-  (): MockEventsModule => mockEventsModule(),
-);
-vi.mock(
-  '../../ui/confirmation/views/MaliciousAcknowledgement/events',
-  (): MockEventsModule => mockEventsModule(),
-);
-vi.mock('../../ui/confirmation/views/MemoEdit/events', (): MockEventsModule =>
-  mockEventsModule(),
-);
+const { mockEventHandler } = vi.hoisted(() => ({
+  mockEventHandler: vi.fn(),
+}));
 
 describe('UserInputHandler', () => {
   const handler = new UserInputHandler({ logger });
 
   beforeEach(() => {
     mockEventHandler.mockReset().mockResolvedValue(undefined);
+    vi.spyOn(SignMessageEvents, 'createEventHandlers').mockReturnValue({
+      testEvent: async (...args): Promise<void> => {
+        await mockEventHandler(...args);
+      },
+    });
   });
 
   it('routes the event to the handler matching its name', async () => {

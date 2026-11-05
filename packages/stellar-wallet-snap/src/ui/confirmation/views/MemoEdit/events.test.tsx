@@ -12,18 +12,10 @@ import {
 } from '../../../../utils';
 import { ConfirmationInterfaceKey, FetchStatus } from '../../api';
 import { renderConfirmationView } from '../render';
+import * as ConfirmationRender from '../render';
+import * as SnapUtils from '../../../../utils/snap';
 import { MemoEditFormNames } from './constants';
 import { createEventHandlers } from './events';
-
-vi.mock('../render', () => ({
-  renderConfirmationView: vi.fn(() => 'RENDERED'),
-}));
-
-vi.mock('../../../../utils', async () => ({
-  ...(await vi.importActual('../../../../utils')),
-  getInterfaceContextIfExists: vi.fn().mockResolvedValue(null),
-  updateInterfaceIfExists: vi.fn().mockResolvedValue(true),
-}));
 
 const formSubmitEvent = (memo: string): UserInputEvent => ({
   type: UserInputEventType.FormSubmitEvent,
@@ -66,6 +58,11 @@ describe('MemoEdit event handlers', () => {
   >;
 
   beforeEach(() => {
+    vi.spyOn(SnapUtils, 'getInterfaceContextIfExists').mockResolvedValue(null);
+    vi.spyOn(SnapUtils, 'updateInterfaceIfExists').mockResolvedValue(true);
+    vi.spyOn(ConfirmationRender, 'renderConfirmationView').mockReturnValue(
+      'RENDERED' as unknown as ReturnType<typeof renderConfirmationView>,
+    );
     vi.clearAllMocks();
     scheduleSpy = vi
       .spyOn(RefreshConfirmationContextHandler, 'scheduleBackgroundEvent')

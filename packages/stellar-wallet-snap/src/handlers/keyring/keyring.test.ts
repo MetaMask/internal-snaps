@@ -1,9 +1,11 @@
 import { AccountCreationType } from '@metamask/keyring-api';
+import * as KeyringSnapSdkV2 from '@metamask/keyring-snap-sdk/v2';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
 import {
   DEFAULT_METAMASK_ORIGIN,
   asStrictKeyringAccount,
 } from '@metamask/snap-networks-utils';
+import * as SnapNetworksUtils from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import { create } from '@metamask/superstruct';
@@ -45,6 +47,7 @@ import {
   getDefaultEntropySource,
   Duration,
 } from '../../utils';
+import * as Utils from '../../utils';
 import { bufferToUint8Array } from '../../utils/buffer';
 import { logger } from '../../utils/logger';
 import { SyncAccountsHandler } from '../cronjob/syncAccounts';
@@ -57,16 +60,6 @@ import {
 import type { IKeyringRequestHandler } from './base';
 import { ExportAccountException } from './exceptions';
 import { KeyringHandler } from './keyring';
-
-vi.mock('../../utils/logger');
-vi.mock('../../utils/snap');
-vi.mock('@metamask/snap-networks-utils', async () => ({
-  ...(await vi.importActual('@metamask/snap-networks-utils')),
-  validateOrigin: vi.fn(),
-}));
-vi.mock('@metamask/keyring-snap-sdk/v2', () => ({
-  handleKeyringRequest: vi.fn(),
-}));
 
 describe('KeyringHandler', () => {
   const entropySourceId = 'entropy-source-1';
@@ -110,6 +103,17 @@ describe('KeyringHandler', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Spies, not `vi.mock`: those modules are already loaded by other files
+    // when workers share a module graph.
+    vi.spyOn(KeyringSnapSdkV2, 'handleKeyringRequest').mockResolvedValue(
+      undefined,
+    );
+    vi.spyOn(SnapNetworksUtils, 'validateOrigin').mockImplementation(
+      () => undefined,
+    );
+    vi.spyOn(Utils, 'getDefaultEntropySource').mockResolvedValue(
+      entropySourceId,
+    );
     vi.mocked(getDefaultEntropySource).mockResolvedValue(entropySourceId);
 
     mockSignMessageHandler = { handle: vi.fn() };

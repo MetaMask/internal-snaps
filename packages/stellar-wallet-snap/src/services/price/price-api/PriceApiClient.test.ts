@@ -8,7 +8,6 @@ import {
 } from '../../../utils/errors';
 import { PriceApiClient } from './PriceApiClient';
 
-vi.mock('../../../utils/logger');
 
 const jsonResponse = (
   body: unknown,

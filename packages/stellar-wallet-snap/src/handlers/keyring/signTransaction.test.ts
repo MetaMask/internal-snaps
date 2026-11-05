@@ -18,7 +18,6 @@ import type { SignTransactionRequest } from './api';
 import { Sep43ErrorCode } from './exceptions';
 import { SignTransactionHandler } from './signTransaction';
 
-vi.mock('../../utils/logger');
 
 describe('SignTransactionHandler', () => {
   /**

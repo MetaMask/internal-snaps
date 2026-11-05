@@ -2,12 +2,8 @@ import type { UserInputEvent } from '@metamask/snaps-sdk';
 import { UserInputEventType } from '@metamask/snaps-sdk';
 
 import { resolveInterface } from '../../../../utils';
+import * as SnapUtils from '../../../../utils/snap';
 import { ConfirmSendTransactionFormNames, createEventHandlers } from './events';
-
-vi.mock('../../../../utils', async () => ({
-  ...(await vi.importActual('../../../../utils')),
-  resolveInterface: vi.fn(),
-}));
 
 const buttonEvent = (name: string): UserInputEvent => ({
   type: UserInputEventType.ButtonClickEvent,
@@ -18,6 +14,7 @@ describe('ConfirmSendTransaction event handlers', () => {
   const handlers = createEventHandlers();
 
   beforeEach(() => {
+    vi.spyOn(SnapUtils, 'resolveInterface').mockResolvedValue(null);
     vi.clearAllMocks();
   });
 

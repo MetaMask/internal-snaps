@@ -33,7 +33,6 @@ import { ClientRequestMethod } from './api';
 import type { ComputeFeeJsonRpcRequest } from './api';
 import { ComputeFeeHandler } from './computeFee';
 
-vi.mock('../../utils/logger');
 
 describe('ComputeFeeHandler', () => {
   const accountId = '11111111-1111-4111-8111-111111111111';

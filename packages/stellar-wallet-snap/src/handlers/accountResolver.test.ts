@@ -28,7 +28,6 @@ import {
   ResolveAccountSource,
 } from './accountResolver';
 
-vi.mock('../utils/logger');
 
 describe('AccountResolver', () => {
   const keyringAccountId = '22222222-2222-4222-8222-222222222222';

@@ -7,7 +7,6 @@ import { logger } from '../../../utils/logger';
 import { createConfirmationDataContext } from './__fixtures__/context.fixtures';
 import { ConfirmationPriceRefresher } from './priceRefresher';
 
-vi.mock('../../../utils/logger');
 
 describe('ConfirmationPriceRefresher', () => {
   const scope = KnownCaip2ChainId.Testnet;

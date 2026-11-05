@@ -12,8 +12,6 @@ import { logger } from '../../utils/logger';
 import { BackgroundEventMethod } from './api';
 import { SyncAccountsHandler } from './syncAccounts';
 
-vi.mock('../../utils/logger');
-vi.mock('../../utils/snap');
 
 describe('SyncAccountsHandler', () => {
   const mockEntropySourceId = 'entropy-source-1';

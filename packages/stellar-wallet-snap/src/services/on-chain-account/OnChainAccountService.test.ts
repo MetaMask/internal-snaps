@@ -39,8 +39,6 @@ import type { OnChainAccountSerializableFull } from './OnChainAccountSerializabl
 import { OnChainAccountService } from './OnChainAccountService';
 import { OnChainAccountSynchronizeService } from './OnChainAccountSynchronizeService';
 
-vi.mock('../../utils/logger');
-vi.mock('../../utils/snap');
 
 describe('OnChainAccountService', () => {
   const seed = hexToBytes(

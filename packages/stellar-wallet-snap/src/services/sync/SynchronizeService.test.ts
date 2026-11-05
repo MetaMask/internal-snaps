@@ -2,6 +2,7 @@ import { AssetType, KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
 import { BackgroundEventMethod } from '../../handlers/cronjob/api';
 import { Duration, scheduleBackgroundEvent } from '../../utils';
+import * as Utils from '../../utils';
 import { logger } from '../../utils/logger';
 import type { StellarKeyringAccount } from '../account';
 import { generateMockStellarKeyringAccounts } from '../account/__mocks__/account.fixtures';
@@ -20,19 +21,11 @@ import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { createMockTransactionService } from '../transaction/__mocks__/transaction.fixtures';
 import { SynchronizeService } from './SynchronizeService';
 
-vi.mock('../../utils/logger');
-vi.mock('../../utils', async () => ({
-  ...(await vi.importActual('../../utils')),
-  scheduleBackgroundEvent: vi.fn().mockResolvedValue('scheduled'),
-}));
-
-const scheduleBackgroundEventMock = vi.mocked(scheduleBackgroundEvent);
-
 describe('SynchronizeService', () => {
   const scope = KnownCaip2ChainId.Mainnet;
 
   beforeEach(() => {
-    scheduleBackgroundEventMock.mockClear();
+    vi.spyOn(Utils, 'scheduleBackgroundEvent').mockResolvedValue('scheduled');
   });
 
   const buildOnChainAccount = (
@@ -361,7 +354,7 @@ describe('SynchronizeService', () => {
     expect(getSep41AssetsSpy).toHaveBeenCalledTimes(1);
     expect(onChainSynchronizeSpy).not.toHaveBeenCalled();
     expect(transactionSynchronizeSpy).not.toHaveBeenCalled();
-    expect(scheduleBackgroundEventMock).not.toHaveBeenCalled();
+    expect(vi.mocked(scheduleBackgroundEvent)).not.toHaveBeenCalled();
 
     releaseFirstSync();
     await firstSync;
@@ -409,7 +402,7 @@ describe('SynchronizeService', () => {
     expect(getSep41AssetsSpy).toHaveBeenCalledTimes(1);
     expect(onChainSynchronizeSpy).not.toHaveBeenCalled();
     expect(transactionSynchronizeSpy).not.toHaveBeenCalled();
-    expect(scheduleBackgroundEventMock).toHaveBeenCalledWith({
+    expect(vi.mocked(scheduleBackgroundEvent)).toHaveBeenCalledWith({
       method: BackgroundEventMethod.SynchronizeAccounts,
       params: { accountIds: [secondAccount.id] },
       duration: Duration.TwoSeconds,
@@ -457,7 +450,7 @@ describe('SynchronizeService', () => {
 
     expect(synchronizeIfStaleSpy).toHaveBeenCalledTimes(1);
     expect(getSep41AssetsSpy).toHaveBeenCalledTimes(1);
-    expect(scheduleBackgroundEventMock).toHaveBeenCalledWith({
+    expect(vi.mocked(scheduleBackgroundEvent)).toHaveBeenCalledWith({
       method: BackgroundEventMethod.SynchronizeAccounts,
       params: { accountIds: [secondAccount.id] },
       duration: Duration.TwoSeconds,
@@ -494,7 +487,7 @@ describe('SynchronizeService', () => {
       scope,
       sep41Assets,
     );
-    expect(scheduleBackgroundEventMock).not.toHaveBeenCalled();
+    expect(vi.mocked(scheduleBackgroundEvent)).not.toHaveBeenCalled();
   });
 
   it('delegates asset synchronization to AssetMetadataService', async () => {

@@ -1,5 +1,6 @@
 import { TransactionType } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { Networks } from '@stellar/stellar-sdk';
@@ -55,16 +56,15 @@ import { ClientRequestMethod, ChangeTrustOptAction } from './api';
 import type { ChangeTrustOptJsonRpcRequest } from './api';
 import { ChangeTrustOptHandler } from './changeTrustOpt';
 
-vi.mock('../../utils/logger');
-vi.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: vi.fn(),
-}));
 vi.mock('../../ui/confirmation/views/AccountActivationPrompt/render', () => ({
   render: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe('ChangeTrustOptHandler', () => {
   beforeEach(() => {
+    vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
+      undefined,
+    );
     vi.mocked(emitSnapKeyringEvent).mockReset();
     vi.mocked(emitSnapKeyringEvent).mockResolvedValue(undefined);
     vi.spyOn(

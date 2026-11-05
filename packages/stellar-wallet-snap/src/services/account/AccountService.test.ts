@@ -3,6 +3,7 @@ import type { Mock } from 'vitest';
 import { KnownCaip2ChainId } from '../../api';
 import { mockBip32Node } from '../../utils/__mocks__/fixtures';
 import { getBip32Entropy, getDefaultEntropySource } from '../../utils/snap';
+import * as SnapUtils from '../../utils/snap';
 import { WalletService } from '../wallet';
 import type { Wallet } from '../wallet/Wallet';
 import {
@@ -17,14 +18,13 @@ import {
   DerivedAccountAddressMismatchException,
 } from './exceptions';
 
-vi.mock('../../utils/logger');
-vi.mock('../../utils/snap');
-
 describe('AccountService', () => {
   let accountService: AccountService;
 
   beforeEach(() => {
     // Mock the entropy source to let the wallet service derive the address
+    vi.spyOn(SnapUtils, 'getBip32Entropy').mockResolvedValue(mockBip32Node);
+    vi.spyOn(SnapUtils, 'getDefaultEntropySource');
     vi.mocked(getBip32Entropy).mockResolvedValue(mockBip32Node);
     accountService = mockAccountService().accountService;
   });

@@ -18,24 +18,12 @@ import { SynchronizeService } from '../../services/sync/SynchronizeService';
 import { buildMockClassicTransaction } from '../../services/transaction/__mocks__/transaction.fixtures';
 import { Transaction } from '../../services/transaction/Transaction';
 import { trackError } from '../../utils/errors';
+import * as Errors from '../../utils/errors';
 import { logger, noOpLogger } from '../../utils/logger';
 import { Duration, scheduleBackgroundEvent } from '../../utils/snap';
+import * as SnapUtils from '../../utils/snap';
 import { BackgroundEventMethod } from './api';
 import { TrackTransactionHandler } from './trackTransaction';
-
-vi.mock('../../utils/logger');
-vi.mock('../../utils/snap', async () => {
-  const actual = await vi.importActual('../../utils/snap');
-  return {
-    ...actual,
-    scheduleBackgroundEvent: vi.fn().mockResolvedValue('scheduled'),
-    getClientStatus: vi.fn().mockResolvedValue({ active: true, locked: false }),
-  };
-});
-vi.mock('../../utils/errors', async () => ({
-  ...(await vi.importActual('../../utils/errors')),
-  trackError: vi.fn().mockResolvedValue(undefined),
-}));
 
 describe('TrackTransactionHandler', () => {
   const txId =
@@ -47,6 +35,14 @@ describe('TrackTransactionHandler', () => {
   const trackTransactionFinalized = vi.fn().mockResolvedValue(undefined);
 
   beforeEach(() => {
+    vi.spyOn(SnapUtils, 'scheduleBackgroundEvent').mockResolvedValue(
+      'scheduled',
+    );
+    vi.spyOn(SnapUtils, 'getClientStatus').mockResolvedValue({
+      active: true,
+      locked: false,
+    } as Awaited<ReturnType<typeof SnapUtils.getClientStatus>>);
+    vi.spyOn(Errors, 'trackError').mockResolvedValue(undefined);
     vi.mocked(scheduleBackgroundEvent).mockClear();
     vi.mocked(scheduleBackgroundEvent).mockResolvedValue('scheduled');
     vi.mocked(trackError).mockClear();

@@ -11,7 +11,6 @@ import { AccountResolver } from '../accountResolver';
 import { ClientRequestMethod } from './api';
 import { SignProofOfOwnershipHandler } from './signProofOfOwnership';
 
-vi.mock('../../utils/logger');
 
 describe('SignProofOfOwnershipHandler', () => {
   const accountId = '11111111-1111-4111-8111-111111111111';

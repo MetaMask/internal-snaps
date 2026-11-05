@@ -11,7 +11,6 @@ import { logger } from '../../utils/logger';
 import { ClientRequestMethod } from './api';
 import { SignProofOfOwnershipBatchHandler } from './signProofOfOwnershipBatch';
 
-vi.mock('../../utils/logger');
 
 describe('SignProofOfOwnershipBatchHandler', () => {
   const accountId1 = '11111111-1111-4111-8111-111111111111';

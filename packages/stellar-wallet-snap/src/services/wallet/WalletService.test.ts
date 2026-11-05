@@ -6,6 +6,7 @@ import { mockBip32Node } from '../../utils/__mocks__/fixtures';
 import { bufferToUint8Array } from '../../utils/buffer';
 import { StellarSnapException } from '../../utils/errors';
 import { getBip32Entropy } from '../../utils/snap';
+import * as SnapUtils from '../../utils/snap';
 import { generateStellarKeyringAccount } from '../account/__mocks__/account.fixtures';
 import { DerivedAccountAddressMismatchException } from '../account/exceptions';
 import {
@@ -14,8 +15,6 @@ import {
 } from './__mocks__/wallet.fixtures';
 import { KeyDerivationException } from './exceptions';
 import { WalletService } from './WalletService';
-
-vi.mock('../../utils/snap');
 
 describe('WalletService', () => {
   afterEach(() => {
@@ -30,6 +29,7 @@ describe('WalletService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(SnapUtils, 'getBip32Entropy').mockResolvedValue(mockBip32Node);
     vi.mocked(getBip32Entropy).mockResolvedValue(mockBip32Node);
     walletService = new WalletService();
   });

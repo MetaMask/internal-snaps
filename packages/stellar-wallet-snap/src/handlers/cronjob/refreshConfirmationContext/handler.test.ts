@@ -10,6 +10,7 @@ import {
   scheduleBackgroundEvent,
   cancelBackgroundEventIfExists,
 } from '../../../utils/snap';
+import * as SnapUtils from '../../../utils/snap';
 import { BackgroundEventMethod } from '../api';
 import {
   confirmationContextRequestParams,
@@ -22,22 +23,18 @@ import type {
 import { ConfirmationContextRefresherKey } from './api';
 import { RefreshConfirmationContextHandler } from './handler';
 
-vi.mock('../../../utils/logger');
-vi.mock('../../../utils/snap', async () => {
-  const actual = await vi.importActual('../../../utils/snap');
-  return {
-    ...actual,
-    getInterfaceContextIfExists: vi.fn(),
-    scheduleBackgroundEvent: vi.fn().mockResolvedValue('scheduled'),
-    cancelBackgroundEvent: vi.fn().mockResolvedValue(undefined),
-    cancelBackgroundEventIfExists: vi.fn().mockResolvedValue(undefined),
-  };
-});
-
 describe('RefreshConfirmationContextHandler', () => {
   const baseContext = createConfirmationDataContext();
 
   beforeEach(() => {
+    vi.spyOn(SnapUtils, 'scheduleBackgroundEvent').mockResolvedValue(
+      'scheduled',
+    );
+    vi.spyOn(SnapUtils, 'cancelBackgroundEvent').mockResolvedValue(undefined);
+    vi.spyOn(SnapUtils, 'cancelBackgroundEventIfExists').mockResolvedValue(
+      undefined,
+    );
+    vi.spyOn(SnapUtils, 'getInterfaceContextIfExists');
     vi.mocked(scheduleBackgroundEvent).mockClear();
     vi.mocked(scheduleBackgroundEvent).mockResolvedValue('scheduled');
     vi.mocked(cancelBackgroundEventIfExists).mockClear();

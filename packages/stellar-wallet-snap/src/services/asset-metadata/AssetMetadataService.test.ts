@@ -1,11 +1,12 @@
 import { buildUrl } from '@metamask/snap-networks-utils';
-import type { Mock, MockedFunction } from 'vitest';
+import type { MockedFunction } from 'vitest';
 
 import type {
   KnownCaip19ClassicAssetId,
   KnownCaip19Sep41AssetId,
 } from '../../api';
 import { AssetType, KnownCaip2ChainId } from '../../api';
+import { AppConfig } from '../../config';
 import { getSlip44AssetId, logger } from '../../utils';
 import { createMockAssetsService } from '../assets/__mocks__/assetsService.fixtures';
 import { TESTNET_SEP41_USDC, USDC_SEP41 } from './__mocks__/assets.fixtures';
@@ -26,31 +27,6 @@ const MAINNET_CLASSIC_USDC =
 
 const TESTNET_CLASSIC_USDC =
   'stellar:testnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' as KnownCaip19ClassicAssetId;
-
-vi.mock('../../config', () => ({
-  AppConfig: {
-    api: {
-      tokenApi: {
-        baseUrl: 'https://tokens.test',
-      },
-      staticApi: {
-        baseUrl: 'https://static.test',
-      },
-    },
-    cache: {
-      ttlMilliseconds: {
-        // 1 hour — matches default `assetMetadata` TTL
-        assetMetadata: 60 * 60 * 1000,
-      },
-    },
-  },
-}));
-
-vi.mock('../../utils/logger');
-
-vi.mock('./token-api/TokenApiClient', () => ({
-  TokenApiClient: vi.fn(),
-}));
 
 const mockGetAssetsByAssetIds = vi.fn();
 const mockGetAssetsByChainId = vi.fn();
@@ -87,12 +63,12 @@ function createService(deps: { repo?: Partial<AssetMetadataRepository> }) {
     ...deps.repo,
   } as unknown as AssetMetadataRepository;
 
-  (TokenApiClient as Mock).mockImplementation(function mockTokenApiClient() {
-    return {
-      getAssetsByAssetIds: mockGetAssetsByAssetIds,
-      getAssetsByChainId: mockGetAssetsByChainId,
-    };
-  });
+  vi.spyOn(TokenApiClient.prototype, 'getAssetsByAssetIds').mockImplementation(
+    mockGetAssetsByAssetIds,
+  );
+  vi.spyOn(TokenApiClient.prototype, 'getAssetsByChainId').mockImplementation(
+    mockGetAssetsByChainId,
+  );
 
   const { service: assetsService } = createMockAssetsService();
   const service = new AssetMetadataService({
@@ -283,7 +259,7 @@ describe('AssetMetadataService', () => {
       fungible: true,
       units: [{ name: 'USD Coin', symbol: 'USDC', decimals: 7 }],
       iconUrl: buildUrl({
-        baseUrl: 'https://static.test',
+        baseUrl: AppConfig.api.staticApi.baseUrl,
         path: '/api/v2/tokenIcons/assets/{assetId}.png',
         pathParams: {
           assetId: classicId.replace(/:/gu, '/'),
@@ -391,7 +367,9 @@ describe('AssetMetadataService', () => {
 
       await service.synchronizeIfStale(KnownCaip2ChainId.Mainnet);
 
-      expect(isStale).toHaveBeenCalledWith(60 * 60 * 1000);
+      expect(isStale).toHaveBeenCalledWith(
+        AppConfig.cache.ttlMilliseconds.assetMetadata,
+      );
       expect(mockGetAssetsByChainId).toHaveBeenCalledWith(
         KnownCaip2ChainId.Mainnet,
       );
@@ -409,7 +387,9 @@ describe('AssetMetadataService', () => {
 
       await service.synchronizeIfStale(KnownCaip2ChainId.Mainnet);
 
-      expect(isStale).toHaveBeenCalledWith(60 * 60 * 1000);
+      expect(isStale).toHaveBeenCalledWith(
+        AppConfig.cache.ttlMilliseconds.assetMetadata,
+      );
       expect(mockGetAssetsByChainId).not.toHaveBeenCalled();
       expect(saveMany).not.toHaveBeenCalled();
     });

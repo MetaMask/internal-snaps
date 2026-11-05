@@ -14,7 +14,6 @@ import type { SignMessageRequest } from './api';
 import { Sep43ErrorCode } from './exceptions';
 import { SignMessageHandler } from './signMessage';
 
-vi.mock('../../utils/logger');
 
 describe('SignMessageHandler', () => {
   /**

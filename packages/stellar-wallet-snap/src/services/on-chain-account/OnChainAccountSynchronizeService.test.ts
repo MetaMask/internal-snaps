@@ -1,6 +1,7 @@
 import type { KeyringEventPayload } from '@metamask/keyring-api';
 import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import type { SnapsProvider } from '@metamask/snaps-sdk';
 import { hexToBytes } from '@metamask/utils';
 import { Keypair } from '@stellar/stellar-sdk';
@@ -71,11 +72,6 @@ const classicBalanceEntry = (
   },
 });
 
-vi.mock('../../utils/logger');
-vi.mock('../../utils/snap');
-vi.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: vi.fn(),
-}));
 
 /**
  * Simulates persisted `onChainAccounts` data the repository reads via `findByKeyringAccountIds`:
@@ -205,6 +201,9 @@ describe('OnChainAccountSynchronizeService', () => {
   });
 
   const setupTest = () => {
+    vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
+      undefined,
+    );
     vi.mocked(emitSnapKeyringEvent).mockResolvedValue(undefined);
     vi.spyOn(errorsUtils, 'trackError').mockResolvedValue(undefined);
   };

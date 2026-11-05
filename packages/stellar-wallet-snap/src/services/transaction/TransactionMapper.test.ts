@@ -52,7 +52,6 @@ import { Transaction } from './Transaction';
 import { TransactionMapper } from './TransactionMapper';
 import * as transactionUtils from './utils';
 
-vi.mock('../../utils/logger');
 
 function toHorizonTransaction(
   transaction: Transaction,

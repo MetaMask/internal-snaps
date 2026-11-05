@@ -1,4 +1,5 @@
 import { FeeType, TransactionType } from '@metamask/keyring-api';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import { Networks } from '@stellar/stellar-sdk';
 
@@ -38,12 +39,12 @@ import { ClientRequestMethod } from './api';
 import type { SignAndSendTransactionJsonRpcRequest } from './api';
 import { SignAndSendTransactionHandler } from './signAndSendTransaction';
 
-vi.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: vi.fn(),
-}));
-vi.mock('../../utils/logger');
-
 describe('SignAndSendTransactionHandler', () => {
+  beforeEach(() => {
+    vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
+      undefined,
+    );
+  });
   const accountId = '11111111-1111-4111-8111-111111111111';
   const scope = KnownCaip2ChainId.Mainnet;
   const transactionId =

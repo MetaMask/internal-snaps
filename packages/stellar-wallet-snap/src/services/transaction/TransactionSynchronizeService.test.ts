@@ -5,6 +5,7 @@ import {
   TransactionType,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import { InMemoryState } from '@metamask/snap-networks-utils';
 import type { Horizon } from '@stellar/stellar-sdk';
 import { Keypair, Networks } from '@stellar/stellar-sdk';
@@ -38,11 +39,6 @@ import { TransactionMapper } from './TransactionMapper';
 import { TransactionRepository } from './TransactionRepository';
 import { TransactionSynchronizeService } from './TransactionSynchronizeService';
 
-vi.mock('../../utils/logger');
-vi.mock('../../utils/snap');
-vi.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: vi.fn(),
-}));
 
 function buildOnChainPaymentTransaction(params: {
   sourceAddress: string;
@@ -87,6 +83,11 @@ function buildOnChainPaymentTransaction(params: {
 }
 
 describe('TransactionSynchronizeService', () => {
+  beforeEach(() => {
+    vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
+      undefined,
+    );
+  });
   const scope = KnownCaip2ChainId.Mainnet;
   const destinationAddress = Keypair.random().publicKey();
   const sep41SenderAddress =

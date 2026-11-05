@@ -9,7 +9,6 @@ import {
 } from '../../../utils/errors';
 import { TokenApiClient } from './TokenApiClient';
 
-vi.mock('../../../utils/logger');
 
 const baseUrl = 'https://tokens.test';
 

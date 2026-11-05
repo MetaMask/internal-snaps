@@ -26,7 +26,6 @@ const {
   mockCronjobHandle: vi.fn(),
 }));
 
-vi.mock('./utils/logger');
 
 vi.mock('./context', () => ({
   keyringHandler: {

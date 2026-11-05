@@ -41,8 +41,6 @@ import { ClientRequestMethod, MultiChainSendErrorCodes } from './api';
 import type { OnAmountInputJsonRpcRequest } from './api';
 import { OnAmountInputHandler } from './onAmountInput';
 
-vi.mock('../../utils/logger');
-vi.mock('../../utils/snap');
 vi.mock('../../ui/confirmation/views/AccountActivationPrompt/render', () => ({
   render: vi.fn().mockResolvedValue(undefined),
 }));

@@ -2,20 +2,12 @@ import type { UserInputEvent } from '@metamask/snaps-sdk';
 import { UserInputEventType } from '@metamask/snaps-sdk';
 
 import { resolveInterface, updateInterfaceIfExists } from '../../../../utils';
+import * as SnapUtils from '../../../../utils/snap';
 import { ConfirmationInterfaceKey, FetchStatus } from '../../api';
 import { renderConfirmationView } from '../render';
+import * as ConfirmationRender from '../render';
 import { MaliciousAcknowledgementFormNames } from './constants';
 import { createEventHandlers } from './events';
-
-vi.mock('../render', () => ({
-  renderConfirmationView: vi.fn(() => 'RENDERED'),
-}));
-
-vi.mock('../../../../utils', async () => ({
-  ...(await vi.importActual('../../../../utils')),
-  resolveInterface: vi.fn(),
-  updateInterfaceIfExists: vi.fn(),
-}));
 
 const INTERFACE_ID = 'interface-id';
 
@@ -42,6 +34,11 @@ describe('malicious acknowledgement events', () => {
   const handlers = createEventHandlers();
 
   beforeEach(() => {
+    vi.spyOn(SnapUtils, 'resolveInterface').mockResolvedValue(null);
+    vi.spyOn(SnapUtils, 'updateInterfaceIfExists').mockResolvedValue(true);
+    vi.spyOn(ConfirmationRender, 'renderConfirmationView').mockReturnValue(
+      'RENDERED' as unknown as ReturnType<typeof renderConfirmationView>,
+    );
     vi.clearAllMocks();
     vi.mocked(renderConfirmationView).mockReturnValue(
       'RENDERED' as unknown as ReturnType<typeof renderConfirmationView>,

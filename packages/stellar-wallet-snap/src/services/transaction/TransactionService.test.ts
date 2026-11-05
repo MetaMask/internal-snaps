@@ -5,6 +5,7 @@ import {
 } from '@metamask/keyring-api';
 import type { Transaction as KeyringTransaction } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import { hexToBytes } from '@metamask/utils';
 import { Networks } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
@@ -45,11 +46,6 @@ import {
 import { KeyringTransactionType } from './KeyringTransactionBuilder';
 import { TransactionBuilder } from './TransactionBuilder';
 
-vi.mock('../../utils/logger');
-vi.mock('../../utils/snap');
-vi.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: vi.fn(),
-}));
 
 /**
  * Horizon account response fixture with optional SEP-29 `data_attr`.
@@ -68,6 +64,12 @@ function mockHorizonAccountResponse(
 }
 
 describe('TransactionService', () => {
+  beforeEach(() => {
+    vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
+      undefined,
+    );
+  });
+
   describe('savePendingKeyringTransaction', () => {
     it('creates and saves a pending send transaction', async () => {
       const { transactionService, transactionRepositorySaveManySpy } =

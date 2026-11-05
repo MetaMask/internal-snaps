@@ -34,7 +34,6 @@ import type { ConfirmationContextRefreshResult } from './api';
 import { ConfirmationContextRefresherKey } from './api';
 import { ConfirmationTransactionRefresher } from './transactionRefresher';
 
-vi.mock('../../../utils/logger');
 
 describe('ConfirmationTransactionRefresher', () => {
   const scope = KnownCaip2ChainId.Testnet;

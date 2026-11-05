@@ -64,8 +64,6 @@ import { ClientRequestMethod, MultiChainSendErrorCodes } from './api';
 import type { ConfirmSendJsonRpcRequest } from './api';
 import { ConfirmSendHandler } from './confirmSend';
 
-vi.mock('../../utils/logger');
-vi.mock('../../utils/snap');
 vi.mock('../../ui/confirmation/views/AccountActivationPrompt/render', () => ({
   render: vi.fn().mockResolvedValue(undefined),
 }));

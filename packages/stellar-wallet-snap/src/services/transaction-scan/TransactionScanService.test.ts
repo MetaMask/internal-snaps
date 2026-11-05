@@ -29,7 +29,6 @@ import {
 import type { StellarTransactionScanResponse } from './api';
 import { TransactionScanService } from './TransactionScanService';
 
-vi.mock('../../utils/logger');
 
 const FIXTURE_ACCOUNT_ADDRESS =
   'GA7UCNSASSOPQYTRGJ2NC7TDBSXHMWK6JHS7AO6X2ZQAIQSTB5ELNFSO';
