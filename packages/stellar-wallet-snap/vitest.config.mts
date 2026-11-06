@@ -105,7 +105,12 @@ export default defineConfig({
       },
     },
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    setupFiles: [resolve(packageRoot, 'vitest.setup.ts')],
+    setupFiles: [
+      resolve(repoRoot, 'tests/vitest/polyfill-fetch.mts'),
+      resolve(repoRoot, 'tests/setupAfterEnv/nock.ts'),
+      resolve(repoRoot, 'tests/setupAfterEnv/matchers.ts'),
+      resolve(packageRoot, 'vitest.setup.ts'),
+    ],
     // Same lifecycle as `resetMocks` / `restoreMocks` in `jest.config.packages.js`.
     mockReset: true,
     restoreMocks: true,

@@ -333,4 +333,14 @@ describe('ConfigProvider', () => {
         ),
     ).toThrow('Invalid environment configuration');
   });
+
+  it('block fetch', (done) => {
+    fetch('https://google.com')
+      .then(() => {
+        console.log('fetch should be blocked');
+      })
+      .catch((error) => {
+        console.log('fetch cant be blocked', error);
+      });
+  });
 });
