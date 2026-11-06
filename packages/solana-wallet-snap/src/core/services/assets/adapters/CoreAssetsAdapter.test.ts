@@ -1,5 +1,6 @@
 import type { Asset, Caip19AssetId } from '@metamask/assets-controller';
 import { AssetsProvider } from '@metamask/snap-networks-utils';
+import type { Mocked } from 'vitest';
 
 import { KnownCaip19Id, Network } from '../../../constants/solana';
 import { CoreAssetsAdapter } from './CoreAssetsAdapter';
@@ -62,7 +63,7 @@ function createControllerAsset(options: {
  */
 function createCoreAssetsAdapterContext(): {
   adapter: CoreAssetsAdapter;
-  mockAssetsProvider: jest.Mocked<
+  mockAssetsProvider: Mocked<
     Pick<
       AssetsProvider,
       | 'getAccountAssetByID'
@@ -72,9 +73,9 @@ function createCoreAssetsAdapterContext(): {
   >;
 } {
   const mockAssetsProvider = {
-    getAccountAssetByID: jest.fn().mockResolvedValue(undefined),
-    getAccountAssetsByIDs: jest.fn().mockResolvedValue({}),
-    getAccountAssetsByScope: jest.fn().mockResolvedValue({}),
+    getAccountAssetByID: vi.fn().mockResolvedValue(undefined),
+    getAccountAssetsByIDs: vi.fn().mockResolvedValue({}),
+    getAccountAssetsByScope: vi.fn().mockResolvedValue({}),
   };
 
   const adapter = new CoreAssetsAdapter({

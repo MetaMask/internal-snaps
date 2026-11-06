@@ -1,32 +1,22 @@
 import type { Logger } from '@metamask/snap-networks-utils';
 import { COMPUTE_BUDGET_PROGRAM_ADDRESS } from '@solana-program/compute-budget';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
-/* eslint-disable @typescript-eslint/no-require-imports */
 import { address as asAddress } from '@solana/kit';
+import * as SolanaKit from '@solana/kit';
+import type { Mocked } from 'vitest';
 
 import { Network } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../test/mocks/solana-keyring-accounts';
+import * as DeriveSolanaKeypair from '../../utils/deriveSolanaKeypair';
 import type { TokenHelper } from '../assets/TokenHelper';
 import type { SolanaConnection } from '../connection';
 import { ApproveTokenService } from './ApproveTokenService';
 
-jest.mock('@solana/kit', () => ({
-  ...jest.requireActual('@solana/kit'),
-  createKeyPairSignerFromPrivateKeyBytes: jest.fn(),
-}));
-
-jest.mock('../../utils/deriveSolanaKeypair', () => ({
-  deriveSolanaKeypair: jest.fn().mockResolvedValue({
-    publicKeyBytes: new Uint8Array(32).fill(1),
-    privateKeyBytes: new Uint8Array(32).fill(2),
-  }),
-}));
-
 describe('ApproveTokenService', () => {
   let service: ApproveTokenService;
-  let mockConnection: jest.Mocked<SolanaConnection>;
-  let mockTokenHelper: jest.Mocked<TokenHelper>;
-  let mockLogger: jest.Mocked<Logger>;
+  let mockConnection: Mocked<SolanaConnection>;
+  let mockTokenHelper: Mocked<TokenHelper>;
+  let mockLogger: Mocked<Logger>;
 
   const mockMint = asAddress('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
   const mockDelegate = asAddress(
@@ -34,30 +24,35 @@ describe('ApproveTokenService', () => {
   );
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
-    const { createKeyPairSignerFromPrivateKeyBytes } = require('@solana/kit');
-
-    (createKeyPairSignerFromPrivateKeyBytes as jest.Mock).mockResolvedValue({
+    vi.spyOn(
+      SolanaKit,
+      'createKeyPairSignerFromPrivateKeyBytes',
+    ).mockResolvedValue({
       address: asAddress('7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV'),
-      signMessages: jest.fn(),
-      signTransactions: jest.fn(),
-    });
+      signMessages: vi.fn(),
+      signTransactions: vi.fn(),
+    } as never);
+    vi.spyOn(DeriveSolanaKeypair, 'deriveSolanaKeypair').mockResolvedValue({
+      publicKeyBytes: new Uint8Array(32).fill(1),
+      privateKeyBytes: new Uint8Array(32).fill(2),
+    } as never);
 
     mockConnection = {
-      fetchMint: jest.fn(),
-      getLatestBlockhash: jest.fn(),
-      fetchJsonParsedAccount: jest.fn(),
-    } as unknown as jest.Mocked<SolanaConnection>;
+      fetchMint: vi.fn(),
+      getLatestBlockhash: vi.fn(),
+      fetchJsonParsedAccount: vi.fn(),
+    } as unknown as Mocked<SolanaConnection>;
 
     mockTokenHelper = {
-      uiAmountToAmountForMint: jest.fn(),
-    } as unknown as jest.Mocked<TokenHelper>;
+      uiAmountToAmountForMint: vi.fn(),
+    } as unknown as Mocked<TokenHelper>;
 
     mockLogger = {
-      log: jest.fn(),
-      withPrefix: jest.fn().mockReturnThis(),
-    } as unknown as jest.Mocked<Logger>;
+      log: vi.fn(),
+      withPrefix: vi.fn().mockReturnThis(),
+    } as unknown as Mocked<Logger>;
 
     service = new ApproveTokenService(
       mockConnection,
@@ -83,7 +78,7 @@ describe('ApproveTokenService', () => {
       exists: false,
     } as any);
 
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('buildApprovalTransactionMessage', () => {

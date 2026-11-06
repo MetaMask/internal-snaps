@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-
 import { TransactionType } from '@metamask/keyring-api';
 import type { Transaction } from '@metamask/keyring-api';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import type { Address } from '@solana/kit';
 import { signature } from '@solana/kit';
+import type { Mock } from 'vitest';
 
 import type {
   AccountNotification,
@@ -16,6 +15,8 @@ import type {
 } from '../../../entities';
 import { KnownCaip19Id, Network } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNTS } from '../../test/mocks/solana-keyring-accounts';
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+import * as Errors from '../../utils/errors';
 import { trackError } from '../../utils/errors';
 import { mockLogger } from '../__mocks__/logger';
 import type { AccountsSynchronizer } from '../accounts';
@@ -25,10 +26,6 @@ import type { ConfigProvider } from '../config';
 import type { TransactionsService } from '../transactions';
 import { KeyringAccountMonitor } from './KeyringAccountMonitor';
 import type { SubscriptionService } from './SubscriptionService';
-
-jest.mock('../../utils/errors', () => ({
-  trackError: jest.fn().mockResolvedValue('tracked-error-id'),
-}));
 
 describe('KeyringAccountMonitor', () => {
   let keyringAccountMonitor: KeyringAccountMonitor;
@@ -92,22 +89,23 @@ describe('KeyringAccountMonitor', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
 
     accountNotificationHandlers = [];
     programNotificationHandlers = [];
 
     mockSubscriptionService = {
-      subscribe: jest.fn().mockImplementation(async (request) => {
+      subscribe: vi.fn().mockImplementation(async (request) => {
         // Return a simple hash of the request for testing purposes
         return JSON.stringify(request)
           .split('')
           .reduce((acc, char) => acc + char.charCodeAt(0), 0)
           .toString();
       }),
-      unsubscribe: jest.fn(),
-      getAll: jest.fn().mockResolvedValue([]),
-      registerNotificationHandler: jest
+      unsubscribe: vi.fn(),
+      getAll: vi.fn().mockResolvedValue([]),
+      registerNotificationHandler: vi
         .fn()
         .mockImplementation(async (method, _network, handler) => {
           if (method === 'accountSubscribe') {
@@ -116,19 +114,19 @@ describe('KeyringAccountMonitor', () => {
             programNotificationHandlers.push(handler);
           }
         }),
-      registerConnectionRecoveryHandler: jest.fn(),
+      registerConnectionRecoveryHandler: vi.fn(),
     } as unknown as SubscriptionService;
 
     mockAccountService = {
-      getAll: jest.fn(),
-      getAllSelected: jest.fn(),
-      findByAddress: jest.fn(),
+      getAll: vi.fn(),
+      getAllSelected: vi.fn(),
+      findByAddress: vi.fn(),
     } as unknown as AccountsService;
 
     mockAssetsService = {
-      getTokenAccountsByOwnerMultiple: jest.fn(),
-      save: jest.fn(),
-      getAssetsMetadata: jest.fn().mockImplementation((assetType) => ({
+      getTokenAccountsByOwnerMultiple: vi.fn(),
+      save: vi.fn(),
+      getAssetsMetadata: vi.fn().mockImplementation((assetType) => ({
         [assetType]: {
           symbol: 'USDC',
           decimals: 6,
@@ -137,22 +135,22 @@ describe('KeyringAccountMonitor', () => {
     } as unknown as AssetsService;
 
     mockTransactionsService = {
-      fetchLatestSignatures: jest.fn(),
-      fetchBySignature: jest.fn(),
-      save: jest.fn(),
+      fetchLatestSignatures: vi.fn(),
+      fetchBySignature: vi.fn(),
+      save: vi.fn(),
     } as unknown as TransactionsService;
 
     mockAccountsSynchronizer = {
-      synchronize: jest.fn(),
+      synchronize: vi.fn(),
     } as unknown as AccountsSynchronizer;
 
     mockTokenHelper = {
-      uiAmountToAmountForMint: jest.fn(),
-      amountToUiAmountForMint: jest.fn(),
+      uiAmountToAmountForMint: vi.fn(),
+      amountToUiAmountForMint: vi.fn(),
     } as unknown as TokenHelper;
 
     mockConfigProvider = {
-      getActiveNetworks: jest
+      getActiveNetworks: vi
         .fn()
         .mockResolvedValue([Network.Mainnet, Network.Devnet]),
     } as unknown as ConfigProvider;
@@ -195,16 +193,16 @@ describe('KeyringAccountMonitor', () => {
 
     beforeEach(() => {
       // Setup 1 active network for simplicity
-      jest
-        .spyOn(mockConfigProvider, 'getActiveNetworks')
-        .mockResolvedValue([Network.Mainnet]);
+      vi.spyOn(mockConfigProvider, 'getActiveNetworks').mockResolvedValue([
+        Network.Mainnet,
+      ]);
 
-      jest.spyOn(mockAccountService, 'getAll').mockResolvedValue(accounts);
+      vi.spyOn(mockAccountService, 'getAll').mockResolvedValue(accounts);
     });
 
     it('starts monitoring the passed accounts that are not currently monitored', async () => {
       // No account currently monitored
-      jest.spyOn(mockSubscriptionService, 'getAll').mockResolvedValue([]);
+      vi.spyOn(mockSubscriptionService, 'getAll').mockResolvedValue([]);
 
       await keyringAccountMonitor.setMonitoredAccounts([
         account0.id,
@@ -221,9 +219,9 @@ describe('KeyringAccountMonitor', () => {
         account0.address,
         Network.Mainnet,
       );
-      jest
-        .spyOn(mockSubscriptionService, 'getAll')
-        .mockResolvedValue([mockSubscriptionAccount0]);
+      vi.spyOn(mockSubscriptionService, 'getAll').mockResolvedValue([
+        mockSubscriptionAccount0,
+      ]);
 
       await keyringAccountMonitor.setMonitoredAccounts([account0.id]);
 
@@ -237,9 +235,9 @@ describe('KeyringAccountMonitor', () => {
         account0.address,
         Network.Mainnet,
       );
-      jest
-        .spyOn(mockSubscriptionService, 'getAll')
-        .mockResolvedValue([mockSubscriptionAccount0]);
+      vi.spyOn(mockSubscriptionService, 'getAll').mockResolvedValue([
+        mockSubscriptionAccount0,
+      ]);
 
       await keyringAccountMonitor.setMonitoredAccounts([]);
 
@@ -249,7 +247,7 @@ describe('KeyringAccountMonitor', () => {
 
     it('does not stop monitoring accounts that are not currently monitored', async () => {
       // No account currently monitored
-      jest.spyOn(mockSubscriptionService, 'getAll').mockResolvedValue([]);
+      vi.spyOn(mockSubscriptionService, 'getAll').mockResolvedValue([]);
 
       await keyringAccountMonitor.setMonitoredAccounts([account1.id]);
 
@@ -263,9 +261,9 @@ describe('KeyringAccountMonitor', () => {
         account0.address,
         Network.Mainnet,
       );
-      jest
-        .spyOn(mockSubscriptionService, 'getAll')
-        .mockResolvedValue([mockSubscriptionAccount0]);
+      vi.spyOn(mockSubscriptionService, 'getAll').mockResolvedValue([
+        mockSubscriptionAccount0,
+      ]);
 
       await keyringAccountMonitor.setMonitoredAccounts([account0.id]);
 
@@ -285,12 +283,10 @@ describe('KeyringAccountMonitor', () => {
         TOKEN_PROGRAM_ADDRESS,
         Network.Mainnet,
       );
-      jest
-        .spyOn(mockSubscriptionService, 'getAll')
-        .mockResolvedValue([
-          mockSubscriptionAccount0,
-          mockSubscriptionAccount1,
-        ]);
+      vi.spyOn(mockSubscriptionService, 'getAll').mockResolvedValue([
+        mockSubscriptionAccount0,
+        mockSubscriptionAccount1,
+      ]);
 
       await keyringAccountMonitor.setMonitoredAccounts([
         account1.id,
@@ -316,23 +312,22 @@ describe('KeyringAccountMonitor', () => {
 
     beforeEach(() => {
       // Setup 1 active network for simplicity
-      jest
-        .spyOn(mockConfigProvider, 'getActiveNetworks')
-        .mockResolvedValue([Network.Mainnet]);
+      vi.spyOn(mockConfigProvider, 'getActiveNetworks').mockResolvedValue([
+        Network.Mainnet,
+      ]);
 
-      jest.spyOn(mockAccountService, 'getAll').mockResolvedValue([account]);
+      vi.spyOn(mockAccountService, 'getAll').mockResolvedValue([account]);
 
-      jest
-        .spyOn(mockTransactionsService, 'fetchLatestSignatures')
-        .mockResolvedValue([mockSignature]);
+      vi.spyOn(
+        mockTransactionsService,
+        'fetchLatestSignatures',
+      ).mockResolvedValue([mockSignature]);
 
-      jest
-        .spyOn(mockTransactionsService, 'fetchBySignature')
-        .mockResolvedValue(mockCausingTransaction);
+      vi.spyOn(mockTransactionsService, 'fetchBySignature').mockResolvedValue(
+        mockCausingTransaction,
+      );
 
-      jest
-        .spyOn(mockAccountService, 'findByAddress')
-        .mockResolvedValue(account);
+      vi.spyOn(mockAccountService, 'findByAddress').mockResolvedValue(account);
     });
 
     describe('when the native asset changed', () => {
@@ -413,9 +408,9 @@ describe('KeyringAccountMonitor', () => {
           ],
         } as unknown as Transaction;
 
-        jest
-          .spyOn(mockTransactionsService, 'fetchBySignature')
-          .mockResolvedValue(mockSpamTransaction);
+        vi.spyOn(mockTransactionsService, 'fetchBySignature').mockResolvedValue(
+          mockSpamTransaction,
+        );
 
         await keyringAccountMonitor.setMonitoredAccounts([account.id]);
 
@@ -505,17 +500,17 @@ describe('KeyringAccountMonitor', () => {
       } as unknown as Subscription;
 
       beforeEach(() => {
-        jest
-          .spyOn(mockTokenHelper, 'amountToUiAmountForMint')
-          .mockResolvedValue('123.456789');
+        vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint').mockResolvedValue(
+          '123.456789',
+        );
       });
 
       it('tracks ui amount fallback errors and keeps the raw value', async () => {
         const error = new Error('Conversion failed');
 
-        jest
-          .spyOn(mockTokenHelper, 'amountToUiAmountForMint')
-          .mockRejectedValue(error);
+        vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint').mockRejectedValue(
+          error,
+        );
 
         await keyringAccountMonitor.setMonitoredAccounts([account.id]);
 
@@ -662,9 +657,10 @@ describe('KeyringAccountMonitor', () => {
       describe('when #saveCausingTransaction encounters errors', () => {
         it('throws an error when no signatures are found', async () => {
           // No signatures found for the token account
-          jest
-            .spyOn(mockTransactionsService, 'fetchLatestSignatures')
-            .mockResolvedValue([]);
+          vi.spyOn(
+            mockTransactionsService,
+            'fetchLatestSignatures',
+          ).mockResolvedValue([]);
 
           await keyringAccountMonitor.setMonitoredAccounts([account.id]);
           const handler = programNotificationHandlers[0]!;
@@ -677,9 +673,10 @@ describe('KeyringAccountMonitor', () => {
 
         it('throws an error when transaction is not found', async () => {
           // No transaction found for the token account
-          jest
-            .spyOn(mockTransactionsService, 'fetchBySignature')
-            .mockResolvedValue(null);
+          vi.spyOn(
+            mockTransactionsService,
+            'fetchBySignature',
+          ).mockResolvedValue(null);
 
           await keyringAccountMonitor.setMonitoredAccounts([account.id]);
           const handler = programNotificationHandlers[0]!;
@@ -699,33 +696,31 @@ describe('KeyringAccountMonitor', () => {
     const accounts = [account0, account1];
 
     beforeEach(() => {
-      jest
-        .spyOn(mockConfigProvider, 'getActiveNetworks')
-        .mockResolvedValue([Network.Mainnet]);
+      vi.spyOn(mockConfigProvider, 'getActiveNetworks').mockResolvedValue([
+        Network.Mainnet,
+      ]);
 
       // Setup 2 accounts
-      jest.spyOn(mockAccountService, 'getAll').mockResolvedValue(accounts);
+      vi.spyOn(mockAccountService, 'getAll').mockResolvedValue(accounts);
 
       // The selected accounts are the monitored accounts
-      jest
-        .spyOn(mockAccountService, 'getAllSelected')
-        .mockResolvedValue(accounts);
+      vi.spyOn(mockAccountService, 'getAllSelected').mockResolvedValue(
+        accounts,
+      );
 
       // These accounts are currently monitored
-      jest
-        .spyOn(mockSubscriptionService, 'getAll')
-        .mockResolvedValue([
-          createAccountSubscribeSubscription(account0.address, Network.Mainnet),
-          createAccountSubscribeSubscription(account1.address, Network.Mainnet),
-        ]);
+      vi.spyOn(mockSubscriptionService, 'getAll').mockResolvedValue([
+        createAccountSubscribeSubscription(account0.address, Network.Mainnet),
+        createAccountSubscribeSubscription(account1.address, Network.Mainnet),
+      ]);
     });
 
     it('syncs all monitored accounts', async () => {
-      const syncSpy = jest.spyOn(mockAccountsSynchronizer, 'synchronize');
+      const syncSpy = vi.spyOn(mockAccountsSynchronizer, 'synchronize');
 
       // Simulate connection recovery
       const recoveryHandler = (
-        mockSubscriptionService.registerConnectionRecoveryHandler as jest.Mock
+        mockSubscriptionService.registerConnectionRecoveryHandler as Mock
       ).mock.calls[0][1];
       await recoveryHandler(Network.Mainnet);
 
@@ -740,13 +735,13 @@ describe('KeyringAccountMonitor', () => {
       // subscription list, a read landing inside that delete window would
       // silently skip the resync (~12% of recoveries under realistic IPC
       // latency). The resync must therefore not depend on the subscriptions.
-      jest.spyOn(mockSubscriptionService, 'getAll').mockResolvedValue([]);
+      vi.spyOn(mockSubscriptionService, 'getAll').mockResolvedValue([]);
 
-      const syncSpy = jest.spyOn(mockAccountsSynchronizer, 'synchronize');
+      const syncSpy = vi.spyOn(mockAccountsSynchronizer, 'synchronize');
 
       // Simulate connection recovery
       const recoveryHandler = (
-        mockSubscriptionService.registerConnectionRecoveryHandler as jest.Mock
+        mockSubscriptionService.registerConnectionRecoveryHandler as Mock
       ).mock.calls[0][1];
       await recoveryHandler(Network.Mainnet);
 
@@ -754,13 +749,13 @@ describe('KeyringAccountMonitor', () => {
     });
 
     it('skips the resync when there are no selected accounts', async () => {
-      jest.spyOn(mockAccountService, 'getAllSelected').mockResolvedValue([]);
+      vi.spyOn(mockAccountService, 'getAllSelected').mockResolvedValue([]);
 
-      const syncSpy = jest.spyOn(mockAccountsSynchronizer, 'synchronize');
+      const syncSpy = vi.spyOn(mockAccountsSynchronizer, 'synchronize');
 
       // Simulate connection recovery
       const recoveryHandler = (
-        mockSubscriptionService.registerConnectionRecoveryHandler as jest.Mock
+        mockSubscriptionService.registerConnectionRecoveryHandler as Mock
       ).mock.calls[0][1];
       await recoveryHandler(Network.Mainnet);
 

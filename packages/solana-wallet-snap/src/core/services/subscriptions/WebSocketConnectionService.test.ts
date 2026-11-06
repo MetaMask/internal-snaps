@@ -7,6 +7,7 @@ import type {
 import type { WebSocketConnection } from '../../../entities';
 import { EventEmitter } from '../../../infrastructure';
 import { Network } from '../../constants/solana';
+import * as Errors from '../../utils/errors';
 import { trackError } from '../../utils/errors';
 import { mockLogger } from '../__mocks__/logger';
 import type { ConfigProvider } from '../config';
@@ -15,10 +16,6 @@ import { DEFAULT_UNENCRYPTED_STATE } from '../state/stateTypes';
 import type { UnencryptedStateValue } from '../state/stateTypes';
 import type { WebSocketConnectionRepository } from './WebSocketConnectionRepository';
 import { WebSocketConnectionService } from './WebSocketConnectionService';
-
-jest.mock('../../utils/errors', () => ({
-  trackError: jest.fn().mockResolvedValue('tracked-error-id'),
-}));
 
 const mockWebSocketUrl = 'wss://some-mock-url.com/ws/v3/some-id';
 const mockConnectionId = 'mock-connection-id';
@@ -62,22 +59,23 @@ describe('WebSocketConnectionService', () => {
   ] as NetworkConfig[];
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
 
     (globalThis as any).snap = {
-      request: jest.fn(),
+      request: vi.fn(),
     };
 
     mockWebSocketConnectionRepository = {
-      getAll: jest.fn(),
-      getById: jest.fn(),
-      findByNetwork: jest.fn(),
-      save: jest.fn(),
-      delete: jest.fn(),
+      getAll: vi.fn(),
+      getById: vi.fn(),
+      findByNetwork: vi.fn(),
+      save: vi.fn(),
+      delete: vi.fn(),
     } as unknown as WebSocketConnectionRepository;
 
     mockAnalyticsService = {
-      trackWebSocketConnectionClosedNotCleanly: jest.fn(),
+      trackWebSocketConnectionClosedNotCleanly: vi.fn(),
     } as unknown as AnalyticsService;
 
     mockConfigProvider = {
@@ -89,10 +87,10 @@ describe('WebSocketConnectionService', () => {
           closeConnectionsGracePeriodMilliseconds: 5000, // 5 seconds for testing
         },
       },
-      getActiveNetworks: jest
+      getActiveNetworks: vi
         .fn()
         .mockResolvedValue([Network.Mainnet, Network.Devnet]),
-      getNetworkBy: jest.fn().mockImplementation((key, value) => {
+      getNetworkBy: vi.fn().mockImplementation((key, value) => {
         return mockNetworksConfig.find(
           (item) => item[key as keyof NetworkConfig] === value,
         );
@@ -115,11 +113,12 @@ describe('WebSocketConnectionService', () => {
 
   describe('#setupConnections', () => {
     it('opens the connections for all active networks when the client is active', async () => {
-      jest
-        .spyOn(mockConfigProvider, 'getActiveNetworks')
-        .mockResolvedValue([Network.Mainnet, Network.Devnet]);
+      vi.spyOn(mockConfigProvider, 'getActiveNetworks').mockResolvedValue([
+        Network.Mainnet,
+        Network.Devnet,
+      ]);
 
-      jest.spyOn(snap, 'request').mockResolvedValueOnce({
+      vi.spyOn(snap, 'request').mockResolvedValueOnce({
         active: true,
       });
 
@@ -130,11 +129,12 @@ describe('WebSocketConnectionService', () => {
     });
 
     it('closes the connections for all active networks when the client is inactive', async () => {
-      jest
-        .spyOn(mockConfigProvider, 'getActiveNetworks')
-        .mockResolvedValue([Network.Mainnet, Network.Devnet]);
+      vi.spyOn(mockConfigProvider, 'getActiveNetworks').mockResolvedValue([
+        Network.Mainnet,
+        Network.Devnet,
+      ]);
 
-      jest.spyOn(snap, 'request').mockResolvedValueOnce({
+      vi.spyOn(snap, 'request').mockResolvedValueOnce({
         active: false,
       });
 
@@ -150,9 +150,10 @@ describe('WebSocketConnectionService', () => {
         Network.Devnet,
       );
 
-      jest
-        .spyOn(mockWebSocketConnectionRepository, 'getAll')
-        .mockResolvedValueOnce([mockConnection0, mockConnection1]);
+      vi.spyOn(
+        mockWebSocketConnectionRepository,
+        'getAll',
+      ).mockResolvedValueOnce([mockConnection0, mockConnection1]);
 
       // Simulate a client start event
       await mockEventEmitter.emitSync('onStart');
@@ -163,11 +164,12 @@ describe('WebSocketConnectionService', () => {
 
   describe('#openConnectionsForActiveNetworks', () => {
     it('opens the connections for all active networks', async () => {
-      jest
-        .spyOn(mockConfigProvider, 'getActiveNetworks')
-        .mockResolvedValue([Network.Mainnet, Network.Devnet]);
+      vi.spyOn(mockConfigProvider, 'getActiveNetworks').mockResolvedValue([
+        Network.Mainnet,
+        Network.Devnet,
+      ]);
 
-      jest.spyOn(service, 'openConnection').mockResolvedValueOnce(undefined);
+      vi.spyOn(service, 'openConnection').mockResolvedValueOnce(undefined);
 
       // Simulate the snap becoming active
       await mockEventEmitter.emitSync('onActive');
@@ -177,7 +179,7 @@ describe('WebSocketConnectionService', () => {
 
     it('clears existing retry attempts', async () => {
       // We register a recovery handler for Mainnet. We expect it to be cleared when the method is executed.
-      const recoveryHandler = jest.fn();
+      const recoveryHandler = vi.fn();
       service.onConnectionRecovery(Network.Mainnet, recoveryHandler);
 
       /**
@@ -187,15 +189,17 @@ describe('WebSocketConnectionService', () => {
        * - upon opening, we will trigger all recovery handlers
        * - but since retry attempts have been cleared, they should not have been called
        */
-      jest
-        .spyOn(mockConfigProvider, 'getActiveNetworks')
-        .mockResolvedValue([Network.Mainnet]);
-      jest
-        .spyOn(mockWebSocketConnectionRepository, 'getAll')
-        .mockResolvedValueOnce([]);
-      jest
-        .spyOn(mockWebSocketConnectionRepository, 'findByNetwork')
-        .mockResolvedValueOnce(null);
+      vi.spyOn(mockConfigProvider, 'getActiveNetworks').mockResolvedValue([
+        Network.Mainnet,
+      ]);
+      vi.spyOn(
+        mockWebSocketConnectionRepository,
+        'getAll',
+      ).mockResolvedValueOnce([]);
+      vi.spyOn(
+        mockWebSocketConnectionRepository,
+        'findByNetwork',
+      ).mockResolvedValueOnce(null);
 
       // Simulate the snap start event
       await mockEventEmitter.emitSync('onStart');
@@ -220,9 +224,9 @@ describe('WebSocketConnectionService', () => {
         ),
       ];
 
-      jest
-        .spyOn(mockWebSocketConnectionRepository, 'getAll')
-        .mockResolvedValue(mockConnections);
+      vi.spyOn(mockWebSocketConnectionRepository, 'getAll').mockResolvedValue(
+        mockConnections,
+      );
 
       // Call closeAllConnections directly
       await service.closeAllConnections();
@@ -255,13 +259,12 @@ describe('WebSocketConnectionService', () => {
         ),
       ];
 
-      jest
-        .spyOn(mockWebSocketConnectionRepository, 'getAll')
-        .mockResolvedValue(mockConnections);
+      vi.spyOn(mockWebSocketConnectionRepository, 'getAll').mockResolvedValue(
+        mockConnections,
+      );
 
       // Mock one connection to fail deletion
-      jest
-        .spyOn(mockWebSocketConnectionRepository, 'delete')
+      vi.spyOn(mockWebSocketConnectionRepository, 'delete')
         .mockRejectedValueOnce(new Error('Failed to delete connection'))
         .mockResolvedValueOnce(undefined)
         .mockResolvedValueOnce(undefined);
@@ -285,9 +288,10 @@ describe('WebSocketConnectionService', () => {
 
   describe('openConnection', () => {
     it('opens the connection for the network', async () => {
-      jest
-        .spyOn(mockWebSocketConnectionRepository, 'findByNetwork')
-        .mockResolvedValue(null);
+      vi.spyOn(
+        mockWebSocketConnectionRepository,
+        'findByNetwork',
+      ).mockResolvedValue(null);
 
       await service.openConnection(Network.Mainnet);
 
@@ -295,9 +299,10 @@ describe('WebSocketConnectionService', () => {
     });
 
     it('does nothing if the connection already exists', async () => {
-      jest
-        .spyOn(mockWebSocketConnectionRepository, 'findByNetwork')
-        .mockResolvedValue(createMockWebSocketConnection());
+      vi.spyOn(
+        mockWebSocketConnectionRepository,
+        'findByNetwork',
+      ).mockResolvedValue(createMockWebSocketConnection());
 
       await service.openConnection(Network.Mainnet);
 
@@ -310,18 +315,20 @@ describe('WebSocketConnectionService', () => {
       beforeEach(async () => {
         const mockConnection = createMockWebSocketConnection();
 
-        jest
-          .spyOn(mockWebSocketConnectionRepository, 'getById')
-          .mockResolvedValue(mockConnection);
+        vi.spyOn(
+          mockWebSocketConnectionRepository,
+          'getById',
+        ).mockResolvedValue(mockConnection);
 
-        jest
-          .spyOn(mockWebSocketConnectionRepository, 'findByNetwork')
-          .mockResolvedValueOnce(mockConnection);
+        vi.spyOn(
+          mockWebSocketConnectionRepository,
+          'findByNetwork',
+        ).mockResolvedValueOnce(mockConnection);
       });
 
       it('triggers all the recovery handlers', async () => {
-        const recoveryHandler0 = jest.fn();
-        const recoveryHandler1 = jest.fn();
+        const recoveryHandler0 = vi.fn();
+        const recoveryHandler1 = vi.fn();
 
         service.onConnectionRecovery(Network.Mainnet, recoveryHandler0);
         service.onConnectionRecovery(Network.Mainnet, recoveryHandler1);
@@ -341,13 +348,15 @@ describe('WebSocketConnectionService', () => {
       beforeEach(async () => {
         const mockConnection = createMockWebSocketConnection();
 
-        jest
-          .spyOn(mockWebSocketConnectionRepository, 'getAll')
-          .mockResolvedValueOnce([mockConnection]);
+        vi.spyOn(
+          mockWebSocketConnectionRepository,
+          'getAll',
+        ).mockResolvedValueOnce([mockConnection]);
 
-        jest
-          .spyOn(mockWebSocketConnectionRepository, 'getById')
-          .mockResolvedValueOnce(mockConnection);
+        vi.spyOn(
+          mockWebSocketConnectionRepository,
+          'getById',
+        ).mockResolvedValueOnce(mockConnection);
       });
 
       describe('when the connection is closed cleanly', () => {
@@ -382,8 +391,7 @@ describe('WebSocketConnectionService', () => {
       describe('when the connection is closed not cleanly', () => {
         it('attempts to reconnect until it succeeds, up to max attempts', async () => {
           // 1st and 2nd calls are the fail attempts, 3rd is the success attempt
-          jest
-            .spyOn(mockWebSocketConnectionRepository, 'save')
+          vi.spyOn(mockWebSocketConnectionRepository, 'save')
             .mockRejectedValueOnce(new Error('Connection failed'))
             .mockRejectedValueOnce(new Error('Connection failed'))
             .mockResolvedValueOnce(createMockWebSocketConnection());
@@ -422,9 +430,9 @@ describe('WebSocketConnectionService', () => {
         });
 
         it('retries up to the max number of attempts', async () => {
-          jest
-            .spyOn(mockWebSocketConnectionRepository, 'save')
-            .mockRejectedValue(new Error('Connection failed'));
+          vi.spyOn(mockWebSocketConnectionRepository, 'save').mockRejectedValue(
+            new Error('Connection failed'),
+          );
 
           // Send the initial disconnect event
           await mockEventEmitter.emitSync('onWebSocketEvent', {
@@ -473,9 +481,10 @@ describe('WebSocketConnectionService', () => {
   describe('findByNetwork', () => {
     it('returns the connection ID for the network', async () => {
       const mockConnection = createMockWebSocketConnection();
-      jest
-        .spyOn(mockWebSocketConnectionRepository, 'findByNetwork')
-        .mockResolvedValueOnce(mockConnection);
+      vi.spyOn(
+        mockWebSocketConnectionRepository,
+        'findByNetwork',
+      ).mockResolvedValueOnce(mockConnection);
 
       const connection = await service.findByNetwork(Network.Mainnet);
 
@@ -487,8 +496,8 @@ describe('WebSocketConnectionService', () => {
     describe('when client becomes inactive', () => {
       it('schedules a background event to close connections after grace period', async () => {
         const mockEventId = 'test-event-id-123';
-        jest.spyOn(snap, 'request').mockResolvedValueOnce(mockEventId);
-        jest.spyOn(mockState, 'setKey').mockResolvedValueOnce(undefined);
+        vi.spyOn(snap, 'request').mockResolvedValueOnce(mockEventId);
+        vi.spyOn(mockState, 'setKey').mockResolvedValueOnce(undefined);
 
         await mockEventEmitter.emitSync('onInactive');
 
@@ -510,12 +519,11 @@ describe('WebSocketConnectionService', () => {
         const existingEventId = 'existing-event-id';
         const newEventId = 'new-event-id';
 
-        jest.spyOn(mockState, 'getKey').mockResolvedValueOnce(existingEventId);
-        jest
-          .spyOn(snap, 'request')
+        vi.spyOn(mockState, 'getKey').mockResolvedValueOnce(existingEventId);
+        vi.spyOn(snap, 'request')
           .mockResolvedValueOnce(null) // cancel call
           .mockResolvedValueOnce(newEventId); // schedule call
-        jest.spyOn(mockState, 'setKey').mockResolvedValue(undefined);
+        vi.spyOn(mockState, 'setKey').mockResolvedValue(undefined);
 
         await mockEventEmitter.emitSync('onInactive');
 
@@ -535,12 +543,11 @@ describe('WebSocketConnectionService', () => {
         const newEventId = 'new-event-id';
         const error = new Error('Cancel failed');
 
-        jest.spyOn(mockState, 'getKey').mockResolvedValueOnce(existingEventId);
-        jest
-          .spyOn(snap, 'request')
+        vi.spyOn(mockState, 'getKey').mockResolvedValueOnce(existingEventId);
+        vi.spyOn(snap, 'request')
           .mockRejectedValueOnce(error)
           .mockResolvedValueOnce(newEventId);
-        jest.spyOn(mockState, 'setKey').mockResolvedValue(undefined);
+        vi.spyOn(mockState, 'setKey').mockResolvedValue(undefined);
 
         await mockEventEmitter.emitSync('onInactive');
 
@@ -560,10 +567,10 @@ describe('WebSocketConnectionService', () => {
       it('cancels existing background event and opens connections', async () => {
         const existingEventId = 'existing-event-id';
 
-        jest.spyOn(mockState, 'getKey').mockResolvedValueOnce(existingEventId);
-        jest.spyOn(snap, 'request').mockResolvedValueOnce(null);
-        jest.spyOn(mockState, 'setKey').mockResolvedValueOnce(undefined);
-        jest.spyOn(service, 'openConnection').mockResolvedValue(undefined);
+        vi.spyOn(mockState, 'getKey').mockResolvedValueOnce(existingEventId);
+        vi.spyOn(snap, 'request').mockResolvedValueOnce(null);
+        vi.spyOn(mockState, 'setKey').mockResolvedValueOnce(undefined);
+        vi.spyOn(service, 'openConnection').mockResolvedValue(undefined);
 
         await mockEventEmitter.emitSync('onActive');
 
@@ -581,8 +588,8 @@ describe('WebSocketConnectionService', () => {
       });
 
       it('handles missing background event ID gracefully', async () => {
-        jest.spyOn(mockState, 'getKey').mockResolvedValueOnce(null);
-        jest.spyOn(service, 'openConnection').mockResolvedValue(undefined);
+        vi.spyOn(mockState, 'getKey').mockResolvedValueOnce(null);
+        vi.spyOn(service, 'openConnection').mockResolvedValue(undefined);
 
         await mockEventEmitter.emitSync('onActive');
 
@@ -597,12 +604,12 @@ describe('WebSocketConnectionService', () => {
       it('continues opening connections even if cancellation fails', async () => {
         const existingEventId = 'existing-event-id';
 
-        jest.spyOn(mockState, 'getKey').mockResolvedValueOnce(existingEventId);
-        jest
-          .spyOn(snap, 'request')
-          .mockRejectedValueOnce(new Error('Cancel failed'));
-        jest.spyOn(mockState, 'setKey').mockResolvedValueOnce(undefined);
-        jest.spyOn(service, 'openConnection').mockResolvedValue(undefined);
+        vi.spyOn(mockState, 'getKey').mockResolvedValueOnce(existingEventId);
+        vi.spyOn(snap, 'request').mockRejectedValueOnce(
+          new Error('Cancel failed'),
+        );
+        vi.spyOn(mockState, 'setKey').mockResolvedValueOnce(undefined);
+        vi.spyOn(service, 'openConnection').mockResolvedValue(undefined);
 
         await mockEventEmitter.emitSync('onActive');
 

@@ -115,14 +115,6 @@
       "count": 5
     }
   },
-  "packages/solana-wallet-snap/jest.setup.ts": {
-    "import-x/no-named-as-default": {
-      "count": 1
-    },
-    "import-x/no-named-as-default-member": {
-      "count": 1
-    }
-  },
   "packages/solana-wallet-snap/scripts/populate-locale.js": {
     "n/no-sync": {
       "count": 1

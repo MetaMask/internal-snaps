@@ -20,35 +20,26 @@ import {
   fromBytesToCompilableTransactionMessage,
   fromUnknownBase64StringToTransactionOrTransactionMessage,
 } from '../../sdk-extensions/codecs';
+import * as Codecs from '../../sdk-extensions/codecs';
+import * as Errors from '../../utils/errors';
 import { trackError } from '../../utils/errors';
 import { isTransactionBlockhashExpired } from './isTransactionBlockhashExpired';
 
-jest.mock('../../sdk-extensions/codecs', () => ({
-  fromUnknownBase64StringToTransactionOrTransactionMessage: jest.fn(),
-  fromBytesToCompilableTransactionMessage: jest.fn(),
-}));
-
-jest.mock('../../utils/errors', () => ({
-  trackError: jest.fn(),
-}));
-
-jest.mock('../../utils/logger', () => ({
-  __esModule: true,
-  default: {
-    warn: jest.fn(),
-    withPrefix: jest.fn().mockReturnValue({
-      info: jest.fn(),
-      warn: jest.fn(),
-    }),
-  },
-}));
-
 describe('isTransactionBlockhashExpired', () => {
+  beforeEach(() => {
+    vi.spyOn(Errors, 'trackError').mockResolvedValue(undefined);
+    vi.spyOn(
+      Codecs,
+      'fromUnknownBase64StringToTransactionOrTransactionMessage',
+    );
+    vi.spyOn(Codecs, 'fromBytesToCompilableTransactionMessage');
+  });
+
   const blockhash = toBlockhash('11111111111111111111111111111111');
   const feePayer = address('BLw3RweJmfbTapJRgnPRvd962YDjFYAnVGd1p5hmZ5tP');
 
   const getRpc = (): Rpc<SolanaRpcApi> =>
-    ({ isBlockhashValid: jest.fn() }) as unknown as Rpc<SolanaRpcApi>;
+    ({ isBlockhashValid: vi.fn() }) as unknown as Rpc<SolanaRpcApi>;
 
   const getMessageWithBlockhashLifetime = (): TransactionMessage =>
     pipe(
@@ -78,9 +69,9 @@ describe('isTransactionBlockhashExpired', () => {
 
   it('tracks a failure and treats the transaction as not expired', async () => {
     const error = new Error('RPC unavailable');
-    jest
-      .mocked(fromUnknownBase64StringToTransactionOrTransactionMessage)
-      .mockRejectedValue(error);
+    vi.mocked(
+      fromUnknownBase64StringToTransactionOrTransactionMessage,
+    ).mockRejectedValue(error);
 
     expect(
       await isTransactionBlockhashExpired(
@@ -94,11 +85,11 @@ describe('isTransactionBlockhashExpired', () => {
 
   it('returns false when a compilable message has a valid recent blockhash', async () => {
     const rpc = getRpc();
-    jest
-      .mocked(fromUnknownBase64StringToTransactionOrTransactionMessage)
-      .mockResolvedValue(getMessageWithBlockhashLifetime());
-    const send = jest.fn().mockResolvedValue({ value: true });
-    jest.mocked(rpc.isBlockhashValid).mockReturnValue({ send } as never);
+    vi.mocked(
+      fromUnknownBase64StringToTransactionOrTransactionMessage,
+    ).mockResolvedValue(getMessageWithBlockhashLifetime());
+    const send = vi.fn().mockResolvedValue({ value: true });
+    vi.mocked(rpc.isBlockhashValid).mockReturnValue({ send } as never);
 
     expect(await isTransactionBlockhashExpired('message', rpc)).toBe(false);
 
@@ -112,14 +103,14 @@ describe('isTransactionBlockhashExpired', () => {
       messageBytes: new Uint8Array() as unknown as TransactionMessageBytes,
       signatures: {},
     };
-    jest
-      .mocked(fromUnknownBase64StringToTransactionOrTransactionMessage)
-      .mockResolvedValue(transaction);
-    jest
-      .mocked(fromBytesToCompilableTransactionMessage)
-      .mockResolvedValue(getMessageWithBlockhashLifetime());
-    const send = jest.fn().mockResolvedValue({ value: false });
-    jest.mocked(rpc.isBlockhashValid).mockReturnValue({ send } as never);
+    vi.mocked(
+      fromUnknownBase64StringToTransactionOrTransactionMessage,
+    ).mockResolvedValue(transaction);
+    vi.mocked(fromBytesToCompilableTransactionMessage).mockResolvedValue(
+      getMessageWithBlockhashLifetime(),
+    );
+    const send = vi.fn().mockResolvedValue({ value: false });
+    vi.mocked(rpc.isBlockhashValid).mockReturnValue({ send } as never);
 
     expect(await isTransactionBlockhashExpired('transaction', rpc)).toBe(true);
 
@@ -132,9 +123,9 @@ describe('isTransactionBlockhashExpired', () => {
 
   it('does not check a durable-nonce lifetime against the recent-blockhash cache', async () => {
     const rpc = getRpc();
-    jest
-      .mocked(fromUnknownBase64StringToTransactionOrTransactionMessage)
-      .mockResolvedValue(getMessageWithDurableNonceLifetime());
+    vi.mocked(
+      fromUnknownBase64StringToTransactionOrTransactionMessage,
+    ).mockResolvedValue(getMessageWithDurableNonceLifetime());
 
     expect(
       await isTransactionBlockhashExpired('durable-nonce-message', rpc),

@@ -1,12 +1,7 @@
 import { Network, Networks } from '../../constants/solana';
 import { getClientStatus } from '../../utils/interface';
+import * as SnapInterface from '../../utils/interface';
 import { ConfigProvider } from './ConfigProvider';
-
-jest.mock('../../utils/interface', () => ({
-  getClientStatus: jest.fn(),
-}));
-
-const mockGetClientStatus = jest.mocked(getClientStatus);
 
 /**
  * The same environment variables consumed before the shared `BaseConfigProvider`
@@ -232,9 +227,11 @@ describe('ConfigProvider', () => {
   });
 
   it('derives the active networks from the config', async () => {
-    mockGetClientStatus.mockResolvedValue({
-      clientVersion: '12.11.1',
-    } as Awaited<ReturnType<typeof getClientStatus>>);
+    const mockGetClientStatus = vi
+      .spyOn(SnapInterface, 'getClientStatus')
+      .mockResolvedValue({
+        clientVersion: '12.11.1',
+      } as Awaited<ReturnType<typeof getClientStatus>>);
 
     const networks = await new ConfigProvider({
       ...FULL_ENVIRONMENT,

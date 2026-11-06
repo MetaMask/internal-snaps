@@ -8,24 +8,16 @@ import { onTransactionApproved } from './onTransactionApproved';
 import { onTransactionRejected } from './onTransactionRejected';
 import { ScheduleBackgroundEventMethod } from './ScheduleBackgroundEventMethod';
 
-jest.mock('../../../../snapContext', () => ({
-  analyticsService: {
-    trackTransactionAdded: jest.fn(),
-    trackTransactionApproved: jest.fn(),
-    trackTransactionRejected: jest.fn(),
-  },
-  keyring: {
-    getAccountOrThrow: jest.fn(),
-  },
-}));
-
 describe('transaction background events', () => {
   const origin = 'https://example.com';
   const account = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.mocked(keyring.getAccountOrThrow).mockResolvedValue(account);
+    vi.clearAllMocks();
+    vi.spyOn(keyring, 'getAccountOrThrow').mockResolvedValue(account);
+    vi.spyOn(analyticsService, 'trackTransactionAdded');
+    vi.spyOn(analyticsService, 'trackTransactionApproved');
+    vi.spyOn(analyticsService, 'trackTransactionRejected');
   });
 
   it.each([

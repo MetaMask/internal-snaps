@@ -3,59 +3,45 @@ import {
   DEFAULT_METAMASK_ORIGIN,
   serialize,
 } from '@metamask/snap-networks-utils';
+import * as SnapNetworks from '@metamask/snap-networks-utils';
 import type { JsonRpcParams, JsonRpcRequest } from '@metamask/utils';
+import type { Mock } from 'vitest';
 
-import { transactionScanService, state } from '../../../../snapContext';
+import * as ConfirmTransactionRequestView from '../../../../features/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
+import {
+  connection,
+  transactionScanService,
+  state,
+} from '../../../../snapContext';
 import { Network } from '../../../constants/solana';
 import { EXPIRED_TRANSACTION_SCAN } from '../../../services/transaction-scan/buildExpiredScanResult';
 import { isTransactionBlockhashExpired } from '../../../services/transaction-scan/isTransactionBlockhashExpired';
+import * as BlockhashExpired from '../../../services/transaction-scan/isTransactionBlockhashExpired';
+import * as Errors from '../../../utils/errors';
 import { trackError } from '../../../utils/errors';
-import { getInterfaceContext, updateInterface } from '../../../utils/interface';
+import {
+  CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME,
+  getInterfaceContext,
+  updateInterface,
+} from '../../../utils/interface';
+import * as SnapInterface from '../../../utils/interface';
 import { refreshConfirmationEstimation } from './refreshConfirmationEstimation';
 
-jest.mock(
-  '../../../services/transaction-scan/isTransactionBlockhashExpired',
-  () => ({
-    isTransactionBlockhashExpired: jest.fn().mockResolvedValue(false),
-  }),
-);
-
-jest.mock('../../../utils/errors', () => ({
-  trackError: jest.fn().mockResolvedValue('tracked-error-id'),
-}));
-
-jest.mock('@metamask/snap-networks-utils', () => ({
-  ...jest.requireActual('@metamask/snap-networks-utils'),
-  serialize: jest.fn((value) => value),
-}));
-
-jest.mock('../../../utils/interface', () => ({
-  CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME: 'confirmation-interface',
-  getInterfaceContext: jest.fn(),
-  updateInterface: jest.fn(),
-}));
-
-jest.mock(
-  '../../../../features/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest',
-  () => ({
-    ConfirmTransactionRequest: () => null,
-  }),
-);
-
-jest.mock('../../../../snapContext', () => ({
-  connection: {
-    getRpc: jest.fn(),
-  },
-  state: {
-    getKey: jest.fn(),
-  },
-  transactionScanService: {
-    scanTransaction: jest.fn(),
-  },
-}));
-
 const setupTest = () => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
+  vi.spyOn(BlockhashExpired, 'isTransactionBlockhashExpired').mockResolvedValue(
+    false,
+  );
+  vi.spyOn(SnapNetworks, 'serialize').mockImplementation((value) => value);
+  vi.spyOn(SnapInterface, 'getInterfaceContext');
+  vi.spyOn(SnapInterface, 'updateInterface');
+  vi.spyOn(state, 'getKey');
+  vi.spyOn(transactionScanService, 'scanTransaction');
+  vi.spyOn(connection, 'getRpc').mockReturnValue({} as never);
+  vi.spyOn(
+    ConfirmTransactionRequestView,
+    'ConfirmTransactionRequest',
+  ).mockReturnValue(null as never);
 
   const interfaceContext = {
     account: {
@@ -71,25 +57,29 @@ const setupTest = () => {
     scanFetchStatus: 'fetched',
   };
 
-  (state.getKey as jest.Mock).mockResolvedValue({
-    'confirmation-interface': 'interface-id',
+  (state.getKey as Mock).mockResolvedValue({
+    [CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME]: 'interface-id',
   });
-  (getInterfaceContext as jest.Mock).mockResolvedValue(interfaceContext);
-  (updateInterface as jest.Mock).mockResolvedValue(undefined);
-  (serialize as jest.Mock).mockImplementation((value) => value);
-  jest.mocked(isTransactionBlockhashExpired).mockResolvedValue(false);
+  (getInterfaceContext as Mock).mockResolvedValue(interfaceContext);
+  (updateInterface as Mock).mockResolvedValue(undefined);
+  (serialize as Mock).mockImplementation((value) => value);
+  vi.mocked(isTransactionBlockhashExpired).mockResolvedValue(false);
 
   return interfaceContext;
 };
 
 describe('refreshConfirmationEstimation', () => {
+  beforeEach(() => {
+    vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
+  });
+
   it('disables confirmation with an expired scan result for an invalid blockhash', async () => {
     setupTest();
 
-    (transactionScanService.scanTransaction as jest.Mock).mockResolvedValue({
+    (transactionScanService.scanTransaction as Mock).mockResolvedValue({
       status: 'SUCCESS',
     });
-    jest.mocked(isTransactionBlockhashExpired).mockResolvedValue(true);
+    vi.mocked(isTransactionBlockhashExpired).mockResolvedValue(true);
 
     await refreshConfirmationEstimation({
       request: {} as JsonRpcRequest<JsonRpcParams>,
@@ -110,9 +100,7 @@ describe('refreshConfirmationEstimation', () => {
 
     const error = new Error('Scan failed');
 
-    (transactionScanService.scanTransaction as jest.Mock).mockRejectedValue(
-      error,
-    );
+    (transactionScanService.scanTransaction as Mock).mockRejectedValue(error);
 
     await refreshConfirmationEstimation({
       request: {} as JsonRpcRequest<JsonRpcParams>,
@@ -134,8 +122,8 @@ describe('refreshConfirmationEstimation', () => {
     interfaceContext.preferences = {
       simulateOnChainActions: false,
     };
-    (getInterfaceContext as jest.Mock).mockResolvedValue(interfaceContext);
-    jest.mocked(isTransactionBlockhashExpired).mockResolvedValue(true);
+    (getInterfaceContext as Mock).mockResolvedValue(interfaceContext);
+    vi.mocked(isTransactionBlockhashExpired).mockResolvedValue(true);
 
     await refreshConfirmationEstimation({
       request: {} as JsonRpcRequest<JsonRpcParams>,
@@ -158,7 +146,7 @@ describe('refreshConfirmationEstimation', () => {
       ...setupTest(),
       origin: DEFAULT_METAMASK_ORIGIN,
     };
-    (getInterfaceContext as jest.Mock).mockResolvedValue(interfaceContext);
+    (getInterfaceContext as Mock).mockResolvedValue(interfaceContext);
 
     await refreshConfirmationEstimation({
       request: {} as JsonRpcRequest<JsonRpcParams>,
@@ -175,7 +163,7 @@ describe('refreshConfirmationEstimation', () => {
       scan: existingScan,
     };
 
-    (getInterfaceContext as jest.Mock).mockResolvedValue(interfaceContext);
+    (getInterfaceContext as Mock).mockResolvedValue(interfaceContext);
 
     await refreshConfirmationEstimation({
       request: {} as JsonRpcRequest<JsonRpcParams>,

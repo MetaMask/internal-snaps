@@ -11,7 +11,7 @@ describe('registerStateMigration', () => {
     async (event) => {
       const eventEmitter = new EventEmitter(mockLogger);
       const state = {
-        deleteKey: jest.fn().mockResolvedValue(undefined),
+        deleteKey: vi.fn().mockResolvedValue(undefined),
       } as Pick<IStateManager<UnencryptedStateValue>, 'deleteKey'>;
 
       registerStateMigration(eventEmitter, state);

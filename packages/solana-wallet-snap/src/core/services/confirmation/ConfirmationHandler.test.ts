@@ -1,9 +1,10 @@
 import { SolMethod, TransactionType } from '@metamask/keyring-api';
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
+import type { Mock } from 'vitest';
 
-import { render as renderConfirmSignIn } from '../../../features/confirmation/views/ConfirmSignIn/render';
-import { render as renderConfirmSignMessage } from '../../../features/confirmation/views/ConfirmSignMessage/render';
-import { render as renderConfirmTransactionRequest } from '../../../features/confirmation/views/ConfirmTransactionRequest/render';
+import * as ConfirmSignInRender from '../../../features/confirmation/views/ConfirmSignIn/render';
+import * as ConfirmSignMessageRender from '../../../features/confirmation/views/ConfirmSignMessage/render';
+import * as ConfirmTransactionRequestRender from '../../../features/confirmation/views/ConfirmTransactionRequest/render';
 import { ScheduleBackgroundEventMethod } from '../../handlers/onCronjob/backgroundEvents/ScheduleBackgroundEventMethod';
 import type { SolanaKeyringRequest } from '../../handlers/onKeyringRequest/structs';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../test/mocks/solana-keyring-accounts';
@@ -13,32 +14,11 @@ import {
 } from '../wallet/mocks';
 import { ConfirmationHandler } from './ConfirmationHandler';
 
-jest.mock(
-  '../../../features/confirmation/views/ConfirmTransactionRequest/render',
-  () => ({
-    DEFAULT_CONFIRMATION_CONTEXT: {},
-    render: jest.fn(),
-  }),
-);
+let mockRenderConfirmTransactionRequest: Mock;
+let mockRenderConfirmSignMessage: Mock;
+let mockRenderConfirmSignIn: Mock;
 
-jest.mock(
-  '../../../features/confirmation/views/ConfirmSignMessage/render',
-  () => ({
-    render: jest.fn(),
-  }),
-);
-
-jest.mock('../../../features/confirmation/views/ConfirmSignIn/render', () => ({
-  render: jest.fn(),
-}));
-
-const mockRenderConfirmTransactionRequest = jest.mocked(
-  renderConfirmTransactionRequest,
-);
-const mockRenderConfirmSignMessage = jest.mocked(renderConfirmSignMessage);
-const mockRenderConfirmSignIn = jest.mocked(renderConfirmSignIn);
-
-const mockSnapRequest = jest.fn();
+const mockSnapRequest = vi.fn();
 (globalThis as unknown as { snap: unknown }).snap = {
   request: mockSnapRequest,
 };
@@ -123,7 +103,19 @@ describe('ConfirmationHandler', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    mockRenderConfirmTransactionRequest = vi.spyOn(
+      ConfirmTransactionRequestRender,
+      'render',
+    ) as unknown as Mock;
+    mockRenderConfirmSignMessage = vi.spyOn(
+      ConfirmSignMessageRender,
+      'render',
+    ) as unknown as Mock;
+    mockRenderConfirmSignIn = vi.spyOn(
+      ConfirmSignInRender,
+      'render',
+    ) as unknown as Mock;
     mockSnapRequest.mockResolvedValue(undefined);
     confirmationHandler = new ConfirmationHandler();
   });

@@ -2,6 +2,7 @@ import type { Asset } from '@metamask/assets-controller';
 import { SnapsAssetsMigrationStage } from '@metamask/assets-controller';
 import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import type {
   RemoteFeatureFlagsProvider,
   Serializable,
@@ -9,6 +10,7 @@ import type {
 } from '@metamask/snap-networks-utils';
 import { InMemoryCache } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
+import type { Mock } from 'vitest';
 
 import { MOCK_NFTS_LIST_RESPONSE_MAPPED } from '../../clients/nft-api/mocks/mockNftsListResponseMapped';
 import type { NftApiClient } from '../../clients/nft-api/NftApiClient';
@@ -33,17 +35,13 @@ import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from './AssetsRepository';
 import { AssetsService } from './AssetsService';
 
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: jest.fn(),
-}));
-
 describe('AssetsService', () => {
   let assetsService: AssetsService;
   let snapAssetsAdapter: SnapAssetsAdapter;
   let mockAssetsProvider: {
-    getAccountAssetByID: jest.Mock;
-    getAccountAssetsByIDs: jest.Mock;
-    getAccountAssetsByScope: jest.Mock;
+    getAccountAssetByID: Mock;
+    getAccountAssetsByIDs: Mock;
+    getAccountAssetsByScope: Mock;
   };
   let mockRemoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
   let mockConnection: SolanaConnection;
@@ -55,40 +53,41 @@ describe('AssetsService', () => {
   let mockCache: ICache<Serializable>;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
+      undefined,
+    );
     mockConnection = createMockConnection();
 
     mockConfigProvider = {
-      getActiveNetworks: jest.fn().mockResolvedValue([Network.Mainnet]),
+      getActiveNetworks: vi.fn().mockResolvedValue([Network.Mainnet]),
     } as unknown as ConfigProvider;
 
     mockTokenApiClient = {
-      getTokensMetadata: jest
-        .fn()
-        .mockResolvedValue(SOLANA_MOCK_TOKEN_METADATA),
+      getTokensMetadata: vi.fn().mockResolvedValue(SOLANA_MOCK_TOKEN_METADATA),
     } as unknown as TokenApiClient;
 
     mockCache = new InMemoryCache(mockLogger);
 
     mockNftApiClient = {
-      listAddressSolanaNfts: jest
+      listAddressSolanaNfts: vi
         .fn()
         .mockResolvedValue(MOCK_NFTS_LIST_RESPONSE_MAPPED.items),
     } as unknown as NftApiClient;
 
     const snap = {
-      request: jest.fn(),
+      request: vi.fn(),
     };
     (globalThis as any).snap = snap;
 
     mockAssetsRepository = {
-      findByKeyringAccountId: jest.fn(),
-      getAll: jest.fn(),
-      saveMany: jest.fn(),
+      findByKeyringAccountId: vi.fn(),
+      getAll: vi.fn(),
+      saveMany: vi.fn(),
     } as unknown as AssetsRepository;
 
     mockAccountsService = {
-      findById: jest.fn().mockResolvedValue(MOCK_SOLANA_KEYRING_ACCOUNT_0),
+      findById: vi.fn().mockResolvedValue(MOCK_SOLANA_KEYRING_ACCOUNT_0),
     } as unknown as AccountsService;
 
     snapAssetsAdapter = new SnapAssetsAdapter({
@@ -103,13 +102,13 @@ describe('AssetsService', () => {
     });
 
     mockAssetsProvider = {
-      getAccountAssetByID: jest.fn().mockResolvedValue(undefined),
-      getAccountAssetsByIDs: jest.fn().mockResolvedValue({}),
-      getAccountAssetsByScope: jest.fn().mockResolvedValue({}),
+      getAccountAssetByID: vi.fn().mockResolvedValue(undefined),
+      getAccountAssetsByIDs: vi.fn().mockResolvedValue({}),
+      getAccountAssetsByScope: vi.fn().mockResolvedValue({}),
     };
 
     mockRemoteFeatureFlagsProvider = {
-      getFeatureFlag: jest.fn().mockResolvedValue(undefined),
+      getFeatureFlag: vi.fn().mockResolvedValue(undefined),
     } as unknown as RemoteFeatureFlagsProvider;
 
     assetsService = new AssetsService({
@@ -128,23 +127,21 @@ describe('AssetsService', () => {
    * active stage.
    */
   function enableAssetsMigration(): void {
-    (
-      mockRemoteFeatureFlagsProvider.getFeatureFlag as jest.Mock
-    ).mockResolvedValue({
+    (mockRemoteFeatureFlagsProvider.getFeatureFlag as Mock).mockResolvedValue({
       stage: SnapsAssetsMigrationStage.ReadAssetsControllerOnly,
     });
   }
 
   describe('fetchAccountAssets', () => {
     it('fetches native and token assets', async () => {
-      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getBalance: jest.fn().mockReturnValueOnce({
-          send: jest.fn().mockResolvedValue({
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getBalance: vi.fn().mockReturnValueOnce({
+          send: vi.fn().mockResolvedValue({
             value: 1000000000, // Native balance on Mainnet
           }),
         }),
-        getTokenAccountsByOwner: jest.fn().mockReturnValue({
-          send: jest
+        getTokenAccountsByOwner: vi.fn().mockReturnValue({
+          send: vi
             .fn()
             .mockResolvedValueOnce({
               value:
@@ -165,14 +162,14 @@ describe('AssetsService', () => {
     });
 
     it('does not fail on individual RPC call failures to fetch native assets', async () => {
-      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getBalance: jest.fn().mockReturnValue({
-          send: jest
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getBalance: vi.fn().mockReturnValue({
+          send: vi
             .fn()
             .mockRejectedValueOnce(new Error('Error getting balance')),
         }),
-        getTokenAccountsByOwner: jest.fn().mockReturnValue({
-          send: jest
+        getTokenAccountsByOwner: vi.fn().mockReturnValue({
+          send: vi
             .fn()
             .mockResolvedValueOnce({
               value:
@@ -193,14 +190,14 @@ describe('AssetsService', () => {
     });
 
     it('does not fail on individual RPC call failures to fetch token assets', async () => {
-      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getBalance: jest.fn().mockReturnValueOnce({
-          send: jest.fn().mockResolvedValue({
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getBalance: vi.fn().mockReturnValueOnce({
+          send: vi.fn().mockResolvedValue({
             value: 1000000000, // Native balance on Mainnet
           }),
         }),
-        getTokenAccountsByOwner: jest.fn().mockReturnValue({
-          send: jest
+        getTokenAccountsByOwner: vi.fn().mockReturnValue({
+          send: vi
             .fn()
             .mockRejectedValueOnce(new Error('Error getting token accounts')),
         }),
@@ -216,7 +213,7 @@ describe('AssetsService', () => {
 
   describe('fetchAccountAssetsFromRpc', () => {
     it('delegates the live fetch to the Snap adapter', async () => {
-      const fetchSpy = jest
+      const fetchSpy = vi
         .spyOn(snapAssetsAdapter, 'fetchAccountAssets')
         .mockResolvedValue(MOCK_ASSET_ENTITIES);
 
@@ -247,7 +244,7 @@ describe('AssetsService', () => {
 
   describe('save', () => {
     it('saves an asset', async () => {
-      const spy = jest
+      const spy = vi
         .spyOn(assetsService, 'saveMany')
         .mockResolvedValueOnce(undefined);
 
@@ -259,11 +256,11 @@ describe('AssetsService', () => {
 
   describe('saveMany', () => {
     it('delegates to repository for saving assets', async () => {
-      const saveManySpy = jest
+      const saveManySpy = vi
         .spyOn(mockAssetsRepository, 'saveMany')
         .mockResolvedValue(undefined);
 
-      jest.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([]);
+      vi.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([]);
 
       await assetsService.saveMany(MOCK_ASSET_ENTITIES);
 
@@ -282,7 +279,7 @@ describe('AssetsService', () => {
     });
 
     it('emits event "AccountAssetListUpdated" with ALL assets in added list, and removed assets in removed list', async () => {
-      jest.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([]);
+      vi.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([]);
 
       const addedAssets = [MOCK_ASSET_ENTITY_0, MOCK_ASSET_ENTITY_1];
       const removedAssets = [
@@ -313,8 +310,7 @@ describe('AssetsService', () => {
     });
 
     it('emits event "AccountAssetListUpdated" when an asset was saved with a zero balance and some more is added', async () => {
-      jest
-        .spyOn(mockAssetsRepository, 'getAll')
+      vi.spyOn(mockAssetsRepository, 'getAll')
         .mockResolvedValueOnce([{ ...MOCK_ASSET_ENTITY_0, rawAmount: '0' }])
         .mockResolvedValueOnce([{ ...MOCK_ASSET_ENTITY_0, rawAmount: '0' }]);
 
@@ -341,7 +337,7 @@ describe('AssetsService', () => {
     });
 
     it('emits event "AccountBalancesUpdated" when balances change', async () => {
-      jest.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([]);
+      vi.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([]);
 
       await assetsService.saveMany(MOCK_ASSET_ENTITIES);
 
@@ -371,9 +367,9 @@ describe('AssetsService', () => {
     });
 
     it('emits event "AccountBalancesUpdated" when native balance goes from non-zero to zero', async () => {
-      jest
-        .spyOn(mockAssetsRepository, 'getAll')
-        .mockResolvedValue([{ ...MOCK_ASSET_ENTITY_0, uiAmount: '1234' }]);
+      vi.spyOn(mockAssetsRepository, 'getAll').mockResolvedValue([
+        { ...MOCK_ASSET_ENTITY_0, uiAmount: '1234' },
+      ]);
 
       await assetsService.saveMany([{ ...MOCK_ASSET_ENTITY_0, uiAmount: '0' }]);
 
@@ -395,12 +391,12 @@ describe('AssetsService', () => {
 
     // With isIncremental = false, we do emit events, even when no assets changed
     it.skip('does not emit events when no assets changed', async () => {
-      jest
-        .spyOn(mockAssetsRepository, 'getAll')
-        .mockResolvedValue(MOCK_ASSET_ENTITIES);
+      vi.spyOn(mockAssetsRepository, 'getAll').mockResolvedValue(
+        MOCK_ASSET_ENTITIES,
+      );
 
       await assetsService.saveMany(MOCK_ASSET_ENTITIES);
-      (emitSnapKeyringEvent as jest.Mock).mockClear();
+      (emitSnapKeyringEvent as Mock).mockClear();
 
       await assetsService.saveMany(MOCK_ASSET_ENTITIES);
 
@@ -410,14 +406,14 @@ describe('AssetsService', () => {
     it('fetches saved assets before saving new assets to ensure correct change detection', async () => {
       const callOrder: string[] = [];
 
-      const getAllSpy = jest
+      const getAllSpy = vi
         .spyOn(mockAssetsRepository, 'getAll')
         .mockImplementation(async () => {
           callOrder.push('getAll');
           return [];
         });
 
-      const saveManySpy = jest
+      const saveManySpy = vi
         .spyOn(mockAssetsRepository, 'saveMany')
         .mockImplementation(async () => {
           callOrder.push('saveMany');
@@ -433,7 +429,7 @@ describe('AssetsService', () => {
 
     it('correctly detects new assets when savedAssets is fetched before saving', async () => {
       // Start with empty state
-      jest.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([]);
+      vi.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([]);
 
       await assetsService.saveMany([MOCK_ASSET_ENTITY_0]);
 
@@ -460,15 +456,15 @@ describe('AssetsService', () => {
       };
 
       // First save with zero balance
-      jest.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([]);
+      vi.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([]);
       await assetsService.saveMany([assetWithZeroBalance]);
 
-      (emitSnapKeyringEvent as jest.Mock).mockClear();
+      (emitSnapKeyringEvent as Mock).mockClear();
 
       // Then save with non-zero balance, but getAll should return the state before this save
-      jest
-        .spyOn(mockAssetsRepository, 'getAll')
-        .mockResolvedValueOnce([assetWithZeroBalance]);
+      vi.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([
+        assetWithZeroBalance,
+      ]);
       await assetsService.saveMany([assetWithNonZeroBalance]);
 
       // Should emit AccountAssetListUpdated because asset went from zero to non-zero
@@ -489,9 +485,9 @@ describe('AssetsService', () => {
     // With isIncremental = false, we do emit events, even when no assets changed
     it.skip('does not incorrectly mark assets as new when they are already in the saved state', async () => {
       // Mock that the asset already exists in saved state
-      jest
-        .spyOn(mockAssetsRepository, 'getAll')
-        .mockResolvedValueOnce([MOCK_ASSET_ENTITY_0]);
+      vi.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([
+        MOCK_ASSET_ENTITY_0,
+      ]);
 
       await assetsService.saveMany([MOCK_ASSET_ENTITY_0]);
 
@@ -512,9 +508,9 @@ describe('AssetsService', () => {
       };
 
       // Mock that original asset exists in saved state
-      jest
-        .spyOn(mockAssetsRepository, 'getAll')
-        .mockResolvedValueOnce([originalAsset]);
+      vi.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([
+        originalAsset,
+      ]);
 
       await assetsService.saveMany([updatedAsset]);
 
@@ -546,7 +542,7 @@ describe('AssetsService', () => {
       };
 
       // Mock that both assets existed with non-zero balance
-      jest.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([
+      vi.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([
         MOCK_ASSET_ENTITY_0, // Native asset with non-zero balance
         MOCK_ASSET_ENTITY_1, // Token asset with non-zero balance
       ]);
@@ -606,9 +602,9 @@ describe('AssetsService', () => {
 
   describe('getAll', () => {
     it('delegates to repository and returns all assets', async () => {
-      jest
-        .spyOn(mockAssetsRepository, 'getAll')
-        .mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
+      vi.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce(
+        MOCK_ASSET_ENTITIES,
+      );
 
       const assets = await assetsService.getAll();
 
@@ -618,9 +614,10 @@ describe('AssetsService', () => {
 
   describe('findByAccount', () => {
     it('returns saved assets for the account when they exist', async () => {
-      jest
-        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
-        .mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
+      vi.spyOn(
+        mockAssetsRepository,
+        'findByKeyringAccountId',
+      ).mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
 
       const assets = await assetsService.findByAccount(
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
@@ -630,9 +627,10 @@ describe('AssetsService', () => {
     });
 
     it('includes placeholder native assets when no assets exist', async () => {
-      jest
-        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
-        .mockResolvedValueOnce([]);
+      vi.spyOn(
+        mockAssetsRepository,
+        'findByKeyringAccountId',
+      ).mockResolvedValueOnce([]);
 
       const assets = await assetsService.findByAccount(
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
@@ -655,9 +653,10 @@ describe('AssetsService', () => {
     it('includes placeholder native assets with zero balance when no native assets exist', async () => {
       const nonNativeAssets = [MOCK_ASSET_ENTITY_1, MOCK_ASSET_ENTITY_2]; // Token assets only
 
-      jest
-        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
-        .mockResolvedValueOnce(nonNativeAssets);
+      vi.spyOn(
+        mockAssetsRepository,
+        'findByKeyringAccountId',
+      ).mockResolvedValueOnce(nonNativeAssets);
 
       const assets = await assetsService.findByAccount(
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
@@ -683,9 +682,10 @@ describe('AssetsService', () => {
     });
 
     it('does not add placeholder native assets when they already exist', async () => {
-      jest
-        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
-        .mockResolvedValueOnce(MOCK_ASSET_ENTITIES); // Includes native asset (MOCK_ASSET_ENTITY_0)
+      vi.spyOn(
+        mockAssetsRepository,
+        'findByKeyringAccountId',
+      ).mockResolvedValueOnce(MOCK_ASSET_ENTITIES); // Includes native asset (MOCK_ASSET_ENTITY_0)
 
       const assets = await assetsService.findByAccount(
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
@@ -697,9 +697,10 @@ describe('AssetsService', () => {
 
   describe('getAccountAssetByID', () => {
     it('returns the matching asset when present', async () => {
-      jest
-        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
-        .mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
+      vi.spyOn(
+        mockAssetsRepository,
+        'findByKeyringAccountId',
+      ).mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
 
       const asset = await assetsService.getAccountAssetByID(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -710,9 +711,10 @@ describe('AssetsService', () => {
     });
 
     it('returns null when the asset is missing', async () => {
-      jest
-        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
-        .mockResolvedValueOnce([]);
+      vi.spyOn(
+        mockAssetsRepository,
+        'findByKeyringAccountId',
+      ).mockResolvedValueOnce([]);
 
       const asset = await assetsService.getAccountAssetByID(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -723,7 +725,7 @@ describe('AssetsService', () => {
     });
 
     it('returns null when the account is missing', async () => {
-      jest.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
+      vi.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
 
       const asset = await assetsService.getAccountAssetByID(
         'missing-account',
@@ -739,9 +741,10 @@ describe('AssetsService', () => {
 
   describe('getAccountAssetsByIDs', () => {
     it('returns a record keyed by asset ID', async () => {
-      jest
-        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
-        .mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
+      vi.spyOn(
+        mockAssetsRepository,
+        'findByKeyringAccountId',
+      ).mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
 
       const assets = await assetsService.getAccountAssetsByIDs(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -755,9 +758,10 @@ describe('AssetsService', () => {
     });
 
     it('returns null entries for missing assets', async () => {
-      jest
-        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
-        .mockResolvedValueOnce([MOCK_ASSET_ENTITY_0]);
+      vi.spyOn(
+        mockAssetsRepository,
+        'findByKeyringAccountId',
+      ).mockResolvedValueOnce([MOCK_ASSET_ENTITY_0]);
 
       const assets = await assetsService.getAccountAssetsByIDs(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -781,7 +785,7 @@ describe('AssetsService', () => {
     });
 
     it('returns null entries when the account is missing', async () => {
-      jest.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
+      vi.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
 
       const assets = await assetsService.getAccountAssetsByIDs(
         'missing-account',
@@ -800,9 +804,10 @@ describe('AssetsService', () => {
 
   describe('getAccountAssetsByScope', () => {
     it('filters account assets to the requested scope', async () => {
-      jest
-        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
-        .mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
+      vi.spyOn(
+        mockAssetsRepository,
+        'findByKeyringAccountId',
+      ).mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
 
       const assets = await assetsService.getAccountAssetsByScope(
         Network.Mainnet,
@@ -813,7 +818,7 @@ describe('AssetsService', () => {
     });
 
     it('returns an empty array when the account is missing', async () => {
-      jest.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
+      vi.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
 
       const assets = await assetsService.getAccountAssetsByScope(
         Network.Mainnet,
@@ -829,9 +834,10 @@ describe('AssetsService', () => {
 
   describe('getAccountAssets', () => {
     it('returns assets across all active networks', async () => {
-      jest
-        .spyOn(mockAssetsRepository, 'findByKeyringAccountId')
-        .mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
+      vi.spyOn(
+        mockAssetsRepository,
+        'findByKeyringAccountId',
+      ).mockResolvedValueOnce(MOCK_ASSET_ENTITIES);
 
       const assets = await assetsService.getAccountAssets(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -841,7 +847,7 @@ describe('AssetsService', () => {
     });
 
     it('returns an empty array when the account is missing', async () => {
-      jest.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
+      vi.spyOn(mockAccountsService, 'findById').mockResolvedValueOnce(null);
 
       const assets = await assetsService.getAccountAssets('missing-account');
 
@@ -880,7 +886,7 @@ describe('AssetsService', () => {
     } as unknown as Asset;
 
     it('serves reads through the Snap adapter while the migration is off, without calling the controller', async () => {
-      const snapSpy = jest
+      const snapSpy = vi
         .spyOn(snapAssetsAdapter, 'getAccountAssetByID')
         .mockResolvedValue(MOCK_ASSET_ENTITY_1);
 
@@ -906,7 +912,7 @@ describe('AssetsService', () => {
         mockAssetsProvider.getAccountAssetByID.mockResolvedValue(
           usdcControllerAsset,
         );
-        const snapSpy = jest.spyOn(snapAssetsAdapter, 'getAccountAssetByID');
+        const snapSpy = vi.spyOn(snapAssetsAdapter, 'getAccountAssetByID');
 
         const asset = await assetsService.getAccountAssetByID(
           MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -925,7 +931,7 @@ describe('AssetsService', () => {
         mockAssetsProvider.getAccountAssetsByIDs.mockResolvedValue({
           [MOCK_ASSET_ENTITY_1.assetType]: usdcControllerAsset,
         });
-        const snapSpy = jest.spyOn(snapAssetsAdapter, 'getAccountAssetsByIDs');
+        const snapSpy = vi.spyOn(snapAssetsAdapter, 'getAccountAssetsByIDs');
 
         const assets = await assetsService.getAccountAssetsByIDs(
           MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -947,10 +953,7 @@ describe('AssetsService', () => {
         mockAssetsProvider.getAccountAssetsByScope.mockResolvedValue({
           [MOCK_ASSET_ENTITY_1.assetType]: usdcControllerAsset,
         });
-        const snapSpy = jest.spyOn(
-          snapAssetsAdapter,
-          'getAccountAssetsByScope',
-        );
+        const snapSpy = vi.spyOn(snapAssetsAdapter, 'getAccountAssetsByScope');
 
         const assets = await assetsService.getAccountAssetsByScope(
           Network.Mainnet,
@@ -969,7 +972,7 @@ describe('AssetsService', () => {
         mockAssetsProvider.getAccountAssetsByScope.mockResolvedValue({
           [MOCK_ASSET_ENTITY_1.assetType]: usdcControllerAsset,
         });
-        const snapSpy = jest.spyOn(snapAssetsAdapter, 'getAccountAssets');
+        const snapSpy = vi.spyOn(snapAssetsAdapter, 'getAccountAssets');
 
         const assets = await assetsService.getAccountAssets(
           MOCK_SOLANA_KEYRING_ACCOUNT_0.id,

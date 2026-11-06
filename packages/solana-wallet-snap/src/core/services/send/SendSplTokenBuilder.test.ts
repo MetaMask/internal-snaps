@@ -1,5 +1,4 @@
 import type { Mint } from '@solana-program/token-2022';
-/* eslint-disable @typescript-eslint/no-require-imports */
 import { address, lamports } from '@solana/kit';
 import type { Account } from '@solana/kit';
 import type { Address } from '@solana/kit';
@@ -9,17 +8,14 @@ import type { RecipientClassifier } from '..';
 import { TokenHelper } from '..';
 import { Network } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNTS } from '../../test/mocks/solana-keyring-accounts';
+import { deriveSolanaKeypairMock } from '../../test/mocks/utils/deriveSolanaKeypair';
+import * as DeriveSolanaKeypair from '../../utils/deriveSolanaKeypair';
 import { mockLogger } from '../__mocks__/logger';
 import { createMockConnection } from '../__mocks__/mockConnection';
 import { MOCK_MINT_ACCOUNT } from '../__mocks__/mockSolanaRpcResponses';
 import type { SolanaConnection } from '../connection/SolanaConnection';
 import { RecipientUnsupportedError } from './errors';
 import { SendSplTokenBuilder } from './SendSplTokenBuilder';
-
-// Mock the deriveSolanaKeypair function
-jest.mock('../../../core/utils/deriveSolanaKeypair', () => ({
-  deriveSolanaKeypair: jest.fn(),
-}));
 
 describe('SendSplTokenBuilder', () => {
   let mockTokenHelper: TokenHelper;
@@ -38,26 +34,22 @@ describe('SendSplTokenBuilder', () => {
     cloneDeep(MOCK_MINT_ACCOUNT);
 
   beforeEach(() => {
-    jest.clearAllMocks();
-
-    // Set up the mock implementation
-    const { deriveSolanaKeypair } = require('../../utils/deriveSolanaKeypair');
-    const {
-      deriveSolanaKeypairMock,
-    } = require('../../test/mocks/utils/deriveSolanaKeypair');
-    deriveSolanaKeypair.mockImplementation(deriveSolanaKeypairMock);
+    vi.clearAllMocks();
+    vi.spyOn(DeriveSolanaKeypair, 'deriveSolanaKeypair').mockImplementation(
+      (params) => deriveSolanaKeypairMock(params),
+    );
 
     mockConnection = createMockConnection();
 
     mockTokenHelper = new TokenHelper(mockConnection);
 
     mockRecipientClassifier = {
-      classify: jest.fn().mockResolvedValue({ type: 'SYSTEM' }),
+      classify: vi.fn().mockResolvedValue({ type: 'SYSTEM' }),
     } as unknown as RecipientClassifier;
 
-    jest
-      .spyOn(mockTokenHelper, 'uiAmountToAmountForMint')
-      .mockResolvedValue(mockAmountLamports);
+    vi.spyOn(mockTokenHelper, 'uiAmountToAmountForMint').mockResolvedValue(
+      mockAmountLamports,
+    );
 
     sendSplTokenBuilder = new SendSplTokenBuilder(
       mockTokenHelper,
@@ -70,12 +62,10 @@ describe('SendSplTokenBuilder', () => {
   describe('buildTransactionMessage', () => {
     it('successfully builds a transaction message for SPL token transfer to a system account', async () => {
       const mockMintAccount = createMockMintAccount();
-      jest
-        .spyOn(mockConnection, 'fetchMint')
-        .mockResolvedValue(mockMintAccount);
+      vi.spyOn(mockConnection, 'fetchMint').mockResolvedValue(mockMintAccount);
 
       // Mock deriveAssociatedTokenAccountAddress (static method)
-      const deriveAssociatedTokenAccountAddressSpy = jest.spyOn(
+      const deriveAssociatedTokenAccountAddressSpy = vi.spyOn(
         SendSplTokenBuilder,
         'deriveAssociatedTokenAccountAddress',
       );
@@ -219,9 +209,10 @@ describe('SendSplTokenBuilder', () => {
     });
 
     it('successfully builds a transaction message for SPL token transfer to a token account', async () => {
-      jest
-        .spyOn(mockRecipientClassifier, 'classify')
-        .mockResolvedValue({ type: 'TOKEN_ACCOUNT', mint: mockMint });
+      vi.spyOn(mockRecipientClassifier, 'classify').mockResolvedValue({
+        type: 'TOKEN_ACCOUNT',
+        mint: mockMint,
+      });
 
       const transactionMessage =
         await sendSplTokenBuilder.buildTransactionMessage({
@@ -302,9 +293,9 @@ describe('SendSplTokenBuilder', () => {
     });
 
     it('throws an error if the recipient is unsupported', async () => {
-      jest
-        .spyOn(mockRecipientClassifier, 'classify')
-        .mockResolvedValue({ type: 'UNSUPPORTED' });
+      vi.spyOn(mockRecipientClassifier, 'classify').mockResolvedValue({
+        type: 'UNSUPPORTED',
+      });
 
       await expect(
         sendSplTokenBuilder.buildTransactionMessage({

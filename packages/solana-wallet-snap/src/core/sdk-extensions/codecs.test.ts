@@ -28,9 +28,9 @@ describe('codecs', () => {
     } = scenario;
 
     const mockRpc = {
-      getMultipleAccounts: jest.fn().mockReturnValue({
-        send: jest.fn().mockResolvedValue(getMultipleAccountsResponse?.result),
-      }),
+      getMultipleAccounts: vi.fn(() => ({
+        send: vi.fn().mockResolvedValue(getMultipleAccountsResponse?.result),
+      })),
     } as unknown as Rpc<GetMultipleAccountsApi>;
 
     describe(`fromBase64StringToCompilableTransactionMessage | Scenario: ${name}`, () => {

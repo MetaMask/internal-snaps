@@ -1,8 +1,9 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
-
 import type { Serializable, ICache } from '@metamask/snap-networks-utils';
 import { InMemoryCache } from '@metamask/snap-networks-utils';
+import * as Token2022 from '@solana-program/token-2022';
 import { fetchJsonParsedAccount } from '@solana/kit';
+import * as SolanaKit from '@solana/kit';
+import type { Mock } from 'vitest';
 
 import { KnownCaip19Id, Network } from '../../constants/solana';
 import { mockLogger } from '../__mocks__/logger';
@@ -12,25 +13,7 @@ import {
 } from '../__mocks__/mockSolanaRpcResponses';
 import type { ConfigProvider } from '../config';
 import { SolanaConnection } from './SolanaConnection';
-
-jest.mock('@solana/kit', () => ({
-  ...jest.requireActual('@solana/kit'),
-  createSolanaRpcFromTransport: jest.fn().mockImplementation((transport) => ({
-    urls: transport.urls,
-  })),
-  address: jest.fn().mockImplementation((address) => address),
-  fetchJsonParsedAccount: jest.fn(),
-}));
-
-jest.mock('@solana-program/token-2022', () => ({
-  fetchMint: jest.fn().mockResolvedValue(MOCK_MINT_ACCOUNT),
-}));
-
-jest.mock('./transport', () => ({
-  createMainTransport: jest.fn().mockImplementation((urls) => ({
-    urls,
-  })),
-}));
+import * as Transport from './transport';
 
 const MOCK_NETWORKS = [
   {
@@ -49,13 +32,26 @@ describe('SolanaConnection', () => {
   let mockCache: ICache<Serializable>;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    vi.spyOn(SolanaKit, 'createSolanaRpcFromTransport').mockImplementation(
+      ((transport: { urls: unknown }) => ({ urls: transport.urls })) as never,
+    );
+    vi.spyOn(SolanaKit, 'address').mockImplementation(
+      ((value: unknown) => value) as never,
+    );
+    vi.spyOn(SolanaKit, 'fetchJsonParsedAccount');
+    vi.spyOn(Token2022, 'fetchMint').mockResolvedValue(
+      MOCK_MINT_ACCOUNT as never,
+    );
+    vi.spyOn(Transport, 'createMainTransport').mockImplementation(((
+      urls: unknown,
+    ) => ({ urls })) as never);
 
     mockConfigProvider = {
       config: {
         networks: MOCK_NETWORKS,
       },
-      getNetworkBy: jest.fn().mockImplementation((key, value) => {
+      getNetworkBy: vi.fn().mockImplementation((key, value) => {
         switch (key) {
           case 'caip2Id':
             return MOCK_NETWORKS.find((network) => network.caip2Id === value);
@@ -110,9 +106,9 @@ describe('SolanaConnection', () => {
 
   describe('fetchJsonParsedAccount', () => {
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
 
-      (fetchJsonParsedAccount as jest.Mock).mockResolvedValue(
+      (fetchJsonParsedAccount as Mock).mockResolvedValue(
         MOCK_JSON_PARSED_ACCOUNT,
       );
     });
@@ -127,8 +123,6 @@ describe('SolanaConnection', () => {
     });
 
     it('caches the JSON-parsed account', async () => {
-      const spy = jest.spyOn(require('@solana/kit'), 'fetchJsonParsedAccount');
-
       const call = async () =>
         connection.fetchJsonParsedAccount(
           KnownCaip19Id.UsdcMainnet,
@@ -140,12 +134,10 @@ describe('SolanaConnection', () => {
       await call();
 
       // It should effectively call the RPC only once
-      expect(spy).toHaveBeenCalledTimes(1);
+      expect(fetchJsonParsedAccount).toHaveBeenCalledTimes(1);
     });
 
     it('bypasses the cache when skipCache is true', async () => {
-      const spy = jest.spyOn(require('@solana/kit'), 'fetchJsonParsedAccount');
-
       const call = async () =>
         connection.fetchJsonParsedAccount(
           KnownCaip19Id.UsdcMainnet,
@@ -157,7 +149,7 @@ describe('SolanaConnection', () => {
       await call();
       await call();
 
-      expect(spy).toHaveBeenCalledTimes(2);
+      expect(fetchJsonParsedAccount).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -172,18 +164,13 @@ describe('SolanaConnection', () => {
     });
 
     it('caches the mint account', async () => {
-      const spy = jest.spyOn(
-        require('@solana-program/token-2022'),
-        'fetchMint',
-      );
-
       const call = async () =>
         connection.fetchMint(KnownCaip19Id.UsdcMainnet, Network.Mainnet);
 
       await call();
       await call();
 
-      expect(spy).toHaveBeenCalledTimes(1);
+      expect(Token2022.fetchMint).toHaveBeenCalledTimes(1);
     });
   });
 });
