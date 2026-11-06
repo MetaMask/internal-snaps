@@ -1,9 +1,11 @@
 import type { FeeType } from '@metamask/keyring-api';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
+import type { Mocked, Mock } from 'vitest';
 
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
 import type { SnapExecutionContext } from '../../../../context';
+import defaultSnapContext from '../../../../context';
 import type { AssetEntity } from '../../../../entities/assets';
 import type { TronKeyringAccount } from '../../../../entities/tronKeyringAccount';
 import { TronMultichainMethod } from '../../../../handlers/keyring/keyring-types';
@@ -22,17 +24,6 @@ import { FetchStatus } from '../../../../types/snap';
 import type { Preferences } from '../../../../types/snap';
 import type { TronWalletKeyringRequest } from '../../../../validation/structs';
 import { render } from './render';
-
-// Mock the context module
-jest.mock('../../../../context', () => ({
-  __esModule: true,
-  default: {
-    snapClient: null,
-    transactionScanService: null,
-    transactionExpirationRefresherService: null,
-    state: null,
-  },
-}));
 
 /**
  * Helper function to convert string to base64.
@@ -125,7 +116,7 @@ const mockAccount: TronKeyringAccount = {
 
 type WithSnapContextCallback<ReturnValue> = (payload: {
   snapContext: SnapExecutionContext;
-  mockSnapClient: jest.Mocked<
+  mockSnapClient: Mocked<
     Pick<
       SnapClient,
       | 'createInterface'
@@ -136,18 +127,16 @@ type WithSnapContextCallback<ReturnValue> = (payload: {
       | 'trackError'
     >
   >;
-  mockTransactionScanService: jest.Mocked<
+  mockTransactionScanService: Mocked<
     Pick<TransactionScanService, 'scanTransaction'>
   >;
   mockTransactionExpirationRefresherService: {
-    isTransactionExpired: jest.Mock;
+    isTransactionExpired: Mock;
   };
-  mockState: { setKey: jest.Mock };
-  mockAssetsService: jest.Mocked<Pick<AssetsService, 'getAccountAssetsByIDs'>>;
-  mockFeeCalculatorService: jest.Mocked<
-    Pick<FeeCalculatorService, 'computeFee'>
-  >;
-  mockPriceApiClient: { getMultipleSpotPrices: jest.Mock };
+  mockState: { setKey: Mock };
+  mockAssetsService: Mocked<Pick<AssetsService, 'getAccountAssetsByIDs'>>;
+  mockFeeCalculatorService: Mocked<Pick<FeeCalculatorService, 'computeFee'>>;
+  mockPriceApiClient: { getMultipleSpotPrices: Mock };
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -162,19 +151,19 @@ type WithSnapContextCallback<ReturnValue> = (payload: {
 async function withSnapContext<ReturnValue>(
   testFunction: WithSnapContextCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  const mockAssetsService: jest.Mocked<
+  const mockAssetsService: Mocked<
     Pick<AssetsService, 'getAccountAssetsByIDs'>
   > = {
-    getAccountAssetsByIDs: jest.fn().mockResolvedValue(mockAssets),
+    getAccountAssetsByIDs: vi.fn().mockResolvedValue(mockAssets),
   };
 
-  const mockFeeCalculatorService: jest.Mocked<
+  const mockFeeCalculatorService: Mocked<
     Pick<FeeCalculatorService, 'computeFee'>
   > = {
-    computeFee: jest.fn().mockResolvedValue(mockComputeFeeResult),
+    computeFee: vi.fn().mockResolvedValue(mockComputeFeeResult),
   };
 
-  const mockSnapClient: jest.Mocked<
+  const mockSnapClient: Mocked<
     Pick<
       SnapClient,
       | 'createInterface'
@@ -185,37 +174,34 @@ async function withSnapContext<ReturnValue>(
       | 'trackError'
     >
   > = {
-    createInterface: jest.fn().mockResolvedValue('interface-id-123'),
-    showDialog: jest.fn().mockResolvedValue(true),
-    updateInterface: jest.fn(),
-    getPreferences: jest.fn().mockResolvedValue(mockPreferences),
-    scheduleBackgroundEvent: jest.fn(),
-    trackError: jest.fn(),
+    createInterface: vi.fn().mockResolvedValue('interface-id-123'),
+    showDialog: vi.fn().mockResolvedValue(true),
+    updateInterface: vi.fn(),
+    getPreferences: vi.fn().mockResolvedValue(mockPreferences),
+    scheduleBackgroundEvent: vi.fn(),
+    trackError: vi.fn(),
   };
 
-  const mockTransactionScanService: jest.Mocked<
+  const mockTransactionScanService: Mocked<
     Pick<TransactionScanService, 'scanTransaction'>
   > = {
-    scanTransaction: jest.fn().mockResolvedValue(mockScanResult),
+    scanTransaction: vi.fn().mockResolvedValue(mockScanResult),
   };
 
   const mockTransactionExpirationRefresherService = {
-    isTransactionExpired: jest.fn(),
+    isTransactionExpired: vi.fn(),
   };
 
   const mockState = {
-    setKey: jest.fn(),
+    setKey: vi.fn(),
   };
 
   const mockPriceApiClient = {
-    getMultipleSpotPrices: jest.fn().mockResolvedValue({}),
+    getMultipleSpotPrices: vi.fn().mockResolvedValue({}),
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, no-restricted-globals
-  const snapContext = require('../../../../context')
-    .default as SnapExecutionContext;
   const freshSnapContext = {
-    ...snapContext,
+    ...defaultSnapContext,
     snapClient: mockSnapClient,
     transactionScanService: mockTransactionScanService,
     transactionExpirationRefresherService:
@@ -226,10 +212,10 @@ async function withSnapContext<ReturnValue>(
     priceApiClient: mockPriceApiClient,
   } as unknown as SnapExecutionContext;
 
-  Object.assign(snapContext, freshSnapContext);
+  Object.assign(defaultSnapContext, freshSnapContext);
 
   return await testFunction({
-    snapContext,
+    snapContext: defaultSnapContext,
     mockSnapClient,
     mockTransactionScanService,
     mockTransactionExpirationRefresherService,

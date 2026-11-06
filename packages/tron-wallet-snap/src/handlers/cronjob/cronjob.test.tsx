@@ -4,6 +4,7 @@ import type {
   AnalyticsService,
   IStateManager,
 } from '@metamask/snap-networks-utils';
+import type { Mocked, Mock } from 'vitest';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -29,13 +30,13 @@ import { mockLogger } from '../../utils/mockLogger';
 import { BackgroundEventMethod, CronHandler } from './cronjob';
 
 const mockAnalyticsService = {
-  trackTransactionFinalized: jest.fn().mockResolvedValue(undefined),
+  trackTransactionFinalized: vi.fn().mockResolvedValue(undefined),
 } as unknown as AnalyticsService;
 
 /**
  * Subset of SnapClient methods exercised by `refreshConfirmationSend`.
  */
-type MockSnapClient = jest.Mocked<
+type MockSnapClient = Mocked<
   Pick<
     SnapClient,
     | 'getClientStatus'
@@ -53,20 +54,20 @@ type MockSnapClient = jest.Mocked<
  * Subset of State methods exercised by `refreshConfirmationSend`.
  */
 type MockState = {
-  getKey: jest.Mock;
-  setKey: jest.Mock;
-  setKeyWith: jest.Mock;
+  getKey: Mock;
+  setKey: Mock;
+  setKeyWith: Mock;
 };
 
 /**
  * Subset of TransactionScanService methods exercised by
  * `refreshConfirmationSend`.
  */
-type MockTransactionScanService = jest.Mocked<
+type MockTransactionScanService = Mocked<
   Pick<TransactionScanService, 'scanTransaction'>
 >;
 
-type MockTronWebFactory = jest.Mocked<Pick<TronWebFactory, 'createClient'>>;
+type MockTronWebFactory = Mocked<Pick<TronWebFactory, 'createClient'>>;
 
 type InterfaceContext =
   | ConfirmTransactionRequestContext
@@ -257,16 +258,14 @@ function buildMockSnapClient(
   interfaceContext: InterfaceContext | null,
 ): MockSnapClient {
   return {
-    getClientStatus: jest
-      .fn()
-      .mockResolvedValue({ active: true, locked: false }),
-    createInterface: jest.fn().mockResolvedValue('interface-id'),
-    showDialog: jest.fn().mockResolvedValue(true),
-    updateInterface: jest.fn().mockResolvedValue(undefined),
-    getInterfaceContext: jest.fn().mockResolvedValue(interfaceContext),
-    scheduleBackgroundEvent: jest.fn().mockResolvedValue(undefined),
-    getPreferences: jest.fn().mockResolvedValue({}),
-    trackError: jest.fn().mockResolvedValue(undefined),
+    getClientStatus: vi.fn().mockResolvedValue({ active: true, locked: false }),
+    createInterface: vi.fn().mockResolvedValue('interface-id'),
+    showDialog: vi.fn().mockResolvedValue(true),
+    updateInterface: vi.fn().mockResolvedValue(undefined),
+    getInterfaceContext: vi.fn().mockResolvedValue(interfaceContext),
+    scheduleBackgroundEvent: vi.fn().mockResolvedValue(undefined),
+    getPreferences: vi.fn().mockResolvedValue({}),
+    trackError: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -281,9 +280,9 @@ function buildMockState(
   mapInterfaceNameToId: Record<string, string>,
 ): MockState {
   return {
-    setKey: jest.fn().mockResolvedValue(undefined),
-    setKeyWith: jest.fn().mockResolvedValue(undefined),
-    getKey: jest.fn().mockResolvedValue(mapInterfaceNameToId),
+    setKey: vi.fn().mockResolvedValue(undefined),
+    setKeyWith: vi.fn().mockResolvedValue(undefined),
+    getKey: vi.fn().mockResolvedValue(mapInterfaceNameToId),
   };
 }
 
@@ -298,7 +297,7 @@ function buildMockTransactionScanService(
   scanResult: TransactionScanResult,
 ): MockTransactionScanService {
   return {
-    scanTransaction: jest.fn().mockResolvedValue(scanResult),
+    scanTransaction: vi.fn().mockResolvedValue(scanResult),
   };
 }
 
@@ -321,18 +320,18 @@ function buildMockTronWebFactory({
   referencedBlock?: ReturnType<typeof createBlock>;
 }): MockTronWebFactory {
   return {
-    createClient: jest.fn().mockReturnValue({
+    createClient: vi.fn().mockReturnValue({
       trx: {
         getCurrentBlock: currentBlockError
-          ? jest.fn().mockRejectedValue(currentBlockError)
-          : jest.fn().mockResolvedValue(currentBlock),
-        getBlockByNumber: jest
+          ? vi.fn().mockRejectedValue(currentBlockError)
+          : vi.fn().mockResolvedValue(currentBlock),
+        getBlockByNumber: vi
           .fn()
           .mockResolvedValue(referencedBlock ?? currentBlock),
       },
       utils: {
         deserializeTx: {
-          deserializeTransaction: jest.fn().mockReturnValue({
+          deserializeTransaction: vi.fn().mockReturnValue({
             contract: [
               {
                 type: 'TransferContract',
@@ -353,11 +352,9 @@ function buildMockTronWebFactory({
           }),
         },
         transaction: {
-          txJsonToPb: jest
-            .fn()
-            .mockImplementation((transaction) => transaction),
-          txPbToRawDataHex: jest.fn().mockReturnValue('refreshed-raw-data-hex'),
-          txPbToTxID: jest.fn().mockReturnValue('0xrefreshed-tx-id'),
+          txJsonToPb: vi.fn().mockImplementation((transaction) => transaction),
+          txPbToRawDataHex: vi.fn().mockReturnValue('refreshed-raw-data-hex'),
+          txPbToTxID: vi.fn().mockReturnValue('0xrefreshed-tx-id'),
         },
       },
     }),
@@ -474,16 +471,16 @@ async function withCronHandler(
       tronWebFactory: mockTronWebFactory as unknown as TronWebFactory,
     });
   const passThroughTransactionExpirationRefresherService = {
-    ensureFreshRawData: jest.fn(async ({ rawData }) => rawData),
+    ensureFreshRawData: vi.fn(async ({ rawData }) => rawData),
     deserializeTransaction:
       transactionExpirationRefresherService.deserializeTransaction.bind(
         transactionExpirationRefresherService,
       ),
     isTransactionExpired: transactionExpiredError
-      ? jest.fn(async () => {
+      ? vi.fn(async () => {
           throw transactionExpiredError;
         })
-      : jest.fn(async () => transactionExpired),
+      : vi.fn(async () => transactionExpired),
   };
 
   const cronHandler = buildCronHandler({
@@ -903,11 +900,11 @@ describe('CronHandler', () => {
         mockState,
         mockTransactionScanService,
         transactionExpirationRefresherService: {
-          ensureFreshRawData: jest.fn(async ({ rawData }) => rawData),
-          deserializeTransaction: jest
+          ensureFreshRawData: vi.fn(async ({ rawData }) => rawData),
+          deserializeTransaction: vi
             .fn()
             .mockRejectedValue(new Error('deserialize failed')),
-          isTransactionExpired: jest.fn().mockResolvedValue(false),
+          isTransactionExpired: vi.fn().mockResolvedValue(false),
         },
       });
 
@@ -960,15 +957,15 @@ describe('CronHandler', () => {
     const ACCOUNT_IDS = [ACCOUNT_ID];
 
     type MockAccountsService = {
-      findByIds: jest.Mock;
-      synchronize: jest.Mock;
+      findByIds: Mock;
+      synchronize: Mock;
     };
 
     type WithTrackTransactionCronHandlerCallback<ReturnValue> = (payload: {
       cronHandler: CronHandler;
       mockSnapClient: MockSnapClient;
       mockAccountsService: MockAccountsService;
-      mockTronHttpClient: jest.Mocked<
+      mockTronHttpClient: Mocked<
         Pick<TronHttpClient, 'getTransactionInfoById'>
       >;
     }) => Promise<ReturnValue> | ReturnValue;
@@ -985,15 +982,16 @@ describe('CronHandler', () => {
       const mockSnapClient = {
         ...buildMockSnapClient(null),
       };
-      jest.mocked(mockAnalyticsService.trackTransactionFinalized).mockClear();
+      // eslint-disable-next-line jest/unbound-method
+      vi.mocked(mockAnalyticsService.trackTransactionFinalized).mockClear();
       const mockAccountsService: MockAccountsService = {
-        findByIds: jest.fn(),
-        synchronize: jest.fn(),
+        findByIds: vi.fn(),
+        synchronize: vi.fn(),
       };
-      const mockTronHttpClient: jest.Mocked<
+      const mockTronHttpClient: Mocked<
         Pick<TronHttpClient, 'getTransactionInfoById'>
       > = {
-        getTransactionInfoById: jest.fn(),
+        getTransactionInfoById: vi.fn(),
       };
       const cronHandler = new CronHandler({
         logger: mockLogger,

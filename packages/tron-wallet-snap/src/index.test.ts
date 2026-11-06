@@ -1,5 +1,6 @@
 import { noopAssetHandlers } from '@metamask/snap-networks-utils';
 import { SnapError } from '@metamask/snaps-sdk';
+import type { Mock } from 'vitest';
 
 import {
   onAssetHistoricalPrice,
@@ -13,14 +14,14 @@ import {
   onUserInput,
 } from '.';
 
-const mockClientRequestHandle = jest.fn();
-const mockCronHandle = jest.fn();
-const mockKeyringHandle = jest.fn();
-const mockRpcHandle = jest.fn();
-const mockUserInputHandle = jest.fn();
-const snapRequest = jest.fn();
+const mockClientRequestHandle = vi.fn();
+const mockCronHandle = vi.fn();
+const mockKeyringHandle = vi.fn();
+const mockRpcHandle = vi.fn();
+const mockUserInputHandle = vi.fn();
+const snapRequest = vi.fn();
 
-jest.mock('./context', () => ({
+vi.mock('./context', () => ({
   clientRequestHandler: {
     handle: async (...args: unknown[]): Promise<unknown> =>
       mockClientRequestHandle(...args),
@@ -50,9 +51,9 @@ jest.mock('./context', () => ({
  * @returns Whatever the test function returns.
  */
 async function withEntrypointMocks(
-  testFn: (setup: { snapRequest: jest.Mock }) => void | Promise<void>,
+  testFn: (setup: { snapRequest: Mock }) => void | Promise<void>,
 ): Promise<void> {
-  jest.resetAllMocks();
+  vi.resetAllMocks();
   snapRequest.mockResolvedValue(undefined);
   Object.assign(globalThis, { snap: { request: snapRequest } });
 
@@ -64,41 +65,39 @@ describe('entrypoints', () => {
   const request = { jsonrpc: '2.0', id: 1, method: 'foo' } as const;
   const userInputParams = { id: 'id', event: {}, context: null };
 
-  const entrypoints: [string, () => Promise<unknown>, jest.Mock, unknown[]][] =
+  const entrypoints: [string, () => Promise<unknown>, Mock, unknown[]][] = [
     [
-      [
-        'onClientRequest',
-        async (): Promise<unknown> => onClientRequest({ request } as never),
-        mockClientRequestHandle,
-        [request],
-      ],
-      [
-        'onCronjob',
-        async (): Promise<unknown> => onCronjob({ request } as never),
-        mockCronHandle,
-        [request],
-      ],
-      [
-        'onKeyringRequest',
-        async (): Promise<unknown> =>
-          onKeyringRequest({ origin, request } as never),
-        mockKeyringHandle,
-        [origin, request],
-      ],
-      [
-        'onRpcRequest',
-        async (): Promise<unknown> =>
-          onRpcRequest({ origin, request } as never),
-        mockRpcHandle,
-        [origin, request],
-      ],
-      [
-        'onUserInput',
-        async (): Promise<unknown> => onUserInput(userInputParams as never),
-        mockUserInputHandle,
-        [userInputParams],
-      ],
-    ];
+      'onClientRequest',
+      async (): Promise<unknown> => onClientRequest({ request } as never),
+      mockClientRequestHandle,
+      [request],
+    ],
+    [
+      'onCronjob',
+      async (): Promise<unknown> => onCronjob({ request } as never),
+      mockCronHandle,
+      [request],
+    ],
+    [
+      'onKeyringRequest',
+      async (): Promise<unknown> =>
+        onKeyringRequest({ origin, request } as never),
+      mockKeyringHandle,
+      [origin, request],
+    ],
+    [
+      'onRpcRequest',
+      async (): Promise<unknown> => onRpcRequest({ origin, request } as never),
+      mockRpcHandle,
+      [origin, request],
+    ],
+    [
+      'onUserInput',
+      async (): Promise<unknown> => onUserInput(userInputParams as never),
+      mockUserInputHandle,
+      [userInputParams],
+    ],
+  ];
 
   it.each(entrypoints)(
     'delegates %s to its handler',

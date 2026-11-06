@@ -1,6 +1,7 @@
 import type { Asset, Caip19AssetId } from '@metamask/assets-controller';
 import type { KeyringAccount } from '@metamask/keyring-api';
 import { AssetsProvider } from '@metamask/snap-networks-utils';
+import type { Mocked, Mock } from 'vitest';
 
 import { KnownCaip19Id, Network } from '../../../constants';
 import { AssetFetchError } from '../errors';
@@ -77,7 +78,7 @@ function createControllerAsset(options: {
  */
 function createCoreAssetsAdapterContext(): {
   adapter: CoreAssetsAdapter;
-  mockAssetsProvider: jest.Mocked<
+  mockAssetsProvider: Mocked<
     Pick<
       AssetsProvider,
       | 'getAccountAssetByID'
@@ -88,10 +89,10 @@ function createCoreAssetsAdapterContext(): {
   >;
 } {
   const mockAssetsProvider = {
-    getAccountAssetByID: jest.fn().mockResolvedValue(undefined),
-    getAccountAssetsByIDs: jest.fn().mockResolvedValue({}),
-    getAccountAssetsByScope: jest.fn().mockResolvedValue({}),
-    getAssets: jest.fn().mockResolvedValue({}),
+    getAccountAssetByID: vi.fn().mockResolvedValue(undefined),
+    getAccountAssetsByIDs: vi.fn().mockResolvedValue({}),
+    getAccountAssetsByScope: vi.fn().mockResolvedValue({}),
+    getAssets: vi.fn().mockResolvedValue({}),
   };
 
   const adapter = new CoreAssetsAdapter({
@@ -285,7 +286,7 @@ describe('CoreAssetsAdapter', () => {
   describe('fetchAccountAssetsByIDs', () => {
     it('fetches all assets, including special assets, from a forced, cache-bypassing one-time fetch', async () => {
       await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
-        (mockAssetsProvider.getAssets as jest.Mock).mockResolvedValue({
+        (mockAssetsProvider.getAssets as Mock).mockResolvedValue({
           [ACCOUNT_ID]: {
             [MAINNET_ASSET_ID]: createControllerAsset({
               id: MAINNET_ASSET_ID,
@@ -313,7 +314,7 @@ describe('CoreAssetsAdapter', () => {
 
     it('returns null for requested asset IDs that could not be resolved', async () => {
       await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
-        (mockAssetsProvider.getAssets as jest.Mock).mockResolvedValue({
+        (mockAssetsProvider.getAssets as Mock).mockResolvedValue({
           [ACCOUNT_ID]: {},
         });
 
@@ -328,7 +329,7 @@ describe('CoreAssetsAdapter', () => {
 
     it('deduplicates scopes across the requested asset IDs', async () => {
       await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
-        (mockAssetsProvider.getAssets as jest.Mock).mockResolvedValue({});
+        (mockAssetsProvider.getAssets as Mock).mockResolvedValue({});
 
         await adapter.fetchAccountAssetsByIDs(mockAccount, [
           MAINNET_ASSET_ID,
@@ -344,7 +345,7 @@ describe('CoreAssetsAdapter', () => {
 
     it('rejects with AssetFetchError when the controller fetch fails', async () => {
       await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
-        (mockAssetsProvider.getAssets as jest.Mock).mockRejectedValue(
+        (mockAssetsProvider.getAssets as Mock).mockRejectedValue(
           new Error('fetch failed'),
         );
 
@@ -357,9 +358,7 @@ describe('CoreAssetsAdapter', () => {
     it('rethrows AssetFetchError as-is when the controller fetch fails', async () => {
       await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
         const fetchError = new AssetFetchError('fetch failed');
-        (mockAssetsProvider.getAssets as jest.Mock).mockRejectedValue(
-          fetchError,
-        );
+        (mockAssetsProvider.getAssets as Mock).mockRejectedValue(fetchError);
 
         await expect(
           adapter.fetchAccountAssetsByIDs(mockAccount, [MAINNET_ASSET_ID]),
@@ -371,7 +370,7 @@ describe('CoreAssetsAdapter', () => {
   describe('fetchAccountAssetByID', () => {
     it('returns the single fresh asset', async () => {
       await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
-        (mockAssetsProvider.getAssets as jest.Mock).mockResolvedValue({
+        (mockAssetsProvider.getAssets as Mock).mockResolvedValue({
           [ACCOUNT_ID]: {
             [MAINNET_ASSET_ID]: createControllerAsset({
               id: MAINNET_ASSET_ID,

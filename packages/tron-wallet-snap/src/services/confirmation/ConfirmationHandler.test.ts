@@ -3,68 +3,48 @@ import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
+  IStateManager,
 } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
+import type { Types as TronwebTypes } from 'tronweb';
+import type { Mocked, Mock } from 'vitest';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { KnownCaip19Id, Network, ZERO } from '../../constants';
 import type { AssetEntity, ResourceAsset } from '../../entities/assets';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
-import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
-import { render as renderConfirmSignTransaction } from '../../ui/confirmation/views/ConfirmSignTransaction/render';
-import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
+import * as KnownAssetIcon from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
+import * as ConfirmSignMessageRender from '../../ui/confirmation/views/ConfirmSignMessage/render';
+import * as ConfirmSignTransactionComponent from '../../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction';
+import * as ConfirmSignTransactionRender from '../../ui/confirmation/views/ConfirmSignTransaction/render';
+import * as ConfirmTransactionRequestRender from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsService } from '../assets/AssetsService';
 import { AssetFetchError } from '../assets/errors';
 import type { FeeCalculatorService } from '../send/FeeCalculatorService';
 import type { ComputeFeeResult } from '../send/types';
+import type { UnencryptedStateValue } from '../state/stateTypes';
+import { ConfirmationHandler } from './ConfirmationHandler';
 
 /**
  * Subset of State methods.
  */
 type MockState = {
-  getKey: jest.Mock;
-  setKey: jest.Mock;
-  setKeyWith: jest.Mock;
+  getKey: Mock;
+  setKey: Mock;
+  setKeyWith: Mock;
 };
 
 const mockAnalyticsService = {
-  trackTransactionAdded: jest.fn().mockResolvedValue(undefined),
-  trackTransactionApproved: jest.fn().mockResolvedValue(undefined),
-  trackTransactionRejected: jest.fn().mockResolvedValue(undefined),
+  trackTransactionAdded: vi.fn().mockResolvedValue(undefined),
+  trackTransactionApproved: vi.fn().mockResolvedValue(undefined),
+  trackTransactionRejected: vi.fn().mockResolvedValue(undefined),
 } as unknown as AnalyticsService;
 
-jest.mock(
-  '../../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction',
-  () => ({
-    ConfirmSignTransaction: jest.fn().mockReturnValue('<mock-ui>'),
-  }),
-);
-
-jest.mock('../../ui/confirmation/views/ConfirmSignMessage/render', () => ({
-  render: jest.fn(),
-}));
-
-jest.mock('../../ui/confirmation/views/ConfirmSignTransaction/render', () => ({
-  render: jest.fn(),
-}));
-
-jest.mock(
-  '../../ui/confirmation/views/ConfirmTransactionRequest/render',
-  () => ({
-    render: jest.fn(),
-  }),
-);
-
-jest.mock('../../ui/confirmation/utils/getIconUrlForKnownAsset', () => ({
-  getIconUrlForKnownAsset: jest.fn(() => 'mock-icon-url'),
-}));
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { ConfirmationHandler } = require('./ConfirmationHandler');
-
-const mockGetIconUrlForKnownAsset = jest.mocked(getIconUrlForKnownAsset);
+let mockGetIconUrlForKnownAsset!: Mock;
+let mockRenderConfirmSignTransaction!: Mock;
+let mockRenderConfirmTransactionRequest!: Mock;
 
 const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -94,28 +74,26 @@ const defaultFees: ComputeFeeResult = [
 
 type WithConfirmationHandlerCallback<ReturnValue> = (payload: {
   handler: InstanceType<typeof ConfirmationHandler>;
-  mockSnapClient: jest.Mocked<
+  mockSnapClient: Mocked<
     Pick<
       SnapClient,
       'getPreferences' | 'createInterface' | 'showDialog' | 'trackError'
     >
   >;
   mockState: MockState;
-  mockTronWebFactory: jest.Mocked<Pick<TronWebFactory, 'createClient'>>;
+  mockTronWebFactory: Mocked<Pick<TronWebFactory, 'createClient'>>;
   mockTronWeb: {
     transactionBuilder: {
-      withdrawExpireUnfreeze: jest.Mock;
+      withdrawExpireUnfreeze: Mock;
     };
     utils: {
       deserializeTx: {
-        deserializeTransaction: jest.Mock;
+        deserializeTransaction: Mock;
       };
     };
   };
-  mockAssetsService: jest.Mocked<Pick<AssetsService, 'fetchAccountResources'>>;
-  mockFeeCalculatorService: jest.Mocked<
-    Pick<FeeCalculatorService, 'computeFee'>
-  >;
+  mockAssetsService: Mocked<Pick<AssetsService, 'fetchAccountResources'>>;
+  mockFeeCalculatorService: Mocked<Pick<FeeCalculatorService, 'computeFee'>>;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -130,45 +108,44 @@ async function withConfirmationHandler<ReturnValue>(
 ): Promise<ReturnValue> {
   const mockTronWeb = {
     transactionBuilder: {
-      withdrawExpireUnfreeze: jest
+      withdrawExpireUnfreeze: vi
         .fn()
 
         .mockResolvedValue({ raw_data: {} }),
     },
     utils: {
       deserializeTx: {
-        deserializeTransaction: jest.fn(),
+        deserializeTransaction: vi.fn(),
       },
     },
   };
 
-  const mockTronWebFactory: jest.Mocked<Pick<TronWebFactory, 'createClient'>> =
-    {
-      createClient: jest.fn().mockReturnValue(mockTronWeb),
-    };
+  const mockTronWebFactory: Mocked<Pick<TronWebFactory, 'createClient'>> = {
+    createClient: vi.fn().mockReturnValue(mockTronWeb),
+  };
 
-  const mockAssetsService: jest.Mocked<
+  const mockAssetsService: Mocked<
     Pick<AssetsService, 'fetchAccountResources'>
   > = {
-    fetchAccountResources: jest.fn().mockResolvedValue({
+    fetchAccountResources: vi.fn().mockResolvedValue({
       bandwidth: null,
       energy: null,
     }),
   };
 
-  const mockFeeCalculatorService: jest.Mocked<
+  const mockFeeCalculatorService: Mocked<
     Pick<FeeCalculatorService, 'computeFee'>
   > = {
-    computeFee: jest.fn().mockResolvedValue(defaultFees),
+    computeFee: vi.fn().mockResolvedValue(defaultFees),
   };
 
-  const mockSnapClient: jest.Mocked<
+  const mockSnapClient: Mocked<
     Pick<
       SnapClient,
       'getPreferences' | 'createInterface' | 'showDialog' | 'trackError'
     >
   > = {
-    getPreferences: jest.fn().mockResolvedValue({
+    getPreferences: vi.fn().mockResolvedValue({
       locale: 'en',
       currency: 'usd',
       hideBalances: false,
@@ -180,27 +157,31 @@ async function withConfirmationHandler<ReturnValue>(
       displayNftMedia: false,
       useNftDetection: false,
     }),
-    createInterface: jest.fn().mockResolvedValue('mock-interface-id'),
-    showDialog: jest.fn().mockResolvedValue(true),
-    trackError: jest.fn().mockResolvedValue(undefined),
+    createInterface: vi.fn().mockResolvedValue('mock-interface-id'),
+    showDialog: vi.fn().mockResolvedValue(true),
+    trackError: vi.fn().mockResolvedValue(undefined),
   };
 
-  jest.mocked(mockAnalyticsService.trackTransactionAdded).mockClear();
-  jest.mocked(mockAnalyticsService.trackTransactionApproved).mockClear();
-  jest.mocked(mockAnalyticsService.trackTransactionRejected).mockClear();
+  // eslint-disable-next-line jest/unbound-method
+  vi.mocked(mockAnalyticsService.trackTransactionAdded).mockClear();
+  // eslint-disable-next-line jest/unbound-method
+  vi.mocked(mockAnalyticsService.trackTransactionApproved).mockClear();
+  // eslint-disable-next-line jest/unbound-method
+  vi.mocked(mockAnalyticsService.trackTransactionRejected).mockClear();
 
   const mockState: MockState = {
-    getKey: jest.fn(),
-    setKey: jest.fn(),
-    setKeyWith: jest.fn(),
+    getKey: vi.fn(),
+    setKey: vi.fn(),
+    setKeyWith: vi.fn(),
   };
 
   const handler = new ConfirmationHandler({
-    snapClient: mockSnapClient,
-    state: mockState,
-    tronWebFactory: mockTronWebFactory,
-    assetsService: mockAssetsService,
-    feeCalculatorService: mockFeeCalculatorService,
+    snapClient: mockSnapClient as unknown as SnapClient,
+    state: mockState as unknown as IStateManager<UnencryptedStateValue>,
+    tronWebFactory: mockTronWebFactory as unknown as TronWebFactory,
+    assetsService: mockAssetsService as unknown as AssetsService,
+    feeCalculatorService:
+      mockFeeCalculatorService as unknown as FeeCalculatorService,
     logger: mockLogger,
     analyticsService: mockAnalyticsService,
   });
@@ -217,6 +198,25 @@ async function withConfirmationHandler<ReturnValue>(
 }
 
 describe('ConfirmationHandler', () => {
+  beforeEach(() => {
+    vi.spyOn(
+      ConfirmSignTransactionComponent,
+      'ConfirmSignTransaction',
+    ).mockReturnValue('<mock-ui>' as never);
+    vi.spyOn(ConfirmSignMessageRender, 'render').mockResolvedValue(
+      undefined as never,
+    );
+    mockRenderConfirmSignTransaction = vi
+      .spyOn(ConfirmSignTransactionRender, 'render')
+      .mockResolvedValue(undefined as never);
+    mockRenderConfirmTransactionRequest = vi
+      .spyOn(ConfirmTransactionRequestRender, 'render')
+      .mockResolvedValue(undefined as never);
+    mockGetIconUrlForKnownAsset = vi
+      .spyOn(KnownAssetIcon, 'getIconUrlForKnownAsset')
+      .mockReturnValue('mock-icon-url');
+  });
+
   describe('confirmClaimUnstakedTrx', () => {
     it('returns true when user confirms the dialog', async () => {
       await withConfirmationHandler(
@@ -436,10 +436,6 @@ describe('ConfirmationHandler', () => {
   });
 
   describe('confirmTransactionRequest', () => {
-    const mockRenderConfirmTransactionRequest = jest.mocked(
-      renderConfirmTransactionRequest,
-    );
-
     const mockAsset: AssetEntity = {
       assetType: `${Network.Mainnet}/slip44:195`,
       keyringAccountId: TEST_ACCOUNT_ID,
@@ -459,7 +455,7 @@ describe('ConfirmationHandler', () => {
       ref_block_hash: '12345678',
       expiration: 1700000000000,
       timestamp: 1699999000000,
-    };
+    } as TronwebTypes.Transaction['raw_data'];
 
     const defaultParams = {
       scope: Network.Mainnet,
@@ -609,10 +605,6 @@ describe('ConfirmationHandler', () => {
   });
 
   describe('handleKeyringRequest', () => {
-    const mockRenderConfirmSignTransaction = jest.mocked(
-      renderConfirmSignTransaction,
-    );
-
     const rawData = {
       contract: [{ parameter: { value: {} }, type: 'TransferContract' }],
 
@@ -699,7 +691,7 @@ describe('ConfirmationHandler', () => {
           mockAnalyticsService.trackTransactionRejected,
         ).not.toHaveBeenCalled();
         expect(
-          jest.mocked(mockAnalyticsService.trackTransactionAdded).mock
+          vi.mocked(mockAnalyticsService.trackTransactionAdded).mock
             .invocationCallOrder[0],
         ).toBeLessThan(
           mockRenderConfirmSignTransaction.mock
