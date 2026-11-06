@@ -17,6 +17,8 @@ export type {
   AnalyticsServiceOptions,
   SecurityAlertDetectedEventProperties,
   SecurityScanCompletedEventProperties,
+  ServiceDegradedEventProperties,
+  ServiceUnavailableEventProperties,
   SnapTrackEventRequest,
   TrackEventCapableProvider,
   TransactionEventProperties,
@@ -144,12 +146,16 @@ export {
   createFetchPolicy,
   createFetchPolicyError,
   FetchPolicyErrorName,
+  isReportedFetchPolicyError,
   isTransientError,
   MAX_RETRY_AFTER_MS,
 } from './utils/fetchPolicy/createFetchPolicy';
 export type {
   CreateFetchPolicyOptions,
+  FetchPolicyAnalytics,
   FetchPolicyError,
+  FetchPolicyRetryReason,
+  FetchPolicyService,
 } from './utils/fetchPolicy/createFetchPolicy';
 export {
   executeWithFetchPolicy,

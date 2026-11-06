@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add optional `analytics` and `trackError` options to `createFetchPolicy` ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
+  - With `analytics`, the policy sends "Snap Service Degraded" when a call is slower than 5 seconds or uses up its retries, and "Snap Service Unavailable" when its circuit opens, each at most once a minute per policy. `service` must then be a `FetchPolicyService`, the services the Segment schema allows.
+  - With `trackError`, the policy reports each call that uses up its retries once, with a new error carrying only the service, chain, retry reason, error name and HTTP status, never the original message, stack or `cause`.
+- Add `isReportedFetchPolicyError`, so callers can skip reporting errors a policy already reported, including open-circuit rejections ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
+- Add `trackServiceDegraded` and `trackServiceUnavailable` to `AnalyticsService` ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
+- Add the `FetchPolicyAnalytics`, `FetchPolicyService`, `FetchPolicyRetryReason`, `ServiceDegradedEventProperties` and `ServiceUnavailableEventProperties` types ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
+
 ## [3.2.0]
 
 ### Added
