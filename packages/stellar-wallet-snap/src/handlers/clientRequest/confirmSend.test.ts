@@ -56,7 +56,7 @@ import {
   FetchStatus,
 } from '../../ui/confirmation/api';
 import { ConfirmationUXController } from '../../ui/confirmation/controller';
-import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
+import * as AccountActivationPrompt from '../../ui/confirmation/views/AccountActivationPrompt/render';
 import { logger } from '../../utils/logger';
 import { AccountResolver } from '../accountResolver';
 import { TrackTransactionHandler } from '../cronjob/trackTransaction';
@@ -64,14 +64,16 @@ import { ClientRequestMethod, MultiChainSendErrorCodes } from './api';
 import type { ConfirmSendJsonRpcRequest } from './api';
 import { ConfirmSendHandler } from './confirmSend';
 
-vi.mock('../../ui/confirmation/views/AccountActivationPrompt/render', () => ({
-  render: vi.fn().mockResolvedValue(undefined),
-}));
-
 const destinationAddress =
   'GDTF7ERUQVTX23ZD6NY5XRYC5IQAKWFVTQ6IXSMEZWGVNDDGPYCVHRZP';
 
 describe('ConfirmSendHandler', () => {
+  beforeEach(() => {
+    vi.spyOn(AccountActivationPrompt, 'render').mockResolvedValue(
+      undefined as never,
+    );
+  });
+
   const accountId = '11111111-1111-4111-8111-111111111111';
   const assetId = USDC_CLASSIC;
   const scope = KnownCaip2ChainId.Mainnet;
@@ -851,7 +853,7 @@ describe('ConfirmSendHandler', () => {
     await expect(handler.handle(baseRequest())).rejects.toThrow(
       AccountNotActivatedException,
     );
-    expect(renderAccountActivationPrompt).toHaveBeenCalledWith(wallet.address);
+    expect(AccountActivationPrompt.render).toHaveBeenCalledWith(wallet.address);
     expect(renderConfirmationDialog).not.toHaveBeenCalled();
   });
 

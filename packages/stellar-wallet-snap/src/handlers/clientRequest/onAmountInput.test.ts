@@ -35,20 +35,23 @@ import {
 } from '../../services/transaction/exceptions';
 import { WalletService } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
+import * as AccountActivationPrompt from '../../ui/confirmation/views/AccountActivationPrompt/render';
 import { logger } from '../../utils/logger';
 import { AccountResolver } from '../accountResolver';
 import { ClientRequestMethod, MultiChainSendErrorCodes } from './api';
 import type { OnAmountInputJsonRpcRequest } from './api';
 import { OnAmountInputHandler } from './onAmountInput';
 
-vi.mock('../../ui/confirmation/views/AccountActivationPrompt/render', () => ({
-  render: vi.fn().mockResolvedValue(undefined),
-}));
-
 const destinationAddress =
   'GDTF7ERUQVTX23ZD6NY5XRYC5IQAKWFVTQ6IXSMEZWGVNDDGPYCVHRZP';
 
 describe('OnAmountInputHandler', () => {
+  beforeEach(() => {
+    vi.spyOn(AccountActivationPrompt, 'render').mockResolvedValue(
+      undefined as never,
+    );
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });

@@ -49,6 +49,7 @@ import {
 } from '../../ui/confirmation/api';
 import { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
+import * as AccountActivationPrompt from '../../ui/confirmation/views/AccountActivationPrompt/render';
 import { logger } from '../../utils/logger';
 import { AccountResolver } from '../accountResolver';
 import { TrackTransactionHandler } from '../cronjob/trackTransaction';
@@ -56,12 +57,11 @@ import { ClientRequestMethod, ChangeTrustOptAction } from './api';
 import type { ChangeTrustOptJsonRpcRequest } from './api';
 import { ChangeTrustOptHandler } from './changeTrustOpt';
 
-vi.mock('../../ui/confirmation/views/AccountActivationPrompt/render', () => ({
-  render: vi.fn().mockResolvedValue(undefined),
-}));
-
 describe('ChangeTrustOptHandler', () => {
   beforeEach(() => {
+    vi.spyOn(AccountActivationPrompt, 'render').mockResolvedValue(
+      undefined as never,
+    );
     vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
       undefined,
     );
