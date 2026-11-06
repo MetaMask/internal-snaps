@@ -22,6 +22,7 @@ import {
   FEE_LIMIT,
   Network,
   Networks,
+  NULL_ADDRESS,
   TRACK_TX_INTERVAL,
   ZERO,
 } from '../../constants';
@@ -538,19 +539,17 @@ export class ClientRequestHandler {
         };
       }
 
-      if (!toAddress) {
-        return {
-          valid: true,
-          errors: [],
-        };
-      }
-
       /**
-       * Estimate the fees
+       * Estimate the fees. When the destination is unknown, build against the
+       * zero address (which is activated) so the transfer fee can be quoted.
+       * The sender's own address cannot be used because Tron rejects
+       * self-transfers.
        */
+      const nativeTokenId = Networks[scope].nativeToken.id;
+      const isNativeToken = assetId === nativeTokenId;
       const sendTransaction = await this.#sendService.buildTransaction({
         fromAccountId: accountId,
-        toAddress,
+        toAddress: toAddress ?? NULL_ADDRESS,
         asset,
         amount: valueBN,
         feeLimit: FEE_LIMIT,
@@ -567,18 +566,34 @@ export class ClientRequestHandler {
        * The fee calculation already takes into account the energy and bandwidth consumption,
        * so we only need to make sure we have enough TRX to cover overages.
        */
-      const nativeTokenId = Networks[scope].nativeToken.id;
-      const trxFee = new BigNumber(
+      const baseTrxFee = new BigNumber(
         fees.find((fee) => fee.asset.type === nativeTokenId)?.asset.amount ??
           '0',
       );
 
       /**
+       * An unknown destination is assumed inactive, so add its activation
+       * cost: the 1 TRX burn plus the 0.1 TRX Bandwidth shortfall when the
+       * sender's staked Bandwidth cannot cover the account creation.
+       */
+      const activationTrxFee =
+        !toAddress && isNativeToken
+          ? (
+              await this.#feeCalculatorService.getAccountActivationFee({
+                scope,
+                toAddress,
+                senderAddress: account.address,
+              })
+            ).trxFee
+          : ZERO;
+
+      /**
        * Don't forget that we can also be sending TRX so we must add the fees to the amount that will be
        * sent.
        */
-      const totalTrxToSpend =
-        assetId === nativeTokenId ? valueBN.plus(trxFee) : trxFee;
+      const totalTrxToSpend = (isNativeToken ? valueBN : ZERO)
+        .plus(baseTrxFee)
+        .plus(activationTrxFee);
 
       if (totalTrxToSpend.isGreaterThan(nativeTokenBalance)) {
         return {

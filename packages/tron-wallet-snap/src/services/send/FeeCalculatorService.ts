@@ -28,6 +28,7 @@ import {
 } from '../../constants';
 import { FeeUnavailableError } from './errors';
 import type {
+  AccountActivationFee,
   ActivationAssessment,
   ActivationTransfer,
   ComputeFeeResult,
@@ -812,6 +813,86 @@ export class FeeCalculatorService {
   }
 
   /**
+   * Activation cost for a recipient that is known, or assumed, to be inactive.
+   *
+   * The account-creation burn always applies. The create-account Bandwidth
+   * quota is either consumed from the sender's staked Bandwidth, or replaced
+   * by the `getCreateAccountFee` burn when there is not enough of it. Free
+   * daily Bandwidth cannot pay for activation.
+   *
+   * @param options - The activation context.
+   * @param options.scope - The network scope to resolve chain parameters for.
+   * @param options.isActivated - Whether the recipient already exists on-chain.
+   * @param options.senderAddress - The transaction owner (hex or Base58).
+   * @returns The TRX fee and Bandwidth consumed by activation.
+   */
+  async #calculateActivationFee({
+    scope,
+    isActivated,
+    senderAddress,
+  }: {
+    scope: Network;
+    isActivated: boolean;
+    senderAddress: string | undefined;
+  }): Promise<AccountActivationFee> {
+    if (isActivated) {
+      return { trxFee: ZERO, bandwidthNeeded: ZERO };
+    }
+
+    const { activationFeeTrx, createAccountFeeTrx, createAccountBandwidth } =
+      this.#getActivationFeeParams(await this.#getChainParameters(scope));
+
+    const stakedBandwidth = await this.#getSenderStakedBandwidth(
+      scope,
+      senderAddress,
+    );
+
+    if (stakedBandwidth.isGreaterThanOrEqualTo(createAccountBandwidth)) {
+      return {
+        trxFee: activationFeeTrx,
+        bandwidthNeeded: createAccountBandwidth,
+      };
+    }
+
+    return {
+      trxFee: activationFeeTrx.plus(createAccountFeeTrx),
+      bandwidthNeeded: ZERO,
+    };
+  }
+
+  /**
+   * Account activation fee for a send.
+   *
+   * Omitting `toAddress` means the destination is not known yet, so the
+   * recipient is conservatively assumed to be inactive.
+   *
+   * @param options - The activation context.
+   * @param options.scope - The network scope to resolve chain parameters for.
+   * @param options.toAddress - The recipient address, if known.
+   * @param options.senderAddress - The transaction owner (hex or Base58).
+   * @returns The TRX fee and Bandwidth consumed by activation.
+   */
+  async getAccountActivationFee({
+    scope,
+    toAddress,
+    senderAddress,
+  }: {
+    scope: Network;
+    toAddress: string | undefined;
+    senderAddress: string | undefined;
+  }): Promise<AccountActivationFee> {
+    const isActivated =
+      toAddress !== undefined &&
+      (await this.#isAccountActivated(scope, toAddress));
+
+    return this.#calculateActivationFee({
+      scope,
+      isActivated,
+      senderAddress,
+    });
+  }
+
+  /**
    * Calculate memo/note fee for the transaction.
    * Per Tron protocol, adding a memo/note incurs a flat 1 TRX fee.
    * The memo is stored in `raw_data.data` at the transaction level,
@@ -931,50 +1012,24 @@ export class FeeCalculatorService {
       scope,
       transaction,
     });
-    const { isActivatingAccount } = activation;
+
+    /**
+     * Calculate the total TRX cost from all sources...
+     */
+    let totalTrxCost = ZERO;
 
     let bandwidthNeeded: BigNumber;
     let bandwidthToPayInTRX = ZERO;
-    let accountActivationFees = ZERO;
-    let createAccountBandwidthFee = ZERO;
 
-    if (isActivatingAccount) {
-      const chainParameters = await this.#getChainParameters(scope);
-      const { activationFeeTrx, createAccountFeeTrx, createAccountBandwidth } =
-        this.#getActivationFeeParams(chainParameters);
-
-      accountActivationFees = activationFeeTrx;
-
-      const stakedBandwidth = await this.#getSenderStakedBandwidth(
+    if (activation.isActivatingAccount) {
+      const activationFee = await this.#calculateActivationFee({
         scope,
-        activation.ownerAddress,
-      );
-      const hasEnoughStakedBandwidth = stakedBandwidth.isGreaterThanOrEqualTo(
-        createAccountBandwidth,
-      );
+        isActivated: false,
+        senderAddress: activation.ownerAddress,
+      });
 
-      if (hasEnoughStakedBandwidth) {
-        bandwidthNeeded = createAccountBandwidth;
-        this.#logger.log(
-          {
-            createAccountBandwidth: createAccountBandwidth.toString(),
-            stakedBandwidth: stakedBandwidth.toString(),
-          },
-          'Account activation covered by staked Bandwidth',
-        );
-      } else {
-        // Free daily Bandwidth cannot pay for activation. Burn getCreateAccountFee
-        // instead of tx-size * getTransactionFee.
-        bandwidthNeeded = ZERO;
-        createAccountBandwidthFee = createAccountFeeTrx;
-        this.#logger.log(
-          {
-            createAccountFeeTrx: createAccountFeeTrx.toString(),
-            stakedBandwidth: stakedBandwidth.toString(),
-          },
-          'Account activation Bandwidth shortfall paid in TRX',
-        );
-      }
+      bandwidthNeeded = activationFee.bandwidthNeeded;
+      totalTrxCost = totalTrxCost.plus(activationFee.trxFee);
     } else {
       bandwidthNeeded = this.#calculateBandwidth(transaction);
       const hasEnoughBandwidth =
@@ -986,11 +1041,6 @@ export class FeeCalculatorService {
       energyNeeded.minus(availableEnergy),
       ZERO,
     );
-
-    /**
-     * Calculate the total TRX cost from all sources...
-     */
-    let totalTrxCost = ZERO;
 
     /**
      * First, overages in bandwidth and energy
@@ -1020,18 +1070,7 @@ export class FeeCalculatorService {
     }
 
     /**
-     * Second, account activation fees (1 TRX burn + optional 0.1 TRX Bandwidth shortfall)
-     */
-    if (accountActivationFees.isGreaterThan(0)) {
-      totalTrxCost = totalTrxCost.plus(accountActivationFees);
-    }
-
-    if (createAccountBandwidthFee.isGreaterThan(0)) {
-      totalTrxCost = totalTrxCost.plus(createAccountBandwidthFee);
-    }
-
-    /**
-     * Third, memo/note fee
+     * Second, memo/note fee
      */
     const memoFee = this.#memoFee(transaction);
 
@@ -1040,7 +1079,7 @@ export class FeeCalculatorService {
     }
 
     /**
-     * Fourth, WitnessCreateContract account-upgrade burn (default 9,999 TRX)
+     * Third, WitnessCreateContract account-upgrade burn (default 9,999 TRX)
      */
     const accountUpgradeFee = await this.#accountUpgradeFee({
       scope,
