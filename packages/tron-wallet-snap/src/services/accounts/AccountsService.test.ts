@@ -12,6 +12,7 @@ import { AccountCreationType, TrxAccountType } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { LogLevel } from '@metamask/snap-networks-utils';
+import type { MockedFunction, Mocked, Mock } from 'vitest';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { Network } from '../../constants';
@@ -26,16 +27,36 @@ import type { TransactionsService } from '../transactions/TransactionsService';
 import type { AccountsRepository } from './AccountsRepository';
 import { AccountsService, SUPPORTED_SCOPES } from './AccountsService';
 
-jest.mock('../../utils/errors', () => ({
-  ...jest.requireActual('../../utils/errors'),
-  trackError: jest.fn().mockResolvedValue('tracked-error-id'),
+/**
+ * Returns the error object from the first call of a mock.
+ *
+ * @param mock - The mock that recorded the call.
+ * @returns The first argument of the first call.
+ */
+function firstTrackedError(mock: Mock): Error {
+  const call = mock.mock.calls[0];
+  if (!call) {
+    throw new Error('Expected mock to have been called');
+  }
+  return call[0] as Error;
+}
+
+vi.mock('../../utils/errors', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../utils/errors')>(
+      '../../utils/errors',
+    );
+  return {
+    ...actual,
+    trackError: vi.fn().mockResolvedValue('tracked-error-id'),
+  };
+});
+
+vi.mock('@metamask/keyring-snap-sdk', () => ({
+  getSelectedAccounts: vi.fn().mockResolvedValue([]),
 }));
 
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  getSelectedAccounts: jest.fn().mockResolvedValue([]),
-}));
-
-const mockedGetSelectedAccounts = getSelectedAccounts as jest.MockedFunction<
+const mockedGetSelectedAccounts = getSelectedAccounts as MockedFunction<
   typeof getSelectedAccounts
 >;
 
@@ -93,7 +114,7 @@ async function getTronTestCoinTypeJson(): Promise<JsonBIP44Node> {
 
 type WithAccountsServiceCallback = (payload: {
   accountsService: AccountsService;
-  mockAccountsRepository: jest.Mocked<
+  mockAccountsRepository: Mocked<
     Pick<
       AccountsRepository,
       | 'getAll'
@@ -108,16 +129,16 @@ type WithAccountsServiceCallback = (payload: {
   >;
   mockConfigProvider: { config: Config };
   mockLogger: Logger;
-  mockAssetsService: jest.Mocked<
+  mockAssetsService: Mocked<
     Pick<
       AssetsService,
       'isAssetsMigrationEnabled' | 'fetchAccountAssets' | 'saveManyAndEmit'
     >
   >;
-  mockSnapClient: jest.Mocked<
+  mockSnapClient: Mocked<
     Pick<SnapClient, 'getBip32Entropy' | 'listEntropySources'>
   >;
-  mockTransactionsService: jest.Mocked<
+  mockTransactionsService: Mocked<
     Pick<
       TransactionsService,
       'fetchNewTransactionsForAccount' | 'saveMany' | 'checkAddressActivity'
@@ -137,7 +158,7 @@ async function withAccountsService(
   tronCoinTypeBatchJson?: JsonBIP44Node,
 ): Promise<void> {
   Object.defineProperty(globalThis, 'snap', {
-    value: { request: jest.fn() },
+    value: { request: vi.fn() },
     writable: true,
     configurable: true,
   });
@@ -147,7 +168,7 @@ async function withAccountsService(
   const getAccountIndexKey = (account: TronKeyringAccount): string =>
     `${account.entropySource}:${account.index}`;
 
-  const mockAccountsRepository: jest.Mocked<
+  const mockAccountsRepository: Mocked<
     Pick<
       AccountsRepository,
       | 'getAll'
@@ -160,19 +181,19 @@ async function withAccountsService(
       | 'delete'
     >
   > = {
-    getAll: jest.fn().mockImplementation(async () => [...keyringAccounts]),
-    findById: jest.fn().mockImplementation(async (id: string) => {
+    getAll: vi.fn().mockImplementation(async () => [...keyringAccounts]),
+    findById: vi.fn().mockImplementation(async (id: string) => {
       return keyringAccounts.find((account) => account.id === id) ?? null;
     }),
-    findByIds: jest.fn().mockImplementation(async (ids: string[]) => {
+    findByIds: vi.fn().mockImplementation(async (ids: string[]) => {
       return keyringAccounts.filter((account) => ids.includes(account.id));
     }),
-    findByAddress: jest.fn().mockImplementation(async (address: string) => {
+    findByAddress: vi.fn().mockImplementation(async (address: string) => {
       return (
         keyringAccounts.find((account) => account.address === address) ?? null
       );
     }),
-    findByEntropySourceAndRange: jest
+    findByEntropySourceAndRange: vi
       .fn()
       .mockImplementation(
         async (entropySource: string, range: { from: number; to: number }) => {
@@ -186,22 +207,20 @@ async function withAccountsService(
             .sort((first, second) => first.index - second.index);
         },
       ),
-    create: jest
-      .fn()
-      .mockImplementation(async (account: TronKeyringAccount) => {
-        const conflicting = keyringAccounts.find(
-          (existing) =>
-            getAccountIndexKey(existing) === getAccountIndexKey(account),
-        );
+    create: vi.fn().mockImplementation(async (account: TronKeyringAccount) => {
+      const conflicting = keyringAccounts.find(
+        (existing) =>
+          getAccountIndexKey(existing) === getAccountIndexKey(account),
+      );
 
-        if (conflicting) {
-          return conflicting;
-        }
+      if (conflicting) {
+        return conflicting;
+      }
 
-        keyringAccounts.push(account);
-        return account;
-      }),
-    mergeKeyringAccounts: jest
+      keyringAccounts.push(account);
+      return account;
+    }),
+    mergeKeyringAccounts: vi
       .fn()
       .mockImplementation(
         async (newAccounts: Record<string, TronKeyringAccount>) => {
@@ -226,7 +245,7 @@ async function withAccountsService(
           };
         },
       ),
-    delete: jest.fn().mockImplementation(async (id: string) => {
+    delete: vi.fn().mockImplementation(async (id: string) => {
       const index = keyringAccounts.findIndex((account) => account.id === id);
 
       if (index >= 0) {
@@ -239,10 +258,10 @@ async function withAccountsService(
     config: MOCK_CONFIG,
   };
 
-  const mockSnapClient: jest.Mocked<
+  const mockSnapClient: Mocked<
     Pick<SnapClient, 'getBip32Entropy' | 'listEntropySources'>
   > = {
-    getBip32Entropy: jest
+    getBip32Entropy: vi
       .fn()
       .mockImplementation(
         async (params: {
@@ -263,31 +282,31 @@ async function withAccountsService(
           return Promise.resolve(TEST_KEY_PAIR);
         },
       ),
-    listEntropySources: jest
+    listEntropySources: vi
       .fn()
       .mockResolvedValue([{ id: 'test-entropy', primary: true }]),
   };
 
-  const mockAssetsService: jest.Mocked<
+  const mockAssetsService: Mocked<
     Pick<
       AssetsService,
       'isAssetsMigrationEnabled' | 'fetchAccountAssets' | 'saveManyAndEmit'
     >
   > = {
-    isAssetsMigrationEnabled: jest.fn().mockResolvedValue(false),
-    fetchAccountAssets: jest.fn().mockResolvedValue([]),
-    saveManyAndEmit: jest.fn().mockResolvedValue(undefined),
+    isAssetsMigrationEnabled: vi.fn().mockResolvedValue(false),
+    fetchAccountAssets: vi.fn().mockResolvedValue([]),
+    saveManyAndEmit: vi.fn().mockResolvedValue(undefined),
   };
 
-  const mockTransactionsService: jest.Mocked<
+  const mockTransactionsService: Mocked<
     Pick<
       TransactionsService,
       'fetchNewTransactionsForAccount' | 'saveMany' | 'checkAddressActivity'
     >
   > = {
-    fetchNewTransactionsForAccount: jest.fn().mockResolvedValue([]),
-    saveMany: jest.fn().mockResolvedValue(undefined),
-    checkAddressActivity: jest.fn().mockResolvedValue(false),
+    fetchNewTransactionsForAccount: vi.fn().mockResolvedValue([]),
+    saveMany: vi.fn().mockResolvedValue(undefined),
+    checkAddressActivity: vi.fn().mockResolvedValue(false),
   };
 
   const accountsService = new AccountsService({
@@ -1097,7 +1116,7 @@ describe('AccountsService', () => {
           await accountsService.synchronize([account]);
 
           expect(trackError).toHaveBeenCalledTimes(1);
-          const tracked = (trackError as jest.Mock).mock.calls[0][0] as Error;
+          const tracked = firstTrackedError(trackError as Mock);
           expect(tracked.message).toBe('Failed to save assets');
           expect((tracked as Error & { cause?: unknown }).cause).toBe(
             saveError,
@@ -1155,7 +1174,7 @@ describe('AccountsService', () => {
           await accountsService.synchronize([failingAccount, healthyAccount]);
 
           expect(trackError).toHaveBeenCalledTimes(1);
-          const tracked = (trackError as jest.Mock).mock.calls[0][0] as Error;
+          const tracked = firstTrackedError(trackError as Mock);
           expect(tracked.name).toBe('SynchronizationError');
           expect(tracked.message).toBe(
             'Failed to fetch assets (1 failed): ' +
@@ -1201,7 +1220,7 @@ describe('AccountsService', () => {
 
           expect(mockAssetsService.saveManyAndEmit).toHaveBeenCalledWith([]);
           expect(trackError).toHaveBeenCalledTimes(1);
-          const tracked = (trackError as jest.Mock).mock.calls[0][0] as Error;
+          const tracked = firstTrackedError(trackError as Mock);
           expect(tracked.message).toBe(
             `Failed to fetch assets (1 failed): ` +
               `${account.id}: Unknown error`,
@@ -1353,7 +1372,7 @@ describe('AccountsService', () => {
           ).toBeUndefined();
           expect(mockTransactionsService.saveMany).toHaveBeenCalledWith([]);
           expect(trackError).toHaveBeenCalledTimes(1);
-          const tracked = (trackError as jest.Mock).mock.calls[0][0] as Error;
+          const tracked = firstTrackedError(trackError as Mock);
           expect(tracked.name).toBe('SynchronizationError');
           expect(tracked.message).toBe(
             `Failed to fetch transactions (1 failed): ` +
@@ -1394,7 +1413,7 @@ describe('AccountsService', () => {
             .catch((caught: unknown) => caught);
 
           expect(trackError).toHaveBeenCalledTimes(1);
-          const tracked = (trackError as jest.Mock).mock.calls[0][0] as Error;
+          const tracked = firstTrackedError(trackError as Mock);
           expect(tracked.message).toBe('Failed to save transactions');
           expect((tracked as Error & { cause?: unknown }).cause).toBe(
             saveError,

@@ -10,6 +10,7 @@ import {
   AssetsProvider,
   RemoteFeatureFlagsProvider,
 } from '@metamask/snap-networks-utils';
+import type { Mocked, Mock } from 'vitest';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SpotPrices } from '../../clients/price-api/types';
@@ -26,6 +27,7 @@ import { mockLogger } from '../../utils/mockLogger';
 import { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from './AssetsRepository';
+import { AssetsService } from './AssetsService';
 import { AssetFetchError } from './errors';
 import type { NativeCaipAssetType, TokenCaipAssetType } from './types';
 
@@ -33,28 +35,25 @@ import type { NativeCaipAssetType, TokenCaipAssetType } from './types';
  * Subset of State methods.
  */
 type MockState = {
-  getKey: jest.Mock;
-  setKey: jest.Mock;
-  setKeyWith: jest.Mock;
+  getKey: Mock;
+  setKey: Mock;
+  setKeyWith: Mock;
 };
 
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: jest.fn(),
+vi.mock('@metamask/keyring-snap-sdk', () => ({
+  emitSnapKeyringEvent: vi.fn(),
 }));
 
 (global as any).snap = {};
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { AssetsService } = require('./AssetsService');
 
 const TRON_FLAG_KEY = SNAPS_ASSETS_MIGRATION_FLAG_KEYS.tron;
 
 function createMessengerCallMock(
   getState: () => unknown,
-  getAccountAssetByID: jest.Mock,
-  getAccountAssetsByIDs: jest.Mock = jest.fn().mockResolvedValue({}),
-  getAccountAssetsByScope: jest.Mock = jest.fn().mockResolvedValue({}),
-  getAssets: jest.Mock = jest.fn().mockResolvedValue({}),
+  getAccountAssetByID: Mock,
+  getAccountAssetsByIDs: Mock = vi.fn().mockResolvedValue({}),
+  getAccountAssetsByScope: Mock = vi.fn().mockResolvedValue({}),
+  getAssets: Mock = vi.fn().mockResolvedValue({}),
 ): CoreMessengerCaller['call'] {
   return async (actionType, ...args) => {
     switch (actionType) {
@@ -184,7 +183,7 @@ function findAsset(
 
 type WithAssetsServiceCallback<ReturnValue> = (payload: {
   assetsService: InstanceType<typeof AssetsService>;
-  mockAssetsRepository: jest.Mocked<
+  mockAssetsRepository: Mocked<
     Pick<
       AssetsRepository,
       | 'saveMany'
@@ -194,22 +193,20 @@ type WithAssetsServiceCallback<ReturnValue> = (payload: {
     >
   >;
   mockState: MockState;
-  mockTrongridApiClient: jest.Mocked<
+  mockTrongridApiClient: Mocked<
     Pick<
       TrongridApiClient,
       'getAccountInfoByAddress' | 'getTrc20BalancesByAddress'
     >
   >;
-  mockTronHttpClient: jest.Mocked<
+  mockTronHttpClient: Mocked<
     Pick<TronHttpClient, 'getAccountResources' | 'getReward'>
   >;
-  mockPriceApiClient: jest.Mocked<
-    Pick<PriceApiClient, 'getMultipleSpotPrices'>
-  >;
-  mockTokenApiClient: jest.Mocked<Pick<TokenApiClient, 'getTokensMetadata'>>;
-  mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>>;
-  mockCoreMessenger: jest.Mocked<CoreMessengerCaller>;
-  mockGetAssets: jest.Mock;
+  mockPriceApiClient: Mocked<Pick<PriceApiClient, 'getMultipleSpotPrices'>>;
+  mockTokenApiClient: Mocked<Pick<TokenApiClient, 'getTokensMetadata'>>;
+  mockSnapClient: Mocked<Pick<SnapClient, 'trackError'>>;
+  mockCoreMessenger: Mocked<CoreMessengerCaller>;
+  mockGetAssets: Mock;
   setMigrationStage: (stage: SnapsAssetsMigrationStage) => void;
 }) => Promise<ReturnValue> | ReturnValue;
 
@@ -224,7 +221,7 @@ type WithAssetsServiceCallback<ReturnValue> = (payload: {
 async function withAssetsService<ReturnValue>(
   testFunction: WithAssetsServiceCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  const mockAssetsRepository: jest.Mocked<
+  const mockAssetsRepository: Mocked<
     Pick<
       AssetsRepository,
       | 'getByAccountId'
@@ -233,58 +230,57 @@ async function withAssetsService<ReturnValue>(
       | 'saveMany'
     >
   > = {
-    saveMany: jest.fn().mockResolvedValue(undefined),
-    getByAccountId: jest.fn().mockResolvedValue([]),
-    getByAccountIdAndAssetType: jest.fn().mockResolvedValue(null),
-    getByAccountIdAndAssetTypes: jest.fn().mockResolvedValue([]),
+    saveMany: vi.fn().mockResolvedValue(undefined),
+    getByAccountId: vi.fn().mockResolvedValue([]),
+    getByAccountIdAndAssetType: vi.fn().mockResolvedValue(null),
+    getByAccountIdAndAssetTypes: vi.fn().mockResolvedValue([]),
   };
 
   const mockState: MockState = {
-    getKey: jest.fn().mockResolvedValue({}),
-    setKey: jest.fn().mockResolvedValue(undefined),
-    setKeyWith: jest.fn().mockResolvedValue(undefined),
+    getKey: vi.fn().mockResolvedValue({}),
+    setKey: vi.fn().mockResolvedValue(undefined),
+    setKeyWith: vi.fn().mockResolvedValue(undefined),
   };
 
-  const mockTrongridApiClient: jest.Mocked<
+  const mockTrongridApiClient: Mocked<
     Pick<
       TrongridApiClient,
       'getAccountInfoByAddress' | 'getTrc20BalancesByAddress'
     >
   > = {
-    getAccountInfoByAddress: jest.fn(),
-    getTrc20BalancesByAddress: jest.fn(),
+    getAccountInfoByAddress: vi.fn(),
+    getTrc20BalancesByAddress: vi.fn(),
   };
 
-  const mockTronHttpClient: jest.Mocked<
+  const mockTronHttpClient: Mocked<
     Pick<TronHttpClient, 'getAccountResources' | 'getReward'>
   > = {
-    getAccountResources: jest.fn(),
-    getReward: jest.fn().mockResolvedValue(0),
+    getAccountResources: vi.fn(),
+    getReward: vi.fn().mockResolvedValue(0),
   };
 
-  const mockPriceApiClient: jest.Mocked<
+  const mockPriceApiClient: Mocked<
     Pick<PriceApiClient, 'getMultipleSpotPrices'>
   > = {
-    getMultipleSpotPrices: jest.fn().mockResolvedValue({}),
+    getMultipleSpotPrices: vi.fn().mockResolvedValue({}),
   };
 
-  const mockTokenApiClient: jest.Mocked<
-    Pick<TokenApiClient, 'getTokensMetadata'>
-  > = {
-    getTokensMetadata: jest.fn().mockResolvedValue({}),
+  const mockTokenApiClient: Mocked<Pick<TokenApiClient, 'getTokensMetadata'>> =
+    {
+      getTokensMetadata: vi.fn().mockResolvedValue({}),
+    };
+
+  const mockSnapClient: Mocked<Pick<SnapClient, 'trackError'>> = {
+    trackError: vi.fn().mockResolvedValue(undefined),
   };
 
-  const mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>> = {
-    trackError: jest.fn().mockResolvedValue(undefined),
-  };
-
-  const mockGetAccountAssetByID = jest.fn();
-  const mockGetAccountAssetsByIDs = jest.fn().mockResolvedValue({});
-  const mockGetAccountAssetsByScope = jest.fn().mockResolvedValue({});
-  const mockGetAssets = jest.fn().mockResolvedValue({});
+  const mockGetAccountAssetByID = vi.fn();
+  const mockGetAccountAssetsByIDs = vi.fn().mockResolvedValue({});
+  const mockGetAccountAssetsByScope = vi.fn().mockResolvedValue({});
+  const mockGetAssets = vi.fn().mockResolvedValue({});
   let migrationStage = SnapsAssetsMigrationStage.Off;
-  const mockCoreMessenger: jest.Mocked<CoreMessengerCaller> = {
-    call: jest.fn().mockImplementation(
+  const mockCoreMessenger: Mocked<CoreMessengerCaller> = {
+    call: vi.fn().mockImplementation(
       createMessengerCallMock(
         () => ({
           remoteFeatureFlags: {
@@ -1939,7 +1935,7 @@ describe('AssetsService', () => {
                 },
               },
             }),
-            jest.fn().mockResolvedValue(
+            vi.fn().mockResolvedValue(
               buildControllerAsset(fungibleAssetId, '2', {
                 symbol: 'TRX',
                 name: 'TRON',
@@ -1976,8 +1972,8 @@ describe('AssetsService', () => {
                 },
               },
             }),
-            jest.fn(),
-            jest.fn().mockImplementation(async () => {
+            vi.fn(),
+            vi.fn().mockImplementation(async () => {
               return {
                 [trx as Caip19AssetId]: buildControllerAsset(trx, '1', {
                   symbol: 'TRX',
@@ -2023,9 +2019,9 @@ describe('AssetsService', () => {
                   },
                 },
               }),
-              jest.fn(),
-              jest.fn(),
-              jest.fn().mockResolvedValue({
+              vi.fn(),
+              vi.fn(),
+              vi.fn().mockResolvedValue({
                 [fungibleAssetId as Caip19AssetId]: buildControllerAsset(
                   fungibleAssetId,
                   '2',
@@ -2196,10 +2192,10 @@ describe('AssetsService', () => {
                   [TRON_FLAG_KEY]: { stage: activeMigrationStage },
                 },
               }),
-              jest.fn(),
-              jest.fn(),
-              jest.fn(),
-              jest.fn().mockResolvedValue({
+              vi.fn(),
+              vi.fn(),
+              vi.fn(),
+              vi.fn().mockResolvedValue({
                 'test-account-id': {
                   [trx]: buildControllerAsset(trx, '1', {
                     symbol: 'TRX',

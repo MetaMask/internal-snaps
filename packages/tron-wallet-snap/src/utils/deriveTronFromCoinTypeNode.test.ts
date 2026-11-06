@@ -11,13 +11,14 @@ import { TronWeb } from 'tronweb';
 
 import { createTronBip44AddressDeriver } from './deriveTronFromCoinTypeNode';
 
-jest.mock('tronweb', () => {
-  const actualModule = jest.requireActual('tronweb');
+vi.mock('tronweb', async () => {
+  const actualModule =
+    await vi.importActual<typeof import('tronweb')>('tronweb');
 
   return {
     TronWeb: {
       address: {
-        fromHex: jest.fn((addressHex: string) =>
+        fromHex: vi.fn((addressHex: string) =>
           actualModule.TronWeb.address.fromHex(addressHex),
         ),
       },
@@ -25,8 +26,10 @@ jest.mock('tronweb', () => {
   };
 });
 
-const mockFromHex = jest.mocked(TronWeb.address.fromHex);
-const actualTronWebModule = jest.requireActual('tronweb');
+// eslint-disable-next-line jest/unbound-method
+const mockFromHex = vi.mocked(TronWeb.address.fromHex);
+const actualTronWebModule =
+  await vi.importActual<typeof import('tronweb')>('tronweb');
 
 const TEST_MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
@@ -42,7 +45,7 @@ describe('createTronBip44AddressDeriver', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     mockFromHex.mockReset();
     mockFromHex.mockImplementation((addressHex: string) =>
       actualTronWebModule.TronWeb.address.fromHex(addressHex),
@@ -93,15 +96,15 @@ describe('createTronBip44AddressDeriver', () => {
 
   it('throws a sanitized error when the derived node has no public key', async () => {
     const mockChangeNode = {
-      derive: jest.fn().mockResolvedValue({ publicKey: undefined }),
+      derive: vi.fn().mockResolvedValue({ publicKey: undefined }),
     };
     const mockCoinTypeNode = {
-      derive: jest.fn().mockResolvedValue(mockChangeNode),
+      derive: vi.fn().mockResolvedValue(mockChangeNode),
     };
 
-    jest
-      .spyOn(BIP44Node, 'fromJSON')
-      .mockResolvedValue(mockCoinTypeNode as never);
+    vi.spyOn(BIP44Node, 'fromJSON').mockResolvedValue(
+      mockCoinTypeNode as never,
+    );
 
     const derive = await createTronBip44AddressDeriver({} as JsonBIP44Node);
 
@@ -110,17 +113,17 @@ describe('createTronBip44AddressDeriver', () => {
 
   it('sanitizes sensitive errors raised while deriving an address index', async () => {
     const mockChangeNode = {
-      derive: jest
+      derive: vi
         .fn()
         .mockRejectedValue(new Error('failed to read private key')),
     };
     const mockCoinTypeNode = {
-      derive: jest.fn().mockResolvedValue(mockChangeNode),
+      derive: vi.fn().mockResolvedValue(mockChangeNode),
     };
 
-    jest
-      .spyOn(BIP44Node, 'fromJSON')
-      .mockResolvedValue(mockCoinTypeNode as never);
+    vi.spyOn(BIP44Node, 'fromJSON').mockResolvedValue(
+      mockCoinTypeNode as never,
+    );
 
     const derive = await createTronBip44AddressDeriver({} as JsonBIP44Node);
 
@@ -128,9 +131,9 @@ describe('createTronBip44AddressDeriver', () => {
   });
 
   it('sanitizes sensitive errors raised while building the deriver', async () => {
-    jest
-      .spyOn(BIP44Node, 'fromJSON')
-      .mockRejectedValue(new Error('invalid bip44 entropy'));
+    vi.spyOn(BIP44Node, 'fromJSON').mockRejectedValue(
+      new Error('invalid bip44 entropy'),
+    );
 
     await expect(
       createTronBip44AddressDeriver({} as JsonBIP44Node),
@@ -138,9 +141,9 @@ describe('createTronBip44AddressDeriver', () => {
   });
 
   it('re-throws non-sensitive errors from coin type JSON parsing', async () => {
-    jest
-      .spyOn(BIP44Node, 'fromJSON')
-      .mockRejectedValue(new Error('unexpected parse failure'));
+    vi.spyOn(BIP44Node, 'fromJSON').mockRejectedValue(
+      new Error('unexpected parse failure'),
+    );
 
     await expect(
       createTronBip44AddressDeriver({} as JsonBIP44Node),

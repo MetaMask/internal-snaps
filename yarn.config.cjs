@@ -201,9 +201,12 @@ module.exports = defineConfig({
           '../../scripts/since-latest-release.sh',
         );
 
-        // Stellar unit tests run on Vitest. `@metamask/snaps-jest` stays on Jest
-        // for the other snaps; that preset cannot execute under Vitest.
-        if (workspace.ident === '@metamask/stellar-wallet-snap') {
+        // Stellar and Tron unit tests run on Vitest. `@metamask/snaps-jest` stays
+        // on Jest for the other snaps; that preset cannot execute under Vitest.
+        if (
+          workspace.ident === '@metamask/stellar-wallet-snap' ||
+          workspace.ident === '@metamask/tron-wallet-snap'
+        ) {
           expectWorkspaceFieldRegex(
             workspace,
             'scripts.test',

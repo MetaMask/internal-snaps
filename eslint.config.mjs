@@ -176,6 +176,10 @@ const config = createConfig([
       'packages/stellar-wallet-snap/**/*.test.tsx',
       'packages/stellar-wallet-snap/**/__mocks__/**/*.ts',
       'packages/stellar-wallet-snap/**/*.fixtures.ts',
+      'packages/tron-wallet-snap/**/*.test.ts',
+      'packages/tron-wallet-snap/**/*.test.tsx',
+      'packages/tron-wallet-snap/**/__mocks__/**/*.ts',
+      'packages/tron-wallet-snap/src/utils/mockLogger.ts',
     ],
     languageOptions: {
       globals: {

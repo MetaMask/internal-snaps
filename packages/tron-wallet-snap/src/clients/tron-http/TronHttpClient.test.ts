@@ -20,12 +20,12 @@ describe('TronHttpClient', () => {
 
   it('retries when reading the response body fails', async () => {
     const failedResponse = new globalThis.Response('', { status: 200 });
-    jest.spyOn(failedResponse, 'text').mockRejectedValueOnce(
+    vi.spyOn(failedResponse, 'text').mockRejectedValueOnce(
       Object.assign(new Error('Body failed'), {
         name: FetchPolicyErrorName.Network,
       }),
     );
-    const fetchMock = jest
+    const fetchMock = vi
       .spyOn(global, 'fetch')
       .mockResolvedValueOnce(failedResponse)
       .mockResolvedValueOnce(
@@ -43,12 +43,10 @@ describe('TronHttpClient', () => {
 
   it('preserves allowed 404 transaction responses', async () => {
     const response = new globalThis.Response('', { status: 404 });
-    const textMock = jest
+    const textMock = vi
       .spyOn(response, 'text')
       .mockRejectedValueOnce(new Error('Body failed'));
-    const fetchMock = jest
-      .spyOn(global, 'fetch')
-      .mockResolvedValueOnce(response);
+    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValueOnce(response);
     const client = new TronHttpClient({ configProvider });
 
     expect(
@@ -60,7 +58,7 @@ describe('TronHttpClient', () => {
 
   describe('request cache', () => {
     it('serves identical requests from the cache within the TTL', async () => {
-      const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+      const fetchMock = vi.spyOn(global, 'fetch').mockImplementation(
         async () =>
           new globalThis.Response(JSON.stringify({ freeNetUsed: 1 }), {
             status: 200,
@@ -83,9 +81,9 @@ describe('TronHttpClient', () => {
     });
 
     it('refetches identical requests after the cache TTL elapses', async () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       try {
-        const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+        const fetchMock = vi.spyOn(global, 'fetch').mockImplementation(
           async () =>
             new globalThis.Response(JSON.stringify({ freeNetUsed: 1 }), {
               status: 200,
@@ -94,17 +92,17 @@ describe('TronHttpClient', () => {
         const client = new TronHttpClient({ configProvider });
 
         await client.getAccountResources(Network.Mainnet, 'address');
-        jest.advanceTimersByTime(5_001);
+        vi.advanceTimersByTime(5_001);
         await client.getAccountResources(Network.Mainnet, 'address');
 
         expect(fetchMock).toHaveBeenCalledTimes(2);
       } finally {
-        jest.useRealTimers();
+        vi.useRealTimers();
       }
     });
 
     it('does not deduplicate requests with different arguments', async () => {
-      const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+      const fetchMock = vi.spyOn(global, 'fetch').mockImplementation(
         async () =>
           new globalThis.Response(JSON.stringify({ freeNetUsed: 1 }), {
             status: 200,

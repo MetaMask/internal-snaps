@@ -1,17 +1,13 @@
 import { SnapError, UserRejectedRequestError } from '@metamask/snaps-sdk';
+import type { Mock } from 'vitest';
 
 import { trackError, withCatchAndThrowSnapError } from './errors';
 import { mockLogger } from './mockLogger';
 
-jest.mock('./logger', () => ({
-  __esModule: true,
-  default: jest.requireActual('./mockLogger').mockLogger,
-}));
+const setupTest = (): { mockSnapRequest: Mock } => {
+  vi.clearAllMocks();
 
-const setupTest = (): { mockSnapRequest: jest.Mock } => {
-  jest.clearAllMocks();
-
-  const mockSnapRequest = jest.fn();
+  const mockSnapRequest = vi.fn();
   Object.defineProperty(globalThis, 'snap', {
     configurable: true,
     value: { request: mockSnapRequest },
@@ -53,7 +49,7 @@ describe('errors', () => {
     it('returns the result when the function succeeds', async () => {
       setupTest();
 
-      const mockFn = jest.fn().mockResolvedValue('success');
+      const mockFn = vi.fn().mockResolvedValue('success');
 
       const result = await withCatchAndThrowSnapError(mockFn);
 
@@ -67,7 +63,7 @@ describe('errors', () => {
       mockSnapRequest.mockResolvedValue('tracked-error-id');
 
       const originalError = new Error('Test error');
-      const mockFn = jest.fn().mockRejectedValue(originalError);
+      const mockFn = vi.fn().mockRejectedValue(originalError);
 
       await expect(withCatchAndThrowSnapError(mockFn)).rejects.toThrow(
         SnapError,
@@ -80,9 +76,7 @@ describe('errors', () => {
 
     it('skips tracking RPC for user rejections', async () => {
       const { mockSnapRequest } = setupTest();
-      const mockFn = jest
-        .fn()
-        .mockRejectedValue(new UserRejectedRequestError());
+      const mockFn = vi.fn().mockRejectedValue(new UserRejectedRequestError());
 
       await expect(withCatchAndThrowSnapError(mockFn)).rejects.toThrow(
         UserRejectedRequestError,

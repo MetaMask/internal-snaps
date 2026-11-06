@@ -19,8 +19,8 @@ import type { TransactionScanResult } from './types';
 import { SimulationStatus } from './types';
 
 const mockAnalyticsService = {
-  trackSecurityScanCompleted: jest.fn().mockResolvedValue(undefined),
-  trackSecurityAlertDetected: jest.fn().mockResolvedValue(undefined),
+  trackSecurityScanCompleted: vi.fn().mockResolvedValue(undefined),
+  trackSecurityAlertDetected: vi.fn().mockResolvedValue(undefined),
 } as unknown as AnalyticsService;
 
 describe('TransactionScanService', () => {
@@ -40,10 +40,10 @@ describe('TransactionScanService', () => {
     mockApiResponse: SecurityAlertSimulationValidationResponse,
   ): SecurityAlertsApiClient =>
     ({
-      scanTransaction: jest.fn().mockResolvedValue(mockApiResponse),
+      scanTransaction: vi.fn().mockResolvedValue(mockApiResponse),
     }) as unknown as SecurityAlertsApiClient;
 
-  const createMockTrackError = (): TrackErrorFn => jest.fn();
+  const createMockTrackError = (): TrackErrorFn => vi.fn();
 
   const createWellFormedTransactionRawData =
     (): TronwebTypes.Transaction['raw_data'] => ({
@@ -608,9 +608,10 @@ describe('TransactionScanService', () => {
 
         validation: { status: 'Success', result_type: 'Benign' },
       });
-      jest
-        .mocked(mockSecurityAlertsApiClient.scanTransaction)
-        .mockRejectedValueOnce(error);
+      vi.mocked(
+        // eslint-disable-next-line jest/unbound-method
+        mockSecurityAlertsApiClient.scanTransaction,
+      ).mockRejectedValueOnce(error);
 
       const mockTrackError = createMockTrackError();
 
@@ -1000,8 +1001,10 @@ describe('TransactionScanService', () => {
       });
 
     beforeEach(() => {
-      jest.mocked(mockAnalyticsService.trackSecurityScanCompleted).mockClear();
-      jest.mocked(mockAnalyticsService.trackSecurityAlertDetected).mockClear();
+      // eslint-disable-next-line jest/unbound-method
+      vi.mocked(mockAnalyticsService.trackSecurityScanCompleted).mockClear();
+      // eslint-disable-next-line jest/unbound-method
+      vi.mocked(mockAnalyticsService.trackSecurityAlertDetected).mockClear();
     });
 
     it('tracks a successful scan without alerts', async () => {
@@ -1193,9 +1196,10 @@ describe('TransactionScanService', () => {
           simulation: { status: 'Success' },
           validation: { status: 'Success', result_type: 'Benign' },
         });
-      jest
-        .mocked(mockSecurityAlertsApiClient.scanTransaction)
-        .mockRejectedValueOnce(error);
+      vi.mocked(
+        // eslint-disable-next-line jest/unbound-method
+        mockSecurityAlertsApiClient.scanTransaction,
+      ).mockRejectedValueOnce(error);
 
       expect(await scan(service)).toBeNull();
       expect(mockTrackError).toHaveBeenCalledWith(error);

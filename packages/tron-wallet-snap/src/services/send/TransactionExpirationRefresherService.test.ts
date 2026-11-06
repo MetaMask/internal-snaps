@@ -66,11 +66,11 @@ describe('transaction metadata', () => {
   const scope = Network.Mainnet;
 
   beforeEach(() => {
-    jest.useFakeTimers().setSystemTime(now);
+    vi.useFakeTimers().setSystemTime(now);
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   const createTronWeb = ({
@@ -81,27 +81,27 @@ describe('transaction metadata', () => {
     referencedBlock?: ReturnType<typeof createBlock>;
   } = {}) => ({
     trx: {
-      getCurrentBlock: jest.fn().mockResolvedValue(currentBlock),
-      getBlockByNumber: jest
+      getCurrentBlock: vi.fn().mockResolvedValue(currentBlock),
+      getBlockByNumber: vi
         .fn()
         .mockResolvedValue(referencedBlock ?? currentBlock),
     },
     utils: {
       deserializeTx: {
-        deserializeTransaction: jest.fn(),
+        deserializeTransaction: vi.fn(),
       },
       transaction: {
-        txJsonToPb: jest.fn().mockImplementation((transaction) => transaction),
-        txPbToRawDataHex: jest.fn().mockReturnValue('refreshed-raw-data-hex'),
-        txPbToTxID: jest.fn().mockReturnValue('0xrefreshed-tx-id'),
+        txJsonToPb: vi.fn().mockImplementation((transaction) => transaction),
+        txPbToRawDataHex: vi.fn().mockReturnValue('refreshed-raw-data-hex'),
+        txPbToTxID: vi.fn().mockReturnValue('0xrefreshed-tx-id'),
       },
     },
   });
 
   const createService = (tronWeb: ReturnType<typeof createTronWeb>) => {
     const tronWebFactory = {
-      createClient: jest.fn().mockReturnValue(tronWeb),
-      executeRead: jest
+      createClient: vi.fn().mockReturnValue(tronWeb),
+      executeRead: vi
         .fn()
         .mockImplementation(
           async (_scope: Network, operation: () => Promise<unknown>) =>
@@ -557,8 +557,8 @@ describe('transaction metadata', () => {
         expiration: now + 45_000,
       });
       const tronWebFactory = {
-        createClient: jest.fn().mockReturnValue(tronWeb),
-        executeRead: jest
+        createClient: vi.fn().mockReturnValue(tronWeb),
+        executeRead: vi
           .fn()
           .mockImplementation(
             async (_scope: Network, operation: () => Promise<unknown>) => {
@@ -598,8 +598,8 @@ describe('transaction metadata', () => {
         expiration: now + 45_000,
       });
       const tronWebFactory = {
-        createClient: jest.fn().mockReturnValue(tronWeb),
-        executeRead: jest
+        createClient: vi.fn().mockReturnValue(tronWeb),
+        executeRead: vi
           .fn()
           .mockImplementation(
             async (_scope: Network, operation: () => Promise<unknown>) => {
@@ -662,9 +662,9 @@ describe('transaction metadata', () => {
           configProvider,
           logger: mockLogger,
         });
-        jest
-          .spyOn(tronWebFactory, 'createClient')
-          .mockReturnValue(tronWeb as never);
+        vi.spyOn(tronWebFactory, 'createClient').mockReturnValue(
+          tronWeb as never,
+        );
         const service = new TransactionExpirationRefresherService({
           tronWebFactory,
         });
