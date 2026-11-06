@@ -436,7 +436,6 @@ describe('ConfirmationHandler', () => {
   });
 
   describe('confirmTransactionRequest', () => {
-
     const mockAsset: AssetEntity = {
       assetType: `${Network.Mainnet}/slip44:195`,
       keyringAccountId: TEST_ACCOUNT_ID,
@@ -606,7 +605,6 @@ describe('ConfirmationHandler', () => {
   });
 
   describe('handleKeyringRequest', () => {
-
     const rawData = {
       contract: [{ parameter: { value: {} }, type: 'TransferContract' }],
 

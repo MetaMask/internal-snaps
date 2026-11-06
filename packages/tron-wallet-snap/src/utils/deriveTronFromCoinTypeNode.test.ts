@@ -8,7 +8,6 @@ import type { JsonBIP44Node } from '@metamask/key-tree';
 import { hexToBytes } from '@metamask/utils';
 import { computeAddress } from 'ethers';
 import { TronWeb } from 'tronweb';
-
 import type { MockedFunction } from 'vitest';
 
 import { createTronBip44AddressDeriver } from './deriveTronFromCoinTypeNode';
@@ -52,8 +51,7 @@ describe('createTronBip44AddressDeriver', () => {
       });
 
       const expectedHex = computeAddress(fullNode.publicKey);
-      const expectedAddress =
-        realFromHex(expectedHex);
+      const expectedAddress = realFromHex(expectedHex);
 
       const { address, publicKeyBytes } = await derive(addressIndex);
 
