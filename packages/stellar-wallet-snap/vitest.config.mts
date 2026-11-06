@@ -90,6 +90,8 @@ export default defineConfig({
     pool: 'threads',
     // Performance: reuse the module graph across files. Isolation re-imports
     // every dependency per file, which was most of the runtime.
+    // A top-level `vi.mock` only works when that file is the only importer and
+    // the real module must not load. Anything else should `vi.spyOn` in `beforeEach`.
     isolate: false,
     // Performance: `vitest doctor` measured 4 workers fastest. Extra workers
     // queue transforms on the single Vite server and get slower.
