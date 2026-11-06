@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support `VoteWitnessContract` and `AccountPermissionUpdateContract` transactions by upgrading TronWeb to 6.5.1. ([#561](https://github.com/MetaMask/internal-snaps/pull/561))
+
 ### Fixed
 
 - Align transaction security warning copy and scan-loading behavior with user preferences. ([#557](https://github.com/MetaMask/internal-snaps/pull/557))

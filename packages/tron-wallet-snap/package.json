@@ -70,7 +70,7 @@
     "jest-it-up": "^2.0.2",
     "lodash": "^4.17.21",
     "oxfmt": "^0.70.0",
-    "tronweb": "patch:tronweb@npm%3A6.1.0#~/.yarn/patches/tronweb-npm-6.1.0-771b242b6a.patch",
+    "tronweb": "patch:tronweb@npm%3A6.5.1#~/.yarn/patches/tronweb-npm-6.5.1-d43f988ae6.patch",
     "typescript": "~5.8.3",
     "webpack": "5.107.2"
   },
