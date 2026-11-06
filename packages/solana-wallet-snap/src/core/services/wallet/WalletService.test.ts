@@ -56,12 +56,12 @@ describe('WalletService', () => {
       undefined,
     );
     vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
-    vi.spyOn(Bip32Entropy, 'getBip32Entropy').mockImplementation(((
-      ...args: never[]
-    ) => getBip32EntropyMock(...args)) as never);
-    vi.spyOn(Bip32Entropy, 'getSolanaCoinTypeNode').mockImplementation(((
-      ...args: never[]
-    ) => getSolanaCoinTypeNodeMock(...args)) as never);
+    vi.spyOn(Bip32Entropy, 'getBip32Entropy').mockImplementation((params) =>
+      getBip32EntropyMock(params as never),
+    );
+    vi.spyOn(Bip32Entropy, 'getSolanaCoinTypeNode').mockImplementation(
+      (entropySource) => getSolanaCoinTypeNodeMock(entropySource),
+    );
     mockConnection = createMockConnection();
 
     mockSigner = {

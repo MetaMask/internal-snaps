@@ -183,8 +183,6 @@ const config = createConfig([
       'packages/solana-wallet-snap/**/*.test.ts',
       'packages/solana-wallet-snap/**/*.test.tsx',
       'packages/solana-wallet-snap/**/__mocks__/**/*.ts',
-      'packages/solana-wallet-snap/vitest.setup.ts',
-      'packages/solana-wallet-snap/vitest.config.mts',
     ],
     languageOptions: {
       globals: {

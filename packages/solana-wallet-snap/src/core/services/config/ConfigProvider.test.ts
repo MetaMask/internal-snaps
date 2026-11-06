@@ -227,11 +227,9 @@ describe('ConfigProvider', () => {
   });
 
   it('derives the active networks from the config', async () => {
-    const mockGetClientStatus = vi
-      .spyOn(SnapInterface, 'getClientStatus')
-      .mockResolvedValue({
-        clientVersion: '12.11.1',
-      } as Awaited<ReturnType<typeof getClientStatus>>);
+    vi.spyOn(SnapInterface, 'getClientStatus').mockResolvedValue({
+      clientVersion: '12.11.1',
+    } as Awaited<ReturnType<typeof getClientStatus>>);
 
     const networks = await new ConfigProvider({
       ...FULL_ENVIRONMENT,

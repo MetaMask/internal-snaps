@@ -340,13 +340,9 @@ describe('render tracking', () => {
       request: vi.fn().mockResolvedValue(undefined),
     };
 
-    let render:
-      | ((
-          incomingContext: ConfirmTransactionRequestContext,
-        ) => Promise<unknown>)
-      | undefined;
     vi.resetModules();
-    ({ render } = await vi.importActual<typeof import('./render')>('./render'));
+    const { render } =
+      await vi.importActual<typeof import('./render')>('./render');
 
     if (!render) {
       throw new Error('Failed to load render');

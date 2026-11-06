@@ -721,7 +721,7 @@ describe('KeyringAccountMonitor', () => {
       // Simulate connection recovery
       const recoveryHandler = (
         mockSubscriptionService.registerConnectionRecoveryHandler as Mock
-      ).mock.calls[0][1];
+      ).mock.calls[0]?.[1];
       await recoveryHandler(Network.Mainnet);
 
       expect(syncSpy).toHaveBeenCalledTimes(1);
@@ -742,7 +742,7 @@ describe('KeyringAccountMonitor', () => {
       // Simulate connection recovery
       const recoveryHandler = (
         mockSubscriptionService.registerConnectionRecoveryHandler as Mock
-      ).mock.calls[0][1];
+      ).mock.calls[0]?.[1];
       await recoveryHandler(Network.Mainnet);
 
       expect(syncSpy).toHaveBeenCalledWith(accounts);
@@ -756,7 +756,7 @@ describe('KeyringAccountMonitor', () => {
       // Simulate connection recovery
       const recoveryHandler = (
         mockSubscriptionService.registerConnectionRecoveryHandler as Mock
-      ).mock.calls[0][1];
+      ).mock.calls[0]?.[1];
       await recoveryHandler(Network.Mainnet);
 
       expect(syncSpy).not.toHaveBeenCalled();

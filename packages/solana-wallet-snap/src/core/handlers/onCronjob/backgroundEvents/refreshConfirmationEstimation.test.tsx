@@ -32,7 +32,9 @@ const setupTest = () => {
   vi.spyOn(BlockhashExpired, 'isTransactionBlockhashExpired').mockResolvedValue(
     false,
   );
-  vi.spyOn(SnapNetworks, 'serialize').mockImplementation((value) => value);
+  vi.spyOn(SnapNetworks, 'serialize').mockImplementation(
+    (value) => value as ReturnType<typeof SnapNetworks.serialize>,
+  );
   vi.spyOn(SnapInterface, 'getInterfaceContext');
   vi.spyOn(SnapInterface, 'updateInterface');
   vi.spyOn(state, 'getKey');

@@ -1,3 +1,5 @@
+/* eslint-disable no-restricted-globals */
+// eslint-disable-next-line import-x/no-named-as-default
 import BigNumber from 'bignumber.js';
 import { config } from 'dotenv';
 // eslint-disable-next-line import-x/no-nodejs-modules
@@ -22,9 +24,7 @@ for (const key of [
   'SECURITY_ALERTS_API_BASE_URL',
   'NFT_API_BASE_URL',
 ]) {
-  if (!process.env[key]) {
-    process.env[key] = localApiBaseUrl;
-  }
+  process.env[key] ??= localApiBaseUrl;
 }
 
 // Lowest precision we ever go for: MicroLamports represented in Sol amount.
@@ -46,9 +46,7 @@ beforeEach(() => {
   vi.useRealTimers();
 });
 
-// eslint-disable-next-line no-restricted-globals
 process.env.ENVIRONMENT ??= 'test';
-// eslint-disable-next-line no-restricted-globals
 process.env.LOG_LEVEL ??= 'error';
 
 // `@metamask/snaps-jest` adds these matchers to Jest's `expect`. The four
@@ -61,3 +59,4 @@ declare module 'vitest' {
     toRender(component: unknown): R;
   }
 }
+/* eslint-enable no-restricted-globals */

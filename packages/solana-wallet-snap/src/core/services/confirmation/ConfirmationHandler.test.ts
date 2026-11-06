@@ -65,10 +65,12 @@ describe('ConfirmationHandler', () => {
    * @returns The scheduled event method names.
    */
   const getScheduledMethods = (): string[] =>
-    mockSnapRequest.mock.calls.map(
-      ([request]: [{ params: { request: { method: string } } }]) =>
-        request.params.request.method,
-    );
+    mockSnapRequest.mock.calls.map((call) => {
+      const request = call[0] as {
+        params: { request: { method: string } };
+      };
+      return request.params.request.method;
+    });
 
   /**
    * The full `snap_scheduleBackgroundEvent` call expected for a given lifecycle

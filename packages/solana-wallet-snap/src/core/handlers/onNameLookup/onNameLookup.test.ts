@@ -15,13 +15,13 @@ describe('onNameLookupHandler', () => {
     '36Dn3RWhB8x4c83W6ebQ2C2eH9sh5bQX2nMdkP2cWaA4' as Address;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.spyOn(nameResolutionService, 'resolveDomain').mockResolvedValue(
       undefined as never,
     );
     vi.spyOn(nameResolutionService, 'resolveAddress').mockResolvedValue(
       undefined as never,
     );
-    vi.clearAllMocks();
   });
 
   it.each(['example.sns', 'example.sol'])(

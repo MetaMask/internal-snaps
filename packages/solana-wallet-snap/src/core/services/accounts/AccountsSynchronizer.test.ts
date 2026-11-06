@@ -149,7 +149,7 @@ describe('AccountsSynchronizer', () => {
       await synchronizer.synchronize(accounts);
 
       expect(trackError).toHaveBeenCalledTimes(1);
-      const error = (trackError as Mock).mock.calls[0][0] as Error;
+      const error = (trackError as Mock).mock.calls[0]?.[0] as Error;
       expect(error).toBeInstanceOf(SynchronizationError);
       expect(error.message).toBe(
         'Account synchronization failures (1 failed): ' +

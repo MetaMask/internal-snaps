@@ -67,7 +67,7 @@ describe('shared policy integration', () => {
       logger: mockLogger,
     });
     const operation = vi
-      .fn<Promise<string>, []>()
+      .fn<() => Promise<string>>()
       .mockRejectedValueOnce(new TypeError('fetch failed'))
       .mockResolvedValue('ok');
 

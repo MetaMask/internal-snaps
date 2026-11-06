@@ -36,7 +36,12 @@ describe('SendSplTokenBuilder', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(DeriveSolanaKeypair, 'deriveSolanaKeypair').mockImplementation(
-      (params) => deriveSolanaKeypairMock(params),
+      (params) =>
+        Promise.resolve(
+          deriveSolanaKeypairMock(params),
+        ) as unknown as ReturnType<
+          typeof DeriveSolanaKeypair.deriveSolanaKeypair
+        >,
     );
 
     mockConnection = createMockConnection();

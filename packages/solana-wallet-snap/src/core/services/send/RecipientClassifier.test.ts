@@ -1,8 +1,8 @@
 import { SYSTEM_PROGRAM_ADDRESS } from '@solana-program/system';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
-import { address as asAddress, assertAccountExists } from '@solana/kit';
 import * as SolanaKit from '@solana/kit';
+import type { Mock } from 'vitest';
 
 import { Network } from '../../constants/solana';
 import { mockLogger } from '../__mocks__/logger';
@@ -13,11 +13,18 @@ describe('RecipientClassifier', () => {
   let classifier: RecipientClassifier;
   let mockConnection: SolanaConnection;
   let mockRpc: any;
+  let assertAccountExists: Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(SolanaKit, 'address');
-    vi.spyOn(SolanaKit, 'assertAccountExists');
+    vi.spyOn(SolanaKit, 'address').mockImplementation(
+      (value) => value as never,
+    );
+    assertAccountExists = vi.spyOn(
+      SolanaKit,
+      'assertAccountExists',
+    ) as unknown as Mock;
+    assertAccountExists.mockImplementation(() => undefined);
 
     mockRpc = {
       getAccountInfo: vi.fn(),
@@ -27,13 +34,6 @@ describe('RecipientClassifier', () => {
       getRpc: vi.fn().mockReturnValue(mockRpc),
       fetchJsonParsedAccount: vi.fn(),
     } as unknown as SolanaConnection;
-
-    // Mock asAddress to return the input address
-    asAddress.mockImplementation((address: string) => address);
-
-    assertAccountExists.mockImplementation(() => {
-      // No error
-    });
 
     classifier = new RecipientClassifier(mockConnection, mockLogger);
   });

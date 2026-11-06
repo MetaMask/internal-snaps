@@ -127,12 +127,10 @@ describe('SnapAssetsAdapter', () => {
 
   describe('fetch', () => {
     it('aggregates token accounts for the same mint', async () => {
-      vi.spyOn(mockConfigProvider, 'getActiveNetworks')
-        .mockImplementation()
-        .mockResolvedValue([Network.Mainnet]);
-      vi.spyOn(mockTokenApiClient, 'getTokensMetadata')
-        .mockImplementation()
-        .mockResolvedValue({});
+      vi.spyOn(mockConfigProvider, 'getActiveNetworks').mockResolvedValue([
+        Network.Mainnet,
+      ]);
+      vi.spyOn(mockTokenApiClient, 'getTokensMetadata').mockResolvedValue({});
 
       const [firstTokenAccount] =
         MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_RESPONSE.result.value;
@@ -201,7 +199,7 @@ describe('SnapAssetsAdapter', () => {
       await snapAssetsAdapter.fetchAccountAssets(MOCK_SOLANA_KEYRING_ACCOUNT_0);
 
       expect(trackError).toHaveBeenCalledTimes(1);
-      const error = (trackError as Mock).mock.calls[0][0] as Error;
+      const error = (trackError as Mock).mock.calls[0]?.[0] as Error;
       expect(error).toBeInstanceOf(SynchronizationError);
       expect(error.message).toBe(
         'Failed to fetch token accounts (2 failed): ' +
@@ -231,7 +229,7 @@ describe('SnapAssetsAdapter', () => {
       await snapAssetsAdapter.fetchAccountAssets(MOCK_SOLANA_KEYRING_ACCOUNT_1);
 
       expect(trackError).toHaveBeenCalledTimes(1);
-      const error = (trackError as Mock).mock.calls[0][0] as Error;
+      const error = (trackError as Mock).mock.calls[0]?.[0] as Error;
       expect(error).toBeInstanceOf(SynchronizationError);
       expect(error.message).toBe(
         'Failed to fetch native balances (1 failed): ' +
