@@ -2,18 +2,18 @@ import { toFetchPolicyError } from '../../../utils/fetchPolicy';
 import { createErrorTrackingTransport } from './errorTrackingTransport';
 
 const mockSnap = {
-  request: jest.fn(),
+  request: vi.fn(),
 };
 
 describe('createErrorTrackingTransport', () => {
   beforeEach(() => {
     (globalThis as any).snap = mockSnap;
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('HTTP errors (4xx, 5xx)', () => {
     it('should track HTTP 500 errors', async () => {
-      const mockTransport = jest
+      const mockTransport = vi
         .fn()
         .mockRejectedValue(new Error('HTTP 500 Internal Server Error'));
 
@@ -35,7 +35,7 @@ describe('createErrorTrackingTransport', () => {
     });
 
     it('should track network timeout errors', async () => {
-      const mockTransport = jest
+      const mockTransport = vi
         .fn()
         .mockRejectedValue(new Error('Network timeout'));
 
@@ -68,7 +68,7 @@ describe('createErrorTrackingTransport', () => {
         },
       };
 
-      const mockTransport = jest.fn().mockResolvedValue(mockResponse);
+      const mockTransport = vi.fn().mockResolvedValue(mockResponse);
 
       const errorTrackingTransport =
         createErrorTrackingTransport(mockTransport);
@@ -101,7 +101,7 @@ describe('createErrorTrackingTransport', () => {
         },
       };
 
-      const mockTransport = jest.fn().mockResolvedValue(mockResponse);
+      const mockTransport = vi.fn().mockResolvedValue(mockResponse);
 
       const errorTrackingTransport =
         createErrorTrackingTransport(mockTransport);
@@ -121,7 +121,7 @@ describe('createErrorTrackingTransport', () => {
         result: null,
       };
 
-      const mockTransport = jest.fn().mockResolvedValue(mockResponse);
+      const mockTransport = vi.fn().mockResolvedValue(mockResponse);
 
       const errorTrackingTransport =
         createErrorTrackingTransport(mockTransport);
@@ -137,7 +137,7 @@ describe('createErrorTrackingTransport', () => {
 
   describe('Error tracking failures', () => {
     it('should handle error tracking failures gracefully', async () => {
-      const mockTransport = jest
+      const mockTransport = vi
         .fn()
         .mockRejectedValue(new Error('Network error'));
       mockSnap.request.mockRejectedValue(new Error('Tracking failed'));
@@ -155,9 +155,7 @@ describe('createErrorTrackingTransport', () => {
 
   describe('Error information extraction', () => {
     it('should include method and URL in error tracking', async () => {
-      const mockTransport = jest
-        .fn()
-        .mockRejectedValue(new Error('Test error'));
+      const mockTransport = vi.fn().mockRejectedValue(new Error('Test error'));
 
       const errorTrackingTransport =
         createErrorTrackingTransport(mockTransport);
@@ -180,7 +178,7 @@ describe('createErrorTrackingTransport', () => {
       const mockError = new Error('Network error');
       (mockError as any).currentUrl = 'https://api2.example.com';
 
-      const mockTransport = jest.fn().mockRejectedValue(mockError);
+      const mockTransport = vi.fn().mockRejectedValue(mockError);
 
       const errorTrackingTransport =
         createErrorTrackingTransport(mockTransport);
@@ -205,7 +203,7 @@ describe('createErrorTrackingTransport', () => {
       const mockError = new Error('HTTP 404 Not Found');
       (mockError as any).status = 404;
 
-      const mockTransport = jest.fn().mockRejectedValue(mockError);
+      const mockTransport = vi.fn().mockRejectedValue(mockError);
 
       const errorTrackingTransport =
         createErrorTrackingTransport(mockTransport);
@@ -228,7 +226,7 @@ describe('createErrorTrackingTransport', () => {
       const mockError = Object.assign(new Error('HTTP 429'), {
         context: { statusCode: 429 },
       });
-      const mockTransport = jest.fn().mockRejectedValue(mockError);
+      const mockTransport = vi.fn().mockRejectedValue(mockError);
       const errorTrackingTransport =
         createErrorTrackingTransport(mockTransport);
 
@@ -252,7 +250,7 @@ describe('createErrorTrackingTransport', () => {
           context: { statusCode: 429 },
         }),
       );
-      const mockTransport = jest.fn().mockRejectedValue(mockError);
+      const mockTransport = vi.fn().mockRejectedValue(mockError);
       const errorTrackingTransport =
         createErrorTrackingTransport(mockTransport);
 
@@ -273,7 +271,7 @@ describe('createErrorTrackingTransport', () => {
 
   describe('Different error formats', () => {
     it('should handle string errors', async () => {
-      const mockTransport = jest.fn().mockRejectedValue('Simple string error');
+      const mockTransport = vi.fn().mockRejectedValue('Simple string error');
 
       const errorTrackingTransport =
         createErrorTrackingTransport(mockTransport);
@@ -296,7 +294,7 @@ describe('createErrorTrackingTransport', () => {
 
     it('should handle objects with error property', async () => {
       const mockError = { error: { code: -32000, message: 'Server error' } };
-      const mockTransport = jest.fn().mockRejectedValue(mockError);
+      const mockTransport = vi.fn().mockRejectedValue(mockError);
 
       const errorTrackingTransport =
         createErrorTrackingTransport(mockTransport);

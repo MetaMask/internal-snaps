@@ -1,10 +1,2 @@
-import type { Logger } from '@metamask/snap-networks-utils';
-
-export const mockLogger = {
-  log: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn(),
-  withPrefix: jest.fn().mockReturnThis(),
-} as unknown as Logger;
+export { mockLogger, noOpLogger } from '../../utils/__mocks__/logger';
+export { default } from '../../utils/__mocks__/logger';

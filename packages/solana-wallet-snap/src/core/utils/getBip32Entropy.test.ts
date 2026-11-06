@@ -2,10 +2,10 @@ import { getBip32Entropy } from './getBip32Entropy';
 
 describe('getBip32Entropy', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     Object.defineProperty(global, 'snap', {
       value: {
-        request: jest.fn().mockResolvedValueOnce({
+        request: vi.fn().mockResolvedValueOnce({
           depth: 2,
           masterFingerprint: 3974444335,
           parentFingerprint: 2046425034,

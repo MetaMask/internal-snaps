@@ -270,46 +270,46 @@ describe('render', () => {
 
 describe('render tracking', () => {
   const setupTest = async () => {
-    const trackError = jest.fn().mockResolvedValue('tracked-error-id');
-    const calculateFee = jest.fn().mockReturnValue({
+    const trackError = vi.fn().mockResolvedValue('tracked-error-id');
+    const calculateFee = vi.fn().mockReturnValue({
       totalFee: 5000n,
     });
-    const createInterface = jest.fn().mockResolvedValue('interface-id');
-    const getPreferences = jest.fn().mockResolvedValue({
+    const createInterface = vi.fn().mockResolvedValue('interface-id');
+    const getPreferences = vi.fn().mockResolvedValue({
       locale: 'en',
       currency: 'usd',
       useExternalPricingData: true,
       useSecurityAlerts: true,
       simulateOnChainActions: true,
     });
-    const showDialog = jest.fn().mockResolvedValue('dialog-result');
-    const updateInterface = jest.fn().mockResolvedValue(undefined);
-    const extractInstructionsFromUnknownBase64String = jest
+    const showDialog = vi.fn().mockResolvedValue('dialog-result');
+    const updateInterface = vi.fn().mockResolvedValue(undefined);
+    const extractInstructionsFromUnknownBase64String = vi
       .fn()
       .mockResolvedValue([{}]);
-    const extractDestinationAddress = jest.fn();
+    const extractDestinationAddress = vi.fn();
     const nameResolutionService = {
-      resolveAddress: jest.fn().mockResolvedValue(null),
+      resolveAddress: vi.fn().mockResolvedValue(null),
     };
     const priceApiClient = {
-      getMultipleSpotPrices: jest.fn(),
+      getMultipleSpotPrices: vi.fn(),
     };
     const transactionScanService = {
-      scanTransaction: jest.fn(),
+      scanTransaction: vi.fn(),
     };
     const state = {
-      setKey: jest.fn().mockResolvedValue(undefined),
+      setKey: vi.fn().mockResolvedValue(undefined),
     };
 
-    jest.doMock('../../../../core/utils/errors', () => ({
+    vi.doMock('../../../../core/utils/errors', () => ({
       trackError,
     }));
-    jest.doMock('../../../../core/fees', () => ({
+    vi.doMock('../../../../core/fees', () => ({
       FeeCalculator: {
         calculateFee,
       },
     }));
-    jest.doMock('../../../../core/utils/interface', () => ({
+    vi.doMock('../../../../core/utils/interface', () => ({
       CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME:
         'confirmation-interface',
       createInterface,
@@ -317,18 +317,18 @@ describe('render tracking', () => {
       showDialog,
       updateInterface,
     }));
-    jest.doMock('./ConfirmTransactionRequest', () => ({
+    vi.doMock('./ConfirmTransactionRequest', () => ({
       ConfirmTransactionRequest: () => null,
     }));
-    jest.doMock('../../../../entities', () => ({
+    vi.doMock('../../../../entities', () => ({
       extractInstructionsFromUnknownBase64String,
     }));
-    jest.doMock('../../utils/extractDestinationAddress', () => ({
+    vi.doMock('../../utils/extractDestinationAddress', () => ({
       extractDestinationAddress,
     }));
-    jest.doMock('../../../../snapContext', () => ({
+    vi.doMock('../../../../snapContext', () => ({
       connection: {
-        getRpc: jest.fn().mockReturnValue({}),
+        getRpc: vi.fn().mockReturnValue({}),
       },
       nameResolutionService,
       priceApiClient,
@@ -337,17 +337,12 @@ describe('render tracking', () => {
     }));
 
     (globalThis as any).snap = {
-      request: jest.fn().mockResolvedValue(undefined),
+      request: vi.fn().mockResolvedValue(undefined),
     };
 
-    let render:
-      | ((
-          incomingContext: ConfirmTransactionRequestContext,
-        ) => Promise<unknown>)
-      | undefined;
-    jest.isolateModules(() => {
-      ({ render } = jest.requireActual('./render'));
-    });
+    vi.resetModules();
+    const { render } =
+      await vi.importActual<typeof import('./render')>('./render');
 
     if (!render) {
       throw new Error('Failed to load render');

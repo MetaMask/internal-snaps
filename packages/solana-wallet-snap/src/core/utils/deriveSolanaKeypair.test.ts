@@ -1,5 +1,6 @@
 import type { SLIP10PathNode, SupportedCurve } from '@metamask/key-tree';
 import { SLIP10Node } from '@metamask/key-tree';
+import type { Mock } from 'vitest';
 
 import {
   MOCK_SEED_PHRASE_BYTES,
@@ -14,6 +15,7 @@ import {
   deriveSolanaKeypairFromCoinTypeNode,
 } from './deriveSolanaKeypair';
 import { getBip32Entropy } from './getBip32Entropy';
+import * as Bip32Entropy from './getBip32Entropy';
 
 /**
  * Using the seed phrase:
@@ -46,13 +48,11 @@ import { getBip32Entropy } from './getBip32Entropy';
  * And the private keys you see in the first test case below.
  */
 
-jest.mock('./getBip32Entropy');
-jest.mock('./logger');
-
 describe('deriveSolanaKeypair', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    (getBip32Entropy as jest.Mock).mockImplementation(
+    vi.clearAllMocks();
+    vi.spyOn(Bip32Entropy, 'getBip32Entropy');
+    (getBip32Entropy as Mock).mockImplementation(
       async ({ path, curve }: { path: string[]; curve: SupportedCurve }) => {
         return await SLIP10Node.fromDerivationPath({
           derivationPath: [
@@ -113,7 +113,7 @@ describe('deriveSolanaKeypair', () => {
 
   describe('when the BIP32 entropy is invalid', () => {
     it('throws an error', async () => {
-      (getBip32Entropy as jest.Mock).mockResolvedValue({} as any);
+      (getBip32Entropy as Mock).mockResolvedValue({} as any);
 
       await expect(
         deriveSolanaKeypair({ derivationPath: `m/44'/501'/0'/0'` }),
@@ -124,7 +124,7 @@ describe('deriveSolanaKeypair', () => {
   describe('when we are unable to get BIP32 entropy', () => {
     it('throws an error', async () => {
       const errorMessage = 'Failed to get entropy';
-      (getBip32Entropy as jest.Mock).mockRejectedValue(new Error(errorMessage));
+      (getBip32Entropy as Mock).mockRejectedValue(new Error(errorMessage));
 
       await expect(
         deriveSolanaKeypair({ derivationPath: `m/44'/501'/0'/0'` }),
@@ -172,7 +172,7 @@ describe('deriveSolanaKeypairFromCoinTypeNode', () => {
 
   it('throws an error when the derived node has no private key', async () => {
     const coinTypeNode = {
-      derive: jest.fn().mockResolvedValue({
+      derive: vi.fn().mockResolvedValue({
         privateKeyBytes: undefined,
         publicKeyBytes: undefined,
       }),

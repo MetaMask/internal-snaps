@@ -7,6 +7,7 @@ import {
   getSignatureFromTransaction,
   isTransactionMessageWithBlockhashLifetime,
 } from '@solana/kit';
+import * as SolanaKit from '@solana/kit';
 import type {
   Transaction,
   TransactionMessageBytes,
@@ -28,26 +29,13 @@ import {
   MOCK_SOLANA_KEYRING_ACCOUNT_1,
 } from '../../test/mocks/solana-keyring-accounts';
 import { deriveSolanaKeypairMock } from '../../test/mocks/utils/deriveSolanaKeypair';
+import * as DeriveSolanaKeypair from '../../utils/deriveSolanaKeypair';
 import logger from '../../utils/logger';
 import { createMockConnection } from '../__mocks__/mockConnection';
 import type { SolanaConnection } from '../connection';
 import { MOCK_SIGN_SCENARIO_JUPITERZ_WITH_DIFFERENT_FEE_PAYER } from './mocks/jupiterzWithDifferentFeePayer';
 import { MOCK_EXECUTION_SCENARIOS } from './mocks/scenarios';
 import { Signer } from './Signer';
-
-jest.mock('@solana/kit', () => ({
-  ...jest.requireActual('@solana/kit'),
-  estimateResourceLimitsFactory: jest
-    .fn()
-    .mockReturnValue(jest.fn().mockResolvedValue({ computeUnitLimit: 200000 })),
-  sendTransactionWithoutConfirmingFactory: jest
-    .fn()
-    .mockReturnValue(jest.fn().mockResolvedValueOnce(undefined)),
-}));
-
-jest.mock('../../utils/deriveSolanaKeypair', () => ({
-  deriveSolanaKeypair: deriveSolanaKeypairMock,
-}));
 
 describe('Signer', () => {
   const mockScope = Network.Mainnet;
@@ -56,7 +44,17 @@ describe('Signer', () => {
   let signer: Signer;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    vi.spyOn(SolanaKit, 'estimateResourceLimitsFactory').mockReturnValue(
+      vi.fn().mockResolvedValue({ computeUnitLimit: 200000 }) as never,
+    );
+    vi.spyOn(
+      SolanaKit,
+      'sendTransactionWithoutConfirmingFactory',
+    ).mockReturnValue(vi.fn().mockResolvedValue(undefined) as never);
+    vi.spyOn(DeriveSolanaKeypair, 'deriveSolanaKeypair').mockImplementation(
+      deriveSolanaKeypairMock as never,
+    );
     mockConnection = createMockConnection();
     signer = new Signer(mockConnection, logger);
   });
@@ -74,16 +72,14 @@ describe('Signer', () => {
     } = scenario;
 
     beforeEach(async () => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
 
       signer = new Signer(mockConnection, logger);
 
-      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
         ...mockConnection.getRpc(mockScope),
-        getMultipleAccounts: jest.fn().mockReturnValue({
-          send: jest
-            .fn()
-            .mockResolvedValue(getMultipleAccountsResponse?.result),
+        getMultipleAccounts: vi.fn().mockReturnValue({
+          send: vi.fn().mockResolvedValue(getMultipleAccountsResponse?.result),
         }),
       });
     });
@@ -220,9 +216,9 @@ describe('Signer', () => {
         blockhash: blockhash('8vMXV3ERvs12BY8w1nSHutzwwMptAR5UvUSq5pH2QYsK'),
         lastValidBlockHeight: 123n,
       };
-      jest
-        .spyOn(mockConnection, 'getLatestBlockhash')
-        .mockResolvedValue(refreshedBlockhash);
+      vi.spyOn(mockConnection, 'getLatestBlockhash').mockResolvedValue(
+        refreshedBlockhash,
+      );
       const messageBytes = getCompiledTransactionMessageEncoder().encode(
         compileTransactionMessage({
           version: 'legacy',

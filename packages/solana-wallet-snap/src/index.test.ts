@@ -14,34 +14,34 @@ import {
 import { handlers } from './core/handlers/onCronjob';
 import { ScheduleBackgroundEventMethod } from './core/handlers/onCronjob/backgroundEvents/ScheduleBackgroundEventMethod';
 
-const mockEmit = jest.fn();
+const mockEmit = vi.fn();
 
 // Avoid loading the ESM-only `@noble/ed25519` package and patching
 // `globalThis.crypto.subtle` from this test file. Tests here don't exercise
 // crypto, and a global patch would leak into other test suites under
 // `--runInBand` because `globalThis` is shared across files.
-jest.mock('./polyfills', () => ({
-  installPolyfills: jest.fn(),
+vi.mock('./polyfills', () => ({
+  installPolyfills: vi.fn(),
 }));
 
-jest.mock('./features/confirmation/views/ConfirmSignIn/events', () => ({
+vi.mock('./features/confirmation/views/ConfirmSignIn/events', () => ({
   eventHandlers: {
-    failing: jest.fn().mockRejectedValue(new Error('User input failed')),
+    failing: vi.fn().mockRejectedValue(new Error('User input failed')),
   },
 }));
 
-jest.mock('./snapContext', () => ({
+vi.mock('./snapContext', () => ({
   eventEmitter: {
     emitSync: async (...args: unknown[]): Promise<unknown> => mockEmit(...args),
   },
   keyring: {
-    listAccounts: jest.fn(),
-    createAccount: jest.fn(),
+    listAccounts: vi.fn(),
+    createAccount: vi.fn(),
   },
   state: {
-    getKey: jest.fn().mockResolvedValue(Date.now()),
-    setKey: jest.fn(),
-    setKeyWith: jest.fn(),
+    getKey: vi.fn().mockResolvedValue(Date.now()),
+    setKey: vi.fn(),
+    setKeyWith: vi.fn(),
   },
 }));
 
@@ -97,12 +97,12 @@ describe('onCronjob', () => {
   });
 
   it('calls the correct handler', async () => {
-    const handler = jest.fn();
+    const handler = vi.fn();
     handlers[ScheduleBackgroundEventMethod.RefreshConfirmationEstimation] =
       handler;
 
     const snap = {
-      request: jest.fn().mockResolvedValue({ locked: false, active: true }),
+      request: vi.fn().mockResolvedValue({ locked: false, active: true }),
     };
 
     (globalThis as any).snap = snap;
@@ -120,7 +120,7 @@ describe('onCronjob', () => {
 });
 
 describe('wrapped entrypoint failures', () => {
-  const snapRequest = jest.fn();
+  const snapRequest = vi.fn();
 
   beforeEach(() => {
     snapRequest.mockReset().mockResolvedValue(undefined);
