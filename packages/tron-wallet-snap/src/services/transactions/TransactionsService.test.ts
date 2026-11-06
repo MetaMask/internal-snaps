@@ -5,6 +5,7 @@ import type {
   ExtendedKeyringAccount,
   Logger,
 } from '@metamask/snap-networks-utils';
+import type { Mocked } from 'vitest';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -27,7 +28,7 @@ import { TransactionsService } from './TransactionsService';
 type WithTransactionServiceCallback<ReturnValue> = (payload: {
   transactionsService: TransactionsService;
   mockLogger: Logger;
-  mockTransactionsRepository: jest.Mocked<
+  mockTransactionsRepository: Mocked<
     Pick<
       TransactionsRepository,
       | 'getAll'
@@ -38,7 +39,7 @@ type WithTransactionServiceCallback<ReturnValue> = (payload: {
       | 'saveMany'
     >
   >;
-  mockTrongridApiClient: jest.Mocked<
+  mockTrongridApiClient: Mocked<
     Pick<
       TrongridApiClient,
       | 'getAccountInfoByAddress'
@@ -46,13 +47,11 @@ type WithTransactionServiceCallback<ReturnValue> = (payload: {
       | 'getContractTransactionInfoByAddress'
     >
   >;
-  mockTronHttpClient: jest.Mocked<
+  mockTronHttpClient: Mocked<
     Pick<TronHttpClient, 'getTRC10TokenMetadata' | 'getTransactionInfoById'>
   >;
-  mockPriceApiClient: jest.Mocked<
-    Pick<PriceApiClient, 'getMultipleSpotPrices'>
-  >;
-  mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>>;
+  mockPriceApiClient: Mocked<Pick<PriceApiClient, 'getMultipleSpotPrices'>>;
+  mockSnapClient: Mocked<Pick<SnapClient, 'trackError'>>;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -66,12 +65,12 @@ async function withTransactionService<ReturnValue>(
 ): Promise<ReturnValue> {
   // Mock the global snap object
   Object.defineProperty(globalThis, 'snap', {
-    value: { request: jest.fn() },
+    value: { request: vi.fn() },
     writable: true,
     configurable: true,
   });
 
-  const mockTransactionsRepository: jest.Mocked<
+  const mockTransactionsRepository: Mocked<
     Pick<
       TransactionsRepository,
       | 'getAll'
@@ -82,15 +81,15 @@ async function withTransactionService<ReturnValue>(
       | 'saveMany'
     >
   > = {
-    getAll: jest.fn(),
-    findByAccountId: jest.fn().mockResolvedValue([]),
-    getTransactionIdsByAccountId: jest.fn().mockResolvedValue(new Set()),
-    getConfirmedTransactionIds: jest.fn().mockResolvedValue(new Set()),
-    save: jest.fn(),
-    saveMany: jest.fn(),
+    getAll: vi.fn(),
+    findByAccountId: vi.fn().mockResolvedValue([]),
+    getTransactionIdsByAccountId: vi.fn().mockResolvedValue(new Set()),
+    getConfirmedTransactionIds: vi.fn().mockResolvedValue(new Set()),
+    save: vi.fn(),
+    saveMany: vi.fn(),
   };
 
-  const mockTrongridApiClient: jest.Mocked<
+  const mockTrongridApiClient: Mocked<
     Pick<
       TrongridApiClient,
       | 'getAccountInfoByAddress'
@@ -98,26 +97,26 @@ async function withTransactionService<ReturnValue>(
       | 'getContractTransactionInfoByAddress'
     >
   > = {
-    getAccountInfoByAddress: jest.fn(),
-    getTransactionInfoByAddress: jest.fn(),
-    getContractTransactionInfoByAddress: jest.fn(),
+    getAccountInfoByAddress: vi.fn(),
+    getTransactionInfoByAddress: vi.fn(),
+    getContractTransactionInfoByAddress: vi.fn(),
   };
 
-  const mockTronHttpClient: jest.Mocked<
+  const mockTronHttpClient: Mocked<
     Pick<TronHttpClient, 'getTRC10TokenMetadata' | 'getTransactionInfoById'>
   > = {
-    getTRC10TokenMetadata: jest.fn(),
-    getTransactionInfoById: jest.fn(),
+    getTRC10TokenMetadata: vi.fn(),
+    getTransactionInfoById: vi.fn(),
   };
 
-  const mockPriceApiClient: jest.Mocked<
+  const mockPriceApiClient: Mocked<
     Pick<PriceApiClient, 'getMultipleSpotPrices'>
   > = {
-    getMultipleSpotPrices: jest.fn().mockResolvedValue({}),
+    getMultipleSpotPrices: vi.fn().mockResolvedValue({}),
   };
 
-  const mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>> = {
-    trackError: jest.fn(),
+  const mockSnapClient: Mocked<Pick<SnapClient, 'trackError'>> = {
+    trackError: vi.fn(),
   };
 
   const transactionsService: TransactionsService = new TransactionsService({
@@ -275,7 +274,7 @@ describe('TransactionsService', () => {
             [],
           );
 
-          const mapTransactionsSpy = jest
+          const mapTransactionsSpy = vi
             .spyOn(TransactionMapper, 'mapTransactions')
             .mockReturnValue([spamTransaction, keptTransaction]);
 
@@ -732,7 +731,7 @@ describe('TransactionsService', () => {
               'spam-trc10',
               trc10Asset('2.2222'),
             );
-            const mapSpy = jest
+            const mapSpy = vi
               .spyOn(TransactionMapper, 'mapTransactions')
               .mockReturnValue([spamTx]);
             mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue({});
@@ -769,7 +768,7 @@ describe('TransactionsService', () => {
               'spam-trc20',
               trc20Asset('4444.4444'),
             );
-            const mapSpy = jest
+            const mapSpy = vi
               .spyOn(TransactionMapper, 'mapTransactions')
               .mockReturnValue([spamTx]);
             mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue({});
@@ -806,7 +805,7 @@ describe('TransactionsService', () => {
               'legit-usdt',
               trc20Asset('10'),
             );
-            const mapSpy = jest
+            const mapSpy = vi
               .spyOn(TransactionMapper, 'mapTransactions')
               .mockReturnValue([legitimateTx]);
             mockPriceApiClient.getMultipleSpotPrices.mockResolvedValue({
@@ -849,7 +848,7 @@ describe('TransactionsService', () => {
               'native-trx',
               nativeAsset('10'),
             );
-            const mapSpy = jest
+            const mapSpy = vi
               .spyOn(TransactionMapper, 'mapTransactions')
               .mockReturnValue([nativeTx]);
             // No price API call expected for native TRX — getMultipleSpotPrices default returns {}
@@ -897,7 +896,7 @@ describe('TransactionsService', () => {
               events: [],
               fees: [],
             };
-            const mapSpy = jest
+            const mapSpy = vi
               .spyOn(TransactionMapper, 'mapTransactions')
               .mockReturnValue([sendTx]);
             // No price API call expected — getMultipleSpotPrices default returns {}
@@ -938,7 +937,7 @@ describe('TransactionsService', () => {
               'spam-trc10',
               trc10Asset('2.2222'),
             );
-            const mapSpy = jest
+            const mapSpy = vi
               .spyOn(TransactionMapper, 'mapTransactions')
               .mockReturnValue([spamTx]);
             mockPriceApiClient.getMultipleSpotPrices.mockRejectedValue(
