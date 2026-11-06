@@ -171,7 +171,7 @@
   },
   "packages/solana-wallet-snap/src/core/handlers/onCronjob/backgroundEvents/refreshConfirmationEstimation.test.tsx": {
     "@typescript-eslint/explicit-function-return-type": {
-      "count": 2
+      "count": 1
     }
   },
   "packages/solana-wallet-snap/src/core/handlers/onCronjob/backgroundEvents/refreshConfirmationEstimation.tsx": {
@@ -227,9 +227,6 @@
   "packages/solana-wallet-snap/src/core/services/approve-token/ApproveTokenService.test.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 5
-    },
-    "n/global-require": {
-      "count": 1
     }
   },
   "packages/solana-wallet-snap/src/core/services/assets/AssetsService.test.ts": {
@@ -272,9 +269,6 @@
   "packages/solana-wallet-snap/src/core/services/connection/SolanaConnection.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 3
-    },
-    "n/global-require": {
-      "count": 3
     }
   },
   "packages/solana-wallet-snap/src/core/services/connection/SolanaConnection.ts": {
@@ -309,9 +303,6 @@
     "@typescript-eslint/no-explicit-any": {
       "count": 1
     },
-    "@typescript-eslint/no-shadow": {
-      "count": 1
-    },
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     }
@@ -344,11 +335,6 @@
   "packages/solana-wallet-snap/src/core/services/send/SendSolBuilder.test.ts": {
     "import-x/no-named-as-default": {
       "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/services/send/SendSplTokenBuilder.test.ts": {
-    "n/global-require": {
-      "count": 2
     }
   },
   "packages/solana-wallet-snap/src/core/services/signer/Signer.ts": {
@@ -626,9 +612,6 @@
       "count": 1
     },
     "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
-    "@typescript-eslint/no-shadow": {
       "count": 1
     }
   },
