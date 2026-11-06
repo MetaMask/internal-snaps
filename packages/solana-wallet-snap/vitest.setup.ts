@@ -16,7 +16,7 @@ config({ path: resolve(packageRoot, '.env'), quiet: true });
 // `snap.config.ts` inlines these at build time. Fill any the local `.env`
 // leaves empty so `configProvider` can be constructed when a test imports it.
 const localApiBaseUrl =
-// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   process.env.LOCAL_API_BASE_URL || 'http://localhost:8899';
 for (const key of [
   'PRICE_API_BASE_URL',
