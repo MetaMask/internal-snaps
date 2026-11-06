@@ -224,8 +224,23 @@ describe('AssetsService', () => {
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
       );
 
-      expect(fetchSpy).toHaveBeenCalledWith(MOCK_SOLANA_KEYRING_ACCOUNT_0);
+      expect(fetchSpy).toHaveBeenCalledWith(MOCK_SOLANA_KEYRING_ACCOUNT_0, {});
       expect(assets).toStrictEqual(MOCK_ASSET_ENTITIES);
+    });
+
+    it('forwards failOnNetworks to the Snap adapter', async () => {
+      const fetchSpy = jest
+        .spyOn(snapAssetsAdapter, 'fetchAccountAssets')
+        .mockResolvedValue(MOCK_ASSET_ENTITIES);
+
+      await assetsService.fetchAccountAssetsFromRpc(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        { failOnNetworks: [Network.Mainnet] },
+      );
+
+      expect(fetchSpy).toHaveBeenCalledWith(MOCK_SOLANA_KEYRING_ACCOUNT_0, {
+        failOnNetworks: [Network.Mainnet],
+      });
     });
   });
 

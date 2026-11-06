@@ -10,6 +10,7 @@ import type {
 /* eslint-disable jsdoc/require-returns */
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 
+import type { Network } from '../../constants/solana';
 import type { AssetEntity } from '../../../entities';
 import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
@@ -92,12 +93,16 @@ export class AssetsService {
    * asset fetching: it never consults the assets migration feature flag.
    *
    * @param account - The account to fetch live assets for.
+   * @param options - Options.
+   * @param options.failOnNetworks - Networks whose fetch failures must throw
+   * instead of being skipped (see the adapter's `fetchAccountAssets`).
    * @returns The live assets.
    */
   async fetchAccountAssetsFromRpc(
     account: ExtendedKeyringAccount,
+    options: { failOnNetworks?: Network[] } = {},
   ): Promise<AssetEntity[]> {
-    return this.#snapAdapter.fetchAccountAssets(account);
+    return this.#snapAdapter.fetchAccountAssets(account, options);
   }
 
   async save(asset: AssetEntity): Promise<void> {

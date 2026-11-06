@@ -48,6 +48,7 @@ import {
 import { trackError } from '../../utils/errors';
 import { getBip32Entropy } from '../../utils/getBip32Entropy';
 import logger from '../../utils/logger';
+import { AccountAssetsFetchError } from '../../services/assets/adapters/SnapAssetsAdapter';
 import { SolanaKeyring } from './Keyring';
 
 jest.mock('@metamask/keyring-snap-sdk', () => ({
@@ -396,6 +397,7 @@ describe('SolanaKeyring', () => {
 
       expect(mockAssetsService.fetchAccountAssetsFromRpc).toHaveBeenCalledWith(
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        { failOnNetworks: [MOCK_ASSET_ENTITY_1.assetType.split('/')[0]] },
       );
       expect(result).toStrictEqual({
         [MOCK_ASSET_ENTITY_1.assetType]: {
@@ -415,6 +417,29 @@ describe('SolanaKeyring', () => {
           KnownCaip19Id.SolMainnet,
         ]),
       ).rejects.toThrow('network error');
+    });
+
+    it('fails instead of answering with a partial result when an RPC fetch for a requested network failed (v3)', async () => {
+      jest
+        .spyOn(mockAssetsService, 'fetchAccountAssetsFromRpc')
+        .mockRejectedValue(
+          new AccountAssetsFetchError([
+            {
+              network: Network.Mainnet,
+              reason: new TypeError('Failed to fetch'),
+            },
+          ]),
+        );
+
+      await expect(
+        keyring.getAccountBalances(MOCK_SOLANA_KEYRING_ACCOUNT_1.id, [
+          KnownCaip19Id.SolMainnet,
+        ]),
+      ).rejects.toThrow('Failed to fetch account assets (1 failed)');
+      expect(mockAssetsService.fetchAccountAssetsFromRpc).toHaveBeenCalledWith(
+        expect.anything(),
+        { failOnNetworks: [KnownCaip19Id.SolMainnet.split('/')[0]] },
+      );
     });
 
     it('removes token assets with zero balance', async () => {

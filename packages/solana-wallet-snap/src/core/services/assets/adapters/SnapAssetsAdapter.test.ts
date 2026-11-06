@@ -30,7 +30,10 @@ import type { AccountsService } from '../../accounts/AccountsService';
 import type { ConfigProvider } from '../../config';
 import type { SolanaConnection } from '../../connection';
 import type { AssetsRepository } from '../AssetsRepository';
-import { SnapAssetsAdapter } from './SnapAssetsAdapter';
+import {
+  AccountAssetsFetchError,
+  SnapAssetsAdapter,
+} from './SnapAssetsAdapter';
 
 jest.mock('../../../utils/errors');
 
@@ -259,6 +262,86 @@ describe('SnapAssetsAdapter', () => {
         'Failed to track error',
         expect.anything(),
       );
+    });
+  });
+
+  describe('fetchAccountAssets with failOnNetworks (v3: SOL must not fail silently)', () => {
+    beforeEach(() => {
+      (mockConfigProvider.getActiveNetworks as jest.Mock).mockResolvedValue([
+        Network.Mainnet,
+      ]);
+    });
+
+    const mockRpc = ({
+      balanceFails = false,
+      tokensFail = false,
+    }: {
+      balanceFails?: boolean;
+      tokensFail?: boolean;
+    }): void => {
+      (mockConnection.getRpc as jest.Mock).mockReturnValue({
+        getBalance: jest.fn().mockReturnValue({
+          send: balanceFails
+            ? jest.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+            : jest
+                .fn()
+                .mockResolvedValue(MOCK_SOLANA_RPC_GET_BALANCE_AS_SDK_RESPONSE),
+        }),
+        getTokenAccountsByOwner: jest.fn().mockReturnValue({
+          send: tokensFail
+            ? jest.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+            : jest
+                .fn()
+                .mockResolvedValue(
+                  MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_AS_SDK_RESPONSE,
+                ),
+        }),
+      });
+    };
+
+    it('throws AccountAssetsFetchError when the native balance fetch of a required network fails', async () => {
+      mockRpc({ balanceFails: true });
+
+      const promise = snapAssetsAdapter.fetchAccountAssets(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        { failOnNetworks: [Network.Mainnet] },
+      );
+
+      await expect(promise).rejects.toBeInstanceOf(AccountAssetsFetchError);
+      await expect(promise).rejects.toThrow(
+        `Failed to fetch account assets (1 failed): ${Network.Mainnet}: Failed to fetch`,
+      );
+    });
+
+    it('throws when token accounts of a required network cannot be fetched', async () => {
+      mockRpc({ tokensFail: true });
+
+      await expect(
+        snapAssetsAdapter.fetchAccountAssets(MOCK_SOLANA_KEYRING_ACCOUNT_0, {
+          failOnNetworks: [Network.Mainnet],
+        }),
+      ).rejects.toThrow('Failed to fetch account assets (2 failed)');
+    });
+
+    it('ignores failures on networks that are not required', async () => {
+      mockRpc({ balanceFails: true });
+
+      const assets = await snapAssetsAdapter.fetchAccountAssets(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        { failOnNetworks: [Network.Devnet] },
+      );
+
+      expect(Array.isArray(assets)).toBe(true);
+    });
+
+    it('keeps the lenient behaviour without failOnNetworks (sync path)', async () => {
+      mockRpc({ balanceFails: true, tokensFail: true });
+
+      const assets = await snapAssetsAdapter.fetchAccountAssets(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+
+      expect(assets).toStrictEqual([]);
     });
   });
 });
