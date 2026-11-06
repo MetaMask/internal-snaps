@@ -577,7 +577,12 @@ export const parseInstruction = (
       programAddressToParsingConfig[programAddress];
 
     if (!parsingConfig) {
-      throw new Error('Unsupported program address');
+      // Unsupported programs are expected, so return Unknown without reporting an error to Sentry.
+      return {
+        type: 'Unknown',
+        encoded,
+        parsed: null,
+      };
     }
 
     const { identifier, typeToParserMap, instructionEnum } = parsingConfig;

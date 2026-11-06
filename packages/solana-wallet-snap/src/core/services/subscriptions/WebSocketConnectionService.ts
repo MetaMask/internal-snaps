@@ -3,6 +3,7 @@ import type {
   IStateManager,
   Logger,
 } from '@metamask/snap-networks-utils';
+import { getErrorMessage } from '@metamask/snaps-sdk';
 import type {
   WebSocketCloseEvent,
   WebSocketEvent,
@@ -20,6 +21,9 @@ import { getClientStatus } from '../../utils/interface';
 import type { ConfigProvider } from '../config';
 import type { UnencryptedStateValue } from '../state/stateTypes';
 import type { WebSocketConnectionRepository } from './WebSocketConnectionRepository';
+
+const MISSING_BACKGROUND_EVENT_PATTERN =
+  /^A background event with the id of "[^"]+" does not exist\.$/u;
 
 /**
  * Manages WebSocket connections for different Solana networks, providing robust connection
@@ -439,7 +443,9 @@ export class WebSocketConnectionService {
         eventId,
       );
     } catch (error) {
-      await trackError(error);
+      if (this.#shouldTrack(error)) {
+        await trackError(error);
+      }
       this.#logger.warn(`Failed to cancel background event`, error);
     } finally {
       // Clear the state
@@ -448,5 +454,16 @@ export class WebSocketConnectionService {
         null,
       );
     }
+  }
+
+  /**
+   * Determines whether an error should be reported to Sentry.
+   *
+   * @param error - The error to evaluate.
+   * @returns Whether the error should be tracked.
+   */
+  #shouldTrack(error: unknown): boolean {
+    // The event may have already executed or been cancelled, so don't report that expected case to Sentry.
+    return !MISSING_BACKGROUND_EVENT_PATTERN.test(getErrorMessage(error));
   }
 }

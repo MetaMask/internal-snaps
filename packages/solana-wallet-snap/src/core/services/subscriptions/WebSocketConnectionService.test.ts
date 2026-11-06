@@ -493,6 +493,45 @@ describe('WebSocketConnectionService', () => {
   });
 
   describe('background event scheduling', () => {
+    it.each([
+      { event: 'onActive', asRpcError: false },
+      { event: 'onActive', asRpcError: true },
+      { event: 'onInactive', asRpcError: false },
+      { event: 'onInactive', asRpcError: true },
+    ])(
+      'does not track an already-removed background event on $event (RPC error: $asRpcError)',
+      async ({ event, asRpcError }) => {
+        const existingEventId = 'existing-event-id';
+        const message = `A background event with the id of "${existingEventId}" does not exist.`;
+        const error = asRpcError
+          ? { code: -32603, message }
+          : new Error(message);
+
+        jest.spyOn(mockState, 'getKey').mockResolvedValueOnce(existingEventId);
+        jest
+          .spyOn(snap, 'request')
+          .mockRejectedValueOnce(error)
+          .mockResolvedValueOnce('new-event-id');
+        jest.spyOn(mockState, 'setKey').mockResolvedValue(undefined);
+        jest.spyOn(service, 'openConnection').mockResolvedValue(undefined);
+
+        // eslint-disable-next-line n/no-sync -- emitSync awaits asynchronous event handlers.
+        await mockEventEmitter.emitSync(event);
+
+        expect(trackError).not.toHaveBeenCalled();
+        expect(mockState.setKey).toHaveBeenCalledWith(
+          'webSocketConnections.closeWebSocketConnectionsBackgroundEventId',
+          null,
+        );
+        expect(service.openConnection).toHaveBeenCalledTimes(
+          event === 'onActive' ? 2 : 0,
+        );
+        expect(snap.request).toHaveBeenCalledTimes(
+          event === 'onActive' ? 1 : 2,
+        );
+      },
+    );
+
     describe('when client becomes inactive', () => {
       it('schedules a background event to close connections after grace period', async () => {
         const mockEventId = 'test-event-id-123';
