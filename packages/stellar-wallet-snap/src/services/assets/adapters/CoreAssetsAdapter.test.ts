@@ -1,5 +1,6 @@
 import type { Asset, AssetMetadata } from '@metamask/assets-controller';
 import type { Logger } from '@metamask/snap-networks-utils';
+import type { Mock } from 'vitest';
 
 import { KnownCaip2ChainId } from '../../../api';
 import { getSlip44AssetId } from '../../../utils';
@@ -43,21 +44,21 @@ const testnetAsset = coreAsset(TESTNET_ASSET_ID, KnownCaip2ChainId.Testnet);
 
 function createAdapter(): {
   adapter: CoreAssetsAdapter;
-  getAccountAssetByID: jest.Mock;
-  getAccountAssetsByIDs: jest.Mock;
-  getAccountAssetsByScope: jest.Mock;
-  getAssetMetadata: jest.Mock;
+  getAccountAssetByID: Mock;
+  getAccountAssetsByIDs: Mock;
+  getAccountAssetsByScope: Mock;
+  getAssetMetadata: Mock;
 } {
   const logger = {
-    debug: jest.fn(),
-    withPrefix: jest.fn(),
+    debug: vi.fn(),
+    withPrefix: vi.fn(),
   } as unknown as Logger;
-  (logger.withPrefix as jest.Mock).mockReturnValue(logger);
+  (logger.withPrefix as Mock).mockReturnValue(logger);
 
-  const getAccountAssetByID = jest.fn();
-  const getAccountAssetsByIDs = jest.fn();
-  const getAccountAssetsByScope = jest.fn();
-  const getAssetMetadata = jest.fn();
+  const getAccountAssetByID = vi.fn();
+  const getAccountAssetsByIDs = vi.fn();
+  const getAccountAssetsByScope = vi.fn();
+  const getAssetMetadata = vi.fn();
 
   const adapter = new CoreAssetsAdapter({
     logger,

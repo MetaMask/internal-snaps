@@ -1,4 +1,5 @@
 import { buildUrl } from '@metamask/snap-networks-utils';
+import type { MockedFunction } from 'vitest';
 
 import { KnownCaip2ChainId } from '../../../api';
 import {
@@ -7,8 +8,6 @@ import {
   InvalidHttpResponseException,
 } from '../../../utils/errors';
 import { TokenApiClient } from './TokenApiClient';
-
-jest.mock('../../../utils/logger');
 
 const baseUrl = 'https://tokens.test';
 
@@ -45,10 +44,10 @@ const tokenMetadataResponse = (
 });
 
 describe('TokenApiClient', () => {
-  const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+  const mockFetch = vi.fn() as MockedFunction<typeof fetch>;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   const createClient = () => new TokenApiClient({ baseUrl }, mockFetch);
@@ -120,7 +119,7 @@ describe('TokenApiClient', () => {
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          text: jest.fn().mockRejectedValueOnce(new Error('Body failed')),
+          text: vi.fn().mockRejectedValueOnce(new Error('Body failed')),
         } as unknown as Response)
         .mockResolvedValueOnce(jsonResponse(body));
 

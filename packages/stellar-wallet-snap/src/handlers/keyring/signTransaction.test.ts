@@ -18,8 +18,6 @@ import type { SignTransactionRequest } from './api';
 import { Sep43ErrorCode } from './exceptions';
 import { SignTransactionHandler } from './signTransaction';
 
-jest.mock('../../utils/logger');
-
 describe('SignTransactionHandler', () => {
   /**
    * Builds a {@link SignTransactionHandler} with mocked services + account/wallet
@@ -44,15 +42,15 @@ describe('SignTransactionHandler', () => {
       walletService,
     });
 
-    jest
-      .spyOn(AccountService.prototype, 'resolveAccount')
-      .mockResolvedValue({ account: mockAccount });
+    vi.spyOn(AccountService.prototype, 'resolveAccount').mockResolvedValue({
+      account: mockAccount,
+    });
 
-    jest
-      .spyOn(WalletService.prototype, 'resolveWallet')
-      .mockResolvedValue(wallet);
+    vi.spyOn(WalletService.prototype, 'resolveWallet').mockResolvedValue(
+      wallet,
+    );
 
-    const renderConfirmationDialog = jest.fn();
+    const renderConfirmationDialog = vi.fn();
     const confirmationUIController = {
       renderConfirmationDialog,
     } as Pick<
@@ -60,9 +58,9 @@ describe('SignTransactionHandler', () => {
       'renderConfirmationDialog'
     > as unknown as ConfirmationUXController;
 
-    const trackTransactionAddedSpy = jest.fn().mockResolvedValue(undefined);
-    const trackTransactionRejectedSpy = jest.fn().mockResolvedValue(undefined);
-    const trackTransactionApprovedSpy = jest.fn().mockResolvedValue(undefined);
+    const trackTransactionAddedSpy = vi.fn().mockResolvedValue(undefined);
+    const trackTransactionRejectedSpy = vi.fn().mockResolvedValue(undefined);
+    const trackTransactionApprovedSpy = vi.fn().mockResolvedValue(undefined);
 
     const handler = new SignTransactionHandler({
       logger,
@@ -132,7 +130,7 @@ describe('SignTransactionHandler', () => {
 
     const transaction = buildMainnetPaymentFromWallet(wallet.address);
     const xdr = transaction.getRaw().toXdr();
-    const signSpy = jest.spyOn(wallet, 'signTransaction');
+    const signSpy = vi.spyOn(wallet, 'signTransaction');
     renderConfirmationDialog.mockResolvedValue(true);
 
     const result = await handler.handle(buildRequest(mockAccount.id, xdr));
@@ -164,7 +162,7 @@ describe('SignTransactionHandler', () => {
 
     const transaction = buildMainnetPaymentFromWallet(wallet.address);
     const xdr = transaction.getRaw().toXdr();
-    const signSpy = jest.spyOn(wallet, 'signTransaction');
+    const signSpy = vi.spyOn(wallet, 'signTransaction');
     renderConfirmationDialog.mockResolvedValue(false);
 
     const result = await handler.handle(buildRequest(mockAccount.id, xdr));
@@ -211,7 +209,7 @@ describe('SignTransactionHandler', () => {
         source: { accountId: wallet.address, sequence: '1' },
       },
     );
-    const fromXdrSpy = jest
+    const fromXdrSpy = vi
       .spyOn(WrappedTransaction, 'fromXdr')
       .mockReturnValue(testnetTx);
 

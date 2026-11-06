@@ -171,6 +171,19 @@ const config = createConfig([
     },
   },
   {
+    files: [
+      'packages/stellar-wallet-snap/**/*.test.ts',
+      'packages/stellar-wallet-snap/**/*.test.tsx',
+      'packages/stellar-wallet-snap/**/__mocks__/**/*.ts',
+      'packages/stellar-wallet-snap/**/*.fixtures.ts',
+    ],
+    languageOptions: {
+      globals: {
+        vi: 'readonly',
+      },
+    },
+  },
+  {
     files: ['**/*.test.{js,ts,tsx}', '**/tests/**/*.{js,ts,tsx}'],
     extends: [jest],
     rules: {
