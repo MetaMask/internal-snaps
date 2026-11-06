@@ -9,7 +9,7 @@ import type {
   Transaction,
 } from '@metamask/keyring-api';
 import { AccountCreationType, TrxAccountType } from '@metamask/keyring-api';
-import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { LogLevel } from '@metamask/snap-networks-utils';
 import type { MockedFunction, Mocked, Mock } from 'vitest';
@@ -19,7 +19,7 @@ import { Network } from '../../constants';
 import type { NativeAsset } from '../../entities/assets';
 import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import { createTronBip44KeypairDeriver } from '../../utils/deriveTronFromCoinTypeNode';
-import { trackError } from '../../utils/errors';
+import * as Errors from '../../utils/errors';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsService } from '../assets/AssetsService';
 import type { Config } from '../config/ConfigProvider';
@@ -41,23 +41,8 @@ function firstTrackedError(mock: Mock): Error {
   return call[0] as Error;
 }
 
-vi.mock('../../utils/errors', async () => {
-  const actual =
-    await vi.importActual<typeof import('../../utils/errors')>(
-      '../../utils/errors',
-    );
-  return {
-    ...actual,
-    trackError: vi.fn().mockResolvedValue('tracked-error-id'),
-  };
-});
-
-vi.mock('@metamask/keyring-snap-sdk', () => ({
-  getSelectedAccounts: vi.fn().mockResolvedValue([]),
-}));
-
-const mockedGetSelectedAccounts = getSelectedAccounts as MockedFunction<
-  typeof getSelectedAccounts
+let mockedGetSelectedAccounts!: MockedFunction<
+  typeof KeyringSnapSdk.getSelectedAccounts
 >;
 
 /**
@@ -330,6 +315,13 @@ async function withAccountsService(
 }
 
 describe('AccountsService', () => {
+  beforeEach(() => {
+    mockedGetSelectedAccounts = vi
+      .spyOn(KeyringSnapSdk, 'getSelectedAccounts')
+      .mockResolvedValue([]);
+    vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
+  });
+
   describe('getDefaultDerivationPath', () => {
     it('returns path for index 0', () => {
       expect(AccountsService.getDefaultDerivationPath(0)).toBe(
@@ -1084,7 +1076,7 @@ describe('AccountsService', () => {
           expect(mockAssetsService.saveManyAndEmit).toHaveBeenCalledWith(
             expect.arrayContaining(mockAssets),
           );
-          expect(trackError).not.toHaveBeenCalled();
+          expect(Errors.trackError).not.toHaveBeenCalled();
         },
       );
     });
@@ -1115,8 +1107,8 @@ describe('AccountsService', () => {
           // attributed to individual accounts), and the method still resolves.
           await accountsService.synchronize([account]);
 
-          expect(trackError).toHaveBeenCalledTimes(1);
-          const tracked = firstTrackedError(trackError as Mock);
+          expect(Errors.trackError).toHaveBeenCalledTimes(1);
+          const tracked = firstTrackedError(Errors.trackError as Mock);
           expect(tracked.message).toBe('Failed to save assets');
           expect((tracked as Error & { cause?: unknown }).cause).toBe(
             saveError,
@@ -1173,8 +1165,8 @@ describe('AccountsService', () => {
 
           await accountsService.synchronize([failingAccount, healthyAccount]);
 
-          expect(trackError).toHaveBeenCalledTimes(1);
-          const tracked = firstTrackedError(trackError as Mock);
+          expect(Errors.trackError).toHaveBeenCalledTimes(1);
+          const tracked = firstTrackedError(Errors.trackError as Mock);
           expect(tracked.name).toBe('SynchronizationError');
           expect(tracked.message).toBe(
             'Failed to fetch assets (1 failed): ' +
@@ -1219,8 +1211,8 @@ describe('AccountsService', () => {
           await accountsService.synchronize([account]);
 
           expect(mockAssetsService.saveManyAndEmit).toHaveBeenCalledWith([]);
-          expect(trackError).toHaveBeenCalledTimes(1);
-          const tracked = firstTrackedError(trackError as Mock);
+          expect(Errors.trackError).toHaveBeenCalledTimes(1);
+          const tracked = firstTrackedError(Errors.trackError as Mock);
           expect(tracked.message).toBe(
             `Failed to fetch assets (1 failed): ` +
               `${account.id}: Unknown error`,
@@ -1277,7 +1269,7 @@ describe('AccountsService', () => {
 
           expect(mockAssetsService.fetchAccountAssets).not.toHaveBeenCalled();
           expect(mockAssetsService.saveManyAndEmit).not.toHaveBeenCalled();
-          expect(trackError).not.toHaveBeenCalled();
+          expect(Errors.trackError).not.toHaveBeenCalled();
         },
       );
     });
@@ -1333,7 +1325,7 @@ describe('AccountsService', () => {
           expect(mockTransactionsService.saveMany).toHaveBeenCalledWith(
             mockTransactions,
           );
-          expect(trackError).not.toHaveBeenCalled();
+          expect(Errors.trackError).not.toHaveBeenCalled();
         },
       );
     });
@@ -1371,8 +1363,8 @@ describe('AccountsService', () => {
             await accountsService.synchronizeTransactions([account]),
           ).toBeUndefined();
           expect(mockTransactionsService.saveMany).toHaveBeenCalledWith([]);
-          expect(trackError).toHaveBeenCalledTimes(1);
-          const tracked = firstTrackedError(trackError as Mock);
+          expect(Errors.trackError).toHaveBeenCalledTimes(1);
+          const tracked = firstTrackedError(Errors.trackError as Mock);
           expect(tracked.name).toBe('SynchronizationError');
           expect(tracked.message).toBe(
             `Failed to fetch transactions (1 failed): ` +
@@ -1412,8 +1404,8 @@ describe('AccountsService', () => {
             .synchronizeTransactions([account])
             .catch((caught: unknown) => caught);
 
-          expect(trackError).toHaveBeenCalledTimes(1);
-          const tracked = firstTrackedError(trackError as Mock);
+          expect(Errors.trackError).toHaveBeenCalledTimes(1);
+          const tracked = firstTrackedError(Errors.trackError as Mock);
           expect(tracked.message).toBe('Failed to save transactions');
           expect((tracked as Error & { cause?: unknown }).cause).toBe(
             saveError,

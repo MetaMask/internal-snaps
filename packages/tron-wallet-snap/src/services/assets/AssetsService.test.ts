@@ -5,7 +5,7 @@ import {
 } from '@metamask/assets-controller';
 import type { KeyringAccount } from '@metamask/keyring-api';
 import { KeyringEvent } from '@metamask/keyring-api';
-import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import {
   AssetsProvider,
   RemoteFeatureFlagsProvider,
@@ -39,10 +39,6 @@ type MockState = {
   setKey: Mock;
   setKeyWith: Mock;
 };
-
-vi.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: vi.fn(),
-}));
 
 (global as any).snap = {};
 
@@ -348,6 +344,12 @@ async function withAssetsService<ReturnValue>(
 }
 
 describe('AssetsService', () => {
+  beforeEach(() => {
+    vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
+      undefined,
+    );
+  });
+
   describe('fetchAccountAssets', () => {
     it('fetches live assets from the chain for all the account scopes', async () => {
       await withAssetsService(
@@ -501,7 +503,7 @@ describe('AssetsService', () => {
           await assetsService.saveManyAndEmit(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
             {
@@ -553,7 +555,7 @@ describe('AssetsService', () => {
 
         await assetsService.saveManyAndEmit(assets);
 
-        expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+        expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
           expect.anything(),
           KeyringEvent.AccountAssetListUpdated,
           {
@@ -629,7 +631,7 @@ describe('AssetsService', () => {
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
             finalSavedAssets,
           );
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
             {
@@ -642,7 +644,7 @@ describe('AssetsService', () => {
             },
           );
 
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountBalancesUpdated,
             {
@@ -705,7 +707,7 @@ describe('AssetsService', () => {
           await assetsService.saveManyAndEmit(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
             {
@@ -765,7 +767,7 @@ describe('AssetsService', () => {
           await assetsService.saveManyAndEmit(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
             {
@@ -815,7 +817,7 @@ describe('AssetsService', () => {
           await assetsService.saveManyAndEmit(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
             {
@@ -892,7 +894,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -968,7 +970,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1047,7 +1049,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1167,7 +1169,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1244,7 +1246,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1322,7 +1324,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1338,7 +1340,7 @@ describe('AssetsService', () => {
               },
             );
 
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountBalancesUpdated,
               {
@@ -1418,7 +1420,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1434,7 +1436,7 @@ describe('AssetsService', () => {
               },
             );
 
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountBalancesUpdated,
               {
@@ -1517,7 +1519,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1594,7 +1596,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1671,7 +1673,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1768,7 +1770,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1785,7 +1787,7 @@ describe('AssetsService', () => {
               },
             );
 
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountBalancesUpdated,
               {
@@ -1835,7 +1837,7 @@ describe('AssetsService', () => {
           await assetsService.saveMany(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).not.toHaveBeenCalled();
         },
       );
     });
@@ -1884,7 +1886,7 @@ describe('AssetsService', () => {
               uiAmount: '0',
             },
           ]);
-          expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).not.toHaveBeenCalled();
         },
       );
     });
@@ -1912,7 +1914,7 @@ describe('AssetsService', () => {
           await assetsService.saveMany(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).not.toHaveBeenCalled();
         },
       );
     });

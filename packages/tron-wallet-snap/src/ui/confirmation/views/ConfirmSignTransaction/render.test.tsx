@@ -25,17 +25,6 @@ import type { Preferences } from '../../../../types/snap';
 import type { TronWalletKeyringRequest } from '../../../../validation/structs';
 import { render } from './render';
 
-// Mock the context module
-vi.mock('../../../../context', () => ({
-  __esModule: true,
-  default: {
-    snapClient: null,
-    transactionScanService: null,
-    transactionExpirationRefresherService: null,
-    state: null,
-  },
-}));
-
 /**
  * Helper function to convert string to base64.
  *

@@ -20,14 +20,6 @@ import { FetchStatus } from '../../../../types/snap';
 import type { Preferences } from '../../../../types/snap';
 import { render } from './render';
 
-// Mock the context module
-vi.mock('../../../../context', () => ({
-  __esModule: true,
-  default: {
-    transactionScanService: null,
-  },
-}));
-
 // ---------------------------------------------------------------------------
 // Mock types
 // ---------------------------------------------------------------------------

@@ -14,9 +14,11 @@ import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { KnownCaip19Id, Network, ZERO } from '../../constants';
 import type { AssetEntity, ResourceAsset } from '../../entities/assets';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
-import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
-import { render as renderConfirmSignTransaction } from '../../ui/confirmation/views/ConfirmSignTransaction/render';
-import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
+import * as KnownAssetIcon from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
+import * as ConfirmSignMessageRender from '../../ui/confirmation/views/ConfirmSignMessage/render';
+import * as ConfirmSignTransactionComponent from '../../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction';
+import * as ConfirmSignTransactionRender from '../../ui/confirmation/views/ConfirmSignTransaction/render';
+import * as ConfirmTransactionRequestRender from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsService } from '../assets/AssetsService';
 import { AssetFetchError } from '../assets/errors';
@@ -40,30 +42,9 @@ const mockAnalyticsService = {
   trackTransactionRejected: vi.fn().mockResolvedValue(undefined),
 } as unknown as AnalyticsService;
 
-vi.mock(
-  '../../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction',
-  () => ({
-    ConfirmSignTransaction: vi.fn().mockReturnValue('<mock-ui>'),
-  }),
-);
-
-vi.mock('../../ui/confirmation/views/ConfirmSignMessage/render', () => ({
-  render: vi.fn(),
-}));
-
-vi.mock('../../ui/confirmation/views/ConfirmSignTransaction/render', () => ({
-  render: vi.fn(),
-}));
-
-vi.mock('../../ui/confirmation/views/ConfirmTransactionRequest/render', () => ({
-  render: vi.fn(),
-}));
-
-vi.mock('../../ui/confirmation/utils/getIconUrlForKnownAsset', () => ({
-  getIconUrlForKnownAsset: vi.fn(() => 'mock-icon-url'),
-}));
-
-const mockGetIconUrlForKnownAsset = vi.mocked(getIconUrlForKnownAsset);
+let mockGetIconUrlForKnownAsset!: Mock;
+let mockRenderConfirmSignTransaction!: Mock;
+let mockRenderConfirmTransactionRequest!: Mock;
 
 const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -217,6 +198,25 @@ async function withConfirmationHandler<ReturnValue>(
 }
 
 describe('ConfirmationHandler', () => {
+  beforeEach(() => {
+    vi.spyOn(
+      ConfirmSignTransactionComponent,
+      'ConfirmSignTransaction',
+    ).mockReturnValue('<mock-ui>' as never);
+    vi.spyOn(ConfirmSignMessageRender, 'render').mockResolvedValue(
+      undefined as never,
+    );
+    mockRenderConfirmSignTransaction = vi
+      .spyOn(ConfirmSignTransactionRender, 'render')
+      .mockResolvedValue(undefined as never);
+    mockRenderConfirmTransactionRequest = vi
+      .spyOn(ConfirmTransactionRequestRender, 'render')
+      .mockResolvedValue(undefined as never);
+    mockGetIconUrlForKnownAsset = vi
+      .spyOn(KnownAssetIcon, 'getIconUrlForKnownAsset')
+      .mockReturnValue('mock-icon-url');
+  });
+
   describe('confirmClaimUnstakedTrx', () => {
     it('returns true when user confirms the dialog', async () => {
       await withConfirmationHandler(
@@ -436,9 +436,6 @@ describe('ConfirmationHandler', () => {
   });
 
   describe('confirmTransactionRequest', () => {
-    const mockRenderConfirmTransactionRequest = vi.mocked(
-      renderConfirmTransactionRequest,
-    );
 
     const mockAsset: AssetEntity = {
       assetType: `${Network.Mainnet}/slip44:195`,
@@ -609,9 +606,6 @@ describe('ConfirmationHandler', () => {
   });
 
   describe('handleKeyringRequest', () => {
-    const mockRenderConfirmSignTransaction = vi.mocked(
-      renderConfirmSignTransaction,
-    );
 
     const rawData = {
       contract: [{ parameter: { value: {} }, type: 'TransferContract' }],

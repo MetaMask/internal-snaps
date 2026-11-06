@@ -9,27 +9,14 @@ import { hexToBytes } from '@metamask/utils';
 import { computeAddress } from 'ethers';
 import { TronWeb } from 'tronweb';
 
+import type { MockedFunction } from 'vitest';
+
 import { createTronBip44AddressDeriver } from './deriveTronFromCoinTypeNode';
 
-vi.mock('tronweb', async () => {
-  const actualModule =
-    await vi.importActual<typeof import('tronweb')>('tronweb');
-
-  return {
-    TronWeb: {
-      address: {
-        fromHex: vi.fn((addressHex: string) =>
-          actualModule.TronWeb.address.fromHex(addressHex),
-        ),
-      },
-    },
-  };
-});
-
-// eslint-disable-next-line jest/unbound-method
-const mockFromHex = vi.mocked(TronWeb.address.fromHex);
-const actualTronWebModule =
-  await vi.importActual<typeof import('tronweb')>('tronweb');
+// `TronWeb.address` is a getter that returns a new object on every read.
+const realAddress = TronWeb.address;
+const realFromHex = realAddress.fromHex.bind(realAddress);
+let mockFromHex!: MockedFunction<typeof realAddress.fromHex>;
 
 const TEST_MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
@@ -39,17 +26,11 @@ const SANITIZED_DERIVATION_ERROR =
 
 describe('createTronBip44AddressDeriver', () => {
   beforeEach(() => {
-    mockFromHex.mockImplementation((addressHex: string) =>
-      actualTronWebModule.TronWeb.address.fromHex(addressHex),
-    );
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-    mockFromHex.mockReset();
-    mockFromHex.mockImplementation((addressHex: string) =>
-      actualTronWebModule.TronWeb.address.fromHex(addressHex),
-    );
+    mockFromHex = vi.fn((addressHex: string) => realFromHex(addressHex));
+    vi.spyOn(TronWeb, 'address', 'get').mockReturnValue({
+      ...realAddress,
+      fromHex: mockFromHex,
+    });
   });
 
   it('matches full-path Tron addresses and public key bytes for indices 0–3', async () => {
@@ -72,7 +53,7 @@ describe('createTronBip44AddressDeriver', () => {
 
       const expectedHex = computeAddress(fullNode.publicKey);
       const expectedAddress =
-        actualTronWebModule.TronWeb.address.fromHex(expectedHex);
+        realFromHex(expectedHex);
 
       const { address, publicKeyBytes } = await derive(addressIndex);
 
