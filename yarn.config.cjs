@@ -203,26 +203,28 @@ module.exports = defineConfig({
 
         // Stellar unit tests run on Vitest. `@metamask/snaps-jest` stays on Jest
         // for the other snaps; that preset cannot execute under Vitest.
+        // Coverage floors are raised by `coverage.thresholds.autoUpdate` during
+        // a local `yarn test` only.
         if (workspace.ident === '@metamask/stellar-wallet-snap') {
           expectWorkspaceFieldRegex(
             workspace,
             'scripts.test',
-            /vitest run --coverage --reporter=dot --silent && yarn coverage:ratchet$/u,
+            /vitest run --coverage --reporter=dot --silent$/u,
           );
           expectWorkspaceFieldRegex(
             workspace,
             'scripts.test:clean',
-            /rimraf node_modules\/\.vite node_modules\/\.vitest$/u,
+            /vitest --clearCache$/u,
           );
           expectWorkspaceFieldRegex(
             workspace,
             'scripts.test:verbose',
-            /vitest run --coverage --reporter=verbose$/u,
+            /vitest run --reporter=verbose$/u,
           );
           expectWorkspaceFieldRegex(
             workspace,
             'scripts.test:watch',
-            /vitest --coverage --silent$/u,
+            /vitest --silent$/u,
           );
         } else {
           // All non-root packages must run Jest with the silent reporter. Extra
