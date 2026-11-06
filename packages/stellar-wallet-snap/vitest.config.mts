@@ -105,10 +105,7 @@ export default defineConfig({
       },
     },
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    setupFiles: [
-      resolve(packageRoot, 'vitest.setup.ts'),
-      resolve(repoRoot, 'tests/setupAfterEnv/index.ts'),
-    ],
+    setupFiles: [resolve(packageRoot, 'vitest.setup.ts')],
     // Same lifecycle as `resetMocks` / `restoreMocks` in `jest.config.packages.js`.
     mockReset: true,
     restoreMocks: true,
