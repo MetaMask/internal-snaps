@@ -99,6 +99,8 @@ describe('extractInstructionsFromBase64String', () => {
   ] as unknown as InstructionParseResult[];
 
   beforeEach(() => {
+    jest.clearAllMocks();
+
     mockRpc = {
       getLatestBlockhash: jest.fn().mockReturnValue({
         send: jest.fn(),
@@ -130,7 +132,7 @@ describe('extractInstructionsFromBase64String', () => {
     expect(result).toStrictEqual(expectedInstructionParseResults);
   });
 
-  it('tracks instruction parsing failures', () => {
+  it('returns unknown instructions without tracking unsupported program addresses', () => {
     const result = parseInstruction({
       programAddress: address('11111111111111111111111111111112'),
       accounts: [],
@@ -145,10 +147,36 @@ describe('extractInstructionsFromBase64String', () => {
       }),
       parsed: null,
     });
-    expect(trackError).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Unsupported program address',
-      }),
-    );
+    expect(trackError).not.toHaveBeenCalled();
   });
+
+  it.each([
+    {
+      failure: 'instruction identification',
+      programAddress: address('ComputeBudget111111111111111111111111111111'),
+      data: new Uint8Array([255]),
+    },
+    {
+      failure: 'instruction parsing',
+      programAddress: address('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
+      data: new Uint8Array([3, 232, 3, 0, 0, 0, 0, 0, 0]),
+    },
+  ])(
+    'still tracks $failure failures for supported programs',
+    ({ programAddress, data }) => {
+      const result = parseInstruction({
+        programAddress,
+        accounts: [],
+        data,
+      });
+
+      expect(result).toStrictEqual({
+        type: 'Unknown',
+        encoded: expect.objectContaining({ programAddress, data }),
+        parsed: null,
+      });
+      expect(trackError).toHaveBeenCalledTimes(1);
+      expect(trackError).toHaveBeenCalledWith(expect.any(Error));
+    },
+  );
 });
