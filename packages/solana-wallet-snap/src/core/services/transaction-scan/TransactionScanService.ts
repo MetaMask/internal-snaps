@@ -19,7 +19,7 @@ import type {
   SolanaScanRequestBody,
 } from '../../clients/security-alerts-api/structs';
 import { Network } from '../../constants/solana';
-import type { TransactionScanResult } from './types';
+import type { TransactionScanError, TransactionScanResult } from './types';
 
 /**
  * The Security Alerts API chain identifier for each Solana scope.
@@ -91,7 +91,7 @@ export class TransactionScanService extends BaseTransactionScanService {
 
       assert(result, SecurityAlertResponseStruct, 'Solana scan response body');
 
-      const scan = this.#mapScan(result);
+      const scan = this.#mapScan(result, options);
 
       await this.trackScanCompleted(
         { origin, scope, accountType: account?.type },
@@ -129,39 +129,90 @@ export class TransactionScanService extends BaseTransactionScanService {
 
   #mapScan(
     result: SecurityAlertSimulationValidationResponse,
+    options: SecurityAlertsScanOption[],
   ): TransactionScanResult {
+    const error = this.#mapError(result, options);
+    const simulation = result.result?.simulation;
+    // A partial response can still provide a security verdict without usable
+    // simulation estimates. Keep those estimates unavailable without treating
+    // the successful verdict as an unavailable security check.
+    const missingSimulation = options.includes('simulation') && !simulation;
+
     return {
-      status:
-        result.status === 'SUCCESS' || result.status === 'ERROR'
-          ? result.status
-          : 'ERROR',
+      status: error || missingSimulation ? 'ERROR' : 'SUCCESS',
       estimatedChanges: {
         assets:
-          result.result?.simulation?.account_summary?.account_assets_diff?.map(
-            (asset) => ({
-              type: asset.in ? 'in' : 'out',
-              symbol: asset.asset.symbol ?? asset.asset_type,
-              name: asset.asset.name ?? asset.asset_type,
-              logo: asset.asset.logo ?? null,
-              value: asset.in?.value ?? asset.out?.value ?? null,
-              price: asset.in?.usd_price ?? asset.out?.usd_price ?? null,
-            }),
-          ) ?? [],
+          simulation?.account_summary?.account_assets_diff?.map((asset) => ({
+            type: asset.in ? 'in' : 'out',
+            symbol: asset.asset.symbol ?? asset.asset_type,
+            name: asset.asset.name ?? asset.asset_type,
+            logo: asset.asset.logo ?? null,
+            value: asset.in?.value ?? asset.out?.value ?? null,
+            price: asset.in?.usd_price ?? asset.out?.usd_price ?? null,
+          })) ?? [],
       },
       validation: {
         type: result.result?.validation?.result_type ?? null,
         reason: result.result?.validation?.reason ?? null,
       },
-      error: result?.error_details
-        ? {
-            type:
-              'type' in result.error_details ? result.error_details.type : null,
-            code:
-              ('code' in result.error_details
-                ? result.error_details.code
-                : null) ?? null,
-          }
-        : null,
+      error,
     };
+  }
+
+  /**
+   * Classifies errors using Stellar's simulation, validation and response
+   * categories. A simultaneous validation error remains in `validation.type`
+   * when the execution failure occupies the error field.
+   *
+   * @param result - The validated API response.
+   * @param options - The requested scan sections.
+   * @returns The classified scan error, or null.
+   */
+  #mapError(
+    result: SecurityAlertSimulationValidationResponse,
+    options: SecurityAlertsScanOption[],
+  ): TransactionScanError | null {
+    const details = result.error_details;
+    if (
+      result.status === 'ERROR' &&
+      (details?.type === 'TransactionError' ||
+        details?.type === 'InstructionError')
+    ) {
+      return {
+        type: 'simulation',
+        code: 'code' in details && details.code ? details.code : null,
+        message: details.message,
+      };
+    }
+
+    const validation = result.result?.validation;
+    if (options.includes('validation') && validation?.result_type === 'Error') {
+      return {
+        type: 'validation',
+        code: validation.reason ?? null,
+        message: validation.reason ?? null,
+      };
+    }
+
+    if (result.status === 'ERROR') {
+      return {
+        type: 'response',
+        code: details?.type ?? null,
+        message: details?.message ?? result.error ?? null,
+      };
+    }
+
+    const hasRequestedResult = options.some((option) =>
+      option === 'simulation'
+        ? Boolean(result.result?.simulation)
+        : Boolean(validation),
+    );
+    return hasRequestedResult
+      ? null
+      : {
+          type: 'response',
+          code: 'empty',
+          message: 'No scan results returned',
+        };
   }
 }

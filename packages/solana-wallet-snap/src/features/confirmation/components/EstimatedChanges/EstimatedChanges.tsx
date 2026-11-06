@@ -49,7 +49,11 @@ export const EstimatedChanges: SnapComponent<EstimatedChangesProps> = ({
         noChanges: translate('confirmation.estimatedChanges.noChanges'),
       }}
       isFetching={scanFetchStatus === 'fetching'}
-      isUnavailable={scanFetchStatus === 'error' || scanStatus === 'ERROR'}
+      isUnavailable={
+        scanFetchStatus === 'error' ||
+        scanStatus === 'ERROR' ||
+        changes === null
+      }
     />
   );
 };

@@ -76,7 +76,14 @@ describe('EstimatedChanges', () => {
     expect(serialized).not.toContain('Not available');
   });
 
-  it('renders no changes when there are no estimated changes', () => {
-    expect(render({ changes: null })).toContain('No changes');
+  it('renders no changes when simulation returned an empty asset diff', () => {
+    expect(render({ changes: { assets: [] } })).toContain('No changes');
+  });
+
+  it('renders not available when simulation did not return a result', () => {
+    const serialized = render({ changes: null });
+
+    expect(serialized).toContain('Not available');
+    expect(serialized).not.toContain('No changes');
   });
 });
