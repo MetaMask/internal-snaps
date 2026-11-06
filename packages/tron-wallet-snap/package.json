@@ -42,7 +42,7 @@
     "serve": "mm-snap serve",
     "start": "node scripts/update-manifest-local.js && concurrently \"mm-snap watch\" \"yarn build:locale:watch\"",
     "test": "vitest run --coverage --reporter=dot --silent",
-    "test:clean": "jest --clearCache",
+    "test:clean": "vitest --clearCache",
     "test:verbose": "vitest run --reporter=verbose",
     "test:watch": "vitest --silent"
   },
