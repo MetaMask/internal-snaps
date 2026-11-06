@@ -7,14 +7,12 @@ import { logger } from '../../../utils/logger';
 import { createConfirmationDataContext } from './__fixtures__/context.fixtures';
 import { ConfirmationPriceRefresher } from './priceRefresher';
 
-jest.mock('../../../utils/logger');
-
 describe('ConfirmationPriceRefresher', () => {
   const scope = KnownCaip2ChainId.Testnet;
   const nativeAssetId = getSlip44AssetId(scope);
 
   function setup() {
-    const getSpotPrices = jest.fn();
+    const getSpotPrices = vi.fn();
     const priceService = { getSpotPrices } as unknown as PriceService;
     const refresher = new ConfirmationPriceRefresher({
       logger,

@@ -8,8 +8,6 @@ import type { SpotPrice } from './price-api/api';
 import { PriceApiClient } from './price-api/PriceApiClient';
 import { PriceService } from './PriceService';
 
-jest.mock('../../utils/logger');
-
 const stellarClassicUsdc =
   'stellar:testnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' as const satisfies KnownCaip19AssetIdOrSlip44Id;
 
@@ -28,7 +26,7 @@ const cacheKeySpotPrice = (assetId: CaipAssetType, vsCurrency: string) =>
 
 describe('PriceService', () => {
   const setupTest = () => {
-    const getSpotPricesSpy = jest.spyOn(
+    const getSpotPricesSpy = vi.spyOn(
       PriceApiClient.prototype,
       'getSpotPrices',
     );

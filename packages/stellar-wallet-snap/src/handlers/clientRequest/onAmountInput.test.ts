@@ -35,24 +35,25 @@ import {
 } from '../../services/transaction/exceptions';
 import { WalletService } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
+import * as AccountActivationPrompt from '../../ui/confirmation/views/AccountActivationPrompt/render';
 import { logger } from '../../utils/logger';
 import { AccountResolver } from '../accountResolver';
 import { ClientRequestMethod, MultiChainSendErrorCodes } from './api';
 import type { OnAmountInputJsonRpcRequest } from './api';
 import { OnAmountInputHandler } from './onAmountInput';
 
-jest.mock('../../utils/logger');
-jest.mock('../../utils/snap');
-jest.mock('../../ui/confirmation/views/AccountActivationPrompt/render', () => ({
-  render: jest.fn().mockResolvedValue(undefined),
-}));
-
 const destinationAddress =
   'GDTF7ERUQVTX23ZD6NY5XRYC5IQAKWFVTQ6IXSMEZWGVNDDGPYCVHRZP';
 
 describe('OnAmountInputHandler', () => {
+  beforeEach(() => {
+    vi.spyOn(AccountActivationPrompt, 'render').mockResolvedValue(
+      undefined as never,
+    );
+  });
+
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   const accountId = '11111111-1111-4111-8111-111111111111';
@@ -80,18 +81,18 @@ describe('OnAmountInputHandler', () => {
 
     const { accountService, onChainAccountService, walletService } =
       mockOnChainAccountService();
-    jest.spyOn(AccountService.prototype, 'resolveAccount').mockResolvedValue({
+    vi.spyOn(AccountService.prototype, 'resolveAccount').mockResolvedValue({
       account,
     });
-    const getOnChainAccountSnapshotSpy = jest
+    const getOnChainAccountSnapshotSpy = vi
       .spyOn(OnChainAccountService.prototype, 'getOnChainAccountSnapshot')
       .mockResolvedValue(onChainAccount);
-    jest
-      .spyOn(WalletService.prototype, 'resolveWallet')
-      .mockResolvedValue(wallet);
+    vi.spyOn(WalletService.prototype, 'resolveWallet').mockResolvedValue(
+      wallet,
+    );
 
     const { transactionService } = createMockTransactionService();
-    const createValidatedSendTransaction = jest
+    const createValidatedSendTransaction = vi
       .spyOn(TransactionService.prototype, 'createValidatedSendTransaction')
       .mockResolvedValue({} as Transaction);
 
@@ -99,9 +100,9 @@ describe('OnAmountInputHandler', () => {
     const assetMetadata = generateMockStellarAssetMetadata()[
       assetId
     ] as StellarAssetMetadata;
-    jest
-      .spyOn(AssetMetadataService.prototype, 'resolve')
-      .mockResolvedValue(assetMetadata);
+    vi.spyOn(AssetMetadataService.prototype, 'resolve').mockResolvedValue(
+      assetMetadata,
+    );
 
     const accountResolver = new AccountResolver({
       accountService,
@@ -153,9 +154,9 @@ describe('OnAmountInputHandler', () => {
     const assetMetadata = generateMockStellarAssetMetadata()[
       sep41AssetId
     ] as StellarAssetMetadata;
-    jest
-      .spyOn(AssetMetadataService.prototype, 'resolve')
-      .mockResolvedValue(assetMetadata);
+    vi.spyOn(AssetMetadataService.prototype, 'resolve').mockResolvedValue(
+      assetMetadata,
+    );
 
     expect(
       await handler.handle(

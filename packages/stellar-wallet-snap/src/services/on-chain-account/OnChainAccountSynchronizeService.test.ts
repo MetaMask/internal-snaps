@@ -1,6 +1,7 @@
 import type { KeyringEventPayload } from '@metamask/keyring-api';
 import { KeyringEvent } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import type { SnapsProvider } from '@metamask/snaps-sdk';
 import { hexToBytes } from '@metamask/utils';
 import { Keypair } from '@stellar/stellar-sdk';
@@ -70,12 +71,6 @@ const classicBalanceEntry = (
     sponsored: false,
   },
 });
-
-jest.mock('../../utils/logger');
-jest.mock('../../utils/snap');
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: jest.fn(),
-}));
 
 /**
  * Simulates persisted `onChainAccounts` data the repository reads via `findByKeyringAccountIds`:
@@ -153,11 +148,11 @@ describe('OnChainAccountSynchronizeService', () => {
   const mockSep41Assets = getMockSep41Assets();
 
   const getNetworkServiceSpies = () => ({
-    loadOnChainAccountSpy: jest.spyOn(
+    loadOnChainAccountSpy: vi.spyOn(
       NetworkService.prototype,
       'loadOnChainAccount',
     ),
-    getSep41AssetBalancesSpy: jest.spyOn(
+    getSep41AssetBalancesSpy: vi.spyOn(
       NetworkService.prototype,
       'getSep41AssetBalances',
     ),
@@ -168,22 +163,22 @@ describe('OnChainAccountSynchronizeService', () => {
       typeof mockOnChainAccountService
     >['onChainAccountRepository'],
   ) => ({
-    findByKeyringAccountIdsSpy: jest.spyOn(
+    findByKeyringAccountIdsSpy: vi.spyOn(
       onChainAccountRepository,
       'findByKeyringAccountIds',
     ),
-    saveManySpy: jest.spyOn(onChainAccountRepository, 'saveMany'),
+    saveManySpy: vi.spyOn(onChainAccountRepository, 'saveMany'),
   });
 
   const getKeyringEventSpies = () => ({
-    emitSnapKeyringEventSpy: jest.mocked(emitSnapKeyringEvent),
+    emitSnapKeyringEventSpy: vi.mocked(emitSnapKeyringEvent),
   });
 
   const setupSynchronizeService = () => {
     const { onChainAccountService, onChainAccountRepository, assetsService } =
       mockOnChainAccountService();
     // These cases cover the snap-state sync path, which is skipped when assets migration is on.
-    jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
+    vi.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
     return {
       onChainAccountService,
       onChainAccountRepository,
@@ -201,12 +196,15 @@ describe('OnChainAccountSynchronizeService', () => {
   };
 
   const getOnChainAccountServiceSpies = () => ({
-    setAssetSpy: jest.spyOn(OnChainAccount.prototype, 'setAsset'),
+    setAssetSpy: vi.spyOn(OnChainAccount.prototype, 'setAsset'),
   });
 
   const setupTest = () => {
-    jest.mocked(emitSnapKeyringEvent).mockResolvedValue(undefined);
-    jest.spyOn(errorsUtils, 'trackError').mockResolvedValue(undefined);
+    vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
+      undefined,
+    );
+    vi.mocked(emitSnapKeyringEvent).mockResolvedValue(undefined);
+    vi.spyOn(errorsUtils, 'trackError').mockResolvedValue(undefined);
   };
 
   const buildActivatedAccountPair = (
@@ -608,15 +606,16 @@ describe('OnChainAccountSynchronizeService', () => {
     const { onChainAccountService, saveManySpy, onChainAccountRepository } =
       setupSynchronizeService();
 
-    jest
-      .spyOn(onChainAccountRepository, 'findByKeyringAccountIds')
-      .mockImplementation(async (keyringAccountIds: string[]) => {
-        const out: Record<string, OnChainAccountSerializableFull | null> = {};
-        for (const id of keyringAccountIds) {
-          out[id] = persistedSnapshot;
-        }
-        return out;
-      });
+    vi.spyOn(
+      onChainAccountRepository,
+      'findByKeyringAccountIds',
+    ).mockImplementation(async (keyringAccountIds: string[]) => {
+      const out: Record<string, OnChainAccountSerializableFull | null> = {};
+      for (const id of keyringAccountIds) {
+        out[id] = persistedSnapshot;
+      }
+      return out;
+    });
 
     const saveManyInner = OnChainAccountRepository.prototype.saveMany.bind(
       onChainAccountRepository,

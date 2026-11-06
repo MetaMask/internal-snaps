@@ -93,12 +93,12 @@ export const createMockAssetMetadataService = () => {
     assetsService,
   });
 
-  const assetMetadataRepositorySaveManySpy = jest.spyOn(
+  const assetMetadataRepositorySaveManySpy = vi.spyOn(
     AssetMetadataRepository.prototype,
     'saveMany',
   );
 
-  const assetMetadataRepositoryGetByAssetIdsSpy = jest.spyOn(
+  const assetMetadataRepositoryGetByAssetIdsSpy = vi.spyOn(
     AssetMetadataRepository.prototype,
     'getByAssetIds',
   );

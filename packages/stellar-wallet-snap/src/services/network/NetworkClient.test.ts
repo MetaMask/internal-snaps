@@ -239,9 +239,9 @@ const postAndGetError = async (
   url: string,
   { mockFetch, useNativeFetch }: HttpErrorTestCase,
 ): Promise<unknown> => {
-  jest
-    .spyOn(globalThis, 'fetch')
-    .mockImplementation((_url, init) => mockFetch(init));
+  vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) =>
+    mockFetch(init),
+  );
 
   return client.httpClient
     .post(url, {}, useNativeFetch ? { maxContentLength: 1 } : undefined)
@@ -253,9 +253,9 @@ const fetchAndGetError = async (
   url: string,
   { mockFetch, useNativeFetch }: HttpErrorTestCase,
 ): Promise<unknown> => {
-  jest
-    .spyOn(globalThis, 'fetch')
-    .mockImplementation((_url, init) => mockFetch(init));
+  vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) =>
+    mockFetch(init),
+  );
 
   return client.httpClient
     .get(url, useNativeFetch ? { maxContentLength: 1 } : undefined)
@@ -264,7 +264,7 @@ const fetchAndGetError = async (
 
 describe('HorizonClient', () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('installs the request timeout on the SDK client', () => {
@@ -297,7 +297,7 @@ describe('HorizonClient', () => {
   });
 
   it('turns a missing resource into NotFoundError', async () => {
-    jest.spyOn(globalThis, 'fetch').mockResolvedValue(httpResponse({}, 404));
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(httpResponse({}, 404));
     const client = new HorizonClient(createPolicy(), HORIZON_URL, TIMEOUT_MS);
 
     await expect(
@@ -316,7 +316,7 @@ describe('HorizonClient', () => {
 
 describe('RpcClient', () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('installs the request timeout on the SDK client', () => {
