@@ -32,9 +32,9 @@
     "readme-content:update": "tsx scripts/update-readme-content.ts",
     "test": "yarn test:scripts --silent --collectCoverage=false --reporters=jest-silent-reporter && yarn test:packages",
     "test:clean": "yarn workspaces foreach --all --parallel --verbose run test:clean && yarn test",
-    "test:packages": "yarn workspaces foreach --all --parallel --verbose --exclude @metamask/stellar-wallet-snap run test:verbose --silent --collectCoverage=false --reporters=jest-silent-reporter && yarn workspace @metamask/stellar-wallet-snap exec vitest run --silent --reporter=dot",
+    "test:packages": "yarn test:verbose --silent --collectCoverage=false --reporters=jest-silent-reporter",
     "test:scripts": "NODE_OPTIONS=--experimental-vm-modules yarn jest --config ./jest.config.scripts.js --silent",
-    "test:verbose": "yarn workspaces foreach --all --parallel --verbose run test:verbose",
+    "test:verbose": "yarn workspaces foreach --all --exclude @metamask/stellar-wallet-snap --parallel --verbose run test:verbose",
     "workspaces:list-versions": "./scripts/list-workspace-versions.sh"
   },
   "devDependencies": {
