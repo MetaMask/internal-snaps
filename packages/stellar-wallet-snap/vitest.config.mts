@@ -131,6 +131,12 @@ export default defineConfig({
         'src/**/__mocks__/*.ts',
       ],
       thresholds: {
+        // Same trigger as the old `coverage:ratchet` script: a local `yarn test` only.
+        // `test:verbose` and `test:watch` do not pass `--coverage`.
+        autoUpdate:
+          process.env.CI || process.env.npm_lifecycle_event !== 'test'
+            ? false
+            : (value: number) => Math.floor(value * 100) / 100,
         branches: 77.72,
         functions: 87.29,
         lines: 88.33,
