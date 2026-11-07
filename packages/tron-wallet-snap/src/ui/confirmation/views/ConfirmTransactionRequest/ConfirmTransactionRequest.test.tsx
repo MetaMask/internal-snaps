@@ -1,6 +1,7 @@
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 
 import { Network } from '../../../../constants';
+import { TRANSACTION_TAPOS_EXPIRED } from '../../../../services/transaction-scan/isTransactionDeadlinePassedError';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import type { TransactionScanResult } from '../../../../services/transaction-scan/types';
 import { FetchStatus } from '../../../../types/snap';
@@ -97,17 +98,78 @@ describe('ConfirmTransactionRequest', () => {
     );
   });
 
-  it('renders the scan-in-progress banner while the scan is fetching', () => {
-    const context: ConfirmTransactionRequestContext = {
-      ...baseContext,
-      scanFetchStatus: FetchStatus.Fetching,
-      scan: null,
-    };
+  it.each([
+    [FetchStatus.Loading, true],
+    [FetchStatus.Fetching, false],
+  ])(
+    'sets loading banner visibility when the scan is %s',
+    (scanFetchStatus, visible) => {
+      const context: ConfirmTransactionRequestContext = {
+        ...baseContext,
+        scanFetchStatus,
+        scan: null,
+      };
 
-    const serialized = JSON.stringify(ConfirmTransactionRequest({ context }));
+      const serialized = JSON.stringify(ConfirmTransactionRequest({ context }));
 
-    expect(serialized).toContain('confirmation.securityScanInProgressTitle');
-    expect(serialized).toContain('"severity":"info"');
+      expect(
+        serialized.includes('confirmation.securityScanInProgressTitle'),
+      ).toBe(visible);
+      expect(serialized.includes('"severity":"info"')).toBe(visible);
+    },
+  );
+
+  it.each([
+    ['Warning', 'confirmation.validationWarningTitle'],
+    ['Malicious', 'confirmation.validationErrorTitle'],
+  ] as const)(
+    'preserves the %s presentation during background refresh',
+    (type, title) => {
+      const context: ConfirmTransactionRequestContext = {
+        ...baseContext,
+        scanFetchStatus: FetchStatus.Fetching,
+        scan: { ...mockScanResult, validation: { type, reason: null } },
+      };
+
+      const serialized = JSON.stringify(ConfirmTransactionRequest({ context }));
+
+      expect(serialized).not.toContain(
+        'confirmation.securityScanInProgressTitle',
+      );
+      expect(serialized).not.toContain('"disabled":true');
+      expect(serialized).toContain(title);
+    },
+  );
+
+  it('renders no banner for a benign scan during background refresh', () => {
+    const serialized = JSON.stringify(
+      ConfirmTransactionRequest({
+        context: { ...baseContext, scanFetchStatus: FetchStatus.Fetching },
+      }),
+    );
+
+    expect(serialized).not.toContain('"type":"Banner"');
+    expect(serialized).not.toContain('"disabled":true');
+  });
+
+  it('uses warning copy separately from malicious copy', () => {
+    const serialized = JSON.stringify(
+      ConfirmTransactionRequest({
+        context: {
+          ...baseContext,
+          scan: {
+            ...mockScanResult,
+            validation: { type: 'Warning', reason: null },
+          },
+        },
+      }),
+    );
+
+    expect(serialized).toContain('confirmation.validationWarningTitle');
+    expect(serialized).toContain('confirmation.validationWarningSubtitle');
+    expect(serialized).not.toContain('confirmation.validationErrorTitle');
+    expect(serialized).toContain('"severity":"warning"');
+    expect(serialized).not.toContain('"disabled":true');
   });
 
   it('renders the security alert banner for malicious validations', () => {
@@ -178,25 +240,60 @@ describe('ConfirmTransactionRequest', () => {
     expect(serialized).toContain('"disabled":true');
   });
 
-  it('disables confirm button when scan status is ERROR', () => {
-    const errorScanResult: TransactionScanResult = {
-      ...mockScanResult,
-      status: 'ERROR',
-      simulationStatus: SimulationStatus.Failed,
-    };
+  it.each([
+    [FetchStatus.Fetched, 'confirmation.simulationErrorTitle'],
+    [FetchStatus.Fetching, 'confirmation.simulationErrorTitle'],
+    [FetchStatus.Error, 'confirmation.simulationTitleAPIError'],
+  ])(
+    'enables confirm after a remote simulation failure when the scan is %s',
+    (scanFetchStatus, bannerTitle) => {
+      const errorScanResult: TransactionScanResult = {
+        ...mockScanResult,
+        status: 'ERROR',
+        simulationStatus: SimulationStatus.Failed,
+        error: {
+          type: 'Revert',
+          code: 'INSUFFICIENT_BALANCE',
+          message: 'Reverted: insufficient balance',
+        },
+      };
 
-    const context: ConfirmTransactionRequestContext = {
-      ...baseContext,
-      scan: errorScanResult,
-      scanFetchStatus: FetchStatus.Fetched,
-    };
+      const context: ConfirmTransactionRequestContext = {
+        ...baseContext,
+        scan: errorScanResult,
+        scanFetchStatus,
+      };
 
-    const result = ConfirmTransactionRequest({ context });
-    const serialized = JSON.stringify(result);
+      const result = ConfirmTransactionRequest({ context });
+      const serialized = JSON.stringify(result);
 
-    // The confirm button should have disabled=true
-    expect(serialized).toContain('"disabled":true');
-  });
+      expect(serialized).not.toContain('"disabled":true');
+      expect(serialized).toContain(bannerTitle);
+    },
+  );
+
+  it.each([TRANSACTION_TAPOS_EXPIRED, 'MALFORMED_TRANSACTION'])(
+    'shows an error banner and keeps confirm disabled for local validation failure %s with security alerts off',
+    (type) => {
+      const context: ConfirmTransactionRequestContext = {
+        ...baseContext,
+        preferences: { ...mockPreferences, useSecurityAlerts: false },
+        scan: {
+          ...mockScanResult,
+          status: 'ERROR',
+          simulationStatus: SimulationStatus.Failed,
+          error: { type, code: null, message: null },
+        },
+      };
+
+      const serialized = JSON.stringify(ConfirmTransactionRequest({ context }));
+
+      expect(serialized).toContain('"disabled":true');
+      expect(serialized).toContain('confirmation.simulationErrorTitle');
+      expect(serialized).toContain('confirmation.simulationErrorSubtitle');
+      expect(serialized).toContain('"severity":"warning"');
+    },
+  );
 
   it('enables confirm button when scan is successful', () => {
     const result = ConfirmTransactionRequest({ context: baseContext });

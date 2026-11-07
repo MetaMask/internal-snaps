@@ -7,12 +7,21 @@ import type {
   WalletTx,
 } from '@metamask/bitcoindevkit';
 import { Address } from '@metamask/bitcoindevkit';
-import { TransactionStatus, FeeType } from '@metamask/keyring-api';
+import {
+  TransactionStatus,
+  TransactionStruct,
+  FeeType,
+} from '@metamask/keyring-api';
+import { assert } from '@metamask/superstruct';
 import { mock } from 'jest-mock-extended';
 
 import type { BitcoinAccount } from '../entities';
 import { Caip19Asset } from './caip';
-import { mapPsbtToTransaction, mapToTransaction } from './mappings';
+import {
+  mapPsbtToTransaction,
+  mapToTransaction,
+  mapToTransactionFees,
+} from './mappings';
 
 // Mock the entire bitcoindevkit module
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -21,6 +30,27 @@ jest.mock('@metamask/bitcoindevkit', () => ({
     from_script: jest.fn(),
   },
 }));
+
+describe('mapToTransactionFees', () => {
+  it.each([
+    [0n, '0'],
+    [1n, '0.00000001'],
+    [64n, '0.00000064'],
+    [77n, '0.00000077'],
+    [99n, '0.00000099'],
+    [100n, '0.000001'],
+    [100_000_000n, '1'],
+    [123_456_789n, '1.23456789'],
+    [18_446_744_073_709_551_615n, '184467440737.09551615'],
+  ])('formats %s satoshis as the exact decimal %s', (satoshis, expected) => {
+    const amount = mock<Amount>({
+      to_sat: () => satoshis,
+      to_btc: () => Number(satoshis) / 100_000_000,
+    });
+
+    expect(mapToTransactionFees(amount, 'bitcoin').asset.amount).toBe(expected);
+  });
+});
 
 describe('mapPsbtToTransaction', () => {
   const ACCOUNT_ID = '724ac464-6572-4d9c-a8e2-4075c8846d65';
@@ -60,6 +90,7 @@ describe('mapPsbtToTransaction', () => {
    */
   function createMockOutput(satoshis: number) {
     const mockAmount = mock<Amount>();
+    jest.spyOn(mockAmount, 'to_sat').mockReturnValue(BigInt(satoshis));
     jest.spyOn(mockAmount, 'to_btc').mockReturnValue(satoshis / 100_000_000);
 
     const mockScript = mock<ScriptBuf>();
@@ -85,6 +116,7 @@ describe('mapPsbtToTransaction', () => {
     addressType: 'p2pkh' | 'p2sh' | 'p2wpkh' | 'p2wsh' | 'p2tr' = 'p2wpkh',
   ) {
     const mockFeeAmount = mock<Amount>();
+    jest.spyOn(mockFeeAmount, 'to_sat').mockReturnValue(BigInt(feeSatoshis));
     jest
       .spyOn(mockFeeAmount, 'to_btc')
       .mockReturnValue(feeSatoshis / 100_000_000);
@@ -415,6 +447,7 @@ describe('mapToTransaction', () => {
    */
   function createMockOutput(satoshis: number): TxOut {
     const mockAmount = mock<Amount>();
+    jest.spyOn(mockAmount, 'to_sat').mockReturnValue(BigInt(satoshis));
     jest.spyOn(mockAmount, 'to_btc').mockReturnValue(satoshis / 100_000_000);
 
     const mockScript = mock<ScriptBuf>();
@@ -443,6 +476,7 @@ describe('mapToTransaction', () => {
       .mockReturnValue(sentSatoshis / 100_000_000);
 
     const feeAmount = mock<Amount>();
+    jest.spyOn(feeAmount, 'to_sat').mockReturnValue(BigInt(feeSatoshis));
     jest.spyOn(feeAmount, 'to_btc').mockReturnValue(feeSatoshis / 100_000_000);
 
     const account = mock<BitcoinAccount>();
@@ -458,6 +492,27 @@ describe('mapToTransaction', () => {
 
     return account;
   }
+
+  it.each([64, 77])(
+    'emits a valid transaction with a %s-satoshi fee',
+    (fee) => {
+      const account = createMockAccount(100000, fee);
+      const output = createMockOutput(1);
+      const transaction = createMockTransaction('small-fee', [output]);
+      jest.mocked(Address.from_script).mockReturnValue({
+        toString: () => 'bc1qrecipient',
+      } as Address);
+
+      const result = mapToTransaction(account, {
+        tx: transaction,
+        txid: transaction.compute_txid(),
+        chain_position: { anchor: undefined, last_seen: undefined },
+      } as unknown as WalletTx);
+
+      expect(() => assert(result, TransactionStruct)).not.toThrow();
+      expect(result.to[0]).toMatchObject({ asset: { amount: '0.00000001' } });
+    },
+  );
 
   it('keeps a self-send recipient output that is owned by the account', () => {
     const account = createMockAccount();

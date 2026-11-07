@@ -4,6 +4,7 @@ import type {
 } from '@metamask/snap-networks-utils';
 import { SecurityAlertsScanStatus } from '@metamask/snap-networks-utils';
 import { Networks } from '@stellar/stellar-sdk';
+import type { Mocked } from 'vitest';
 
 import { KnownCaip2ChainId } from '../../api';
 import { xlmIcon } from '../../ui/images';
@@ -27,8 +28,6 @@ import {
 } from './api';
 import type { StellarTransactionScanResponse } from './api';
 import { TransactionScanService } from './TransactionScanService';
-
-jest.mock('../../utils/logger');
 
 const FIXTURE_ACCOUNT_ADDRESS =
   'GA7UCNSASSOPQYTRGJ2NC7TDBSXHMWK6JHS7AO6X2ZQAIQSTB5ELNFSO';
@@ -74,21 +73,22 @@ describe('TransactionScanService', () => {
   };
 
   function setup() {
-    const securityAlertsApiClient: jest.Mocked<
+    const securityAlertsApiClient: Mocked<
       Pick<SecurityAlertsApiClient, 'scanTransaction'>
     > = {
-      scanTransaction: jest.fn(),
+      scanTransaction: vi.fn(),
     };
-    const analyticsService: jest.Mocked<
+    const analyticsService: Mocked<
       Pick<
         AnalyticsService,
         'trackSecurityScanCompleted' | 'trackSecurityAlertDetected'
       >
     > = {
-      trackSecurityScanCompleted: jest.fn(),
-      trackSecurityAlertDetected: jest.fn(),
+      trackSecurityScanCompleted: vi.fn(),
+      trackSecurityAlertDetected: vi.fn(),
     };
-    const mockTrackError = jest.fn<Promise<string | undefined>, [unknown]>();
+    const mockTrackError =
+      vi.fn<(error: unknown) => Promise<string | undefined>>();
     const service = new TransactionScanService({
       securityAlertsApiClient:
         securityAlertsApiClient as unknown as SecurityAlertsApiClient,
@@ -436,12 +436,12 @@ describe('TransactionScanService', () => {
     const mockNow = 1_700_000_000_000;
 
     beforeEach(() => {
-      jest.useFakeTimers();
-      jest.setSystemTime(mockNow);
+      vi.useFakeTimers();
+      vi.setSystemTime(mockNow);
     });
 
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     function buildExpiredTransactionXdr(): string {
@@ -458,7 +458,7 @@ describe('TransactionScanService', () => {
         ],
         { networkPassphrase: Networks.PUBLIC, timeout: 1 },
       );
-      jest.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(2000);
 
       return expiredTransaction.getRaw().toXdr();
     }

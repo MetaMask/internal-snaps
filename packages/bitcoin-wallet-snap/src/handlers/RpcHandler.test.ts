@@ -524,6 +524,7 @@ describe('RpcHandler', () => {
 
     it('executes computeFee', async () => {
       const mockAmount = mock<Amount>({
+        to_sat: () => 1000n,
         to_btc: jest.fn().mockReturnValue('0.00001'),
       });
       mockAccountsUseCases.computeFee.mockResolvedValue(mockAmount);

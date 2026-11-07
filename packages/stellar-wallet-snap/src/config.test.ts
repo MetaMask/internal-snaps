@@ -16,15 +16,16 @@ const FULL_ENVIRONMENT = {
       rpcUrl: 'https://rpc.mainnet.example.com',
       horizonUrl: 'https://horizon.mainnet.example.com',
       explorerBaseUrl: 'https://explorer.mainnet.example.com',
+      timeout: '5000',
     },
     [KnownCaip2ChainId.Testnet]: {
       rpcUrl: 'https://rpc.testnet.example.com',
       horizonUrl: 'https://horizon.testnet.example.com',
       explorerBaseUrl: 'https://explorer.testnet.example.com',
+      timeout: '8000',
     },
   },
   selectedNetwork: KnownCaip2ChainId.Mainnet,
-  enableAssetMigration: false,
   transaction: {
     timeout: '120',
     pollingAttempts: '5',
@@ -119,15 +120,34 @@ describe('ConfigProvider', () => {
           rpcUrl: 'https://rpc.mainnet.example.com',
           horizonUrl: 'https://horizon.mainnet.example.com',
           explorerBaseUrl: 'https://explorer.mainnet.example.com',
+          timeout: 5000,
         },
         [KnownCaip2ChainId.Testnet]: {
           rpcUrl: 'https://rpc.testnet.example.com',
           horizonUrl: 'https://horizon.testnet.example.com',
           explorerBaseUrl: 'https://explorer.testnet.example.com',
+          timeout: 8000,
         },
       });
       expect(config.selectedNetwork).toBe(KnownCaip2ChainId.Mainnet);
-      expect(config.enableAssetMigration).toBe(false);
+    });
+
+    it('defaults an empty network timeout', () => {
+      const { config } = new BaseConfigProvider(
+        {
+          ...FULL_ENVIRONMENT,
+          networks: {
+            ...FULL_ENVIRONMENT.networks,
+            [KnownCaip2ChainId.Mainnet]: {
+              ...FULL_ENVIRONMENT.networks[KnownCaip2ChainId.Mainnet],
+              timeout: '',
+            },
+          },
+        },
+        ConfigStruct,
+      );
+
+      expect(config.networks[KnownCaip2ChainId.Mainnet].timeout).toBe(10_000);
     });
 
     it.each([
@@ -141,6 +161,18 @@ describe('ConfigProvider', () => {
             [KnownCaip2ChainId.Mainnet]: {
               ...FULL_ENVIRONMENT.networks[KnownCaip2ChainId.Mainnet],
               explorerBaseUrl: 'not-a-url',
+            },
+          },
+        },
+      ],
+      [
+        'a network timeout below the minimum',
+        {
+          networks: {
+            ...FULL_ENVIRONMENT.networks,
+            [KnownCaip2ChainId.Mainnet]: {
+              ...FULL_ENVIRONMENT.networks[KnownCaip2ChainId.Mainnet],
+              timeout: '50',
             },
           },
         },

@@ -1,4 +1,9 @@
-import { createSnapErrorHandling } from '@metamask/snap-networks-utils';
+import type { FetchPolicyError } from '@metamask/snap-networks-utils';
+import {
+  BrokenCircuitError,
+  createSnapErrorHandling,
+  FetchPolicyErrorName,
+} from '@metamask/snap-networks-utils';
 import type { Struct } from '@metamask/superstruct';
 import { assert, enums, object, type } from '@metamask/superstruct';
 
@@ -58,26 +63,49 @@ export class StellarSnapException extends Error {
   }
 }
 
+export type HttpError = Error & {
+  code?: string;
+  response?: {
+    status?: number;
+    statusText?: string;
+    headers?: Headers | Record<string, unknown>;
+    data?: unknown;
+  };
+};
+
 /** Network and transport error codes commonly surfaced by `fetch`. */
-const COMMON_HTTP_ERROR_CODES = [
-  'CERT_HAS_EXPIRED',
-  'UNABLE_TO_GET_ISSUER_CERT_LOC',
-  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
-  'ERR_TLS_CERT_ALTNAME_INVALID',
-  'ECONNREFUSED',
-  'ETIMEDOUT',
-  'ENOTFOUND',
-  'ECONNRESET',
-  'AbortError',
-] as const;
+export const KnownHttpErrorCode = {
+  CertExpired: 'CERT_HAS_EXPIRED',
+  UnableToGetIssuerCertLoc: 'UNABLE_TO_GET_ISSUER_CERT_LOC',
+  UnableToVerifyLeafSignature: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  CertAltNameInvalid: 'ERR_TLS_CERT_ALTNAME_INVALID',
+  ConnectionRefused: 'ECONNREFUSED',
+  Timeout: 'ETIMEDOUT',
+  ConnectionAborted: 'ECONNABORTED',
+  NotFound: 'ENOTFOUND',
+  ConnectionReset: 'ECONNRESET',
+  AbortError: 'AbortError',
+  Canceled: 'ERR_CANCELED',
+  CustomErrCanceled: 'CanceledError',
+} as const;
 
-type CommonHttpErrorCode = (typeof COMMON_HTTP_ERROR_CODES)[number];
+type KnownHttpErrorCode =
+  (typeof KnownHttpErrorCode)[keyof typeof KnownHttpErrorCode];
 
-const COMMON_HTTP_ERROR_CODE_SET = new Set<string>(COMMON_HTTP_ERROR_CODES);
+const KnownHttpErrorCodeSet = new Set<string>(
+  Object.values(KnownHttpErrorCode),
+);
 
-const CommonHttpErrorCodesStruct = object({
+/**
+ * @param code - A transport error code from a caught error.
+ * @returns Whether `code` is one of {@link KnownHttpErrorCode}.
+ */
+const isKnownHttpErrorCode = (code: string): code is KnownHttpErrorCode =>
+  KnownHttpErrorCodeSet.has(code);
+
+const KnownHttpErrorCodesStruct = object({
   cause: type({
-    code: enums([...COMMON_HTTP_ERROR_CODES]),
+    code: enums(Object.values(KnownHttpErrorCode)),
   }),
 });
 
@@ -164,15 +192,13 @@ export function assertHttpResponse<Response>(
  * @param error - Value from a `catch` clause.
  * @returns A known HTTP error code from `error.cause.code` or `error.code`.
  */
-function getHttpErrorCode(error: Error): CommonHttpErrorCode | undefined {
-  if (CommonHttpErrorCodesStruct.is(error)) {
+function getHttpErrorCode(error: Error): KnownHttpErrorCode | undefined {
+  if (KnownHttpErrorCodesStruct.is(error)) {
     return error.cause?.code;
   }
 
   const { code } = error as { code?: string };
-  return code !== undefined && COMMON_HTTP_ERROR_CODE_SET.has(code)
-    ? (code as CommonHttpErrorCode)
-    : undefined;
+  return code !== undefined && isKnownHttpErrorCode(code) ? code : undefined;
 }
 
 /**
@@ -193,7 +219,7 @@ export function isHttpException(
     return true;
   }
 
-  if (error.name === 'AbortError') {
+  if (error.name === KnownHttpErrorCode.AbortError) {
     return true;
   }
 
@@ -208,23 +234,49 @@ export function isHttpException(
  * when `error` is a recognized transport failure, otherwise `error` unchanged.
  */
 export function normalizeHttpException(error: unknown): unknown {
+  const normalizedError = normalizeFetchPolicyException(error);
+  if (!(normalizedError instanceof Error)) {
+    return normalizedError;
+  }
+
+  if (normalizedError instanceof HttpException) {
+    return normalizedError;
+  }
+
+  if (!isHttpException(normalizedError)) {
+    return normalizedError;
+  }
+
+  const code = getHttpErrorCode(normalizedError);
+  return new HttpException(
+    code ? `HTTP error! cause: ${code}` : 'HTTP error!',
+    { cause: normalizedError },
+  );
+}
+
+/**
+ * Restores the API client's public HTTP exceptions after policy execution.
+ *
+ * @param error - Error emitted by the shared fetch policy.
+ * @returns A compatible HTTP exception, or the original error.
+ */
+function normalizeFetchPolicyException(error: unknown): unknown {
   if (!(error instanceof Error)) {
     return error;
   }
 
-  if (error instanceof HttpException) {
-    return error;
+  const policyError = error as FetchPolicyError;
+  if (policyError.httpStatus !== undefined) {
+    return new HttpResponseException(policyError.httpStatus, { cause: error });
   }
-
-  if (!isHttpException(error)) {
-    return error;
+  if (
+    error.name === FetchPolicyErrorName.Network ||
+    error.name === FetchPolicyErrorName.Timeout ||
+    error instanceof BrokenCircuitError
+  ) {
+    return new HttpException(error.message, { cause: error });
   }
-
-  const code = getHttpErrorCode(error);
-  return new HttpException(
-    code ? `HTTP error! cause: ${code}` : 'HTTP error!',
-    { cause: error },
-  );
+  return error;
 }
 
 /**

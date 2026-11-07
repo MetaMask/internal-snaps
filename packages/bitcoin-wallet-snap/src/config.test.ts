@@ -10,11 +10,9 @@ import { ConfigStruct } from './config';
 const FULL_ENVIRONMENT = {
   logLevel: 'debug',
   defaultAddressType: 'p2tr',
-  encrypt: false,
   chain: {
     parallelRequests: 5,
     stopGap: { discovery: 5, scan: 20 },
-    maxRetries: 3,
     url: {
       bitcoin: 'https://esplora.example.com/api',
       testnet: 'https://esplora.example.com/testnet/api',
@@ -39,16 +37,14 @@ const FULL_ENVIRONMENT = {
 };
 
 describe('ConfigProvider', () => {
-  it('builds the exact same config as before the shared BaseConfigProvider', () => {
+  it('builds the expected config without an encryption toggle', () => {
     const { config } = new BaseConfigProvider(FULL_ENVIRONMENT, ConfigStruct);
 
     expect(config).toStrictEqual({
       logLevel: 'debug',
-      encrypt: false,
       chain: {
         parallelRequests: 5,
         stopGap: { discovery: 5, scan: 20 },
-        maxRetries: 3,
         url: {
           bitcoin: 'https://esplora.example.com/api',
           testnet: 'https://esplora.example.com/testnet/api',

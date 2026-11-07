@@ -219,34 +219,20 @@ export class KeyringHandler implements KeyringSnapRpc {
   /**
    * Returns the assets of an account.
    *
-   * It is gated by local config `enableAssetMigration`.
-   * When `enableAssetMigration` is true, the account is fetched from on-chain.
-   * When `enableAssetMigration` is false, the account is fetched from the state.
-   *
    * @param accountId - The id of the account to get the assets for.
    * @returns The assets of the account.
    */
   async getAccountAssets(accountId: string): Promise<CaipAssetTypeOrId[]> {
     validateRequest(accountId, ListAccountAssetsRequestStruct);
 
-    const { enableAssetMigration, selectedNetwork: scope } = AppConfig;
+    const { selectedNetwork: scope } = AppConfig;
 
-    let onChainAccount: OnChainAccount | null = null;
-
-    // TODO: remove this gate after asset migration is fully enabled.
-    if (enableAssetMigration) {
-      onChainAccount = await this.#fetchOnChainAccountWithCache({
-        accountId,
-        scope,
-        // Always refresh the cache to get the latest on-chain account.
-        refresh: true,
-      });
-    } else {
-      onChainAccount = await this.#getOnChainAccountSnapshot({
-        accountId,
-        scope,
-      });
-    }
+    const onChainAccount = await this.#fetchOnChainAccountWithCache({
+      accountId,
+      scope,
+      // Always refresh the cache to get the latest on-chain account.
+      refresh: true,
+    });
 
     // Unfunded accounts have no trustlines. Return native so the client can ask for a zero balance.
     if (onChainAccount === null) {
@@ -340,10 +326,6 @@ export class KeyringHandler implements KeyringSnapRpc {
   /**
    * Returns the balances of an account for the given assets.
    *
-   * It is gated by local config `enableAssetMigration`.
-   * When `enableAssetMigration` is true, the account is fetched from on-chain.
-   * When `enableAssetMigration` is false, the account is fetched from the state.
-   *
    * @param accountId - The id of the account to get the balances for.
    * @param assets - The assets to get the balances for.
    * @returns The balances of the account.
@@ -357,26 +339,16 @@ export class KeyringHandler implements KeyringSnapRpc {
       GetAccountBalancesRequestStruct,
     );
 
-    const { enableAssetMigration, selectedNetwork: scope } = AppConfig;
+    const { selectedNetwork: scope } = AppConfig;
 
     const assetBalances = {} as Record<KnownCaip19AssetIdOrSlip44Id, Balance>;
 
-    let onChainAccount: OnChainAccount | null = null;
-
-    // TODO: remove this gate after asset migration is fully enabled.
-    if (enableAssetMigration) {
-      onChainAccount = await this.#fetchOnChainAccountWithCache({
-        accountId,
-        scope,
-        // Use the cached on-chain account.
-        refresh: false,
-      });
-    } else {
-      onChainAccount = await this.#getOnChainAccountSnapshot({
-        accountId,
-        scope,
-      });
-    }
+    const onChainAccount = await this.#fetchOnChainAccountWithCache({
+      accountId,
+      scope,
+      // Use the cached on-chain account.
+      refresh: false,
+    });
 
     // Unfunded accounts have no trustlines. Return native zero when it was requested.
     if (onChainAccount === null) {
@@ -550,31 +522,6 @@ export class KeyringHandler implements KeyringSnapRpc {
 
   #assertMethodIsValid(method: string): asserts method is MultichainMethod {
     validateRequest(method, MultichainMethodStruct);
-  }
-
-  /**
-   * Loads the indexed on-chain snapshot for a keyring account.
-   *
-   * @param params - Account id and scope.
-   * @param params.accountId - Keyring account id.
-   * @param params.scope - CAIP-2 network.
-   * @returns The indexed account, or `null` when no snapshot exists.
-   */
-  async #getOnChainAccountSnapshot({
-    accountId,
-    scope,
-  }: {
-    accountId: string;
-    scope: KnownCaip2ChainId;
-  }): Promise<OnChainAccount | null> {
-    const { account } = await this.#accountService.resolveAccount({
-      accountId,
-    });
-    return this.#onChainAccountService.getOnChainAccountSnapshot(
-      accountId,
-      account.address,
-      scope,
-    );
   }
 
   /**

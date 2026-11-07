@@ -43,6 +43,7 @@ export { BaseTransactionScanService } from './services/security-alerts/BaseTrans
 export {
   deriveSecurityAlert,
   getSecurityAlertDescription,
+  requiresMaliciousAcknowledgement,
 } from './services/security-alerts/utils';
 export { safeMerge } from './utils/safeMerge/safeMerge';
 export {
@@ -173,6 +174,17 @@ export type {
   TransactionAlertProps,
   TransactionAlertValidation,
 } from './ui/TransactionAlert/TransactionAlert';
+export { MaliciousAcknowledgementScreen } from './ui/MaliciousAcknowledgement/MaliciousAcknowledgementScreen';
+export type {
+  MaliciousAcknowledgementLabels,
+  MaliciousAcknowledgementScreenProps,
+} from './ui/MaliciousAcknowledgement/MaliciousAcknowledgementScreen';
+export { MaliciousAcknowledgementFormNames } from './ui/MaliciousAcknowledgement/MaliciousAcknowledgementFormNames';
+export { ConfirmationFooter } from './ui/ConfirmationFooter/ConfirmationFooter';
+export type {
+  ConfirmationFooterLabels,
+  ConfirmationFooterProps,
+} from './ui/ConfirmationFooter/ConfirmationFooter';
 export { InMemoryCache } from './utils/cache/InMemoryCache';
 export { StateCache } from './utils/cache/StateCache';
 export { useCache } from './utils/cache/useCache';

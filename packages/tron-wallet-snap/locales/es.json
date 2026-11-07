@@ -85,6 +85,12 @@
     "confirmation.validationErrorSubtitle": {
       "message": "Si aprueba esta solicitud, un tercero conocido por estafas tomará todos sus activos."
     },
+    "confirmation.validationWarningTitle": {
+      "message": "Esta solicitud puede ser arriesgada"
+    },
+    "confirmation.validationWarningSubtitle": {
+      "message": "Solo continúe si confía en este sitio y/o en todas las direcciones involucradas."
+    },
     "confirmation.validationErrorLearnMore": {
       "message": "Más información"
     },

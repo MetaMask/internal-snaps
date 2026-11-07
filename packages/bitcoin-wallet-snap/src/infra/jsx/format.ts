@@ -1,20 +1,21 @@
 import type { Network } from '@metamask/bitcoindevkit';
-import { Amount, BdkErrorCode } from '@metamask/bitcoindevkit';
+import { BdkErrorCode } from '@metamask/bitcoindevkit';
 import type { CaipAccountId } from '@metamask/snaps-sdk';
 
 import type { CurrencyRate, CurrencyUnit, Messages } from '../../entities';
 import { networkToScope } from '../../handlers';
+import { formatBtcAmount } from '../../utils/format-btc';
 
 export const displayAmount = (
   amountSats: bigint,
   currency?: CurrencyUnit,
 ): string => {
-  const amount = Amount.from_sat(amountSats).to_btc();
+  const amount = formatBtcAmount(amountSats);
   if (currency) {
     return `${amount} ${currency}`;
   }
 
-  return amount.toString();
+  return amount;
 };
 
 export const exchangeAmount = (
