@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Preserve accounts loaded from address lookup tables when decoding transaction instructions, preventing incomplete account lists and parsing errors during transaction history synchronization.
+- Preserve accounts loaded from address lookup tables when decoding transaction instructions, preventing incomplete account lists and parsing errors during transaction history synchronization. ([#568](https://github.com/MetaMask/internal-snaps/pull/568))
 
 ## [7.3.0]
 
