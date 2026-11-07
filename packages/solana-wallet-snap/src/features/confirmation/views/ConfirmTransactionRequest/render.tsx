@@ -14,14 +14,20 @@ import {
   updateInterface,
 } from '../../../../core/utils/interface';
 import logger from '../../../../core/utils/logger';
+import type { InstructionParseResult } from '../../../../entities';
 import { extractInstructionsFromUnknownBase64String } from '../../../../entities';
 import {
+  accountsService,
+  assetsService,
   connection,
   nameResolutionService,
   priceApiClient,
   state,
   transactionScanService,
 } from '../../../../snapContext';
+import { analyzeFeePayment } from '../../utils/analyzeFeePayment';
+import type { FeePayment } from '../../utils/analyzeFeePayment';
+import { createFeePaymentChainReader } from '../../utils/createFeePaymentChainReader';
 import { extractDestinationAddress } from '../../utils/extractDestinationAddress';
 import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
 import type { ConfirmTransactionRequestContext } from './types';
@@ -38,6 +44,7 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
   scan: null,
   scanFetchStatus: 'fetching',
   feeEstimatedInSol: '0',
+  feePayment: null,
   tokenPrices: {},
   tokenPricesFetchStatus: 'fetching',
   origin: '',
@@ -58,6 +65,42 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
     instructions: [],
   },
 };
+
+/**
+ * Works out who pays the network fee and what the user pays when it is
+ * sponsored. Never throws: on failure the confirmation shows the fee as usual.
+ *
+ * @param context - The confirmation context.
+ * @param instructions - The parsed top-level instructions, or `null` when they
+ * could not be parsed.
+ * @returns The fee payment, or `null` if it could not be determined.
+ */
+async function getFeePayment(
+  context: ConfirmTransactionRequestContext,
+  instructions: InstructionParseResult[] | null,
+): Promise<FeePayment | null> {
+  if (!context.account) {
+    return null;
+  }
+
+  try {
+    const ownAccounts = await accountsService.getAll();
+    return await analyzeFeePayment({
+      transaction: context.transaction,
+      accountAddress: context.account.address,
+      ownAddresses: ownAccounts.map((account) => account.address),
+      instructions,
+      reader: createFeePaymentChainReader(
+        connection.getRpc(context.scope),
+        context.scope,
+        async (assetTypes) => assetsService.getAssetsMetadata(assetTypes),
+      ),
+    });
+  } catch (error) {
+    await trackError(error);
+    return null;
+  }
+}
 
 /**
  * Renders the confirmation dialog for a transaction request.
@@ -85,12 +128,14 @@ export async function render(
       context.preferences = DEFAULT_CONFIRMATION_CONTEXT.preferences;
     });
 
+  let parsedInstructions: InstructionParseResult[] | null = null;
   const instructionsPromise = extractInstructionsFromUnknownBase64String(
     connection.getRpc(context.scope),
     context.transaction,
   )
     .then(async (instructions) => {
       context.advanced.instructions = instructions;
+      parsedInstructions = instructions;
 
       try {
         context.destinationAddress = extractDestinationAddress(instructions);
@@ -175,7 +220,12 @@ export async function render(
         updatedContext1.tokenPrices = {};
       });
 
-  await Promise.all([destinationDomainPromise, tokenPricesPromise]);
+  const [, , feePayment] = await Promise.all([
+    destinationDomainPromise,
+    tokenPricesPromise,
+    getFeePayment(context, parsedInstructions),
+  ]);
+  updatedContext1.feePayment = feePayment;
 
   let feeEstimatedInSol: string | null = null;
   try {
