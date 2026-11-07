@@ -161,6 +161,7 @@ import type {
   Instruction,
   InstructionWithData,
   ReadonlyUint8Array,
+  Address,
 } from '@solana/kit';
 
 import {
@@ -657,21 +658,27 @@ export const toIInstruction = (
   instruction: SolanaInstruction,
   transactionData: SolanaTransaction,
 ): InstructionWithData<ReadonlyUint8Array> => {
-  // Filter to only keep the account indexes available in the `accountKeys`
+  // v0 indexes static keys, then writable and readonly lookup addresses.
+  // Legacy and v1 transactions use only static keys.
+  const accountKeys = [
+    ...transactionData.transaction.message.accountKeys,
+    ...(transactionData.meta?.loadedAddresses?.writable ?? []),
+    ...(transactionData.meta?.loadedAddresses?.readonly ?? []),
+  ];
+
+  // Keep lookup table accounts so instruction parsers receive the complete account list.
   const isInAccountKeys = (accountIndex: number) =>
-    accountIndex < transactionData.transaction.message.accountKeys.length;
+    accountIndex < accountKeys.length;
 
   // Build the accounts array
   const accounts = instruction.accounts
     .filter(isInAccountKeys)
     .map((accountIndex) => ({
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      address: transactionData.transaction.message.accountKeys[accountIndex]!, // The non-null assertion is safe because we filtered the indexes above
+      address: accountKeys[accountIndex] as Address,
       role: 0,
     }));
 
-  const programAddress =
-    transactionData.transaction.message.accountKeys[instruction.programIdIndex];
+  const programAddress = accountKeys[instruction.programIdIndex];
 
   if (!programAddress) {
     throw new Error('Program address not found');
