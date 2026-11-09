@@ -1,5 +1,6 @@
 import {
   AnalyticsService,
+  createFetchPolicy,
   SecurityAlertsApiClient,
   State,
   AssetsProvider,
@@ -134,6 +135,7 @@ const onChainAccountService = new OnChainAccountService({
   logger,
   networkService,
   onChainAccountRepository,
+  assetsService,
   assetMetadataService,
 });
 
@@ -152,6 +154,10 @@ const priceService = new PriceService({
 
 const securityAlertsApiClient = new SecurityAlertsApiClient({
   scanUrl: `${AppConfig.api.securityAlertsApi.baseUrl}/stellar/transaction/scan`,
+  policy: createFetchPolicy({
+    service: 'security_alerts_api',
+    logger: logger.withPrefix('[🛡️ SecurityAlertsApiClient]'),
+  }),
 });
 
 const transactionScanService = new TransactionScanService({
@@ -357,6 +363,7 @@ const clientRequestHandler = new ClientRequestHandler({
 
 /** ------------------------------ Export Handlers ------------------------------ */
 export {
+  assetsService,
   clientRequestHandler,
   cronjobHandler,
   keyringHandler,

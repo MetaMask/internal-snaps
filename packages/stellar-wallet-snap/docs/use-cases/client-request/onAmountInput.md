@@ -16,7 +16,7 @@ Preflight-validates a send amount while the user types (balance and fee checks o
 - `accountId` — keyring account UUID
 - `assetId` — CAIP-19 classic / SEP-41 / slip44 asset (`scope` is derived from `assetId`)
 - `value` — positive amount string (human-readable units)
-- `to` — optional Stellar destination; ignored for preflight (always a self-transfer so destination errors surface in `confirmSend`)
+- `toAddress` — optional Stellar destination; ignored for preflight (always a self-transfer so destination errors surface in `confirmSend`)
 
 **Response**
 
@@ -67,7 +67,7 @@ sequenceDiagram
   participant Meta as AssetMetadataService
   participant Tx as TransactionService
 
-  Client->>Handler: onAmountInput { accountId, assetId, value, to? }
+  Client->>Handler: onAmountInput { accountId, assetId, value, toAddress? }
   Handler->>Resolver: resolve from keyring state
   Resolver-->>Handler: account, wallet, onChainAccount
   Handler->>Meta: resolve(assetId)

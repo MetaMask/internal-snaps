@@ -1,7 +1,7 @@
 import type { ICache, Serializable } from '@metamask/snap-networks-utils';
 
 /**
- * In-memory {@link ICache} for tests (jest.fn wrappers + backing map).
+ * In-memory {@link ICache} for tests (vi.fn wrappers + backing map).
  *
  * @returns Cache implementation and backing map for priming reads.
  */
@@ -11,26 +11,26 @@ export function createMemoryCache(): {
 } {
   const store = new Map<string, Serializable>();
   const cache: ICache<Serializable> = {
-    get: jest.fn(async (key: string) => store.get(key)),
-    set: jest.fn(async (key: string, value: Serializable) => {
+    get: vi.fn(async (key: string) => store.get(key)),
+    set: vi.fn(async (key: string, value: Serializable) => {
       store.set(key, value);
     }),
-    delete: jest.fn(async () => false),
-    clear: jest.fn(async () => {
+    delete: vi.fn(async () => false),
+    clear: vi.fn(async () => {
       store.clear();
     }),
-    has: jest.fn(async () => false),
-    keys: jest.fn(async () => [...store.keys()]),
-    size: jest.fn(async () => store.size),
-    peek: jest.fn(async (key: string) => store.get(key)),
-    mget: jest.fn(async (keys: string[]) => {
+    has: vi.fn(async () => false),
+    keys: vi.fn(async () => [...store.keys()]),
+    size: vi.fn(async () => store.size),
+    peek: vi.fn(async (key: string) => store.get(key)),
+    mget: vi.fn(async (keys: string[]) => {
       const result: Record<string, Serializable | undefined> = {};
       for (const key of keys) {
         result[key] = store.get(key);
       }
       return result;
     }),
-    mset: jest.fn(
+    mset: vi.fn(
       async (
         entries: {
           key: string;
@@ -45,7 +45,7 @@ export function createMemoryCache(): {
         }
       },
     ),
-    mdelete: jest.fn(async () => ({})),
+    mdelete: vi.fn(async () => ({})),
   };
   return { cache, store };
 }

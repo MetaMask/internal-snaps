@@ -1,4 +1,5 @@
 import { buildUrl } from '@metamask/snap-networks-utils';
+import type { MockedFunction } from 'vitest';
 
 import {
   HttpException,
@@ -6,8 +7,6 @@ import {
   InvalidHttpResponseException,
 } from '../../../utils/errors';
 import { PriceApiClient } from './PriceApiClient';
-
-jest.mock('../../../utils/logger');
 
 const jsonResponse = (
   body: unknown,
@@ -17,8 +16,9 @@ const jsonResponse = (
   return {
     ok,
     status,
-    json: async () => body,
-  } as Response;
+    headers: { get: () => null },
+    text: async () => JSON.stringify(body),
+  } as unknown as Response;
 };
 
 const baseUrl = 'https://price.test';
@@ -36,10 +36,10 @@ const minimalSpotPrice = (id: string, price: number) => ({
 });
 
 describe('PriceApiClient', () => {
-  const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+  const mockFetch = vi.fn() as MockedFunction<typeof fetch>;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   const createClient = () => new PriceApiClient({ baseUrl }, mockFetch);
@@ -135,14 +135,30 @@ describe('PriceApiClient', () => {
     });
 
     it('throws HttpResponseException when response is not ok', async () => {
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse({}, { ok: false, status: 503 }),
-      );
+      mockFetch.mockResolvedValue(jsonResponse({}, { ok: false, status: 503 }));
 
       const client = createClient();
       await expect(client.getSpotPrices([stellarClassicUsdc])).rejects.toThrow(
         HttpResponseException,
       );
+      expect(mockFetch).toHaveBeenCalledTimes(4);
+    });
+
+    it('retries when reading the response body fails', async () => {
+      const spotBody = {
+        [stellarClassicUsdc]: minimalSpotPrice('usdc', 1),
+      };
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          text: vi.fn().mockRejectedValueOnce(new Error('Body failed')),
+        } as unknown as Response)
+        .mockResolvedValueOnce(jsonResponse(spotBody));
+
+      expect(
+        await createClient().getSpotPrices([stellarClassicUsdc]),
+      ).toStrictEqual(spotBody);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
     it('rejects with InvalidHttpResponseException when response body fails validation', async () => {
@@ -158,12 +174,13 @@ describe('PriceApiClient', () => {
       const networkError = Object.assign(new Error('network down'), {
         cause: { code: 'ECONNREFUSED' },
       });
-      mockFetch.mockRejectedValueOnce(networkError);
+      mockFetch.mockRejectedValue(networkError);
 
       const client = createClient();
       await expect(client.getSpotPrices([stellarClassicUsdc])).rejects.toThrow(
         HttpException,
       );
+      expect(mockFetch).toHaveBeenCalledTimes(4);
     });
   });
 });

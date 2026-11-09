@@ -5,6 +5,7 @@ import {
 } from '@metamask/snap-networks-utils';
 import type { FetchPolicy } from '@metamask/snap-networks-utils';
 import type { RpcTransport } from '@solana/kit';
+import type { Mock } from 'vitest';
 
 import { mockLogger } from '../../__mocks__/logger';
 import { createFailoverTransport } from './failoverTransport';
@@ -17,14 +18,14 @@ const request = (method: string): Parameters<RpcTransport>[0] =>
 
 describe('createPolicyTransport', () => {
   const policy: FetchPolicy = {
-    execute: jest.fn(async (operation: () => Promise<unknown>) =>
+    execute: vi.fn(async (operation: () => Promise<unknown>) =>
       operation(),
     ) as unknown as FetchPolicy['execute'],
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (policy.execute as unknown as jest.Mock).mockImplementation(
+    vi.clearAllMocks();
+    (policy.execute as unknown as Mock).mockImplementation(
       async (operation: () => Promise<unknown>) => operation(),
     );
   });
@@ -35,8 +36,8 @@ describe('createPolicyTransport', () => {
     'getTokenLargestAccounts',
     'simulateTransaction',
   ])('applies the fetch policy to %s', async (method) => {
-    const readTransport = jest.fn().mockResolvedValue({ result: 'ok' });
-    const oneShotTransport = jest.fn();
+    const readTransport = vi.fn().mockResolvedValue({ result: 'ok' });
+    const oneShotTransport = vi.fn();
     const transport = createPolicyTransport({
       oneShotTransport,
       policy,
@@ -53,8 +54,8 @@ describe('createPolicyTransport', () => {
   it.each(['sendTransaction', 'unknownMethod'])(
     'sends %s once without policy or failover',
     async (method) => {
-      const readTransport = jest.fn();
-      const oneShotTransport = jest.fn().mockResolvedValue({ result: 'ok' });
+      const readTransport = vi.fn();
+      const oneShotTransport = vi.fn().mockResolvedValue({ result: 'ok' });
       const transport = createPolicyTransport({
         oneShotTransport,
         policy,
@@ -71,7 +72,7 @@ describe('createPolicyTransport', () => {
 
   it('fails over and retries transient read failures', async () => {
     const signals: AbortSignal[] = [];
-    const firstTransport = jest.fn().mockRejectedValue(
+    const firstTransport = vi.fn().mockRejectedValue(
       createFetchPolicyError('offline', {
         name: FetchPolicyErrorName.Network,
       }),
@@ -84,7 +85,7 @@ describe('createPolicyTransport', () => {
         });
       },
     );
-    const secondTransport = jest.fn(
+    const secondTransport = vi.fn(
       async <Response>({ signal }: Parameters<RpcTransport>[0]) => {
         signals.push(signal as AbortSignal);
         return { result: 'ok' } as Response;
@@ -112,9 +113,9 @@ describe('createPolicyTransport', () => {
   });
 
   it('preserves Retry-After from an earlier endpoint when a fallback fails without one', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     try {
-      const firstTransport = jest
+      const firstTransport = vi
         .fn()
         .mockRejectedValueOnce(
           createFetchPolicyError('Rate limited', {
@@ -126,7 +127,7 @@ describe('createPolicyTransport', () => {
       const fallbackError = createFetchPolicyError('offline', {
         name: FetchPolicyErrorName.Network,
       });
-      const secondTransport = jest.fn().mockRejectedValue(fallbackError);
+      const secondTransport = vi.fn().mockRejectedValue(fallbackError);
       const transport = createPolicyTransport({
         oneShotTransport: firstTransport,
         policy: createFetchPolicy({
@@ -140,26 +141,26 @@ describe('createPolicyTransport', () => {
       });
 
       const pending = transport(request('getBalance'));
-      await jest.advanceTimersByTimeAsync(29_999);
+      await vi.advanceTimersByTimeAsync(29_999);
       expect(firstTransport).toHaveBeenCalledTimes(1);
       expect(secondTransport).toHaveBeenCalledTimes(1);
       expect(fallbackError.retryAfterMs).toBeUndefined();
 
-      await jest.advanceTimersByTimeAsync(1);
+      await vi.advanceTimersByTimeAsync(1);
       expect(await pending).toStrictEqual({ result: 'ok' });
       expect(firstTransport).toHaveBeenCalledTimes(2);
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
   });
 
   it('does not fail over non-transient read failures', async () => {
-    const firstTransport = jest
+    const firstTransport = vi
       .fn()
       .mockRejectedValue(
         createFetchPolicyError('Bad request', { httpStatus: 400 }),
       );
-    const secondTransport = jest.fn();
+    const secondTransport = vi.fn();
     const transport = createPolicyTransport({
       oneShotTransport: firstTransport,
       policy: createFetchPolicy({
@@ -189,8 +190,8 @@ describe('createPolicyTransport', () => {
 
   it('does not fail over response parsing failures', async () => {
     const error = new SyntaxError('Invalid JSON');
-    const firstTransport = jest.fn().mockRejectedValue(error);
-    const secondTransport = jest.fn();
+    const firstTransport = vi.fn().mockRejectedValue(error);
+    const secondTransport = vi.fn();
     const transport = createPolicyTransport({
       oneShotTransport: firstTransport,
       policy: createFetchPolicy({
@@ -220,13 +221,13 @@ describe('createPolicyTransport', () => {
       name: FetchPolicyErrorName.Timeout,
     });
     const controller = new AbortController();
-    const firstTransport = jest.fn(
+    const firstTransport = vi.fn(
       async ({ signal }: Parameters<RpcTransport>[0]) => {
         controller.abort(reason);
         throw signal?.reason;
       },
     );
-    const secondTransport = jest.fn();
+    const secondTransport = vi.fn();
     const transport = createPolicyTransport({
       oneShotTransport: firstTransport,
       policy: createFetchPolicy({
@@ -259,11 +260,11 @@ describe('createPolicyTransport', () => {
     Object.defineProperty(controller.signal, 'reason', {
       value: undefined,
     });
-    const firstTransport = jest.fn().mockImplementation(async () => {
+    const firstTransport = vi.fn().mockImplementation(async () => {
       controller.abort();
       throw new Error('Failed');
     });
-    const secondTransport = jest.fn();
+    const secondTransport = vi.fn();
     const transport = createPolicyTransport({
       oneShotTransport: firstTransport,
       policy,
@@ -287,17 +288,17 @@ describe('createPolicyTransport', () => {
   });
 
   it('rejects promptly during retry backoff when the caller aborts without invoking the transport again', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     try {
       const controller = new AbortController();
       const callerReason = new Error('Caller aborted during RPC backoff');
-      const firstTransport = jest.fn().mockRejectedValue(
+      const firstTransport = vi.fn().mockRejectedValue(
         createFetchPolicyError('Rate limited', {
           httpStatus: 429,
           retryAfterMs: 30_000,
         }),
       );
-      const secondTransport = jest.fn().mockRejectedValue(
+      const secondTransport = vi.fn().mockRejectedValue(
         createFetchPolicyError('Rate limited', {
           httpStatus: 429,
           retryAfterMs: 30_000,
@@ -324,7 +325,7 @@ describe('createPolicyTransport', () => {
         (error) => error,
       );
 
-      await jest.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
       expect(firstTransport).toHaveBeenCalledTimes(1);
       expect(secondTransport).toHaveBeenCalledTimes(1);
       expect(mockLogger.warn).toHaveBeenCalledWith(
@@ -335,11 +336,11 @@ describe('createPolicyTransport', () => {
       controller.abort(callerReason);
       expect(await rejection).toBe(callerReason);
 
-      await jest.advanceTimersByTimeAsync(40_000);
+      await vi.advanceTimersByTimeAsync(40_000);
       expect(firstTransport).toHaveBeenCalledTimes(1);
       expect(secondTransport).toHaveBeenCalledTimes(1);
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
   });
 });

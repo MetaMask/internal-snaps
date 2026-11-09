@@ -1,15 +1,9 @@
 import type { ScriptBuf } from '@metamask/bitcoindevkit';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AccountMetadata, AccountState } from '../entities';
 import { WalletError } from '../entities';
 import { StoredAccountAdapter } from './StoredAccountAdapter';
-
-jest.mock('@metamask/bitcoindevkit', () => ({
-  Address: {
-    from_string: jest.fn(),
-  },
-}));
 
 describe('StoredAccountAdapter', () => {
   const mockId = 'test-id';

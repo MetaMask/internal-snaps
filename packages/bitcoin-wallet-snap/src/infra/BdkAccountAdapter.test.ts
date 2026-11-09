@@ -8,22 +8,10 @@ import type {
   SpkIndexed,
 } from '@metamask/bitcoindevkit';
 import { Wallet } from '@metamask/bitcoindevkit';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { WalletError } from '../entities';
 import { BdkAccountAdapter } from './BdkAccountAdapter';
-
-jest.mock('@metamask/bitcoindevkit', () => ({
-  FeeRate: jest.fn(),
-  OutPoint: { from_string: jest.fn() },
-  SignOptions: jest.fn(),
-  Txid: { from_string: jest.fn() },
-  UnconfirmedTx: jest.fn(),
-  Wallet: {
-    create: jest.fn(),
-    load: jest.fn(),
-  },
-}));
 
 describe('BdkAccountAdapter', () => {
   const mockWallet = mock<Wallet>();
@@ -37,8 +25,8 @@ describe('BdkAccountAdapter', () => {
   const mockNetwork: Network = 'bitcoin';
 
   beforeEach(() => {
-    jest.mocked(Wallet.create).mockReturnValue(mockWallet);
-    jest.mocked(Wallet.load).mockReturnValue(mockWallet);
+    vi.spyOn(Wallet, 'create').mockReturnValue(mockWallet);
+    vi.spyOn(Wallet, 'load').mockReturnValue(mockWallet);
   });
 
   describe('WebAssembly availability guard', () => {

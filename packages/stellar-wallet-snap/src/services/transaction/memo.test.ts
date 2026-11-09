@@ -65,7 +65,7 @@ describe('resolveStellarMemo', () => {
   });
 
   it('throws InvalidMemoException when the Stellar SDK rejects the memo', () => {
-    const idSpy = jest.spyOn(Memo, 'id').mockImplementation(() => {
+    const idSpy = vi.spyOn(Memo, 'id').mockImplementation(() => {
       throw new Error('sdk');
     });
 

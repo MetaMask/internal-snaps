@@ -68,14 +68,14 @@ function createMockStateManager(
       }
       return undefined;
     },
-    setKey: jest.fn(async () => Promise.resolve()),
-    setKeyWith: jest.fn(async () => Promise.resolve()),
+    setKey: vi.fn(async () => Promise.resolve()),
+    setKeyWith: vi.fn(async () => Promise.resolve()),
     update: async (updater) => {
       state = updater(cloneDeep(state));
       return cloneDeep(state);
     },
-    deleteKey: jest.fn(async () => Promise.resolve()),
-    deleteKeys: jest.fn(async () => Promise.resolve()),
+    deleteKey: vi.fn(async () => Promise.resolve()),
+    deleteKeys: vi.fn(async () => Promise.resolve()),
   };
 }
 

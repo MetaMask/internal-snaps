@@ -2,16 +2,13 @@ import { address } from '@solana/kit';
 import type { Rpc, SolanaRpcApi } from '@solana/kit';
 
 import { MOCK_EXECUTION_SCENARIO_SEND_SPL_TOKEN } from '../../core/services/signer/mocks/scenarios/sendSplToken';
+import * as Errors from '../../core/utils/errors';
 import { trackError } from '../../core/utils/errors';
 import type { InstructionParseResult } from './instructions';
 import {
   extractInstructionsFromUnknownBase64String,
   parseInstruction,
 } from './instructions';
-
-jest.mock('../../core/utils/errors', () => ({
-  trackError: jest.fn().mockResolvedValue('tracked-error-id'),
-}));
 
 describe('extractInstructionsFromBase64String', () => {
   let mockRpc: Rpc<SolanaRpcApi>;
@@ -99,15 +96,16 @@ describe('extractInstructionsFromBase64String', () => {
   ] as unknown as InstructionParseResult[];
 
   beforeEach(() => {
+    vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
     mockRpc = {
-      getLatestBlockhash: jest.fn().mockReturnValue({
-        send: jest.fn(),
+      getLatestBlockhash: vi.fn().mockReturnValue({
+        send: vi.fn(),
       }),
-      getFeeForMessage: jest.fn().mockReturnValue({
-        send: jest.fn(),
+      getFeeForMessage: vi.fn().mockReturnValue({
+        send: vi.fn(),
       }),
-      getMultipleAccounts: jest.fn().mockReturnValue({
-        send: jest.fn().mockResolvedValue(getMultipleAccountsResponse?.result),
+      getMultipleAccounts: vi.fn().mockReturnValue({
+        send: vi.fn().mockResolvedValue(getMultipleAccountsResponse?.result),
       }),
     } as unknown as Rpc<SolanaRpcApi>;
   });

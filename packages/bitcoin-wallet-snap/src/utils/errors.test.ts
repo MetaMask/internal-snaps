@@ -1,29 +1,26 @@
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
+import type { Mock, Mocked } from 'vitest';
 
 import { UserActionError } from '../entities';
 import { shouldTrackError, trackError } from './errors';
 import logger from './logger';
 
-jest.mock('./logger', () => ({
-  error: jest.fn(),
-}));
-
 type SetupTestResult = {
-  mockSnapRequest: jest.Mock;
-  mockLogger: jest.Mocked<typeof logger>;
+  mockSnapRequest: Mock;
+  mockLogger: Mocked<typeof logger>;
 };
 
 const setupTest = (): SetupTestResult => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 
-  const mockSnapRequest = jest.fn();
+  const mockSnapRequest = vi.fn();
   Object.defineProperty(globalThis, 'snap', {
     configurable: true,
     value: { request: mockSnapRequest },
     writable: true,
   });
 
-  return { mockSnapRequest, mockLogger: jest.mocked(logger) };
+  return { mockSnapRequest, mockLogger: vi.mocked(logger) };
 };
 
 describe('errors', () => {

@@ -56,7 +56,7 @@ import {
   FetchStatus,
 } from '../../ui/confirmation/api';
 import { ConfirmationUXController } from '../../ui/confirmation/controller';
-import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
+import * as AccountActivationPrompt from '../../ui/confirmation/views/AccountActivationPrompt/render';
 import { logger } from '../../utils/logger';
 import { AccountResolver } from '../accountResolver';
 import { TrackTransactionHandler } from '../cronjob/trackTransaction';
@@ -64,16 +64,16 @@ import { ClientRequestMethod, MultiChainSendErrorCodes } from './api';
 import type { ConfirmSendJsonRpcRequest } from './api';
 import { ConfirmSendHandler } from './confirmSend';
 
-jest.mock('../../utils/logger');
-jest.mock('../../utils/snap');
-jest.mock('../../ui/confirmation/views/AccountActivationPrompt/render', () => ({
-  render: jest.fn().mockResolvedValue(undefined),
-}));
-
 const destinationAddress =
   'GDTF7ERUQVTX23ZD6NY5XRYC5IQAKWFVTQ6IXSMEZWGVNDDGPYCVHRZP';
 
 describe('ConfirmSendHandler', () => {
+  beforeEach(() => {
+    vi.spyOn(AccountActivationPrompt, 'render').mockResolvedValue(
+      undefined as never,
+    );
+  });
+
   const accountId = '11111111-1111-4111-8111-111111111111';
   const assetId = USDC_CLASSIC;
   const scope = KnownCaip2ChainId.Mainnet;
@@ -101,15 +101,15 @@ describe('ConfirmSendHandler', () => {
 
     const { accountService, onChainAccountService, walletService } =
       mockOnChainAccountService();
-    jest.spyOn(AccountService.prototype, 'resolveAccount').mockResolvedValue({
+    vi.spyOn(AccountService.prototype, 'resolveAccount').mockResolvedValue({
       account,
     });
-    const resolveOnChainAccountSpy = jest
+    const resolveOnChainAccountSpy = vi
       .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
       .mockResolvedValue(onChainAccount);
-    jest
-      .spyOn(WalletService.prototype, 'resolveWallet')
-      .mockResolvedValue(wallet);
+    vi.spyOn(WalletService.prototype, 'resolveWallet').mockResolvedValue(
+      wallet,
+    );
 
     const transaction = buildMockClassicTransaction(
       [
@@ -137,24 +137,24 @@ describe('ConfirmSendHandler', () => {
 
     const { transactionService, transactionRepositorySaveManySpy } =
       createMockTransactionService();
-    const createDraftSendTransactionForConfirm = jest
+    const createDraftSendTransactionForConfirm = vi
       .spyOn(
         TransactionService.prototype,
         'createDraftSendTransactionForConfirm',
       )
       .mockResolvedValue({ transaction, requiresMemoRecovery: false });
-    const createValidatedSendTransaction = jest
+    const createValidatedSendTransaction = vi
       .spyOn(TransactionService.prototype, 'createValidatedSendTransaction')
       .mockResolvedValue(transaction);
-    const sendTransaction = jest
+    const sendTransaction = vi
       .spyOn(TransactionService.prototype, 'sendTransaction')
       .mockResolvedValue(transactionId);
-    const savePendingKeyringTransaction = jest.spyOn(
+    const savePendingKeyringTransaction = vi.spyOn(
       TransactionService.prototype,
       'savePendingKeyringTransactionSafe',
     );
-    const signTransactionSpy = jest.spyOn(wallet, 'signTransaction');
-    const scheduleBackgroundEvent = jest
+    const signTransactionSpy = vi.spyOn(wallet, 'signTransaction');
+    const scheduleBackgroundEvent = vi
       .spyOn(TrackTransactionHandler, 'scheduleBackgroundEvent')
       .mockResolvedValue(undefined);
 
@@ -162,9 +162,9 @@ describe('ConfirmSendHandler', () => {
     const assetMetadata = generateMockStellarAssetMetadata()[
       assetId
     ] as StellarAssetMetadata;
-    jest
-      .spyOn(AssetMetadataService.prototype, 'resolve')
-      .mockResolvedValue(assetMetadata);
+    vi.spyOn(AssetMetadataService.prototype, 'resolve').mockResolvedValue(
+      assetMetadata,
+    );
 
     const accountResolver = new AccountResolver({
       accountService,
@@ -172,15 +172,15 @@ describe('ConfirmSendHandler', () => {
       walletService,
     });
 
-    const renderConfirmationDialog = jest
+    const renderConfirmationDialog = vi
       .spyOn(ConfirmationUXController.prototype, 'renderConfirmationDialog')
       .mockResolvedValue(true);
     const confirmationUIController = new ConfirmationUXController();
 
-    const trackTransactionAddedSpy = jest.fn().mockResolvedValue(undefined);
-    const trackTransactionRejectedSpy = jest.fn().mockResolvedValue(undefined);
-    const trackTransactionApprovedSpy = jest.fn().mockResolvedValue(undefined);
-    const trackTransactionSubmittedSpy = jest.fn().mockResolvedValue(undefined);
+    const trackTransactionAddedSpy = vi.fn().mockResolvedValue(undefined);
+    const trackTransactionRejectedSpy = vi.fn().mockResolvedValue(undefined);
+    const trackTransactionApprovedSpy = vi.fn().mockResolvedValue(undefined);
+    const trackTransactionSubmittedSpy = vi.fn().mockResolvedValue(undefined);
 
     const handler = new ConfirmSendHandler({
       logger,
@@ -251,9 +251,9 @@ describe('ConfirmSendHandler', () => {
     const assetMetadata = generateMockStellarAssetMetadata()[
       sep41AssetId
     ] as StellarAssetMetadata;
-    jest
-      .spyOn(AssetMetadataService.prototype, 'resolve')
-      .mockResolvedValue(assetMetadata);
+    vi.spyOn(AssetMetadataService.prototype, 'resolve').mockResolvedValue(
+      assetMetadata,
+    );
 
     expect(
       await handler.handle(
@@ -454,7 +454,7 @@ describe('ConfirmSendHandler', () => {
     });
   });
 
-  it('returns invalid when refreshed transaction fee exceeds the 20% buffer', async () => {
+  it('throws when refreshed transaction fee exceeds the 20% buffer', async () => {
     const {
       handler,
       wallet,
@@ -495,10 +495,9 @@ describe('ConfirmSendHandler', () => {
       exceedsBufferTransaction,
     );
 
-    expect(await handler.handle(baseRequest())).toStrictEqual({
-      valid: false,
-      errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-    });
+    await expect(handler.handle(baseRequest())).rejects.toThrow(
+      TransactionValidationException,
+    );
     expect(signTransactionSpy).not.toHaveBeenCalled();
     expect(sendTransaction).not.toHaveBeenCalled();
   });
@@ -701,7 +700,7 @@ describe('ConfirmSendHandler', () => {
       expect(sendTransaction).toHaveBeenCalled();
     });
 
-    it('returns invalid when RequiresMemo recovery confirms without a memo', async () => {
+    it('throws when RequiresMemo recovery confirms without a memo', async () => {
       const {
         handler,
         transaction,
@@ -720,10 +719,9 @@ describe('ConfirmSendHandler', () => {
       );
       renderConfirmationDialog.mockResolvedValueOnce({ confirmed: true });
 
-      expect(await handler.handle(baseRequest())).toStrictEqual({
-        valid: false,
-        errors: [{ code: MultiChainSendErrorCodes.Invalid }],
-      });
+      await expect(handler.handle(baseRequest())).rejects.toThrow(
+        RequiresMemoException,
+      );
       expect(createValidatedSendTransaction).toHaveBeenCalledWith(
         expect.objectContaining({
           destination: destinationAddress,
@@ -812,7 +810,7 @@ describe('ConfirmSendHandler', () => {
     );
   });
 
-  it('returns error codes without a second confirmation when refresh fails after approval', async () => {
+  it('throws without a second confirmation when refresh fails after approval', async () => {
     const {
       handler,
       createValidatedSendTransaction,
@@ -824,10 +822,9 @@ describe('ConfirmSendHandler', () => {
       new InsufficientBalanceException('0', '1'),
     );
 
-    expect(await handler.handle(baseRequest())).toStrictEqual({
-      valid: false,
-      errors: [{ code: MultiChainSendErrorCodes.InsufficientBalance }],
-    });
+    await expect(handler.handle(baseRequest())).rejects.toThrow(
+      InsufficientBalanceException,
+    );
     expect(renderConfirmationDialog).toHaveBeenCalledTimes(1);
     expect(renderConfirmationDialog).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -856,7 +853,7 @@ describe('ConfirmSendHandler', () => {
     await expect(handler.handle(baseRequest())).rejects.toThrow(
       AccountNotActivatedException,
     );
-    expect(renderAccountActivationPrompt).toHaveBeenCalledWith(wallet.address);
+    expect(AccountActivationPrompt.render).toHaveBeenCalledWith(wallet.address);
     expect(renderConfirmationDialog).not.toHaveBeenCalled();
   });
 

@@ -1,18 +1,18 @@
 import type { SnapsProvider } from '@metamask/snaps-sdk';
 
-const actual = jest.requireActual('../snap');
+const actual = await vi.importActual<typeof import('../snap')>('../snap');
 
 (globalThis as any).snap = {
-  request: jest.fn(),
+  request: vi.fn(),
 };
 
 export const getSnapProvider = (): SnapsProvider => snap;
 
-export const getBip32Entropy = jest.fn();
+export const getBip32Entropy = vi.fn();
 
-export const listEntropySources = jest.fn();
+export const listEntropySources = vi.fn();
 
-export const getDefaultEntropySource = jest.fn();
+export const getDefaultEntropySource = vi.fn();
 
 export const {
   createInterface,

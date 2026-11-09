@@ -16,11 +16,11 @@ describe('isSpam', () => {
 
   beforeEach(() => {
     const mockTokenHelper = {
-      amountToUiAmountForMint: jest.fn().mockResolvedValue('1'),
+      amountToUiAmountForMint: vi.fn().mockResolvedValue('1'),
     } as unknown as TokenHelper;
 
     const mockAssetsService = {
-      getAssetsMetadata: jest.fn().mockResolvedValue({}),
+      getAssetsMetadata: vi.fn().mockResolvedValue({}),
     } as unknown as AssetsService;
 
     transactionMapper = new TransactionMapper(

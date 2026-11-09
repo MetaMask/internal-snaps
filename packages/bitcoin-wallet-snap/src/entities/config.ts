@@ -3,7 +3,6 @@ import type { LogLevel } from '@metamask/snap-networks-utils';
 
 export type SnapConfig = {
   logLevel: LogLevel;
-  encrypt: boolean;
   chain: ChainConfig;
   targetBlocksConfirmation: number; // Temporary global config to set the expected confirmation target, should eventually be a user setting
   fallbackFeeRate: number;
@@ -15,7 +14,6 @@ export type SnapConfig = {
 export type ChainConfig = {
   parallelRequests: number;
   stopGap: { discovery: number; scan: number };
-  maxRetries: number;
   url: {
     [network in Network]: string;
   };

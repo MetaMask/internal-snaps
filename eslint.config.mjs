@@ -171,6 +171,21 @@ const config = createConfig([
     },
   },
   {
+    files: [
+      'packages/stellar-wallet-snap/**/*.test.ts',
+      'packages/stellar-wallet-snap/**/*.test.tsx',
+      'packages/stellar-wallet-snap/**/__mocks__/**/*.ts',
+      'packages/stellar-wallet-snap/**/*.fixtures.ts',
+      'packages/tron-wallet-snap/**/*.test.ts',
+      'packages/tron-wallet-snap/**/*.test.tsx',
+      'packages/tron-wallet-snap/**/__mocks__/**/*.ts',
+      'packages/tron-wallet-snap/src/utils/mockLogger.ts',
+      'packages/solana-wallet-snap/**/*.test.ts',
+      'packages/solana-wallet-snap/**/*.test.tsx',
+      'packages/solana-wallet-snap/**/__mocks__/**/*.ts',
+    ],
+  },
+  {
     files: ['**/*.test.{js,ts,tsx}', '**/tests/**/*.{js,ts,tsx}'],
     extends: [jest],
     rules: {
@@ -185,6 +200,41 @@ const config = createConfig([
       node: {
         version: `^${NODE_LTS_VERSION}`,
       },
+    },
+  },
+  {
+    files: [
+      'packages/bitcoin-wallet-snap/src/**/*.test.ts',
+      'packages/bitcoin-wallet-snap/src/**/*.test.tsx',
+      'packages/bitcoin-wallet-snap/src/**/__mocks__/**/*.ts',
+      'packages/bitcoin-wallet-snap/vitest.setup.ts',
+    ],
+    rules: {
+      // `jest/unbound-method` allows `jest.mocked`, not `vi.mocked`.
+      'jest/unbound-method': 'off',
+    },
+  },
+  {
+    files: ['packages/bitcoin-wallet-snap/integration-test/**/*.ts'],
+    rules: {
+      // Integration tests import these from `@jest/globals` while the package
+      // tsconfig also declares Jest and Vitest globals. Unit tests use Vitest
+      // globals without importing them.
+      '@typescript-eslint/no-shadow': [
+        'error',
+        {
+          allow: [
+            'afterAll',
+            'afterEach',
+            'beforeAll',
+            'beforeEach',
+            'describe',
+            'expect',
+            'it',
+            'test',
+          ],
+        },
+      ],
     },
   },
   {

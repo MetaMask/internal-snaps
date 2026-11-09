@@ -3,6 +3,7 @@ import { InMemoryCache } from '@metamask/snap-networks-utils';
 
 import { mockLogger } from '../../services/__mocks__/logger';
 import type { ConfigProvider } from '../../services/config';
+import * as Errors from '../../utils/errors';
 import { trackError } from '../../utils/errors';
 import { MOCK_NFT_METADATA_RESPONSE_MAPPED } from './mocks/mockNftMetadataResponseMapped';
 import { MOCK_NFT_METADATA_RESPONSE_RAW } from './mocks/mockNftMetadataResponseRaw';
@@ -10,11 +11,7 @@ import { MOCK_NFTS_LIST_RESPONSE_MAPPED } from './mocks/mockNftsListResponseMapp
 import { MOCK_NFTS_LIST_RESPONSE_RAW } from './mocks/mockNftsListResponseRaw';
 import { NftApiClient } from './NftApiClient';
 
-jest.mock('../../utils/errors', () => ({
-  trackError: jest.fn().mockResolvedValue('tracked-error-id'),
-}));
-
-const mockFetch = jest.fn();
+const mockFetch = vi.fn();
 let mockCache: ICache<Serializable>;
 
 describe('NftApiClient', () => {
@@ -22,7 +19,8 @@ describe('NftApiClient', () => {
   let mockConfigProvider: ConfigProvider;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
 
     mockCache = new InMemoryCache(mockLogger);
 
@@ -65,7 +63,7 @@ describe('NftApiClient', () => {
     it('should correctly map the API response, covering the logic from mapListAddressSolanaNftsResponse.test.ts', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: jest.fn().mockResolvedValueOnce(
+        text: vi.fn().mockResolvedValueOnce(
           JSON.stringify({
             ...MOCK_NFTS_LIST_RESPONSE_RAW,
             cursor: null,
@@ -88,7 +86,7 @@ describe('NftApiClient', () => {
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: jest
+        text: vi
           .fn()
           .mockResolvedValueOnce(
             JSON.stringify(MOCK_NFTS_LIST_RESPONSE_RAW_PAGE_1),
@@ -96,7 +94,7 @@ describe('NftApiClient', () => {
       });
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: jest
+        text: vi
           .fn()
           .mockResolvedValueOnce(
             JSON.stringify(MOCK_NFTS_LIST_RESPONSE_RAW_PAGE_2),
@@ -115,7 +113,7 @@ describe('NftApiClient', () => {
     it('should fetch and parse solana nft metadata for a given token address', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: jest
+        text: vi
           .fn()
           .mockResolvedValueOnce(
             JSON.stringify(MOCK_NFT_METADATA_RESPONSE_RAW),
@@ -140,7 +138,7 @@ describe('NftApiClient', () => {
     it('should fetch and parse solana nft metadata for a given array of token addresses', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        text: jest
+        text: vi
           .fn()
           .mockResolvedValue(JSON.stringify(MOCK_NFT_METADATA_RESPONSE_RAW)),
       });

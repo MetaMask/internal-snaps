@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0]
+
+### Changed
+
+- Retry transient Bitcoin indexer, price API, and signed transaction broadcast failures with the shared fetch policy, and treat duplicate broadcasts as successful. ([#530](https://github.com/MetaMask/internal-snaps/pull/530))
+
+### Fixed
+
+- Fix formatting of small Bitcoin balances to avoid scientific notation. ([#543](https://github.com/MetaMask/internal-snaps/pull/543))
+
 ## [3.2.0]
 
 ### Added
@@ -105,7 +115,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - This package was migrated from [snap-bitcoin-wallet](https://github.com/MetaMask/snap-bitcoin-wallet). See the source repository for the original [changelog](https://github.com/MetaMask/snap-bitcoin-wallet/blob/main/packages/snap/CHANGELOG.md).
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@3.2.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@3.3.0...HEAD
+[3.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@3.2.0...@metamask/bitcoin-wallet-snap@3.3.0
 [3.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@3.1.0...@metamask/bitcoin-wallet-snap@3.2.0
 [3.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@3.0.0...@metamask/bitcoin-wallet-snap@3.1.0
 [3.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/bitcoin-wallet-snap@2.0.1...@metamask/bitcoin-wallet-snap@3.0.0

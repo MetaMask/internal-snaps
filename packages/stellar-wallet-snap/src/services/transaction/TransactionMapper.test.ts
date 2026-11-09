@@ -52,8 +52,6 @@ import { Transaction } from './Transaction';
 import { TransactionMapper } from './TransactionMapper';
 import * as transactionUtils from './utils';
 
-jest.mock('../../utils/logger');
-
 function toHorizonTransaction(
   transaction: Transaction,
   overrides: Partial<Horizon.ServerApi.TransactionRecord> = {},
@@ -127,12 +125,12 @@ describe('TransactionMapper', () => {
   ];
 
   beforeEach(() => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date('2026-01-15T00:00:00.000Z'));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-15T00:00:00.000Z'));
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('maps to unknown when transaction raw data is missing', () => {
@@ -545,7 +543,7 @@ describe('TransactionMapper', () => {
   );
 
   it('maps as send before swap when both matchers would apply', () => {
-    const swapSpy = jest
+    const swapSpy = vi
       .spyOn(transactionUtils, 'isSwapTransaction')
       .mockReturnValue(true);
     const { keyringAccount, transactionMapper } = setup();

@@ -16,17 +16,12 @@ export type SnapState = {
   accounts: Record<string, AccountState | null>;
   // derivationPath -> accountId. Only needed for fast lookup.
   derivationPaths: Record<string, string>;
+  // Accounts awaiting a repair scan. Absent until the repair queue is initialized.
+  rescanV1?: RescanState;
 };
 
-/**
- * In-memory snapshot loaded while resolving derivation paths. The
- * derivation-path map can be reused by a subsequent insert within the same
- * account mutation; the accounts map is retained for lookup results but
- * refreshed before full-map writes to avoid overwriting sync updates.
- */
-export type AccountStateSnapshot = {
-  accounts: SnapState['accounts'] | null;
-  derivationPaths: SnapState['derivationPaths'] | null;
+export type RescanState = {
+  pending: string[];
 };
 
 export type AccountState = {
@@ -97,25 +92,9 @@ export type TransactionBroadcastEventType = Exclude<
 >;
 
 /**
- * The SnapClient represents the MetaMask Snap state and manages the BIP-32 entropy from the Wallet SRP.
+ * Provides access to Snap APIs for entropy, UI, events, and client status.
  */
 export type SnapClient = {
-  /**
-   * Get the Snap state for a given key.
-   *
-   * @param key - The key to get the state for. Undefined for the root.
-   * @returns The Snap state.
-   */
-  getState(key?: string): Promise<Json | null>;
-
-  /**
-   * Set the Snap state for a given key.
-   *
-   * @param key - The key to set the state for. Undefined for the root.
-   * @param newState - The new state.
-   */
-  setState(key?: string, newState?: Json): Promise<void>;
-
   /**
    * Get the private SLIP10 for a given derivation path from the Snap SRP.
    *

@@ -1,3 +1,9 @@
+import {
+  createFetchPolicy,
+  fetchWithPolicy,
+} from '@metamask/snap-networks-utils';
+import type { FetchPolicy, Logger } from '@metamask/snap-networks-utils';
+
 import { ExternalServiceError } from '../entities';
 import type { AssetRatesClient, PriceApiConfig, SpotPrice } from '../entities';
 
@@ -20,8 +26,18 @@ type SpotPricesResponse = {
 export class PriceApiClientAdapter implements AssetRatesClient {
   readonly #endpoint: string;
 
-  constructor(config: PriceApiConfig) {
+  readonly #fetch: typeof globalThis.fetch;
+
+  readonly #policy: FetchPolicy;
+
+  constructor(
+    config: PriceApiConfig,
+    logger: Logger,
+    fetchFn: typeof globalThis.fetch = globalThis.fetch,
+  ) {
     this.#endpoint = config.url;
+    this.#fetch = fetchFn;
+    this.#policy = createFetchPolicy({ service: 'price_api', logger });
   }
 
   async spotPrices(
@@ -33,17 +49,9 @@ export class PriceApiClientAdapter implements AssetRatesClient {
     }/v1/spot-prices/${baseCurrency}?vsCurrency=${vsCurrency}`;
 
     try {
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new ExternalServiceError(`Failed to fetch spot prices`, {
-          vsCurrency,
-          baseCurrency,
-          response: response.statusText,
-        });
-      }
-
-      const prices: SpotPricesResponse = await response.json();
+      const prices = JSON.parse(
+        await fetchWithPolicy(this.#policy, url, undefined, this.#fetch),
+      ) as SpotPricesResponse;
       return {
         price: prices.price,
         marketData: {

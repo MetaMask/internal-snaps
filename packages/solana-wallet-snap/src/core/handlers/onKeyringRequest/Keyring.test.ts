@@ -1,10 +1,8 @@
-/* eslint-disable no-restricted-globals */
-
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { AccountCreationType, SolMethod } from '@metamask/keyring-api';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import {
   InMemoryState,
-  Logger,
   asStrictKeyringAccount,
 } from '@metamask/snap-networks-utils';
 import type { IStateManager } from '@metamask/snap-networks-utils';
@@ -12,6 +10,7 @@ import { InvalidParamsError, SnapError } from '@metamask/snaps-sdk';
 import type { CaipAssetType, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { signature } from '@solana/kit';
 import bs58 from 'bs58';
+import type { Mocked } from 'vitest';
 
 import type { AssetEntity } from '../../../entities';
 import type { Caip10Address } from '../../constants/solana';
@@ -45,30 +44,19 @@ import {
   getBip32EntropyMock,
   getSolanaCoinTypeNodeMock,
 } from '../../test/mocks/utils/getBip32Entropy';
+/* eslint-disable no-restricted-globals */
+import * as Errors from '../../utils/errors';
 import { trackError } from '../../utils/errors';
 import { getBip32Entropy } from '../../utils/getBip32Entropy';
+import * as Bip32Entropy from '../../utils/getBip32Entropy';
 import logger from '../../utils/logger';
 import { AccountAssetsFetchError } from '../../services/assets/adapters/SnapAssetsAdapter';
 import { SolanaKeyring } from './Keyring';
 
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  ...jest.requireActual('@metamask/keyring-snap-sdk'),
-  emitSnapKeyringEvent: jest.fn().mockResolvedValue(null),
-}));
-
-jest.mock('../../utils/getBip32Entropy', () => ({
-  getBip32Entropy: getBip32EntropyMock,
-  getSolanaCoinTypeNode: getSolanaCoinTypeNodeMock,
-}));
-
-jest.mock('../../utils/errors', () => ({
-  trackError: jest.fn().mockResolvedValue('tracked-error-id'),
-}));
-
 const NON_EXISTENT_ACCOUNT_ID = '123e4567-e89b-42d3-a456-426614174009';
 
 (globalThis as any).snap = {
-  request: jest.fn().mockImplementation(async ({ method }) => {
+  request: vi.fn(async ({ method }) => {
     if (method === 'snap_listEntropySources') {
       return Promise.resolve([
         { id: MOCK_SEED_PHRASE_ENTROPY_SOURCE, primary: true },
@@ -86,11 +74,21 @@ describe('SolanaKeyring', () => {
   let mockWalletService: WalletService;
   let mockAssetsService: AssetsService;
   let mockConfirmationHandler: ConfirmationHandler;
-  let mockTransactionsService: jest.Mocked<TransactionsService>;
+  let mockTransactionsService: Mocked<TransactionsService>;
   let mockKeyringAccountMonitor: KeyringAccountMonitor;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
+      undefined,
+    );
+    vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
+    vi.spyOn(Bip32Entropy, 'getBip32Entropy').mockImplementation((params) =>
+      getBip32EntropyMock(params as never),
+    );
+    vi.spyOn(Bip32Entropy, 'getSolanaCoinTypeNode').mockImplementation(
+      (entropySource) => getSolanaCoinTypeNodeMock(entropySource),
+    );
 
     // To simplify the mocking of individual tests, we initialize the state in happy path with all mock accounts
     mockState = new InMemoryState({
@@ -105,35 +103,31 @@ describe('SolanaKeyring', () => {
     });
 
     mockAssetsService = {
-      fetchAccountAssetsFromRpc: jest
-        .fn()
-        .mockResolvedValue(MOCK_ASSET_ENTITIES),
-      saveMany: jest.fn(),
-      getAccountAssets: jest.fn(),
-      getAccountAssetsByIDs: jest.fn(),
-      getNativeAssetTypes: jest
-        .fn()
-        .mockReturnValue([KnownCaip19Id.SolMainnet]),
+      fetchAccountAssetsFromRpc: vi.fn().mockResolvedValue(MOCK_ASSET_ENTITIES),
+      saveMany: vi.fn(),
+      getAccountAssets: vi.fn(),
+      getAccountAssetsByIDs: vi.fn(),
+      getNativeAssetTypes: vi.fn().mockReturnValue([KnownCaip19Id.SolMainnet]),
     } as unknown as AssetsService;
 
     mockWalletService = {
-      resolveAccountAddress: jest.fn(),
-      signIn: jest.fn(),
-      signTransaction: jest.fn(),
-      signMessage: jest.fn(),
-      signAndSendTransaction: jest.fn(),
+      resolveAccountAddress: vi.fn(),
+      signIn: vi.fn(),
+      signTransaction: vi.fn(),
+      signMessage: vi.fn(),
+      signAndSendTransaction: vi.fn(),
     } as unknown as WalletService;
 
     mockConfirmationHandler = {
-      handleKeyringRequest: jest.fn(),
+      handleKeyringRequest: vi.fn(),
     } as unknown as ConfirmationHandler;
 
     mockTransactionsService = {
-      fetchLatestSignatures: jest.fn(),
-    } as unknown as jest.Mocked<TransactionsService>;
+      fetchLatestSignatures: vi.fn(),
+    } as unknown as Mocked<TransactionsService>;
 
     mockKeyringAccountMonitor = {
-      setMonitoredAccounts: jest.fn(),
+      setMonitoredAccounts: vi.fn(),
     } as unknown as KeyringAccountMonitor;
 
     keyring = new SolanaKeyring({
@@ -149,9 +143,10 @@ describe('SolanaKeyring', () => {
 
   describe('getAccountAssets', () => {
     it('fetches live assets for the account and returns their asset types', async () => {
-      jest
-        .spyOn(mockAssetsService, 'fetchAccountAssetsFromRpc')
-        .mockResolvedValue(MOCK_ASSET_ENTITIES);
+      vi.spyOn(
+        mockAssetsService,
+        'fetchAccountAssetsFromRpc',
+      ).mockResolvedValue(MOCK_ASSET_ENTITIES);
 
       const result = await keyring.getAccountAssets(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -168,9 +163,10 @@ describe('SolanaKeyring', () => {
     });
 
     it('propagates fetch failures', async () => {
-      jest
-        .spyOn(mockAssetsService, 'fetchAccountAssetsFromRpc')
-        .mockRejectedValue(new Error('network error'));
+      vi.spyOn(
+        mockAssetsService,
+        'fetchAccountAssetsFromRpc',
+      ).mockRejectedValue(new Error('network error'));
 
       await expect(
         keyring.getAccountAssets(MOCK_SOLANA_KEYRING_ACCOUNT_0.id),
@@ -178,12 +174,13 @@ describe('SolanaKeyring', () => {
     });
 
     it('removes token assets with zero balance', async () => {
-      jest
-        .spyOn(mockAssetsService, 'fetchAccountAssetsFromRpc')
-        .mockResolvedValue([
-          MOCK_ASSET_ENTITY_1, // Token asset with non-zero balance
-          { ...MOCK_ASSET_ENTITY_2, rawAmount: '0' }, // Token asset with zero balance
-        ]);
+      vi.spyOn(
+        mockAssetsService,
+        'fetchAccountAssetsFromRpc',
+      ).mockResolvedValue([
+        MOCK_ASSET_ENTITY_1, // Token asset with non-zero balance
+        { ...MOCK_ASSET_ENTITY_2, rawAmount: '0' }, // Token asset with zero balance
+      ]);
 
       const result = await keyring.getAccountAssets(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -193,12 +190,13 @@ describe('SolanaKeyring', () => {
     });
 
     it('keeps the native asset even if it has zero balance', async () => {
-      jest
-        .spyOn(mockAssetsService, 'fetchAccountAssetsFromRpc')
-        .mockResolvedValue([
-          { ...MOCK_ASSET_ENTITY_0, rawAmount: '0' }, // Native asset with zero balance
-          { ...MOCK_ASSET_ENTITY_1, rawAmount: '0' }, // Token asset with zero balance
-        ]);
+      vi.spyOn(
+        mockAssetsService,
+        'fetchAccountAssetsFromRpc',
+      ).mockResolvedValue([
+        { ...MOCK_ASSET_ENTITY_0, rawAmount: '0' }, // Native asset with zero balance
+        { ...MOCK_ASSET_ENTITY_1, rawAmount: '0' }, // Token asset with zero balance
+      ]);
 
       const result = await keyring.getAccountAssets(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -243,9 +241,9 @@ describe('SolanaKeyring', () => {
     });
 
     it('throws an error if state fails to be retrieved', async () => {
-      jest
-        .spyOn(mockState, 'getKey')
-        .mockRejectedValueOnce(new Error('State error'));
+      vi.spyOn(mockState, 'getKey').mockRejectedValueOnce(
+        new Error('State error'),
+      );
 
       await expect(
         keyring.getAccount(MOCK_SOLANA_KEYRING_ACCOUNT_1.id),
@@ -253,14 +251,14 @@ describe('SolanaKeyring', () => {
     });
 
     it('wraps state errors in a single SnapError (no double-wrap)', async () => {
-      jest
-        .spyOn(mockState, 'getKey')
-        .mockRejectedValueOnce(new Error('State error'));
+      vi.spyOn(mockState, 'getKey').mockRejectedValueOnce(
+        new Error('State error'),
+      );
       // SnapError's constructor copies the wrapped error's message verbatim,
       // so a single SnapError and a SnapError-of-SnapError look identical at
       // the message level. We instead detect double-wrapping via the log
       // pattern: each wrap site logs 'Error getting account'.
-      const errorLogSpy = jest.spyOn(Logger.prototype, 'error');
+      const errorLogSpy = vi.spyOn(logger, 'error');
 
       const caught = await keyring
         .getAccount(MOCK_SOLANA_KEYRING_ACCOUNT_1.id)
@@ -289,16 +287,16 @@ describe('SolanaKeyring', () => {
     });
 
     it('returns an empty array if no accounts are found', async () => {
-      jest.spyOn(mockState, 'getKey').mockResolvedValueOnce({});
+      vi.spyOn(mockState, 'getKey').mockResolvedValueOnce({});
 
       const accounts = await keyring.getAccounts();
       expect(accounts).toStrictEqual([]);
     });
 
     it('throws a SnapError if state fails to be retrieved', async () => {
-      jest
-        .spyOn(mockState, 'getKey')
-        .mockRejectedValueOnce(new Error('State error'));
+      vi.spyOn(mockState, 'getKey').mockRejectedValueOnce(
+        new Error('State error'),
+      );
 
       const caught = await keyring
         .getAccounts()
@@ -374,9 +372,10 @@ describe('SolanaKeyring', () => {
         symbol: 4,
       } as unknown as AssetEntity;
 
-      jest
-        .spyOn(mockAssetsService, 'fetchAccountAssetsFromRpc')
-        .mockResolvedValue([invalidAsset]);
+      vi.spyOn(
+        mockAssetsService,
+        'fetchAccountAssetsFromRpc',
+      ).mockResolvedValue([invalidAsset]);
 
       await expect(
         keyring.getAccountBalances(MOCK_SOLANA_KEYRING_ACCOUNT_1.id, [
@@ -386,9 +385,10 @@ describe('SolanaKeyring', () => {
     });
 
     it('fetches live balances for the account and returns only the requested assets', async () => {
-      jest
-        .spyOn(mockAssetsService, 'fetchAccountAssetsFromRpc')
-        .mockResolvedValue(MOCK_ASSET_ENTITIES);
+      vi.spyOn(
+        mockAssetsService,
+        'fetchAccountAssetsFromRpc',
+      ).mockResolvedValue(MOCK_ASSET_ENTITIES);
 
       const result = await keyring.getAccountBalances(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -408,9 +408,10 @@ describe('SolanaKeyring', () => {
     });
 
     it('propagates fetch failures', async () => {
-      jest
-        .spyOn(mockAssetsService, 'fetchAccountAssetsFromRpc')
-        .mockRejectedValue(new Error('network error'));
+      vi.spyOn(
+        mockAssetsService,
+        'fetchAccountAssetsFromRpc',
+      ).mockRejectedValue(new Error('network error'));
 
       await expect(
         keyring.getAccountBalances(MOCK_SOLANA_KEYRING_ACCOUNT_1.id, [
@@ -443,12 +444,13 @@ describe('SolanaKeyring', () => {
     });
 
     it('removes token assets with zero balance', async () => {
-      jest
-        .spyOn(mockAssetsService, 'fetchAccountAssetsFromRpc')
-        .mockResolvedValue([
-          MOCK_ASSET_ENTITY_1, // Token asset with non-zero balance
-          { ...MOCK_ASSET_ENTITY_2, rawAmount: '0' }, // Token asset with zero balance
-        ]);
+      vi.spyOn(
+        mockAssetsService,
+        'fetchAccountAssetsFromRpc',
+      ).mockResolvedValue([
+        MOCK_ASSET_ENTITY_1, // Token asset with non-zero balance
+        { ...MOCK_ASSET_ENTITY_2, rawAmount: '0' }, // Token asset with zero balance
+      ]);
 
       const result = await keyring.getAccountBalances(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -464,12 +466,13 @@ describe('SolanaKeyring', () => {
     });
 
     it('keeps the native asset even if it has zero balance', async () => {
-      jest
-        .spyOn(mockAssetsService, 'fetchAccountAssetsFromRpc')
-        .mockResolvedValue([
-          { ...MOCK_ASSET_ENTITY_0, rawAmount: '0' }, // Native asset with zero balance
-          { ...MOCK_ASSET_ENTITY_1, rawAmount: '0' }, // Token asset with zero balance
-        ]);
+      vi.spyOn(
+        mockAssetsService,
+        'fetchAccountAssetsFromRpc',
+      ).mockResolvedValue([
+        { ...MOCK_ASSET_ENTITY_0, rawAmount: '0' }, // Native asset with zero balance
+        { ...MOCK_ASSET_ENTITY_1, rawAmount: '0' }, // Token asset with zero balance
+      ]);
 
       const result = await keyring.getAccountBalances(
         MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -495,9 +498,9 @@ describe('SolanaKeyring', () => {
       } as unknown as JsonRpcRequest;
       const mockResolvedAddress: Caip10Address = `${mockScope}:resolved-address`;
 
-      jest
-        .spyOn(mockWalletService, 'resolveAccountAddress')
-        .mockResolvedValue(mockResolvedAddress);
+      vi.spyOn(mockWalletService, 'resolveAccountAddress').mockResolvedValue(
+        mockResolvedAddress,
+      );
 
       const result = await keyring.resolveAccountAddress(
         mockScope,
@@ -521,9 +524,9 @@ describe('SolanaKeyring', () => {
       } as unknown as JsonRpcRequest;
       const error = new Error('Something went wrong');
 
-      jest
-        .spyOn(mockWalletService, 'resolveAccountAddress')
-        .mockRejectedValue(error);
+      vi.spyOn(mockWalletService, 'resolveAccountAddress').mockRejectedValue(
+        error,
+      );
 
       const result = await keyring.resolveAccountAddress(
         mockScope,
@@ -543,7 +546,7 @@ describe('SolanaKeyring', () => {
         scopes: [Network.Localnet],
       };
 
-      jest.spyOn(mockState, 'getKey').mockResolvedValueOnce(mockAccount);
+      vi.spyOn(mockState, 'getKey').mockResolvedValueOnce(mockAccount);
 
       await expect(
         keyring.submitRequest({
@@ -573,7 +576,7 @@ describe('SolanaKeyring', () => {
         scopes: [],
       };
 
-      jest.spyOn(mockState, 'getKey').mockResolvedValueOnce(mockAccount);
+      vi.spyOn(mockState, 'getKey').mockResolvedValueOnce(mockAccount);
 
       await expect(
         keyring.submitRequest({
@@ -637,9 +640,10 @@ describe('SolanaKeyring', () => {
         scope: Network.Mainnet,
         origin: 'https://metamask.io',
       };
-      jest
-        .spyOn(mockConfirmationHandler, 'handleKeyringRequest')
-        .mockResolvedValue(true);
+      vi.spyOn(
+        mockConfirmationHandler,
+        'handleKeyringRequest',
+      ).mockResolvedValue(true);
 
       await expect(keyring.submitRequest(request)).rejects.toThrow(
         'The requested account and/or method has not been authorized by the user.',
@@ -647,13 +651,14 @@ describe('SolanaKeyring', () => {
     });
 
     it('calls the confirmation handler, and calls the wallet service if confirmed', async () => {
-      jest
-        .spyOn(mockState, 'getKey')
-        .mockResolvedValueOnce(MOCK_SOLANA_KEYRING_ACCOUNT_0);
+      vi.spyOn(mockState, 'getKey').mockResolvedValueOnce(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
 
-      jest
-        .spyOn(mockConfirmationHandler, 'handleKeyringRequest')
-        .mockResolvedValue(true);
+      vi.spyOn(
+        mockConfirmationHandler,
+        'handleKeyringRequest',
+      ).mockResolvedValue(true);
 
       const message = 'SGVsbG8sIHdvcmxkIQ=='; // "Hello, world!" in base64
 
@@ -687,9 +692,10 @@ describe('SolanaKeyring', () => {
     });
 
     it('throws a UserRejectedRequestError if the confirmation handler returns false', async () => {
-      jest
-        .spyOn(mockConfirmationHandler, 'handleKeyringRequest')
-        .mockResolvedValue(false);
+      vi.spyOn(
+        mockConfirmationHandler,
+        'handleKeyringRequest',
+      ).mockResolvedValue(false);
 
       const request: KeyringRequest = {
         account: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -775,7 +781,7 @@ describe('SolanaKeyring', () => {
         curve: 'ed25519',
       });
 
-      jest.clearAllMocks();
+      vi.clearAllMocks();
 
       // With activity — account creation path.
       mockTransactionsService.fetchLatestSignatures.mockResolvedValueOnce([
