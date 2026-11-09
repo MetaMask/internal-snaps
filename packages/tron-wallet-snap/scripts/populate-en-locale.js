@@ -16,8 +16,8 @@ const englishLocale = {
 // Write en locale file
 try {
   writeFileSync(
-    join(__dirname, '../locales/en.json'),
-    JSON.stringify(englishLocale, null, 2),
+    join(__dirname, '../../snap-networks-utils/locales/tron/en.json'),
+    `${JSON.stringify(englishLocale, null, 2)}\n`,
   );
   console.log('[populate-en-locale] - en locale populated');
 } catch (error) {

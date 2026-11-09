@@ -18,8 +18,7 @@
   "files": [
     "dist/",
     "images/",
-    "snap.manifest.json",
-    "locales/"
+    "snap.manifest.json"
   ],
   "main": "./dist/bundle.js",
   "publishConfig": {
@@ -30,8 +29,8 @@
     "allow-scripts": "yarn workspace root allow-scripts",
     "build": "mm-snap build --preinstalled && yarn build:locale",
     "build:clean": "yarn clean && yarn build:locale && yarn build",
-    "build:locale": "node ./scripts/populate-en-locale.js && oxfmt 'locales/**/*.json'",
-    "build:locale:watch": "npx nodemon --watch messages.json --exec \"node ./scripts/populate-en-locale.js && oxfmt 'locales/**/*.json'\"",
+    "build:locale": "node ./scripts/populate-en-locale.js",
+    "build:locale:watch": "npx nodemon --watch messages.json --exec \"node ./scripts/populate-en-locale.js\"",
     "changelog:update": "../../scripts/update-changelog.sh @metamask/bitcoin-wallet-snap",
     "changelog:validate": "../../scripts/validate-changelog.sh @metamask/bitcoin-wallet-snap",
     "since-latest-release": "../../scripts/since-latest-release.sh",

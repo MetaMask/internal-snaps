@@ -1,5 +1,6 @@
-import en from '../../../locales/en.json';
-import es from '../../../locales/es.json';
+import { createI18n } from '@metamask/snap-networks-utils';
+import en from '@metamask/snap-networks-utils/locales/solana/en.json';
+import es from '@metamask/snap-networks-utils/locales/solana/es.json';
 
 export const locales = {
   en: en.messages,
@@ -19,22 +20,8 @@ export type LocalizedMessage = keyof (typeof locales)[typeof FALLBACK_LANGUAGE];
  * @returns A function that gets the translation for a given key.
  */
 export function i18n(locale: Locale) {
-  // Needs to be castes as EN is the main language and we can have the case where
-  // messages are not yed completed for the other languages
+  const translate = createI18n(locales)(locale);
 
-  const messages = (locales[locale] ??
-    locales[FALLBACK_LANGUAGE]) as typeof en.messages;
-
-  return (id: LocalizedMessage, replaces?: Record<string, string>) => {
-    let message = messages?.[id]?.message ?? id;
-
-    if (replaces && message) {
-      Object.keys(replaces).forEach((key) => {
-        const regex = new RegExp(`\\{${key}\\}`, 'gu');
-        message = message.replace(regex, replaces[key] ?? '');
-      });
-    }
-
-    return message;
-  };
+  return (id: LocalizedMessage, replaces?: Record<string, string>): string =>
+    translate(id, replaces);
 }

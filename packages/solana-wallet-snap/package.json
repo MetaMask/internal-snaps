@@ -18,8 +18,7 @@
   "files": [
     "dist/",
     "snap.manifest.json",
-    "images/",
-    "locales/"
+    "images/"
   ],
   "main": "./dist/bundle.js",
   "publishConfig": {
