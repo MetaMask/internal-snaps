@@ -767,9 +767,9 @@ describe('OnChainAccountService', () => {
       migrationEnabled: boolean,
     ): ReturnType<typeof mockOnChainAccountService> => {
       const mocks = mockOnChainAccountService();
-      vi
-        .spyOn(mocks.assetsService, 'isMigrationEnabled')
-        .mockResolvedValue(migrationEnabled);
+      vi.spyOn(mocks.assetsService, 'isMigrationEnabled').mockResolvedValue(
+        migrationEnabled,
+      );
       return mocks;
     };
 
@@ -817,8 +817,7 @@ describe('OnChainAccountService', () => {
 
     it('still records the marker when emitting the balance event fails', async () => {
       const { onChainAccountService } = setupWithMigration(false);
-      vi
-        .mocked(snap.request)
+      vi.mocked(snap.request)
         .mockRejectedValueOnce(new Error('emit failed'))
         .mockResolvedValue(null);
 

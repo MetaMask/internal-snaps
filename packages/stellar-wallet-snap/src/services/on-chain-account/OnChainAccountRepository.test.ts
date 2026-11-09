@@ -9,7 +9,10 @@ const ACCOUNT_A = '11111111-1111-4111-8111-111111111111';
 const ACCOUNT_B = '22222222-2222-4222-8222-222222222222';
 
 const snapshot = (scope: KnownCaip2ChainId): OnChainAccountSerializableFull =>
-  ({ scope, accountId: 'GSNAPSHOT' }) as unknown as OnChainAccountSerializableFull;
+  ({
+    scope,
+    accountId: 'GSNAPSHOT',
+  }) as unknown as OnChainAccountSerializableFull;
 
 describe('OnChainAccountRepository', () => {
   const setup = (

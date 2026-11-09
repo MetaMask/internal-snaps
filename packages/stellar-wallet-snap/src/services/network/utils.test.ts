@@ -3,11 +3,7 @@ import { BigNumber } from 'bignumber.js';
 
 import { AppConfig } from '../../config';
 import { toSmallestUnit } from '../../utils';
-import {
-  isAccountNotFoundError,
-  isEmptyHttpBody,
-  multiplyFee,
-} from './utils';
+import { isAccountNotFoundError, isEmptyHttpBody, multiplyFee } from './utils';
 
 const maxFeeThresholdInStroops = toSmallestUnit(
   new BigNumber(AppConfig.transaction.maxFeeThresholdInXLM),
@@ -82,8 +78,8 @@ describe('isAccountNotFoundError', () => {
   });
 
   it('returns false for a network failure', () => {
-    expect(isAccountNotFoundError(new TypeError('Failed to fetch'), ADDRESS)).toBe(
-      false,
-    );
+    expect(
+      isAccountNotFoundError(new TypeError('Failed to fetch'), ADDRESS),
+    ).toBe(false);
   });
 });

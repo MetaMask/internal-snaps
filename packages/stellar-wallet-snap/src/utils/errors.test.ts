@@ -1,12 +1,11 @@
-import { UserRejectedRequestError } from '@metamask/snaps-sdk';
-
-import { AccountBalanceUnavailableException } from '../handlers/keyring/exceptions';
 import {
   BrokenCircuitError,
   createFetchPolicyError,
   FetchPolicyErrorName,
 } from '@metamask/snap-networks-utils';
+import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 
+import { AccountBalanceUnavailableException } from '../handlers/keyring/exceptions';
 import {
   HttpException,
   HttpResponseException,

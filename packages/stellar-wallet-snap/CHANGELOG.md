@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Report an unknown balance (untracked balance-unavailable error) for accounts that have never been synced, instead of 0 XLM, and schedule sync when the balance is requested; do not treat an empty-body Horizon 404 as an unfunded account ([#524](https://github.com/MetaMask/internal-snaps/pull/524))
+
 ## [2.1.0]
 
 ### Changed

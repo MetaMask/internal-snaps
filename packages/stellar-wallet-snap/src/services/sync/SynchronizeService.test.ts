@@ -232,9 +232,9 @@ describe('SynchronizeService', () => {
       1,
       'sync-mark-fails-entropy',
     ) as [StellarKeyringAccount];
-    vi
-      .spyOn(onChainAccountService, 'markAccountsUnfunded')
-      .mockRejectedValue(new Error('state write failed'));
+    vi.spyOn(onChainAccountService, 'markAccountsUnfunded').mockRejectedValue(
+      new Error('state write failed'),
+    );
     resolveOnChainAccountSpy.mockRejectedValue(
       new AccountNotActivatedException(account.address, scope),
     );
