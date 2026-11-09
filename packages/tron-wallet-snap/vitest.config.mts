@@ -124,10 +124,10 @@ export default defineConfig({
         autoUpdate: process.env.CI
           ? false
           : (value: number) => Math.floor(value * 100) / 100,
-        branches: 75.35,
-        functions: 83.85,
-        lines: 86.2,
-        statements: 86.12,
+        branches: 77.81,
+        functions: 85.08,
+        lines: 87.4,
+        statements: 87.31,
       },
     },
   },

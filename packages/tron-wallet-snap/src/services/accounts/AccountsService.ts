@@ -33,6 +33,7 @@ import {
   createTronBip44KeypairDeriver,
 } from '../../utils/deriveTronFromCoinTypeNode';
 import { sanitizeSensitiveError, trackError } from '../../utils/errors';
+import { isOpenCircuitError } from '../../utils/openCircuitBypass';
 import { DerivationPathStruct } from '../../validation/structs';
 import type { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
@@ -638,7 +639,16 @@ export class AccountsService {
     accountIds: string[],
   ): Promise<void> {
     try {
-      const failures = getSyncFailuresFromSettledResult(results, accountIds);
+      // A fetch short-circuited by an open circuit made no request: not a
+      // failure to report (the failures that opened it were reported).
+      const failures = getSyncFailuresFromSettledResult(
+        results.map((result) =>
+          result.status === 'rejected' && isOpenCircuitError(result.reason)
+            ? { status: 'fulfilled' as const, value: undefined }
+            : result,
+        ),
+        accountIds,
+      );
 
       if (failures.length === 0) {
         return;

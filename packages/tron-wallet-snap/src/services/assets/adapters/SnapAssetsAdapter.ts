@@ -40,6 +40,11 @@ import {
 import type { AssetEntity } from '../../../entities/assets';
 import { parseTronCaipAssetType } from '../../../utils/caip';
 import { toUiAmount } from '../../../utils/conversion';
+import {
+  ACCOUNT_INFO_FETCH_FAILED_MESSAGE,
+  failureStreakGate,
+} from '../../../utils/failureStreakGate';
+import type { ExplicitRequestOptions } from '../../../utils/openCircuitBypass';
 import type { UnencryptedStateValue } from '../../state/stateTypes';
 import type { AssetsRepository } from '../AssetsRepository';
 import { AssetFetchError } from '../errors';
@@ -172,6 +177,8 @@ export class SnapAssetsAdapter {
    *
    * @param scope - The network to query.
    * @param account - The keyring account.
+   * @param options - Options of an explicit client request: its balance
+   * reads may reach the network once while a fetch policy's circuit is open.
    * @throws {@link AssetFetchError} When the account info request fails for
    * reasons other than "account not found", since the resulting balance
    * state is unknown.
@@ -180,6 +187,7 @@ export class SnapAssetsAdapter {
   async fetchAssetsAndBalancesForAccount(
     scope: Network,
     account: KeyringAccount,
+    options?: ExplicitRequestOptions,
   ): Promise<AssetEntity[]> {
     this.#logger.info('Fetching assets and balances by account', {
       account,
@@ -191,16 +199,27 @@ export class SnapAssetsAdapter {
       tronAccountResourcesRequest,
       stakingRewardsRequest,
     ] = await Promise.allSettled([
-      this.#trongridApiClient.getAccountInfoByAddress(scope, account.address),
-      this.#tronHttpClient.getAccountResources(scope, account.address),
-      this.#tronHttpClient.getReward(scope, account.address),
+      this.#trongridApiClient.getAccountInfoByAddress(
+        scope,
+        account.address,
+        options,
+      ),
+      this.#tronHttpClient.getAccountResources(scope, account.address, options),
+      this.#tronHttpClient.getReward(scope, account.address, options),
     ]);
 
     const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
+    if (
+      tronAccountInfoRequest.status === 'fulfilled' ||
+      tronAccountInfoRequest.reason instanceof TrongridAccountNotFoundError
+    ) {
+      // TronGrid answered: a later account info failure starts a new streak.
+      failureStreakGate.endStreak(ACCOUNT_INFO_FETCH_FAILED_MESSAGE);
+    }
     if (isInactiveAccount) {
       const { reason } = tronAccountInfoRequest;
       if (!(reason instanceof TrongridAccountNotFoundError)) {
-        throw new AssetFetchError('Failed to fetch account info', {
+        throw new AssetFetchError(ACCOUNT_INFO_FETCH_FAILED_MESSAGE, {
           cause: reason,
         });
       }
@@ -213,7 +232,7 @@ export class SnapAssetsAdapter {
 
     const trc20BalancesFallback = isInactiveAccount
       ? await this.#trongridApiClient
-          .getTrc20BalancesByAddress(scope, account.address)
+          .getTrc20BalancesByAddress(scope, account.address, options)
           .catch(async (error) => {
             await this.#snapClient.trackError(
               new Error('Failed to fetch TRC20 balances for inactive account', {
@@ -262,10 +281,17 @@ export class SnapAssetsAdapter {
     return this.#filterTokensWithoutPriceData(enrichedAssets, spotPrices);
   }
 
-  async fetchAccountAssets(account: KeyringAccount): Promise<AssetEntity[]> {
+  async fetchAccountAssets(
+    account: KeyringAccount,
+    options?: ExplicitRequestOptions,
+  ): Promise<AssetEntity[]> {
     const results = await Promise.all(
       account.scopes.map((scope) =>
-        this.fetchAssetsAndBalancesForAccount(scope as Network, account),
+        this.fetchAssetsAndBalancesForAccount(
+          scope as Network,
+          account,
+          options,
+        ),
       ),
     );
 
