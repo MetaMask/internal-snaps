@@ -1,7 +1,8 @@
 {
   "extends": "../../tsconfig.packages.snaps.json",
   "compilerOptions": {
-    "baseUrl": "./"
+    "baseUrl": "./",
+    "types": ["node", "vitest/globals", "jest"]
   },
-  "include": ["**/*.ts", "**/*.tsx", "**/*.json"]
+  "include": ["**/*.ts", "**/*.tsx", "**/*.json", "**/*.mts"]
 }

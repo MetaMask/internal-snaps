@@ -2414,18 +2414,19 @@ __metadata:
     "@metamask/snaps-sdk": "npm:^12.0.1"
     "@metamask/superstruct": "npm:^3.4.1"
     "@metamask/utils": "npm:^11.11.0"
+    "@vitest/coverage-istanbul": "npm:^5.0.5"
     bip322-js: "npm:^3.0.0"
     concurrently: "npm:^10.0.3"
     dotenv: "npm:^17.2.1"
     jest: "npm:30.0.3"
-    jest-it-up: "npm:^2.0.2"
-    jest-mock-extended: "npm:^4.0.0"
-    jest-transform-stub: "npm:2.0.0"
     oxfmt: "npm:^0.70.0"
     superstruct: "npm:^2.0.2"
     ts-jest: "npm:^29.4.14"
     typescript: "npm:~5.8.3"
     uuid: "npm:^14.0.0"
+    vite: "npm:^8.3.5"
+    vitest: "npm:^5.0.5"
+    vitest-mock-extended: "npm:^5.1.1"
     webpack: "npm:5.107.2"
     wif: "npm:^5.0.0"
   languageName: unknown
@@ -12173,20 +12174,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jest-mock-extended@npm:^4.0.0":
-  version: 4.0.1
-  resolution: "jest-mock-extended@npm:4.0.1"
-  dependencies:
-    lodash.isequal: "npm:^4.5.0"
-    ts-essentials: "npm:^10.1.1"
-  peerDependencies:
-    "@jest/globals": ^28.0.0 || ^29.0.0 || ^30.0.0
-    jest: ^24.0.0 || ^25.0.0 || ^26.0.0 || ^27.0.0 || ^28.0.0 || ^29.0.0 || ^30.0.0
-    typescript: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0
-  checksum: 10/48c5bdd4f2009b040ee9b412ab5308edc3ed2a4b80cb77cb7a88a3952106bac3ab37b405bd54ee5aef16657e3b43d6995c8586a4125369acbbbb7591f1d05f7f
-  languageName: node
-  linkType: hard
-
 "jest-mock@npm:30.0.2":
   version: 30.0.2
   resolution: "jest-mock@npm:30.0.2"
@@ -12403,13 +12390,6 @@ __metadata:
     pretty-format: "npm:^29.7.0"
     semver: "npm:^7.5.3"
   checksum: 10/cb19a3948256de5f922d52f251821f99657339969bf86843bd26cf3332eae94883e8260e3d2fba46129a27c3971c1aa522490e460e16c7fad516e82d10bbf9f8
-  languageName: node
-  linkType: hard
-
-"jest-transform-stub@npm:2.0.0":
-  version: 2.0.0
-  resolution: "jest-transform-stub@npm:2.0.0"
-  checksum: 10/c46134257e5fb047f5952e4a4a1339925dd009da15aa8d3310ba1d3e4d22266ed6c675cd18e58c9d5ca2246718d6cc8ff00ea6a4b6f3b2a6b285b6426f6ae8fe
   languageName: node
   linkType: hard
 
@@ -12935,13 +12915,6 @@ __metadata:
   version: 4.18.1
   resolution: "lodash-es@npm:4.18.1"
   checksum: 10/8bfad225ef09ef42b04283cdaf7830efcc2ba29ae41b56501c74422155ee1ccaa1f0f6e8319def3451a1fe54dec501c8e4bee622bae2b2d98ac993731e0a5cce
-  languageName: node
-  linkType: hard
-
-"lodash.isequal@npm:^4.5.0":
-  version: 4.5.0
-  resolution: "lodash.isequal@npm:4.5.0"
-  checksum: 10/82fc58a83a1555f8df34ca9a2cd300995ff94018ac12cc47c349655f0ae1d4d92ba346db4c19bbfc90510764e0c00ddcc985a358bdcd4b3b965abf8f2a48a214
   languageName: node
   linkType: hard
 
@@ -15844,7 +15817,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ts-essentials@npm:^10.1.1":
+"ts-essentials@npm:^10.2.1":
   version: 10.2.1
   resolution: "ts-essentials@npm:10.2.1"
   peerDependencies:
@@ -16452,6 +16425,18 @@ __metadata:
   bin:
     vite: bin/vite.js
   checksum: 10/4767200cd0ccaf7b98fe2a5837e005451a3213971577f82525dc74742b02f636916e4519acf12dede04bf1e04f954a7fc8e427762bd51e51700dcf328d3bc3e9
+  languageName: node
+  linkType: hard
+
+"vitest-mock-extended@npm:^5.1.1":
+  version: 5.1.1
+  resolution: "vitest-mock-extended@npm:5.1.1"
+  dependencies:
+    ts-essentials: "npm:^10.2.1"
+  peerDependencies:
+    typescript: 3.x || 4.x || 5.x || 6.x || 7.x
+    vitest: ">=4.0.0"
+  checksum: 10/d9439f80aa25fb1206969d8cad8917c2628ceb4b0add332c0ff4873c0e9f38dd2965fa9ea325e98111f85c4dfd7fa16537e702f0e95a3dd995aafda6a71d09fc
   languageName: node
   linkType: hard
 

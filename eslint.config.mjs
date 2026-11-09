@@ -184,11 +184,6 @@ const config = createConfig([
       'packages/solana-wallet-snap/**/*.test.tsx',
       'packages/solana-wallet-snap/**/__mocks__/**/*.ts',
     ],
-    languageOptions: {
-      globals: {
-        vi: 'readonly',
-      },
-    },
   },
   {
     files: ['**/*.test.{js,ts,tsx}', '**/tests/**/*.{js,ts,tsx}'],
@@ -205,6 +200,41 @@ const config = createConfig([
       node: {
         version: `^${NODE_LTS_VERSION}`,
       },
+    },
+  },
+  {
+    files: [
+      'packages/bitcoin-wallet-snap/src/**/*.test.ts',
+      'packages/bitcoin-wallet-snap/src/**/*.test.tsx',
+      'packages/bitcoin-wallet-snap/src/**/__mocks__/**/*.ts',
+      'packages/bitcoin-wallet-snap/vitest.setup.ts',
+    ],
+    rules: {
+      // `jest/unbound-method` allows `jest.mocked`, not `vi.mocked`.
+      'jest/unbound-method': 'off',
+    },
+  },
+  {
+    files: ['packages/bitcoin-wallet-snap/integration-test/**/*.ts'],
+    rules: {
+      // Integration tests import these from `@jest/globals` while the package
+      // tsconfig also declares Jest and Vitest globals. Unit tests use Vitest
+      // globals without importing them.
+      '@typescript-eslint/no-shadow': [
+        'error',
+        {
+          allow: [
+            'afterAll',
+            'afterEach',
+            'beforeAll',
+            'beforeEach',
+            'describe',
+            'expect',
+            'it',
+            'test',
+          ],
+        },
+      ],
     },
   },
   {
