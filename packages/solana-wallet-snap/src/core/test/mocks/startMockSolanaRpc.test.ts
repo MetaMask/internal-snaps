@@ -1,4 +1,4 @@
-/* eslint-disable vi/prefer-strict-equal */
+/* eslint-disable jest/prefer-strict-equal */
 
 import type { MockSolanaRpc } from './startMockSolanaRpc';
 import { startMockSolanaRpc } from './startMockSolanaRpc';
