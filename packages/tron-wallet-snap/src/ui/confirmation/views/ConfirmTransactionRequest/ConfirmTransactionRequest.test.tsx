@@ -6,7 +6,6 @@ import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import type { TransactionScanResult } from '../../../../services/transaction-scan/types';
 import { FetchStatus } from '../../../../types/snap';
 import type { Preferences } from '../../../../types/snap';
-import * as ExplorerUrl from '../../../../utils/getExplorerUrl';
 import * as I18n from '../../../../utils/i18n';
 import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
 import type { ConfirmTransactionRequestContext } from './types';
@@ -14,9 +13,6 @@ import type { ConfirmTransactionRequestContext } from './types';
 describe('ConfirmTransactionRequest', () => {
   beforeEach(() => {
     vi.spyOn(I18n, 'i18n').mockImplementation(() => (key: string) => key);
-    vi.spyOn(ExplorerUrl, 'getExplorerUrl').mockReturnValue(
-      'https://explorer.example.com',
-    );
   });
 
   const mockPreferences: Preferences = {
