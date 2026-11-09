@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Load locale catalogs from `@metamask/snap-networks-utils` instead of a local `locales/` directory, which is no longer published with the snap ([#575](https://github.com/MetaMask/internal-snaps/pull/575))
 - Report Solana RPC, Price API, Token API, NFT API and Security Alerts API outages through the shared fetch policy ([#583](https://github.com/MetaMask/internal-snaps/pull/583))
   - Slow or failing requests now emit `Snap Service Degraded` and `Snap Service Unavailable` Segment events, and give-ups are sent to Sentry without URLs, request params or response data.
   - The Solana RPC error-tracking transport has been removed, and errors the policy already reported are no longer sent to Sentry a second time.
