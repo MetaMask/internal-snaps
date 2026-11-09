@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Scan new accounts with the discovery gap (5) and extend to the standard gap only when the account has activity, instead of always using a gap-20 initial scan ([#522](https://github.com/MetaMask/internal-snaps/pull/522))
+
 ## [3.3.0]
 
 ### Changed
