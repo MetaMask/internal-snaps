@@ -15,6 +15,7 @@ import {
   batchesAllSettled,
   normalizeError,
 } from '@metamask/snap-networks-utils';
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import { Signer } from 'bip322-js';
 import { encode } from 'wif';
 
@@ -26,6 +27,7 @@ import type {
   Logger,
   MetaProtocolsClient,
   SnapClient,
+  SnapState,
   SyncResult,
 } from '../entities';
 import {
@@ -334,6 +336,8 @@ export class AccountUseCases {
 
   readonly #snapClient: SnapClient;
 
+  readonly #unencryptedState: IStateManager<Partial<SnapState>>;
+
   readonly #repository: BitcoinAccountRepository;
 
   readonly #confirmationRepository: ConfirmationRepository;
@@ -391,6 +395,7 @@ export class AccountUseCases {
   constructor(
     logger: Logger,
     snapClient: SnapClient,
+    unencryptedState: IStateManager<Partial<SnapState>>,
     repository: BitcoinAccountRepository,
     confirmationRepository: ConfirmationRepository,
     chain: BlockchainClient,
@@ -400,13 +405,14 @@ export class AccountUseCases {
   ) {
     this.#logger = logger;
     this.#snapClient = snapClient;
+    this.#unencryptedState = unencryptedState;
     this.#repository = repository;
     this.#confirmationRepository = confirmationRepository;
     this.#chain = chain;
     this.#fallbackFeeRate = fallbackFeeRate;
     this.#targetBlocksConfirmation = targetBlocksConfirmation;
     this.#metaProtocols = metaProtocols;
-    this.#fullScanQueue = new FullScanQueue(snapClient);
+    this.#fullScanQueue = new FullScanQueue(unencryptedState);
   }
 
   /**

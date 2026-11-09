@@ -17,7 +17,9 @@ import {
   SLIP10Node as RealSlip10Node,
 } from '@metamask/key-tree';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import { Signer } from 'bip322-js';
+import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type {
@@ -29,6 +31,7 @@ import type {
   Logger,
   MetaProtocolsClient,
   SnapClient,
+  SnapState,
   TransactionBuilder,
 } from '../entities';
 import {
@@ -56,6 +59,7 @@ import {
 describe('AccountUseCases', () => {
   const mockLogger = mock<Logger>();
   const mockSnapClient = mock<SnapClient>();
+  const mockUnencryptedState = mock<IStateManager<Partial<SnapState>>>();
   const mockRepository = mock<BitcoinAccountRepository>();
   const mockConfirmationRepository = mock<ConfirmationRepository>();
   const mockChain = mock<BlockchainClient>();
@@ -66,6 +70,7 @@ describe('AccountUseCases', () => {
   const useCases = new AccountUseCases(
     mockLogger,
     mockSnapClient,
+    mockUnencryptedState,
     mockRepository,
     mockConfirmationRepository,
     mockChain,
@@ -731,6 +736,7 @@ describe('AccountUseCases', () => {
       const testUseCases = new AccountUseCases(
         mockLogger,
         mockSnapClient,
+        mockUnencryptedState,
         mockRepository,
         mockConfirmationRepository,
         mockChain,
@@ -876,6 +882,7 @@ describe('AccountUseCases', () => {
       const testUseCases = new AccountUseCases(
         mockLogger,
         mockSnapClient,
+        mockUnencryptedState,
         mockRepository,
         mockConfirmationRepository,
         mockChain,
@@ -2705,23 +2712,23 @@ describe('AccountUseCases', () => {
   describe('balance-unknown tracking and the full scan queue', () => {
     const buildStatefulUseCases = (): {
       useCases: AccountUseCases;
-      snapClient: ReturnType<typeof mock<SnapClient>>;
       state: Record<string, unknown>;
     } => {
       const state: Record<string, unknown> = {};
-      const snapClient = mock<SnapClient>();
-      snapClient.getState.mockImplementation(async (key?: string) =>
-        key !== undefined && Object.hasOwn(state, key)
+      const unencryptedState = mock<IStateManager<Partial<SnapState>>>();
+      unencryptedState.getKey.mockImplementation(async (key: string) =>
+        Object.hasOwn(state, key)
           ? (JSON.parse(JSON.stringify(state[key])) as never)
-          : (null as never),
+          : undefined,
       );
-      snapClient.setState.mockImplementation(async (key, value) => {
+      unencryptedState.setKey.mockImplementation(async (key, value) => {
         state[key as string] = JSON.parse(JSON.stringify(value));
       });
       return {
         useCases: new AccountUseCases(
           mockLogger,
-          snapClient,
+          mockSnapClient,
+          unencryptedState,
           mockRepository,
           mockConfirmationRepository,
           mockChain,
@@ -2729,7 +2736,6 @@ describe('AccountUseCases', () => {
           targetBlocksConfirmation,
           undefined,
         ),
-        snapClient,
         state,
       };
     };
@@ -2812,26 +2818,26 @@ describe('AccountUseCases', () => {
 
   describe('full scan coordination (single-flight, on-demand, recovery)', () => {
     const NOW = 1_700_000_000_000;
-    let nowSpy: MockInstance<number, []>;
+    let nowSpy: MockInstance<() => number>;
 
     const buildUseCases = (): {
       useCases: AccountUseCases;
-      snapClient: ReturnType<typeof mock<SnapClient>>;
     } => {
       const state: Record<string, unknown> = {};
-      const snapClient = mock<SnapClient>();
-      snapClient.getState.mockImplementation(async (key?: string) =>
-        key !== undefined && Object.hasOwn(state, key)
+      const unencryptedState = mock<IStateManager<Partial<SnapState>>>();
+      unencryptedState.getKey.mockImplementation(async (key: string) =>
+        Object.hasOwn(state, key)
           ? (JSON.parse(JSON.stringify(state[key])) as never)
-          : (null as never),
+          : undefined,
       );
-      snapClient.setState.mockImplementation(async (key, value) => {
+      unencryptedState.setKey.mockImplementation(async (key, value) => {
         state[key as string] = JSON.parse(JSON.stringify(value));
       });
       return {
         useCases: new AccountUseCases(
           mockLogger,
-          snapClient,
+          mockSnapClient,
+          unencryptedState,
           mockRepository,
           mockConfirmationRepository,
           mockChain,
@@ -2839,7 +2845,6 @@ describe('AccountUseCases', () => {
           targetBlocksConfirmation,
           undefined,
         ),
-        snapClient,
       };
     };
 
@@ -2951,7 +2956,7 @@ describe('AccountUseCases', () => {
     });
 
     it('starts the first full scan of new accounts right away, even without `synchronize`', async () => {
-      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const { useCases: testUseCases } = buildUseCases();
       const accounts = ['n1', 'n2', 'n3'].map((id) => buildAccount(id));
       mockRepository.getByDerivationPaths.mockResolvedValue([null, null, null]);
       mockRepository.createMany.mockResolvedValue(accounts);
@@ -2967,7 +2972,7 @@ describe('AccountUseCases', () => {
         })),
       );
 
-      expect(fullScanEvents(snapClient)).toStrictEqual(
+      expect(fullScanEvents(mockSnapClient)).toStrictEqual(
         accounts.slice(0, MAX_IMMEDIATE_FULL_SCANS_ON_CREATE).map(({ id }) => [
           {
             duration: 'PT1S',
@@ -2982,7 +2987,7 @@ describe('AccountUseCases', () => {
     });
 
     it('deduplicates on-demand scan requests from balance requests', async () => {
-      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const { useCases: testUseCases } = buildUseCases();
       const account = buildAccount('a');
 
       expect(
@@ -2994,17 +2999,17 @@ describe('AccountUseCases', () => {
       expect(
         await testUseCases.requestFullScan(account, 'sync-succeeded'),
       ).toBe(false);
-      expect(fullScanEvents(snapClient)).toHaveLength(1);
+      expect(fullScanEvents(mockSnapClient)).toHaveLength(1);
 
       nowSpy.mockReturnValue(NOW + FULL_SCAN_ON_DEMAND_MIN_INTERVAL_MS);
       expect(
         await testUseCases.requestFullScan(account, 'balance-request'),
       ).toBe(true);
-      expect(fullScanEvents(snapClient)).toHaveLength(2);
+      expect(fullScanEvents(mockSnapClient)).toHaveLength(2);
     });
 
     it('does not request a scan while one is running', async () => {
-      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const { useCases: testUseCases } = buildUseCases();
       const account = buildAccount('a');
       let finishScan: () => void = () => undefined;
       mockChain.fullScan.mockReturnValue(
@@ -3019,11 +3024,11 @@ describe('AccountUseCases', () => {
       ).toBe(false);
       finishScan();
       await scan;
-      expect(fullScanEvents(snapClient)).toHaveLength(0);
+      expect(fullScanEvents(mockSnapClient)).toHaveLength(0);
     });
 
     it('backs off on-demand scans after failures, bounded to 2 minutes', async () => {
-      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const { useCases: testUseCases } = buildUseCases();
       const account = buildAccount('a');
       mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
 
@@ -3041,11 +3046,11 @@ describe('AccountUseCases', () => {
       expect(
         await testUseCases.requestFullScan(account, 'balance-request'),
       ).toBe(true);
-      expect(fullScanEvents(snapClient)).toHaveLength(1);
+      expect(fullScanEvents(mockSnapClient)).toHaveLength(1);
     });
 
     it('runs the pending full scan promptly once syncs succeed again after an outage', async () => {
-      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const { useCases: testUseCases } = buildUseCases();
       const account = buildAccount('a');
       mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.createMany.mockResolvedValue([account]);
@@ -3059,7 +3064,7 @@ describe('AccountUseCases', () => {
           synchronize: false,
         },
       ]);
-      snapClient.scheduleBackgroundEvent.mockClear();
+      mockSnapClient.scheduleBackgroundEvent.mockClear();
 
       // Outage: repeated scans fail (on-demand interval now 2 minutes) and
       // the cron syncs fail too.
@@ -3080,7 +3085,7 @@ describe('AccountUseCases', () => {
       mockChain.sync.mockResolvedValueOnce();
       await testUseCases.synchronize(account, 'cron');
 
-      expect(fullScanEvents(snapClient)).toStrictEqual([
+      expect(fullScanEvents(mockSnapClient)).toStrictEqual([
         [
           {
             duration: 'PT1S',
@@ -3092,7 +3097,7 @@ describe('AccountUseCases', () => {
     });
 
     it('lets a successful sync trigger the pending scan, bounded by the on-demand backoff', async () => {
-      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const { useCases: testUseCases } = buildUseCases();
       const account = buildAccount('a');
       mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.createMany.mockResolvedValue([account]);
@@ -3106,7 +3111,7 @@ describe('AccountUseCases', () => {
           synchronize: false,
         },
       ]);
-      snapClient.scheduleBackgroundEvent.mockClear();
+      mockSnapClient.scheduleBackgroundEvent.mockClear();
       mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
       for (let i = 0; i < 3; i++) {
         await expect(testUseCases.fullScan(account)).rejects.toThrow(
@@ -3117,25 +3122,25 @@ describe('AccountUseCases', () => {
 
       nowSpy.mockReturnValue(NOW + 60_000);
       await testUseCases.synchronize(account, 'cron');
-      expect(fullScanEvents(snapClient)).toHaveLength(0);
+      expect(fullScanEvents(mockSnapClient)).toHaveLength(0);
 
       nowSpy.mockReturnValue(NOW + FULL_SCAN_ON_DEMAND_MAX_INTERVAL_MS);
       await testUseCases.synchronize(account, 'cron');
-      expect(fullScanEvents(snapClient)).toHaveLength(1);
+      expect(fullScanEvents(mockSnapClient)).toHaveLength(1);
     });
 
     it('does not request scans from syncs of accounts with a known balance', async () => {
-      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const { useCases: testUseCases } = buildUseCases();
       const account = buildAccount('a');
       mockChain.sync.mockResolvedValue();
 
       await testUseCases.synchronize(account, 'cron');
 
-      expect(fullScanEvents(snapClient)).toHaveLength(0);
+      expect(fullScanEvents(mockSnapClient)).toHaveLength(0);
     });
 
     it('treats a failed full scan joined by a sync as a failed sync, so the next successful sync recovers promptly (v3 item 6)', async () => {
-      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const { useCases: testUseCases } = buildUseCases();
       const account = buildAccount('a');
       mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.createMany.mockResolvedValue([account]);
@@ -3149,7 +3154,7 @@ describe('AccountUseCases', () => {
           synchronize: false,
         },
       ]);
-      snapClient.scheduleBackgroundEvent.mockClear();
+      mockSnapClient.scheduleBackgroundEvent.mockClear();
 
       // Outage: scans keep failing (on-demand interval now 2 minutes).
       mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
@@ -3178,7 +3183,7 @@ describe('AccountUseCases', () => {
       mockChain.sync.mockResolvedValueOnce();
       await testUseCases.synchronize(account, 'cron');
 
-      expect(fullScanEvents(snapClient)).toStrictEqual([
+      expect(fullScanEvents(mockSnapClient)).toStrictEqual([
         [
           {
             duration: 'PT1S',
@@ -3192,7 +3197,6 @@ describe('AccountUseCases', () => {
     describe('first heal of a never-synchronized account (v7)', () => {
       const createNeverSyncedAccount = async (
         testUseCases: AccountUseCases,
-        snapClient: ReturnType<typeof mock<SnapClient>>,
       ): Promise<BitcoinAccount> => {
         const account = buildAccount('a', false);
         mockRepository.getByDerivationPaths.mockResolvedValue([null]);
@@ -3207,7 +3211,7 @@ describe('AccountUseCases', () => {
             synchronize: false,
           },
         ]);
-        snapClient.scheduleBackgroundEvent.mockClear();
+        mockSnapClient.scheduleBackgroundEvent.mockClear();
         return account;
       };
 
@@ -3231,11 +3235,8 @@ describe('AccountUseCases', () => {
           );
 
       it('requests the full scan within seconds when the first successful sync comes 25 s after a failed scan (A-v6 22:49:13)', async () => {
-        const { useCases: testUseCases, snapClient } = buildUseCases();
-        const account = await createNeverSyncedAccount(
-          testUseCases,
-          snapClient,
-        );
+        const { useCases: testUseCases } = buildUseCases();
+        const account = await createNeverSyncedAccount(testUseCases);
         mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
         mockChain.sync.mockRejectedValue(new Error('Failed to fetch'));
 
@@ -3264,17 +3265,17 @@ describe('AccountUseCases', () => {
         expect(
           await testUseCases.requestFullScan(account, 'balance-request'),
         ).toBe(false);
-        expect(fullScanEvents(snapClient)).toHaveLength(0);
+        expect(fullScanEvents(mockSnapClient)).toHaveLength(0);
 
         // Heal: the next cron sync, 25 s after the last failed scan, succeeds.
         at(117_000);
         mockChain.sync.mockResolvedValue();
         await testUseCases.synchronize(account, 'cron');
 
-        const delays = scheduledScanDelays(snapClient);
+        const delays = scheduledScanDelays(mockSnapClient);
         expect(delays).toHaveLength(1);
         expect(delays[0]).toBeLessThanOrEqual(5);
-        expect(fullScanEvents(snapClient)).toStrictEqual([
+        expect(fullScanEvents(mockSnapClient)).toStrictEqual([
           [
             {
               duration: 'PT1S',
@@ -3294,7 +3295,7 @@ describe('AccountUseCases', () => {
         expect(
           await testUseCases.requestFullScan(account, 'balance-request'),
         ).toBe(false);
-        expect(fullScanEvents(snapClient)).toHaveLength(1);
+        expect(fullScanEvents(mockSnapClient)).toHaveLength(1);
 
         // The scheduled scan runs and succeeds: the balance is known and the
         // following syncs request nothing more.
@@ -3304,16 +3305,13 @@ describe('AccountUseCases', () => {
         expect(await testUseCases.isBalanceUnknown(account)).toBe(false);
         at(147_000);
         await testUseCases.synchronize(account, 'cron');
-        expect(fullScanEvents(snapClient)).toHaveLength(1);
+        expect(fullScanEvents(mockSnapClient)).toHaveLength(1);
         expect(mockChain.fullScan).toHaveBeenCalledTimes(5);
       });
 
       it('defers, rather than drops, a recovery that arrives right after a failed scan', async () => {
-        const { useCases: testUseCases, snapClient } = buildUseCases();
-        const account = await createNeverSyncedAccount(
-          testUseCases,
-          snapClient,
-        );
+        const { useCases: testUseCases } = buildUseCases();
+        const account = await createNeverSyncedAccount(testUseCases);
         mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
         mockChain.sync.mockRejectedValueOnce(new Error('Failed to fetch'));
         for (let i = 0; i < 3; i++) {
@@ -3330,7 +3328,7 @@ describe('AccountUseCases', () => {
         mockChain.sync.mockResolvedValue();
         await testUseCases.synchronize(account, 'cron');
 
-        expect(scheduledScanDelays(snapClient)).toStrictEqual([
+        expect(scheduledScanDelays(mockSnapClient)).toStrictEqual([
           (FULL_SCAN_RECOVERY_MIN_INTERVAL_MS - 2_000) / 1000,
         ]);
         // Still a single scan while it is pending.
@@ -3339,15 +3337,12 @@ describe('AccountUseCases', () => {
         expect(await testUseCases.listDueFullScans([account], 2)).toStrictEqual(
           [],
         );
-        expect(fullScanEvents(snapClient)).toHaveLength(1);
+        expect(fullScanEvents(mockSnapClient)).toHaveLength(1);
       });
 
       it('keeps the on-demand backoff for successful syncs that are not a recovery', async () => {
-        const { useCases: testUseCases, snapClient } = buildUseCases();
-        const account = await createNeverSyncedAccount(
-          testUseCases,
-          snapClient,
-        );
+        const { useCases: testUseCases } = buildUseCases();
+        const account = await createNeverSyncedAccount(testUseCases);
         mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
         for (let i = 0; i < 3; i++) {
           await expect(testUseCases.fullScan(account)).rejects.toThrow(
@@ -3359,33 +3354,33 @@ describe('AccountUseCases', () => {
         mockChain.sync.mockResolvedValue();
         at(25_000);
         await testUseCases.synchronize(account, 'cron');
-        expect(fullScanEvents(snapClient)).toHaveLength(0);
+        expect(fullScanEvents(mockSnapClient)).toHaveLength(0);
       });
     });
   });
 
   describe('discovery scan reuse and the discovery frontier (v3 item 1)', () => {
     const NOW = 1_700_000_000_000;
-    let nowSpy: MockInstance<number, []>;
+    let nowSpy: MockInstance<() => number>;
 
     const buildUseCases = (): {
       useCases: AccountUseCases;
-      snapClient: ReturnType<typeof mock<SnapClient>>;
     } => {
       const state: Record<string, unknown> = {};
-      const snapClient = mock<SnapClient>();
-      snapClient.getState.mockImplementation(async (key?: string) =>
-        key !== undefined && Object.hasOwn(state, key)
+      const unencryptedState = mock<IStateManager<Partial<SnapState>>>();
+      unencryptedState.getKey.mockImplementation(async (key: string) =>
+        Object.hasOwn(state, key)
           ? (JSON.parse(JSON.stringify(state[key])) as never)
-          : (null as never),
+          : undefined,
       );
-      snapClient.setState.mockImplementation(async (key, value) => {
+      unencryptedState.setKey.mockImplementation(async (key, value) => {
         state[key as string] = JSON.parse(JSON.stringify(value));
       });
       return {
         useCases: new AccountUseCases(
           mockLogger,
-          snapClient,
+          mockSnapClient,
+          unencryptedState,
           mockRepository,
           mockConfirmationRepository,
           mockChain,
@@ -3393,7 +3388,6 @@ describe('AccountUseCases', () => {
           targetBlocksConfirmation,
           undefined,
         ),
-        snapClient,
       };
     };
 
@@ -3455,7 +3449,7 @@ describe('AccountUseCases', () => {
     });
 
     it('reuses the account discovery just scanned as its first synchronization', async () => {
-      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const { useCases: testUseCases } = buildUseCases();
       const discovered = buildAccount('d1');
       await discover(testUseCases, discovered, 1);
       mockRepository.getByDerivationPaths.mockResolvedValue([null]);
@@ -3469,13 +3463,13 @@ describe('AccountUseCases', () => {
       expect(discovered.revealNextAddress).toHaveBeenCalled();
       // No second full scan: not scheduled, not queued.
       expect(mockChain.fullScan).toHaveBeenCalledTimes(1);
-      expect(eventsOf(snapClient, CronMethod.FullScanAccount)).toHaveLength(0);
+      expect(eventsOf(mockSnapClient, CronMethod.FullScanAccount)).toHaveLength(0);
       expect(await testUseCases.isInitialFullScanPending('d1')).toBe(false);
       expect(await testUseCases.isBalanceUnknown(discovered)).toBe(false);
     });
 
     it('syncs (instead of full-scanning) new accounts above the lowest index discovery found unused', async () => {
-      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const { useCases: testUseCases } = buildUseCases();
       // Onboarding: discovery finds index 1 unused, then alignment creates
       // groups 1..4 because other networks have activity there.
       const discovered = buildAccount('d1');
@@ -3500,9 +3494,9 @@ describe('AccountUseCases', () => {
           ({ derivationPath }) => derivationPath[3],
         ),
       ).toStrictEqual(["2'", "3'", "4'"]);
-      expect(eventsOf(snapClient, CronMethod.FullScanAccount)).toHaveLength(0);
+      expect(eventsOf(mockSnapClient, CronMethod.FullScanAccount)).toHaveLength(0);
       expect(
-        eventsOf(snapClient, CronMethod.SyncSelectedAccounts),
+        eventsOf(mockSnapClient, CronMethod.SyncSelectedAccounts),
       ).toStrictEqual([
         {
           duration: 'PT1S',
@@ -3518,19 +3512,19 @@ describe('AccountUseCases', () => {
     });
 
     it('answers a balance request for a fresh account with a sync, and full-scans normally once it synced', async () => {
-      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const { useCases: testUseCases } = buildUseCases();
       await discover(testUseCases, buildAccount('d1'), 1);
       const fresh = buildAccount('a2', { synchronized: false });
       mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.createMany.mockResolvedValue([fresh]);
       mockRepository.insertMany.mockResolvedValue([fresh]);
       await testUseCases.createMany([request(2)]);
-      snapClient.scheduleBackgroundEvent.mockClear();
+      mockSnapClient.scheduleBackgroundEvent.mockClear();
 
       expect(await testUseCases.requestFullScan(fresh, 'balance-request')).toBe(
         true,
       );
-      expect(snapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
         duration: 'PT1S',
         method: CronMethod.SyncSelectedAccounts,
         params: { accountIds: ['a2'] },
@@ -3540,10 +3534,10 @@ describe('AccountUseCases', () => {
       mockChain.sync.mockResolvedValueOnce();
       vi.mocked(fresh.hasSynchronized).mockReturnValue(true);
       await testUseCases.synchronize(fresh, 'cron');
-      snapClient.scheduleBackgroundEvent.mockClear();
+      mockSnapClient.scheduleBackgroundEvent.mockClear();
       nowSpy.mockReturnValue(NOW + 60_000);
       await testUseCases.requestFullScan(fresh, 'balance-request');
-      expect(snapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
         duration: 'PT1S',
         method: CronMethod.FullScanAccount,
         params: { accountId: 'a2' },
@@ -3551,7 +3545,7 @@ describe('AccountUseCases', () => {
     });
 
     it('still full-scans accounts at or below an index with activity', async () => {
-      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const { useCases: testUseCases } = buildUseCases();
       // Discovery found activity at index 1 (frontier not set by it).
       await discover(testUseCases, buildAccount('d1', { transactions: 2 }), 1);
       const next = buildAccount('a2', { synchronized: false });
@@ -3562,9 +3556,9 @@ describe('AccountUseCases', () => {
       await testUseCases.createMany([request(2)]);
 
       expect(
-        eventsOf(snapClient, CronMethod.SyncSelectedAccounts),
+        eventsOf(mockSnapClient, CronMethod.SyncSelectedAccounts),
       ).toHaveLength(0);
-      expect(eventsOf(snapClient, CronMethod.FullScanAccount)).toStrictEqual([
+      expect(eventsOf(mockSnapClient, CronMethod.FullScanAccount)).toStrictEqual([
         {
           duration: 'PT1S',
           method: CronMethod.FullScanAccount,
@@ -3574,7 +3568,7 @@ describe('AccountUseCases', () => {
     });
 
     it('requests a standard-gap scan for a reused discovery scan that found activity', async () => {
-      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const { useCases: testUseCases } = buildUseCases();
       const discovered = buildAccount('d1', { transactions: 3 });
       await discover(testUseCases, discovered, 1);
       mockRepository.getByDerivationPaths.mockResolvedValue([null]);
@@ -3582,7 +3576,7 @@ describe('AccountUseCases', () => {
       await testUseCases.createMany([request(1)]);
 
       expect(mockRepository.createMany).not.toHaveBeenCalled();
-      expect(eventsOf(snapClient, CronMethod.FullScanAccount)).toStrictEqual([
+      expect(eventsOf(mockSnapClient, CronMethod.FullScanAccount)).toStrictEqual([
         {
           duration: 'PT1S',
           method: CronMethod.FullScanAccount,
@@ -3594,7 +3588,7 @@ describe('AccountUseCases', () => {
     });
 
     it('does not reuse discovery results older than the reuse TTL', async () => {
-      const { useCases: testUseCases, snapClient } = buildUseCases();
+      const { useCases: testUseCases } = buildUseCases();
       await discover(testUseCases, buildAccount('d1'), 1);
       nowSpy.mockReturnValue(NOW + DISCOVERY_SCAN_REUSE_TTL_MS);
       const derived = buildAccount('n1', { synchronized: false });
@@ -3607,9 +3601,9 @@ describe('AccountUseCases', () => {
 
       expect(mockRepository.createMany.mock.calls[0]?.[0]).toHaveLength(2);
       expect(
-        eventsOf(snapClient, CronMethod.SyncSelectedAccounts),
+        eventsOf(mockSnapClient, CronMethod.SyncSelectedAccounts),
       ).toHaveLength(0);
-      expect(eventsOf(snapClient, CronMethod.FullScanAccount)).toHaveLength(2);
+      expect(eventsOf(mockSnapClient, CronMethod.FullScanAccount)).toHaveLength(2);
     });
   });
 });

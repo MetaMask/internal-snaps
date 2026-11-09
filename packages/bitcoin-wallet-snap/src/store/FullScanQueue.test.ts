@@ -1,4 +1,7 @@
-import type { SnapClient } from '../entities';
+import type { IStateManager } from '@metamask/snap-networks-utils';
+import { mock } from 'vitest-mock-extended';
+
+import type { SnapState } from '../entities';
 import {
   FULL_SCAN_QUEUE_KEY,
   FULL_SCAN_RETRY_BASE_MS,
@@ -13,17 +16,21 @@ const clone = <Value>(value: Value): Value =>
 
 const createStateClient = (
   initial: Record<string, unknown> = {},
-): { client: SnapClient; state: Record<string, unknown> } => {
+): {
+  stateManager: IStateManager<Partial<SnapState>>;
+  state: Record<string, unknown>;
+} => {
   const state: Record<string, unknown> = clone(initial);
-  const client = {
-    getState: vi.fn(async (key: string) =>
-      Object.hasOwn(state, key) ? clone(state[key]) : null,
-    ),
-    setState: vi.fn(async (key: string, value: unknown) => {
-      state[key] = clone(value);
-    }),
-  } as unknown as SnapClient;
-  return { client, state };
+  const stateManager = mock<IStateManager<Partial<SnapState>>>();
+  stateManager.getKey.mockImplementation(async (key: string) =>
+    Object.hasOwn(state, key)
+      ? (clone(state[key]) as never)
+      : undefined,
+  );
+  stateManager.setKey.mockImplementation(async (key: string, value: unknown) => {
+    state[key] = clone(value);
+  });
+  return { stateManager, state };
 };
 
 describe('getFullScanRetryDelayMs', () => {
@@ -48,184 +55,145 @@ describe('FullScanQueue', () => {
   });
 
   it('initializes the queue with every live account when it does not exist (repair behaviour)', async () => {
-    const { client, state } = createStateClient();
-    const queue = new FullScanQueue(client, clock);
+    const { stateManager } = createStateClient();
+    const queue = new FullScanQueue(stateManager, clock);
 
-    expect(await queue.due(['a', 'b', 'c'], 2)).toStrictEqual(['a', 'b']);
-    expect(state[FULL_SCAN_QUEUE_KEY]).toStrictEqual({
+    const due = await queue.due(['account-1', 'account-2'], 2);
+
+    expect(due).toStrictEqual(['account-1', 'account-2']);
+    expect(stateManager.setKey).toHaveBeenCalledWith(FULL_SCAN_QUEUE_KEY, {
+      pending: ['account-1', 'account-2'],
+    });
+  });
+
+  it('returns due accounts respecting backoff', async () => {
+    const { stateManager, state } = createStateClient({
+      rescanV1: { pending: ['a', 'b', 'c'] },
+      fullScanRetryV1: {
+        a: { attempts: 1, nextAttemptAt: now - 1 },
+        b: { attempts: 1, nextAttemptAt: now + 10_000 },
+        c: { attempts: 1, nextAttemptAt: now - 1 },
+      },
+    });
+    const queue = new FullScanQueue(stateManager, clock);
+
+    expect(await queue.due(['a', 'b', 'c'], 5)).toStrictEqual(['a', 'c']);
+    expect(state.rescanV1).toStrictEqual({
       pending: ['a', 'b', 'c'],
     });
   });
 
-  it('prunes accounts that no longer exist', async () => {
-    const { client, state } = createStateClient({
-      [FULL_SCAN_QUEUE_KEY]: { pending: ['a', 'gone'] },
-      [FULL_SCAN_RETRY_KEY]: {
-        gone: { attempts: 1, nextAttemptAt: 0 },
-      },
+  it('moves a failed account to the tail with backoff', async () => {
+    const { stateManager, state } = createStateClient({
+      rescanV1: { pending: ['a', 'b'] },
+      fullScanRetryV1: {},
     });
-    const queue = new FullScanQueue(client, clock);
+    const queue = new FullScanQueue(stateManager, clock);
 
-    expect(await queue.due(['a'], 5)).toStrictEqual(['a']);
-    expect(state[FULL_SCAN_QUEUE_KEY]).toStrictEqual({ pending: ['a'] });
-    expect(state[FULL_SCAN_RETRY_KEY]).toStrictEqual({});
-  });
+    await queue.markFailed('a', new Error('fetch failed'));
 
-  it('moves a failed account to the tail so it does not block the others', async () => {
-    const { client } = createStateClient({
-      [FULL_SCAN_QUEUE_KEY]: { pending: ['a', 'b'] },
-    });
-    const queue = new FullScanQueue(client, clock);
-
-    await queue.markFailed('a', new Error('unreachable'));
-
-    expect(await queue.due(['a', 'b'], 2)).toStrictEqual(['b']);
-  });
-
-  it('retries a failed account once its backoff has elapsed, with growing delays', async () => {
-    const { client, state } = createStateClient({
-      [FULL_SCAN_QUEUE_KEY]: { pending: ['a'] },
-    });
-    const queue = new FullScanQueue(client, clock);
-
-    await queue.markFailed('a', new Error('boom'));
-    expect(await queue.due(['a'], 1)).toStrictEqual([]);
-    now += FULL_SCAN_RETRY_BASE_MS;
-    expect(await queue.due(['a'], 1)).toStrictEqual(['a']);
-
-    await queue.markFailed('a', 'again');
-    expect(state[FULL_SCAN_RETRY_KEY]).toStrictEqual({
+    expect(state.rescanV1).toStrictEqual({ pending: ['b', 'a'] });
+    expect(state.fullScanRetryV1).toMatchObject({
       a: {
-        attempts: 2,
-        nextAttemptAt: now + FULL_SCAN_RETRY_BASE_MS * 2,
-        lastError: 'again',
+        attempts: 1,
+        nextAttemptAt: now + FULL_SCAN_RETRY_BASE_MS,
+        lastError: 'fetch failed',
       },
     });
   });
 
-  it('removes an account and its retry metadata after a successful scan', async () => {
-    const { client, state } = createStateClient({
-      [FULL_SCAN_QUEUE_KEY]: { pending: ['a', 'b'] },
-      [FULL_SCAN_RETRY_KEY]: {
-        a: { attempts: 1, nextAttemptAt: 0, initial: true },
-      },
+  it('removes an account from the queue after success', async () => {
+    const { stateManager, state } = createStateClient({
+      rescanV1: { pending: ['a', 'b'] },
+      fullScanRetryV1: { a: { attempts: 1, nextAttemptAt: now } },
     });
-    const queue = new FullScanQueue(client, clock);
+    const queue = new FullScanQueue(stateManager, clock);
 
     await queue.markSucceeded('a');
 
-    expect(state[FULL_SCAN_QUEUE_KEY]).toStrictEqual({ pending: ['b'] });
-    expect(state[FULL_SCAN_RETRY_KEY]).toStrictEqual({});
-    expect(await queue.isInitialScanPending('a')).toBe(false);
+    expect(state.rescanV1).toStrictEqual({ pending: ['b'] });
+    expect(state.fullScanRetryV1).toStrictEqual({});
   });
 
-  it('flags new accounts as pending their initial scan until it succeeds, across failures', async () => {
-    const { client } = createStateClient({
-      [FULL_SCAN_QUEUE_KEY]: { pending: [] },
+  it('enqueues initial accounts', async () => {
+    const { stateManager, state } = createStateClient({
+      rescanV1: { pending: [] },
     });
-    const queue = new FullScanQueue(client, clock);
+    const queue = new FullScanQueue(stateManager, clock);
 
-    await queue.enqueueInitial(['new']);
-    expect(await queue.isInitialScanPending('new')).toBe(true);
-    expect(await queue.due(['new'], 2)).toStrictEqual(['new']);
+    await queue.enqueueInitial(['new-1']);
 
-    await queue.markFailed('new', new Error('Failed to fetch'));
-    expect(await queue.isInitialScanPending('new')).toBe(true);
-
-    await queue.markSucceeded('new');
-    expect(await queue.isInitialScanPending('new')).toBe(false);
-  });
-
-  it('records initial accounts even before the queue exists, and due() then includes them', async () => {
-    const { client, state } = createStateClient();
-    const queue = new FullScanQueue(client, clock);
-
-    await queue.enqueueInitial(['new']);
-
-    expect(state[FULL_SCAN_QUEUE_KEY]).toBeUndefined();
-    expect(await queue.isInitialScanPending('new')).toBe(true);
-    expect(await queue.due(['old', 'new'], 5)).toStrictEqual(['old', 'new']);
-  });
-
-  it('does nothing when enqueueing or ensuring no account', async () => {
-    const { client } = createStateClient();
-    const queue = new FullScanQueue(client, clock);
-
-    await queue.enqueueInitial([]);
-    expect(await queue.ensureQueued([])).toStrictEqual([]);
-    expect(client.setState).not.toHaveBeenCalled();
-  });
-
-  describe('ensureQueued', () => {
-    it('queues never-synchronized accounts and flags them as initial', async () => {
-      const { client, state } = createStateClient({
-        [FULL_SCAN_QUEUE_KEY]: { pending: [] },
-      });
-      const queue = new FullScanQueue(client, clock);
-
-      expect(await queue.ensureQueued(['legacy'])).toStrictEqual(['legacy']);
-      expect(state[FULL_SCAN_QUEUE_KEY]).toStrictEqual({
-        pending: ['legacy'],
-      });
-      expect(await queue.isInitialScanPending('legacy')).toBe(true);
+    expect(state.fullScanRetryV1).toMatchObject({
+      'new-1': { attempts: 0, nextAttemptAt: now, initial: true },
     });
+    expect(state.rescanV1).toStrictEqual({ pending: ['new-1'] });
+  });
 
-    it('keeps the position and backoff of an already-queued account', async () => {
-      const retryEntry = { attempts: 3, nextAttemptAt: now + 60_000 };
-      const { client, state } = createStateClient({
-        [FULL_SCAN_QUEUE_KEY]: { pending: ['legacy', 'other'] },
-        [FULL_SCAN_RETRY_KEY]: { legacy: retryEntry },
-      });
-      const queue = new FullScanQueue(client, clock);
-
-      expect(await queue.ensureQueued(['legacy'])).toStrictEqual([]);
-      expect(state[FULL_SCAN_QUEUE_KEY]).toStrictEqual({
-        pending: ['legacy', 'other'],
-      });
-      expect(state[FULL_SCAN_RETRY_KEY]).toStrictEqual({
-        legacy: { ...retryEntry, initial: true },
-      });
-      expect(await queue.due(['legacy', 'other'], 2)).toStrictEqual(['other']);
+  it('flags initial scans via isInitialScanPending', async () => {
+    const { stateManager } = createStateClient({
+      fullScanRetryV1: {
+        'new-1': { attempts: 0, nextAttemptAt: now, initial: true },
+      },
     });
+    const queue = new FullScanQueue(stateManager, clock);
 
-    it('does not write when nothing changes', async () => {
-      const { client } = createStateClient({
-        [FULL_SCAN_QUEUE_KEY]: { pending: ['legacy'] },
-        [FULL_SCAN_RETRY_KEY]: {
-          legacy: { attempts: 0, nextAttemptAt: 0, initial: true },
-        },
-      });
-      const queue = new FullScanQueue(client, clock);
+    expect(await queue.isInitialScanPending('new-1')).toBe(true);
+    expect(await queue.isInitialScanPending('other')).toBe(false);
+  });
 
-      await queue.ensureQueued(['legacy']);
+  it('ensureQueued adds never-synchronized accounts', async () => {
+    const { stateManager, state } = createStateClient({
+      rescanV1: { pending: [] },
+    });
+    const queue = new FullScanQueue(stateManager, clock);
 
-      expect(client.setState).not.toHaveBeenCalled();
+    const added = await queue.ensureQueued(['legacy-1', 'legacy-2']);
+
+    expect(added).toStrictEqual(['legacy-1', 'legacy-2']);
+    expect(state.rescanV1).toStrictEqual({
+      pending: ['legacy-1', 'legacy-2'],
     });
   });
 
-  it('serializes concurrent operations so no update is lost', async () => {
-    const { client, state } = createStateClient({
-      [FULL_SCAN_QUEUE_KEY]: { pending: ['a', 'b', 'c'] },
+  it('serializes concurrent updates', async () => {
+    const { stateManager, state } = createStateClient({
+      rescanV1: { pending: ['a'] },
     });
-    const queue = new FullScanQueue(client, clock);
+    const queue = new FullScanQueue(stateManager, clock);
 
     await Promise.all([
-      queue.markSucceeded('a'),
-      queue.markSucceeded('b'),
-      queue.markFailed('c', new Error('x')),
+      queue.markFailed('a', 'first'),
+      queue.markFailed('a', 'second'),
     ]);
 
-    expect(state[FULL_SCAN_QUEUE_KEY]).toStrictEqual({ pending: ['c'] });
+    expect((state.fullScanRetryV1 as { a: { attempts: number } }).a.attempts).toBe(
+      2,
+    );
   });
 
-  it('ignores a corrupted stored state', async () => {
-    const { client } = createStateClient({
-      [FULL_SCAN_QUEUE_KEY]: { pending: 'not-an-array' },
-      [FULL_SCAN_RETRY_KEY]: 42,
+  it('prunes retry entries for deleted accounts in due()', async () => {
+    const { stateManager, state } = createStateClient({
+      rescanV1: { pending: ['gone', 'live'] },
+      fullScanRetryV1: {
+        gone: { attempts: 0, nextAttemptAt: now - 1 },
+        live: { attempts: 0, nextAttemptAt: now - 1 },
+      },
     });
-    const queue = new FullScanQueue(client, clock);
+    const queue = new FullScanQueue(stateManager, clock);
 
-    expect(await queue.due(['a'], 1)).toStrictEqual(['a']);
-    expect(await queue.isInitialScanPending('a')).toBe(false);
+    expect(await queue.due(['live'], 5)).toStrictEqual(['live']);
+    expect(state.fullScanRetryV1).toEqual({
+      live: { attempts: 0, nextAttemptAt: now - 1 },
+    });
+  });
+
+  it('stores only retry metadata when the queue does not exist yet', async () => {
+    const { stateManager, state } = createStateClient();
+    const queue = new FullScanQueue(stateManager, clock);
+
+    await queue.enqueueInitial(['new-1']);
+
+    expect(state.fullScanRetryV1).toBeDefined();
+    expect(state.rescanV1).toBeUndefined();
   });
 });

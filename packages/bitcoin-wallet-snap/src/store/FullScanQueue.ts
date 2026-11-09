@@ -1,3 +1,4 @@
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/utils';
 import {
   array,
@@ -10,7 +11,7 @@ import {
   string,
 } from 'superstruct';
 
-import type { SnapClient } from '../entities';
+import type { SnapState } from '../entities';
 
 /**
  * State key of the full-scan queue. The name predates this class: it was the
@@ -90,14 +91,17 @@ export function getFullScanRetryDelayMs(attempts: number): number {
  * don't overwrite each other's state.
  */
 export class FullScanQueue {
-  readonly #snapClient: SnapClient;
+  readonly #state: IStateManager<Partial<SnapState>>;
 
   readonly #now: () => number;
 
   #tail: Promise<unknown> = Promise.resolve();
 
-  constructor(snapClient: SnapClient, now: () => number = Date.now) {
-    this.#snapClient = snapClient;
+  constructor(
+    state: IStateManager<Partial<SnapState>>,
+    now: () => number = Date.now,
+  ) {
+    this.#state = state;
     this.#now = now;
   }
 
@@ -108,12 +112,12 @@ export class FullScanQueue {
   }
 
   async #readPending(): Promise<string[] | null> {
-    const stored = await this.#snapClient.getState(FULL_SCAN_QUEUE_KEY);
+    const stored = await this.#state.getKey(FULL_SCAN_QUEUE_KEY);
     return is(stored, QueueState) ? stored.pending : null;
   }
 
   async #readRetry(): Promise<Record<string, FullScanRetryEntry>> {
-    const stored = await this.#snapClient.getState(FULL_SCAN_RETRY_KEY);
+    const stored = await this.#state.getKey(FULL_SCAN_RETRY_KEY);
     return is(stored, RetryState) ? { ...stored } : {};
   }
 
@@ -121,9 +125,9 @@ export class FullScanQueue {
     pending: string[],
     retry?: Record<string, FullScanRetryEntry>,
   ): Promise<void> {
-    await this.#snapClient.setState(FULL_SCAN_QUEUE_KEY, { pending });
+    await this.#state.setKey(FULL_SCAN_QUEUE_KEY, { pending });
     if (retry) {
-      await this.#snapClient.setState(
+      await this.#state.setKey(
         FULL_SCAN_RETRY_KEY,
         retry as unknown as Json,
       );
@@ -154,7 +158,7 @@ export class FullScanQueue {
       } else {
         // The queue doesn't exist yet: `due()` will initialize it with every
         // live account, these included.
-        await this.#snapClient.setState(
+        await this.#state.setKey(
           FULL_SCAN_RETRY_KEY,
           retry as unknown as Json,
         );
@@ -257,7 +261,7 @@ export class FullScanQueue {
       delete retry[accountId];
       if (pending === null) {
         if (hadRetry) {
-          await this.#snapClient.setState(
+          await this.#state.setKey(
             FULL_SCAN_RETRY_KEY,
             retry as unknown as Json,
           );

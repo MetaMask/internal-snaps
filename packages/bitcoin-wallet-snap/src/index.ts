@@ -74,6 +74,7 @@ const confirmationRepository = new JSXConfirmationRepository(
 const accountsUseCases = new AccountUseCases(
   logger,
   snapClient,
+  unencryptedState,
   accountRepository,
   confirmationRepository,
   chainClient,
