@@ -10,8 +10,8 @@ import type {
 /* eslint-disable jsdoc/require-returns */
 import type { CaipAssetType, CaipChainId } from '@metamask/utils';
 
-import type { Network } from '../../constants/solana';
 import type { AssetEntity } from '../../../entities';
+import type { Network } from '../../constants/solana';
 import type { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetMetadata } from './types';

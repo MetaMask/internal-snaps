@@ -20,6 +20,7 @@ import type {
   KeyringAccountMonitor,
   TransactionsService,
 } from '../../services';
+import { AccountAssetsFetchError } from '../../services/assets/adapters/SnapAssetsAdapter';
 import type { ConfirmationHandler } from '../../services/confirmation/ConfirmationHandler';
 import { DEFAULT_UNENCRYPTED_STATE } from '../../services/state/stateTypes';
 import type { UnencryptedStateValue } from '../../services/state/stateTypes';
@@ -50,7 +51,6 @@ import { trackError } from '../../utils/errors';
 import { getBip32Entropy } from '../../utils/getBip32Entropy';
 import * as Bip32Entropy from '../../utils/getBip32Entropy';
 import logger from '../../utils/logger';
-import { AccountAssetsFetchError } from '../../services/assets/adapters/SnapAssetsAdapter';
 import { SolanaKeyring } from './Keyring';
 
 const NON_EXISTENT_ACCOUNT_ID = '123e4567-e89b-42d3-a456-426614174009';
@@ -421,16 +421,17 @@ describe('SolanaKeyring', () => {
     });
 
     it('fails instead of answering with a partial result when an RPC fetch for a requested network failed (v3)', async () => {
-      vi
-        .spyOn(mockAssetsService, 'fetchAccountAssetsFromRpc')
-        .mockRejectedValue(
-          new AccountAssetsFetchError([
-            {
-              network: Network.Mainnet,
-              reason: new TypeError('Failed to fetch'),
-            },
-          ]),
-        );
+      vi.spyOn(
+        mockAssetsService,
+        'fetchAccountAssetsFromRpc',
+      ).mockRejectedValue(
+        new AccountAssetsFetchError([
+          {
+            network: Network.Mainnet,
+            reason: new TypeError('Failed to fetch'),
+          },
+        ]),
+      );
 
       await expect(
         keyring.getAccountBalances(MOCK_SOLANA_KEYRING_ACCOUNT_1.id, [

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `keyring_getAccountBalances` now fails when an RPC fetch for a requested network fails, instead of returning a partial or empty balance, so the wallet shows the balance as unavailable rather than stale ([#527](https://github.com/MetaMask/internal-snaps/pull/527))
+
 ## [7.3.0]
 
 ### Changed
