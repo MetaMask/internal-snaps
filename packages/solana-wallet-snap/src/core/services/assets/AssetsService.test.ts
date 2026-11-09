@@ -226,7 +226,7 @@ describe('AssetsService', () => {
     });
 
     it('forwards failOnNetworks to the Snap adapter', async () => {
-      const fetchSpy = jest
+      const fetchSpy = vi
         .spyOn(snapAssetsAdapter, 'fetchAccountAssets')
         .mockResolvedValue(MOCK_ASSET_ENTITIES);
 

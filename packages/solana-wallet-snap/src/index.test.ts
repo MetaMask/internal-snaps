@@ -1,4 +1,4 @@
-import { installSnap } from '@metamask/snaps-jest';
+import { installSnap } from '@metamask/snaps-vi';
 import { SnapError } from '@metamask/snaps-sdk';
 
 import {

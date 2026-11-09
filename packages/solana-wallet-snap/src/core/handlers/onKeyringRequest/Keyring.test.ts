@@ -421,7 +421,7 @@ describe('SolanaKeyring', () => {
     });
 
     it('fails instead of answering with a partial result when an RPC fetch for a requested network failed (v3)', async () => {
-      jest
+      vi
         .spyOn(mockAssetsService, 'fetchAccountAssetsFromRpc')
         .mockRejectedValue(
           new AccountAssetsFetchError([

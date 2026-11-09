@@ -264,7 +264,7 @@ describe('SnapAssetsAdapter', () => {
 
   describe('fetchAccountAssets with failOnNetworks (v3: SOL must not fail silently)', () => {
     beforeEach(() => {
-      (mockConfigProvider.getActiveNetworks as jest.Mock).mockResolvedValue([
+      (mockConfigProvider.getActiveNetworks as vi.Mock).mockResolvedValue([
         Network.Mainnet,
       ]);
     });
@@ -276,18 +276,18 @@ describe('SnapAssetsAdapter', () => {
       balanceFails?: boolean;
       tokensFail?: boolean;
     }): void => {
-      (mockConnection.getRpc as jest.Mock).mockReturnValue({
-        getBalance: jest.fn().mockReturnValue({
+      (mockConnection.getRpc as vi.Mock).mockReturnValue({
+        getBalance: vi.fn().mockReturnValue({
           send: balanceFails
-            ? jest.fn().mockRejectedValue(new TypeError('Failed to fetch'))
-            : jest
+            ? vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+            : vi
                 .fn()
                 .mockResolvedValue(MOCK_SOLANA_RPC_GET_BALANCE_AS_SDK_RESPONSE),
         }),
-        getTokenAccountsByOwner: jest.fn().mockReturnValue({
+        getTokenAccountsByOwner: vi.fn().mockReturnValue({
           send: tokensFail
-            ? jest.fn().mockRejectedValue(new TypeError('Failed to fetch'))
-            : jest
+            ? vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+            : vi
                 .fn()
                 .mockResolvedValue(
                   MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_AS_SDK_RESPONSE,
