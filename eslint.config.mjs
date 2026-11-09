@@ -208,9 +208,6 @@ const config = createConfig([
       'packages/bitcoin-wallet-snap/src/**/*.test.tsx',
       'packages/bitcoin-wallet-snap/src/**/__mocks__/**/*.ts',
       'packages/bitcoin-wallet-snap/vitest.setup.ts',
-      'packages/snap-networks-utils/src/**/*.test.ts',
-      'packages/snap-networks-utils/src/**/*.test.tsx',
-      'packages/snap-networks-utils/src/**/__mocks__/**/*.ts',
     ],
     rules: {
       // `jest/unbound-method` allows `jest.mocked`, not `vi.mocked`.
