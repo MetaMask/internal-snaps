@@ -28,14 +28,12 @@ import {
   ResolveAccountSource,
 } from './accountResolver';
 
-jest.mock('../utils/logger');
-
 describe('AccountResolver', () => {
   const keyringAccountId = '22222222-2222-4222-8222-222222222222';
   const scope = KnownCaip2ChainId.Mainnet;
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   function setup() {
@@ -59,17 +57,17 @@ describe('AccountResolver', () => {
       horizonSource(mockRawAccount, scope),
     );
 
-    const resolveAccountSpy = jest
+    const resolveAccountSpy = vi
       .spyOn(AccountService.prototype, 'resolveAccount')
       .mockResolvedValue({ account });
-    const resolveOnChainAccountSpy = jest
+    const resolveOnChainAccountSpy = vi
       .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
       .mockResolvedValue(onChainAccount);
-    const resolveOnChainAccountByKeyringAccountIdSpy = jest.spyOn(
+    const getOnChainAccountSnapshotSpy = vi.spyOn(
       OnChainAccountService.prototype,
-      'resolveOnChainAccountByKeyringAccountId',
+      'getOnChainAccountSnapshot',
     );
-    const resolveWalletSpy = jest
+    const resolveWalletSpy = vi
       .spyOn(WalletService.prototype, 'resolveWallet')
       .mockResolvedValue(wallet);
 
@@ -86,7 +84,7 @@ describe('AccountResolver', () => {
       onChainAccount,
       resolveAccountSpy,
       resolveOnChainAccountSpy,
-      resolveOnChainAccountByKeyringAccountIdSpy,
+      getOnChainAccountSnapshotSpy,
       resolveWalletSpy,
     };
   }
@@ -156,12 +154,10 @@ describe('AccountResolver', () => {
       account,
       wallet,
       onChainAccount,
-      resolveOnChainAccountByKeyringAccountIdSpy,
+      getOnChainAccountSnapshotSpy,
       resolveOnChainAccountSpy,
     } = setup();
-    resolveOnChainAccountByKeyringAccountIdSpy.mockResolvedValue(
-      onChainAccount,
-    );
+    getOnChainAccountSnapshotSpy.mockResolvedValue(onChainAccount);
 
     const result = await accountResolver.resolveAccount({
       accountId: keyringAccountId,
@@ -174,17 +170,17 @@ describe('AccountResolver', () => {
       onChainAccount,
       wallet,
     });
-    expect(resolveOnChainAccountByKeyringAccountIdSpy).toHaveBeenCalledWith(
+    expect(getOnChainAccountSnapshotSpy).toHaveBeenCalledWith(
       account.id,
+      account.address,
       scope,
     );
     expect(resolveOnChainAccountSpy).not.toHaveBeenCalled();
   });
 
   it('throws AccountNotActivatedException when state has no on-chain snapshot', async () => {
-    const { accountResolver, resolveOnChainAccountByKeyringAccountIdSpy } =
-      setup();
-    resolveOnChainAccountByKeyringAccountIdSpy.mockResolvedValue(null);
+    const { accountResolver, getOnChainAccountSnapshotSpy } = setup();
+    getOnChainAccountSnapshotSpy.mockResolvedValue(null);
 
     await expect(
       accountResolver.resolveAccount({
@@ -196,8 +192,7 @@ describe('AccountResolver', () => {
   });
 
   it('throws DerivedAccountAddressMismatchException when state snapshot address differs from keyring', async () => {
-    const { accountResolver, resolveOnChainAccountByKeyringAccountIdSpy } =
-      setup();
+    const { accountResolver, getOnChainAccountSnapshotSpy } = setup();
 
     const otherAddress = generateStellarAddress();
     const mockRawAccount = createMockAccountWithBalances(
@@ -210,9 +205,7 @@ describe('AccountResolver', () => {
       scope,
       horizonSource(mockRawAccount, scope),
     );
-    resolveOnChainAccountByKeyringAccountIdSpy.mockResolvedValue(
-      mismatchedOnChainAccount,
-    );
+    getOnChainAccountSnapshotSpy.mockResolvedValue(mismatchedOnChainAccount);
 
     await expect(
       accountResolver.resolveAccount({

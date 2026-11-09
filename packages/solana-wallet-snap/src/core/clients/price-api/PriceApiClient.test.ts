@@ -3,6 +3,7 @@ import type { CaipAssetType } from '@metamask/keyring-api';
 import type { Serializable, ICache } from '@metamask/snap-networks-utils';
 import { InMemoryCache } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
+import type { Mock } from 'vitest';
 
 import { KnownCaip19Id } from '../../constants/solana';
 import { mockLogger } from '../../services/__mocks__/logger';
@@ -12,12 +13,12 @@ import { PriceApiClient } from './PriceApiClient';
 import type { SpotPrices, VsCurrencyParam } from './types';
 
 describe('PriceApiClient', () => {
-  let mockFetch: jest.Mock;
+  let mockFetch: Mock;
   let mockCache: ICache<Serializable>;
   let client: PriceApiClient;
 
   beforeEach(() => {
-    mockFetch = jest.fn();
+    mockFetch = vi.fn();
 
     const mockConfigProvider: ConfigProvider = {
       config: {
@@ -51,7 +52,7 @@ describe('PriceApiClient', () => {
       it('fetches multiple spot prices successfully', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          text: jest.fn().mockResolvedValueOnce(JSON.stringify(mockResponse)),
+          text: vi.fn().mockResolvedValueOnce(JSON.stringify(mockResponse)),
         });
 
         const result = await client.getMultipleSpotPrices([
@@ -77,7 +78,10 @@ describe('PriceApiClient', () => {
           ]),
         ).rejects.toThrow('Fetch failed');
         expect(mockLogger.error).toHaveBeenCalledWith(
-          mockError,
+          expect.objectContaining({
+            message: mockError.message,
+            cause: mockError,
+          }),
           'Error fetching spot prices',
         );
       });
@@ -103,9 +107,7 @@ describe('PriceApiClient', () => {
       it('fetches spot price with custom vsCurrency', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          text: jest
-            .fn()
-            .mockResolvedValueOnce(JSON.stringify(MOCK_SPOT_PRICES)),
+          text: vi.fn().mockResolvedValueOnce(JSON.stringify(MOCK_SPOT_PRICES)),
         });
 
         await client.getMultipleSpotPrices(
@@ -122,7 +124,7 @@ describe('PriceApiClient', () => {
       it('handles malformed JSON response', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          text: jest.fn().mockResolvedValueOnce('Invalid JSON'),
+          text: vi.fn().mockResolvedValueOnce('Invalid JSON'),
         });
 
         await expect(
@@ -158,7 +160,7 @@ describe('PriceApiClient', () => {
 
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          text: jest
+          text: vi
             .fn()
             .mockResolvedValueOnce(JSON.stringify(mockMalformedResponse)),
         });
@@ -179,8 +181,8 @@ describe('PriceApiClient', () => {
           'PriceApiClient:getMultipleSpotPrices:solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/token:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:usd':
             MOCK_SPOT_PRICES[KnownCaip19Id.UsdcMainnet]!,
         };
-        jest.spyOn(mockCache, 'mget').mockResolvedValueOnce(cachedData);
-        jest.spyOn(mockCache, 'mset').mockResolvedValueOnce(undefined);
+        vi.spyOn(mockCache, 'mget').mockResolvedValueOnce(cachedData);
+        vi.spyOn(mockCache, 'mset').mockResolvedValueOnce(undefined);
 
         const result = await client.getMultipleSpotPrices([
           KnownCaip19Id.SolMainnet,
@@ -200,11 +202,11 @@ describe('PriceApiClient', () => {
           'PriceApiClient:getMultipleSpotPrices:solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501:usd':
             MOCK_SPOT_PRICES[KnownCaip19Id.SolMainnet]!,
         };
-        jest.spyOn(mockCache, 'mget').mockResolvedValueOnce(cachedData);
-        jest.spyOn(mockCache, 'mset').mockResolvedValueOnce(undefined);
+        vi.spyOn(mockCache, 'mget').mockResolvedValueOnce(cachedData);
+        vi.spyOn(mockCache, 'mset').mockResolvedValueOnce(undefined);
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          text: jest.fn().mockResolvedValueOnce(
+          text: vi.fn().mockResolvedValueOnce(
             JSON.stringify({
               [KnownCaip19Id.UsdcMainnet]:
                 MOCK_SPOT_PRICES[KnownCaip19Id.UsdcMainnet]!,
@@ -285,7 +287,7 @@ describe('PriceApiClient', () => {
     it('handles URLs with multiple query parameters safely', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: jest.fn().mockResolvedValueOnce('{}'),
+        text: vi.fn().mockResolvedValueOnce('{}'),
       });
 
       await client.getMultipleSpotPrices([KnownCaip19Id.SolLocalnet]);
@@ -302,7 +304,7 @@ describe('PriceApiClient', () => {
     it('rejects non-printable characters in input', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: jest.fn().mockResolvedValueOnce('{}'),
+        text: vi.fn().mockResolvedValueOnce('{}'),
       });
 
       await expect(

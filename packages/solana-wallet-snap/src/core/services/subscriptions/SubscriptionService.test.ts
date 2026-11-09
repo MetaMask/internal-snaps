@@ -143,35 +143,36 @@ describe('SubscriptionService', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    connectionRecoveryHandlers.clear();
 
     const snap = {
-      request: jest.fn(),
+      request: vi.fn(),
     };
     (globalThis as any).snap = snap;
 
     mockWebSocketConnectionService = {
-      openConnection: jest.fn(),
-      findById: jest.fn().mockReturnValue(mockConnection),
-      findByNetwork: jest.fn().mockReturnValue(mockConnection),
+      openConnection: vi.fn(),
+      findById: vi.fn().mockReturnValue(mockConnection),
+      findByNetwork: vi.fn().mockReturnValue(mockConnection),
       // Allows to capture the connection recovery handlers to trigger them manually
-      onConnectionRecovery: jest.fn().mockImplementation((network, handler) => {
+      onConnectionRecovery: vi.fn().mockImplementation((network, handler) => {
         connectionRecoveryHandlers.set(network, [
           ...(connectionRecoveryHandlers.get(network) ?? []),
           handler,
         ]);
       }),
-      handleConnectionEvent: jest.fn(),
+      handleConnectionEvent: vi.fn(),
     } as unknown as WebSocketConnectionService;
 
     mockSubscriptionRepository = {
-      getAll: jest.fn().mockResolvedValue([]),
-      getById: jest.fn(),
-      save: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      deleteMany: jest.fn(),
-      findBy: jest.fn(),
+      getAll: vi.fn().mockResolvedValue([]),
+      getById: vi.fn(),
+      save: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+      findBy: vi.fn(),
     } as unknown as SubscriptionRepository;
 
     mockEventEmitter = new EventEmitter(mockLogger);
@@ -199,7 +200,7 @@ describe('SubscriptionService', () => {
 
     describe('when the connection is open', () => {
       it('sends a subscribe message', async () => {
-        jest.spyOn(snap, 'request').mockResolvedValueOnce(null);
+        vi.spyOn(snap, 'request').mockResolvedValueOnce(null);
         const request = createMockSubscriptionRequest();
 
         const subscriptionId = await service.subscribe(request);
@@ -231,7 +232,7 @@ describe('SubscriptionService', () => {
         const subscriptionId1 = await service.subscribe(request);
 
         // Mock the repository to return the first subscription as confirmed
-        jest.spyOn(mockSubscriptionRepository, 'getById').mockResolvedValue({
+        vi.spyOn(mockSubscriptionRepository, 'getById').mockResolvedValue({
           ...request,
           id: subscriptionId1,
           status: 'confirmed',
@@ -322,9 +323,9 @@ describe('SubscriptionService', () => {
         });
 
         // Mock the repository to return the first subscription as pending
-        jest
-          .spyOn(mockSubscriptionRepository, 'getById')
-          .mockResolvedValue(mockPendingSubscription1);
+        vi.spyOn(mockSubscriptionRepository, 'getById').mockResolvedValue(
+          mockPendingSubscription1,
+        );
 
         await service.subscribe(request);
 
@@ -368,9 +369,9 @@ describe('SubscriptionService', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
         confirmedAt: '2024-01-02T00:00:00.000Z',
       };
-      jest
-        .spyOn(mockSubscriptionRepository, 'getById')
-        .mockResolvedValue(mockConfirmedSubscription);
+      vi.spyOn(mockSubscriptionRepository, 'getById').mockResolvedValue(
+        mockConfirmedSubscription,
+      );
 
       // Unsubscribe
       await service.unsubscribe('some-subscription-id');
@@ -396,9 +397,9 @@ describe('SubscriptionService', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
         confirmedAt: '2024-01-02T00:00:00.000Z',
       };
-      jest
-        .spyOn(mockSubscriptionRepository, 'getById')
-        .mockResolvedValue(mockConfirmedSubscription);
+      vi.spyOn(mockSubscriptionRepository, 'getById').mockResolvedValue(
+        mockConfirmedSubscription,
+      );
 
       // Unsubscribe
       await service.unsubscribe(mockSubscriptionId);
@@ -412,9 +413,9 @@ describe('SubscriptionService', () => {
 
   describe('#handleWebSocketEvent', () => {
     it('returns without failing when there is no connection', async () => {
-      jest
-        .spyOn(mockWebSocketConnectionService, 'findById')
-        .mockResolvedValue(null);
+      vi.spyOn(mockWebSocketConnectionService, 'findById').mockResolvedValue(
+        null,
+      );
 
       expect(
         await mockEventEmitter.emitSync('onWebSocketEvent', {}),
@@ -424,9 +425,9 @@ describe('SubscriptionService', () => {
     describe('when the message is a notification', () => {
       describe('when there is no confirmed subscription for the message', () => {
         it('returns without failing', async () => {
-          jest
-            .spyOn(mockSubscriptionRepository, 'getById')
-            .mockResolvedValue(undefined);
+          vi.spyOn(mockSubscriptionRepository, 'getById').mockResolvedValue(
+            undefined,
+          );
           const notification = createMockNotificationMessage();
 
           expect(
@@ -463,14 +464,14 @@ describe('SubscriptionService', () => {
             confirmedAt: '2024-01-02T00:00:00.000Z',
           };
 
-          jest
-            .spyOn(mockSubscriptionRepository, 'findBy')
-            .mockResolvedValue(confirmedSubscription);
+          vi.spyOn(mockSubscriptionRepository, 'findBy').mockResolvedValue(
+            confirmedSubscription,
+          );
         });
 
         it('call the registered handler when a notification is received', async () => {
           // Register a handler for the notification.
-          const handler = jest.fn();
+          const handler = vi.fn();
           service.registerNotificationHandler(
             'accountSubscribe',
             mockNetwork,
@@ -505,7 +506,7 @@ describe('SubscriptionService', () => {
         });
 
         it('catches errors with failing handlers', async () => {
-          const handler = jest.fn().mockRejectedValue(new Error('Error'));
+          const handler = vi.fn().mockRejectedValue(new Error('Error'));
           service.registerNotificationHandler(
             'accountSubscribe',
             mockNetwork,
@@ -556,9 +557,9 @@ describe('SubscriptionService', () => {
             createdAt: '2024-01-01T00:00:00.000Z',
           };
 
-          jest
-            .spyOn(mockSubscriptionRepository, 'getById')
-            .mockResolvedValue(pendingSubscription);
+          vi.spyOn(mockSubscriptionRepository, 'getById').mockResolvedValue(
+            pendingSubscription,
+          );
         });
 
         it('confirms the subscription', async () => {
@@ -584,16 +585,16 @@ describe('SubscriptionService', () => {
           // Now we'll verify that notifications are now handled
 
           // Register a handler for the notification. We expect it to be called.
-          const handler = jest.fn();
+          const handler = vi.fn();
           service.registerNotificationHandler(
             'accountSubscribe',
             mockNetwork,
             handler,
           );
 
-          jest
-            .spyOn(mockSubscriptionRepository, 'findBy')
-            .mockResolvedValue(confirmedSubscription);
+          vi.spyOn(mockSubscriptionRepository, 'findBy').mockResolvedValue(
+            confirmedSubscription,
+          );
 
           const notification = createMockNotificationMessage(
             confirmedSubscription.id,
@@ -635,9 +636,9 @@ describe('SubscriptionService', () => {
           id: 'some-subscription-id',
           status: 'confirmed',
         } as ConfirmedSubscription;
-        jest
-          .spyOn(mockSubscriptionRepository, 'findBy')
-          .mockResolvedValue(mockSubscription);
+        vi.spyOn(mockSubscriptionRepository, 'findBy').mockResolvedValue(
+          mockSubscription,
+        );
 
         await mockEventEmitter.emitSync('onWebSocketEvent', message);
 
@@ -669,9 +670,9 @@ describe('SubscriptionService', () => {
               createdAt: '2024-01-01T00:00:00.000Z',
             };
 
-            jest
-              .spyOn(mockSubscriptionRepository, 'getById')
-              .mockResolvedValue(pendingSubscription);
+            vi.spyOn(mockSubscriptionRepository, 'getById').mockResolvedValue(
+              pendingSubscription,
+            );
           });
 
           it('deletes the pending subscription', async () => {
@@ -722,8 +723,7 @@ describe('SubscriptionService', () => {
     describe('when a subscription request is sent, but no open connection', () => {
       it('saves the subscription request, and sends it once the connection is opened', async () => {
         // Mock findByNetwork to return null initially, then connection for re-subscription
-        jest
-          .spyOn(mockWebSocketConnectionService, 'findByNetwork')
+        vi.spyOn(mockWebSocketConnectionService, 'findByNetwork')
           .mockResolvedValueOnce(null) // First call during subscribe() returns null
           .mockResolvedValue(mockConnection); // All subsequent calls return connection
 
@@ -745,14 +745,12 @@ describe('SubscriptionService', () => {
         expect(snap.request).not.toHaveBeenCalled();
 
         // Mock getAll to return the saved subscription for re-subscription
-        jest
-          .spyOn(mockSubscriptionRepository, 'getAll')
-          .mockResolvedValue([pendingSubscription]);
+        vi.spyOn(mockSubscriptionRepository, 'getAll').mockResolvedValue([
+          pendingSubscription,
+        ]);
 
         // Mock deleteMany for re-subscription flow
-        jest
-          .spyOn(mockSubscriptionRepository, 'deleteMany')
-          .mockResolvedValue();
+        vi.spyOn(mockSubscriptionRepository, 'deleteMany').mockResolvedValue();
 
         // Send the connection event
         await simulateReconnection(mockEventEmitter, mockConnectionId);
@@ -878,7 +876,7 @@ describe('SubscriptionService', () => {
           confirmationMessage,
         );
 
-        jest.spyOn(mockSubscriptionRepository, 'findBy').mockResolvedValue({
+        vi.spyOn(mockSubscriptionRepository, 'findBy').mockResolvedValue({
           ...pendingSubscription,
           status: 'confirmed',
           rpcSubscriptionId: 98765,
@@ -912,12 +910,12 @@ describe('SubscriptionService', () => {
     const mockNowTimestamp = 1736660000; // 2025-01-12T05:33:20.000Z
 
     beforeEach(() => {
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date(mockNowTimestamp * 1000));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(mockNowTimestamp * 1000));
     });
 
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('saves the subscription with an expiry date', async () => {
@@ -940,16 +938,16 @@ describe('SubscriptionService', () => {
         expiresAt: new Date(Date.now() + Duration.Second * 5).toISOString(),
       } as unknown as Subscription;
 
-      jest
-        .spyOn(mockSubscriptionRepository, 'getAll')
-        .mockResolvedValue([subscription]);
+      vi.spyOn(mockSubscriptionRepository, 'getAll').mockResolvedValue([
+        subscription,
+      ]);
 
-      const unsubscribeSpy = jest
+      const unsubscribeSpy = vi
         .spyOn(service, 'unsubscribe')
         .mockResolvedValue();
 
       // Time passes...
-      jest.advanceTimersByTime(Duration.Minute * 10);
+      vi.advanceTimersByTime(Duration.Minute * 10);
 
       // Simulate an onInactive event
       await mockEventEmitter.emitSync('onInactive');
@@ -964,16 +962,16 @@ describe('SubscriptionService', () => {
         expiresAt: new Date(Date.now() + Duration.Hour).toISOString(),
       } as unknown as Subscription;
 
-      jest
-        .spyOn(mockSubscriptionRepository, 'getAll')
-        .mockResolvedValue([subscription]);
+      vi.spyOn(mockSubscriptionRepository, 'getAll').mockResolvedValue([
+        subscription,
+      ]);
 
-      const unsubscribeSpy = jest
+      const unsubscribeSpy = vi
         .spyOn(service, 'unsubscribe')
         .mockResolvedValue();
 
       // Not enough time passes...
-      jest.advanceTimersByTime(Duration.Minute * 10);
+      vi.advanceTimersByTime(Duration.Minute * 10);
 
       // Simulate an onInactive event
       await mockEventEmitter.emitSync('onInactive');
@@ -986,16 +984,16 @@ describe('SubscriptionService', () => {
         id: 'permanent-1',
         expiresAt: undefined,
       } as unknown as Subscription;
-      jest
-        .spyOn(mockSubscriptionRepository, 'getAll')
-        .mockResolvedValue([subscription]);
+      vi.spyOn(mockSubscriptionRepository, 'getAll').mockResolvedValue([
+        subscription,
+      ]);
 
-      const unsubscribeSpy = jest
+      const unsubscribeSpy = vi
         .spyOn(service, 'unsubscribe')
         .mockResolvedValue();
 
       // Time passes...
-      jest.advanceTimersByTime(Duration.Hour);
+      vi.advanceTimersByTime(Duration.Hour);
 
       // Simulate an onInactive event
       await mockEventEmitter.emitSync('onInactive');
@@ -1024,15 +1022,18 @@ describe('SubscriptionService', () => {
         expiresAt: undefined,
       } as unknown as Subscription;
 
-      jest
-        .spyOn(mockSubscriptionRepository, 'getAll')
-        .mockResolvedValue([expiredSub1, expiredSub2, activeSub, permanentSub]);
+      vi.spyOn(mockSubscriptionRepository, 'getAll').mockResolvedValue([
+        expiredSub1,
+        expiredSub2,
+        activeSub,
+        permanentSub,
+      ]);
 
-      const unsubscribeSpy = jest
+      const unsubscribeSpy = vi
         .spyOn(service, 'unsubscribe')
         .mockResolvedValue();
 
-      jest.advanceTimersByTime(Duration.Minute * 10);
+      vi.advanceTimersByTime(Duration.Minute * 10);
       await mockEventEmitter.emitSync('onInactive');
 
       expect(unsubscribeSpy).toHaveBeenCalledTimes(2);
@@ -1051,16 +1052,17 @@ describe('SubscriptionService', () => {
         expiresAt: new Date(Date.now() + Duration.Second * 10).toISOString(),
       } as unknown as Subscription;
 
-      jest
-        .spyOn(mockSubscriptionRepository, 'getAll')
-        .mockResolvedValue([expiredSub1, expiredSub2]);
+      vi.spyOn(mockSubscriptionRepository, 'getAll').mockResolvedValue([
+        expiredSub1,
+        expiredSub2,
+      ]);
 
-      const unsubscribeSpy = jest
+      const unsubscribeSpy = vi
         .spyOn(service, 'unsubscribe')
         .mockResolvedValueOnce() // First call succeeds
         .mockRejectedValueOnce(new Error('Unsubscribe failed')); // Second call fails
 
-      jest.advanceTimersByTime(Duration.Minute * 10);
+      vi.advanceTimersByTime(Duration.Minute * 10);
       await mockEventEmitter.emitSync('onInactive');
 
       // Should attempt both despite the failure
@@ -1070,9 +1072,9 @@ describe('SubscriptionService', () => {
     });
 
     it('handles empty subscription list gracefully', async () => {
-      jest.spyOn(mockSubscriptionRepository, 'getAll').mockResolvedValue([]);
+      vi.spyOn(mockSubscriptionRepository, 'getAll').mockResolvedValue([]);
 
-      const unsubscribeSpy = jest
+      const unsubscribeSpy = vi
         .spyOn(service, 'unsubscribe')
         .mockResolvedValue();
 
@@ -1087,15 +1089,15 @@ describe('SubscriptionService', () => {
         expiresAt: 'invalid-date-string',
       } as unknown as Subscription;
 
-      jest
-        .spyOn(mockSubscriptionRepository, 'getAll')
-        .mockResolvedValue([subscription]);
+      vi.spyOn(mockSubscriptionRepository, 'getAll').mockResolvedValue([
+        subscription,
+      ]);
 
-      const unsubscribeSpy = jest
+      const unsubscribeSpy = vi
         .spyOn(service, 'unsubscribe')
         .mockResolvedValue();
 
-      jest.advanceTimersByTime(Duration.Hour);
+      vi.advanceTimersByTime(Duration.Hour);
 
       // Should not crash and should not unsubscribe due to invalid date
       expect(await mockEventEmitter.emitSync('onInactive')).toBeUndefined();
@@ -1117,17 +1119,17 @@ describe('SubscriptionService', () => {
         expiresAt: new Date(Date.now() + Duration.Second * 5).toISOString(),
       };
 
-      jest
-        .spyOn(mockSubscriptionRepository, 'getAll')
-        .mockResolvedValue([confirmedSubscription]);
+      vi.spyOn(mockSubscriptionRepository, 'getAll').mockResolvedValue([
+        confirmedSubscription,
+      ]);
 
       // Now, simulate a disconnection (this has no direct effect, it's just for clarity of the test)
       await simulateDisconnection(mockEventEmitter, mockConnectionId);
 
       // Time passes...
-      jest.advanceTimersByTime(Duration.Minute * 10);
+      vi.advanceTimersByTime(Duration.Minute * 10);
 
-      const subscribeSpy = jest.spyOn(service, 'subscribe');
+      const subscribeSpy = vi.spyOn(service, 'subscribe');
 
       // Simulate a reconnection
       await simulateReconnection(mockEventEmitter, mockConnectionId);

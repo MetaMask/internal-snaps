@@ -1,6 +1,7 @@
 import { SnapError } from '@metamask/snaps-sdk';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 import { TronWeb } from 'tronweb';
+import type { Mocked } from 'vitest';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Network } from '../../constants';
@@ -92,28 +93,28 @@ describe('WalletService', () => {
   };
 
   let walletService: WalletService;
-  let mockAccountsService: jest.Mocked<AccountsService>;
-  let mockTronWebFactory: jest.Mocked<TronWebFactory>;
+  let mockAccountsService: Mocked<AccountsService>;
+  let mockTronWebFactory: Mocked<TronWebFactory>;
   let mockTronWeb: any;
 
   beforeEach(() => {
     mockTronWeb = {
       trx: {
-        signMessageV2: jest.fn().mockReturnValue('0xsignature123'),
-        getCurrentBlock: jest.fn().mockResolvedValue(
+        signMessageV2: vi.fn().mockReturnValue('0xsignature123'),
+        getCurrentBlock: vi.fn().mockResolvedValue(
           createBlock({
             number: 200_000,
             timestamp: MOCK_BLOCK_TIMESTAMP,
           }),
         ),
-        getBlockByNumber: jest.fn(),
-        sign: jest.fn().mockResolvedValue({
+        getBlockByNumber: vi.fn(),
+        sign: vi.fn().mockResolvedValue({
           signature: ['abcd1234signature'],
         }),
       },
       utils: {
         deserializeTx: {
-          deserializeTransaction: jest.fn().mockReturnValue({
+          deserializeTransaction: vi.fn().mockReturnValue({
             contract: [
               {
                 type: 'TransferContract',
@@ -135,22 +136,20 @@ describe('WalletService', () => {
           }),
         },
         transaction: {
-          txJsonToPb: jest
-            .fn()
-            .mockImplementation((transaction) => transaction),
-          txPbToRawDataHex: jest.fn().mockReturnValue('refreshed-raw-data-hex'),
-          txPbToTxID: jest.fn().mockReturnValue('0xrefreshed-tx-id'),
+          txJsonToPb: vi.fn().mockImplementation((transaction) => transaction),
+          txPbToRawDataHex: vi.fn().mockReturnValue('refreshed-raw-data-hex'),
+          txPbToTxID: vi.fn().mockReturnValue('0xrefreshed-tx-id'),
         },
       },
-      isAddress: jest.fn().mockReturnValue(true),
+      isAddress: vi.fn().mockReturnValue(true),
     };
 
     mockAccountsService = {
-      deriveTronKeypair: jest.fn().mockResolvedValue(mockTronKeypair),
+      deriveTronKeypair: vi.fn().mockResolvedValue(mockTronKeypair),
     } as any;
 
     mockTronWebFactory = {
-      createClient: jest.fn().mockReturnValue(mockTronWeb),
+      createClient: vi.fn().mockReturnValue(mockTronWeb),
     } as any;
 
     walletService = new WalletService({

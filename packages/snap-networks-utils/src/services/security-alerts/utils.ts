@@ -1,4 +1,5 @@
 import { SecurityAlertResponse } from './types';
+import type { SecurityScanOutcome } from './types';
 
 /**
  * Human-readable description suffixes for Blockaid validation reasons, shared
@@ -60,4 +61,29 @@ export function deriveSecurityAlert(type?: string | null): string | null {
     type !== SecurityAlertResponse.Error
     ? type
     : null;
+}
+
+/**
+ * Determines whether a malicious scan result requires explicit user
+ * acknowledgement before the transaction can be confirmed.
+ *
+ * When true, the confirmation footer swaps its primary button to "Review
+ * alerts" and routes the user through the acknowledgement screen instead of
+ * confirming directly. Warning-level results intentionally do not require this
+ * (reduced friction): they show the banner only. With security alerts disabled
+ * no acknowledgement is ever required (the scan is not surfaced at all).
+ *
+ * @param params - Scan and preference state.
+ * @param params.useSecurityAlerts - Whether the user enabled security alerts.
+ * @param params.scan - Latest transaction scan result, if any.
+ * @returns True when the user must acknowledge a malicious result to proceed.
+ */
+export function requiresMaliciousAcknowledgement(params: {
+  useSecurityAlerts: boolean;
+  scan?: SecurityScanOutcome | null;
+}): boolean {
+  return (
+    params.useSecurityAlerts &&
+    params.scan?.validation?.type === SecurityAlertResponse.Malicious
+  );
 }

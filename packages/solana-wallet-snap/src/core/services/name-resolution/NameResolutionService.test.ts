@@ -1,27 +1,28 @@
-import { expect } from '@jest/globals';
 import { getPrimaryDomain, resolve } from '@solana-name-service/sns-sdk-kit';
+import * as SnsSdk from '@solana-name-service/sns-sdk-kit';
 import type { Address } from '@solana/kit';
+import type { Mocked } from 'vitest';
 
 import { Network } from '../../constants/solana';
 import { mockLogger } from '../__mocks__/logger';
 import type { SolanaConnection } from '../connection/SolanaConnection';
 import { NameResolutionService } from './NameResolutionService';
 
-jest.mock('@solana-name-service/sns-sdk-kit');
-
 describe('NameResolutionService', () => {
   let nameResolutionService: NameResolutionService;
-  let mockConnection: jest.Mocked<SolanaConnection>;
+  let mockConnection: Mocked<SolanaConnection>;
   let mockRpc: any;
 
   beforeEach(() => {
     // Reset all mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    vi.spyOn(SnsSdk, 'resolve');
+    vi.spyOn(SnsSdk, 'getPrimaryDomain');
 
     // Create mock connection
     mockConnection = {
-      getRpc: jest.fn().mockReturnValue(mockRpc),
-    } as unknown as jest.Mocked<SolanaConnection>;
+      getRpc: vi.fn().mockReturnValue(mockRpc),
+    } as unknown as Mocked<SolanaConnection>;
 
     // Create service instance
     nameResolutionService = new NameResolutionService(
@@ -36,7 +37,7 @@ describe('NameResolutionService', () => {
     const mockNetwork = Network.Mainnet;
 
     beforeEach(() => {
-      jest.mocked(resolve).mockResolvedValue(mockAddress);
+      vi.mocked(resolve).mockResolvedValue(mockAddress);
     });
 
     it('resolves a domain to an address successfully', async () => {
@@ -80,7 +81,7 @@ describe('NameResolutionService', () => {
 
     it('propagates errors from resolve', async () => {
       const error = new Error('Domain resolution failed');
-      jest.mocked(resolve).mockRejectedValue(error);
+      vi.mocked(resolve).mockRejectedValue(error);
 
       await expect(
         nameResolutionService.resolveDomain(mockNetwork, mockDomain),
@@ -104,7 +105,7 @@ describe('NameResolutionService', () => {
     const mockNetwork = Network.Mainnet;
 
     it('resolves an address to a domain successfully', async () => {
-      jest.mocked(getPrimaryDomain).mockResolvedValue({
+      vi.mocked(getPrimaryDomain).mockResolvedValue({
         domainAddress: mockDomain as Address,
         domainName: mockDomain,
         stale: false,
@@ -149,7 +150,7 @@ describe('NameResolutionService', () => {
     });
 
     it('returns null if the primary domain resolution fails', async () => {
-      jest.mocked(getPrimaryDomain).mockRejectedValue(new Error('Error'));
+      vi.mocked(getPrimaryDomain).mockRejectedValue(new Error('Error'));
 
       expect(
         await nameResolutionService.resolveAddress(mockNetwork, mockAddress),
@@ -164,8 +165,8 @@ describe('NameResolutionService', () => {
       const mockNetwork = Network.Mainnet;
 
       // Setup mocks
-      jest.mocked(resolve).mockResolvedValue(mockAddress);
-      jest.mocked(getPrimaryDomain).mockResolvedValue({
+      vi.mocked(resolve).mockResolvedValue(mockAddress);
+      vi.mocked(getPrimaryDomain).mockResolvedValue({
         domainAddress: mockDomain as Address,
         domainName: mockDomain,
         stale: false,
@@ -196,8 +197,8 @@ describe('NameResolutionService', () => {
       const mockDomain = 'test';
       const mockAddress = '11111111111111111111111111111111' as Address;
 
-      jest.mocked(resolve).mockResolvedValue(mockAddress);
-      jest.mocked(getPrimaryDomain).mockResolvedValue({
+      vi.mocked(resolve).mockResolvedValue(mockAddress);
+      vi.mocked(getPrimaryDomain).mockResolvedValue({
         domainAddress: mockDomain as Address,
         domainName: mockDomain,
         stale: false,

@@ -1,5 +1,16 @@
 import {
+  BrokenCircuitError,
+  createFetchPolicyError,
+  FetchPolicyErrorName,
+} from '@metamask/snap-networks-utils';
+
+import {
+  HttpException,
+  HttpResponseException,
   InvalidHttpRequestParamsException,
+  isHttpException,
+  KnownHttpErrorCode,
+  normalizeHttpException,
   rethrowIfInstanceElseThrow,
 } from './errors';
 
@@ -99,6 +110,62 @@ describe('errors', () => {
       expect(new InvalidHttpRequestParamsException('bad params').message).toBe(
         'bad params',
       );
+    });
+  });
+
+  describe('normalizeHttpException', () => {
+    it('wraps HTTP status policy errors in HttpResponseException', () => {
+      const error = createFetchPolicyError('HTTP 503', { httpStatus: 503 });
+
+      expect(normalizeHttpException(error)).toBeInstanceOf(
+        HttpResponseException,
+      );
+    });
+
+    it('wraps network, timeout, and broken-circuit errors in HttpException', () => {
+      const networkError = createFetchPolicyError('network failed', {
+        name: FetchPolicyErrorName.Network,
+      });
+      const timeoutError = createFetchPolicyError('timed out', {
+        name: FetchPolicyErrorName.Timeout,
+      });
+      const brokenCircuitError = new BrokenCircuitError();
+
+      expect(normalizeHttpException(networkError)).toBeInstanceOf(
+        HttpException,
+      );
+      expect(normalizeHttpException(timeoutError)).toBeInstanceOf(
+        HttpException,
+      );
+      expect(normalizeHttpException(brokenCircuitError)).toBeInstanceOf(
+        HttpException,
+      );
+    });
+
+    it.each([
+      KnownHttpErrorCode.ConnectionAborted,
+      KnownHttpErrorCode.Timeout,
+      KnownHttpErrorCode.Canceled,
+    ])('wraps transport code %s in HttpException', (code) => {
+      const error = Object.assign(new Error('transport'), { code });
+
+      expect(isHttpException(error)).toBe(true);
+      expect(normalizeHttpException(error)).toBeInstanceOf(HttpException);
+    });
+
+    it('recognizes a known code on error.cause', () => {
+      const error = new Error('wrapped', {
+        cause: { code: KnownHttpErrorCode.ConnectionReset },
+      });
+
+      expect(isHttpException(error)).toBe(true);
+    });
+
+    it('leaves an unknown transport code unchanged', () => {
+      const error = Object.assign(new Error('nope'), { code: 'ESOMETHING' });
+
+      expect(isHttpException(error)).toBe(false);
+      expect(normalizeHttpException(error)).toBe(error);
     });
   });
 });

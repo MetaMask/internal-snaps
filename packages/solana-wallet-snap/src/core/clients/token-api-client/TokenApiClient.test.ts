@@ -23,13 +23,13 @@ const MOCK_METADATA_RESPONSE = [
 ];
 
 describe('TokenApiClient', () => {
-  const mockFetch = jest.fn();
+  const mockFetch = vi.fn();
 
   let client: TokenApiClient;
   let mockConfigProvider: ConfigProvider;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     mockConfigProvider = {
       config: {
@@ -76,7 +76,7 @@ describe('TokenApiClient', () => {
       ];
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: jest
+        text: vi
           .fn()
           .mockResolvedValueOnce(JSON.stringify(MOCK_METADATA_RESPONSE)),
       });
@@ -124,9 +124,7 @@ describe('TokenApiClient', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        text: jest
-          .fn()
-          .mockResolvedValue(JSON.stringify(MOCK_METADATA_RESPONSE)),
+        text: vi.fn().mockResolvedValue(JSON.stringify(MOCK_METADATA_RESPONSE)),
       });
 
       await client.getTokensMetadata(tokenAddresses);
@@ -165,13 +163,13 @@ describe('TokenApiClient', () => {
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          text: jest
+          text: vi
             .fn()
             .mockResolvedValueOnce(JSON.stringify(MOCK_METADATA_RESPONSE)),
         })
         .mockResolvedValueOnce({
           ok: true,
-          text: jest.fn().mockResolvedValueOnce(
+          text: vi.fn().mockResolvedValueOnce(
             JSON.stringify([
               {
                 decimals: 6,
@@ -222,7 +220,10 @@ describe('TokenApiClient', () => {
         errorMessage,
       );
       expect(mockLogger.error).toHaveBeenCalledWith(
-        new Error(errorMessage),
+        expect.objectContaining({
+          message: errorMessage,
+          cause: expect.objectContaining({ message: errorMessage }),
+        }),
         errorMessage,
       );
     });
@@ -235,7 +236,7 @@ describe('TokenApiClient', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: jest.fn().mockResolvedValueOnce(
+        text: vi.fn().mockResolvedValueOnce(
           JSON.stringify([
             {
               decimals: 9,
@@ -264,7 +265,7 @@ describe('TokenApiClient', () => {
       const tokenAddresses = [supportedAssetType, unsupportedAssetType];
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: jest
+        text: vi
           .fn()
           .mockResolvedValueOnce(JSON.stringify([MOCK_METADATA_RESPONSE[0]])),
       });

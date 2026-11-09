@@ -1,6 +1,7 @@
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
 import { Types as TronwebTypes } from 'tronweb';
+import type { Mocked, Mock } from 'vitest';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TriggerConstantContractResponse } from '../../clients/tron-http';
@@ -106,7 +107,7 @@ const createLargeTransaction = (dataLength = 2000): Transaction => {
   };
 };
 
-type MockTrongridApiClient = jest.Mocked<
+type MockTrongridApiClient = Mocked<
   Pick<
     TrongridApiClient,
     | 'getChainParameters'
@@ -115,11 +116,11 @@ type MockTrongridApiClient = jest.Mocked<
   >
 >;
 
-type MockTronHttpClient = jest.Mocked<
+type MockTronHttpClient = Mocked<
   Pick<TronHttpClient, 'getContract' | 'getAccountResources'>
 > & {
-  triggerConstantContract: jest.Mock<
-    Promise<TriggerConstantContractMockResponse>
+  triggerConstantContract: Mock<
+    () => Promise<TriggerConstantContractMockResponse>
   >;
 };
 
@@ -127,7 +128,7 @@ type WithFeeCalculatorServiceCallback<ReturnValue> = (payload: {
   feeCalculatorService: FeeCalculatorService;
   trongridApiClient: MockTrongridApiClient;
   tronHttpClient: MockTronHttpClient;
-  snapClient: jest.Mocked<Pick<SnapClient, 'trackError'>>;
+  snapClient: Mocked<Pick<SnapClient, 'trackError'>>;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -144,26 +145,26 @@ async function withFeeCalculatorService<ReturnValue>(
   testFunction: WithFeeCalculatorServiceCallback<ReturnValue>,
 ): Promise<ReturnValue> {
   const mockTrongridApiClient: MockTrongridApiClient = {
-    getChainParameters: jest.fn().mockResolvedValue([
+    getChainParameters: vi.fn().mockResolvedValue([
       { key: 'getTransactionFee', value: 1000 },
       { key: 'getEnergyFee', value: 100 },
       { key: 'getCreateAccountFee', value: 100_000 },
       { key: 'getCreateNewAccountFeeInSystemContract', value: 1_000_000 },
     ]),
-    getAccountInfoByAddress: jest.fn(),
-    peekCachedChainParameters: jest.fn().mockResolvedValue(undefined),
+    getAccountInfoByAddress: vi.fn(),
+    peekCachedChainParameters: vi.fn().mockResolvedValue(undefined),
   };
 
   const mockTronHttpClient: MockTronHttpClient = {
-    triggerConstantContract: jest.fn(),
-    getContract: jest.fn().mockResolvedValue(null),
-    getAccountResources: jest
+    triggerConstantContract: vi.fn(),
+    getContract: vi.fn().mockResolvedValue(null),
+    getAccountResources: vi
       .fn()
       .mockRejectedValue(new Error('Account not found')),
   };
 
-  const mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>> = {
-    trackError: jest.fn(),
+  const mockSnapClient: Mocked<Pick<SnapClient, 'trackError'>> = {
+    trackError: vi.fn(),
   };
 
   const feeCalculatorService = new FeeCalculatorService({

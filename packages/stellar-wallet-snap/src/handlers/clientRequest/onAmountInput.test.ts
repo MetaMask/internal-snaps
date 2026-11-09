@@ -35,24 +35,25 @@ import {
 } from '../../services/transaction/exceptions';
 import { WalletService } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
+import * as AccountActivationPrompt from '../../ui/confirmation/views/AccountActivationPrompt/render';
 import { logger } from '../../utils/logger';
 import { AccountResolver } from '../accountResolver';
 import { ClientRequestMethod, MultiChainSendErrorCodes } from './api';
 import type { OnAmountInputJsonRpcRequest } from './api';
 import { OnAmountInputHandler } from './onAmountInput';
 
-jest.mock('../../utils/logger');
-jest.mock('../../utils/snap');
-jest.mock('../../ui/confirmation/views/AccountActivationPrompt/render', () => ({
-  render: jest.fn().mockResolvedValue(undefined),
-}));
-
 const destinationAddress =
   'GDTF7ERUQVTX23ZD6NY5XRYC5IQAKWFVTQ6IXSMEZWGVNDDGPYCVHRZP';
 
 describe('OnAmountInputHandler', () => {
+  beforeEach(() => {
+    vi.spyOn(AccountActivationPrompt, 'render').mockResolvedValue(
+      undefined as never,
+    );
+  });
+
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   const accountId = '11111111-1111-4111-8111-111111111111';
@@ -80,21 +81,18 @@ describe('OnAmountInputHandler', () => {
 
     const { accountService, onChainAccountService, walletService } =
       mockOnChainAccountService();
-    jest.spyOn(AccountService.prototype, 'resolveAccount').mockResolvedValue({
+    vi.spyOn(AccountService.prototype, 'resolveAccount').mockResolvedValue({
       account,
     });
-    const resolveOnChainAccountByKeyringAccountIdSpy = jest
-      .spyOn(
-        OnChainAccountService.prototype,
-        'resolveOnChainAccountByKeyringAccountId',
-      )
+    const getOnChainAccountSnapshotSpy = vi
+      .spyOn(OnChainAccountService.prototype, 'getOnChainAccountSnapshot')
       .mockResolvedValue(onChainAccount);
-    jest
-      .spyOn(WalletService.prototype, 'resolveWallet')
-      .mockResolvedValue(wallet);
+    vi.spyOn(WalletService.prototype, 'resolveWallet').mockResolvedValue(
+      wallet,
+    );
 
     const { transactionService } = createMockTransactionService();
-    const createValidatedSendTransaction = jest
+    const createValidatedSendTransaction = vi
       .spyOn(TransactionService.prototype, 'createValidatedSendTransaction')
       .mockResolvedValue({} as Transaction);
 
@@ -102,9 +100,9 @@ describe('OnAmountInputHandler', () => {
     const assetMetadata = generateMockStellarAssetMetadata()[
       assetId
     ] as StellarAssetMetadata;
-    jest
-      .spyOn(AssetMetadataService.prototype, 'resolve')
-      .mockResolvedValue(assetMetadata);
+    vi.spyOn(AssetMetadataService.prototype, 'resolve').mockResolvedValue(
+      assetMetadata,
+    );
 
     const accountResolver = new AccountResolver({
       accountService,
@@ -125,7 +123,7 @@ describe('OnAmountInputHandler', () => {
       onChainAccount,
       wallet,
       createValidatedSendTransaction,
-      resolveOnChainAccountByKeyringAccountIdSpy,
+      getOnChainAccountSnapshotSpy,
     };
   }
 
@@ -133,7 +131,7 @@ describe('OnAmountInputHandler', () => {
     overrides: Partial<
       Pick<
         OnAmountInputJsonRpcRequest['params'],
-        'accountId' | 'assetId' | 'value' | 'to'
+        'accountId' | 'assetId' | 'value' | 'toAddress'
       >
     > = {},
   ) {
@@ -156,9 +154,9 @@ describe('OnAmountInputHandler', () => {
     const assetMetadata = generateMockStellarAssetMetadata()[
       sep41AssetId
     ] as StellarAssetMetadata;
-    jest
-      .spyOn(AssetMetadataService.prototype, 'resolve')
-      .mockResolvedValue(assetMetadata);
+    vi.spyOn(AssetMetadataService.prototype, 'resolve').mockResolvedValue(
+      assetMetadata,
+    );
 
     expect(
       await handler.handle(
@@ -177,14 +175,15 @@ describe('OnAmountInputHandler', () => {
       account,
       onChainAccount,
       createValidatedSendTransaction,
-      resolveOnChainAccountByKeyringAccountIdSpy,
+      getOnChainAccountSnapshotSpy,
     } = setup();
 
     const result = await handler.handle(baseRequest());
 
     expect(result).toStrictEqual({ valid: true, errors: [] });
-    expect(resolveOnChainAccountByKeyringAccountIdSpy).toHaveBeenCalledWith(
+    expect(getOnChainAccountSnapshotSpy).toHaveBeenCalledWith(
       account.id,
+      account.address,
       scope,
     );
     expect(createValidatedSendTransaction).toHaveBeenCalledWith({
@@ -204,13 +203,14 @@ describe('OnAmountInputHandler', () => {
       handler,
       account,
       createValidatedSendTransaction,
-      resolveOnChainAccountByKeyringAccountIdSpy,
+      getOnChainAccountSnapshotSpy,
     } = setup();
 
     await handler.handle(baseRequest({ assetId: testnetAssetId }));
 
-    expect(resolveOnChainAccountByKeyringAccountIdSpy).toHaveBeenCalledWith(
+    expect(getOnChainAccountSnapshotSpy).toHaveBeenCalledWith(
       account.id,
+      account.address,
       KnownCaip2ChainId.Testnet,
     );
     expect(createValidatedSendTransaction).toHaveBeenCalledWith(
@@ -222,10 +222,10 @@ describe('OnAmountInputHandler', () => {
     );
   });
 
-  it('uses the sender as destination even when params.to is set', async () => {
+  it('uses the sender as destination even when params.toAddress is set', async () => {
     const { handler, onChainAccount, createValidatedSendTransaction } = setup();
 
-    await handler.handle(baseRequest({ to: destinationAddress }));
+    await handler.handle(baseRequest({ toAddress: destinationAddress }));
 
     expect(createValidatedSendTransaction).toHaveBeenCalledWith({
       onChainAccount,
@@ -289,8 +289,8 @@ describe('OnAmountInputHandler', () => {
   });
 
   it('returns invalid when keyring state has no on-chain snapshot', async () => {
-    const { handler, resolveOnChainAccountByKeyringAccountIdSpy } = setup();
-    resolveOnChainAccountByKeyringAccountIdSpy.mockResolvedValueOnce(null);
+    const { handler, getOnChainAccountSnapshotSpy } = setup();
+    getOnChainAccountSnapshotSpy.mockResolvedValueOnce(null);
 
     expect(await handler.handle(baseRequest())).toStrictEqual({
       valid: false,

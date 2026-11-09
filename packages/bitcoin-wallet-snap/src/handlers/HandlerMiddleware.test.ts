@@ -1,6 +1,7 @@
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
 import type { GetPreferencesResult } from '@metamask/snaps-sdk';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import {
   BalanceNotSynchronizedError,
@@ -8,22 +9,18 @@ import {
   ExternalServiceError,
 } from '../entities';
 import type { Logger, SnapClient, Translator } from '../entities';
-import { trackError } from '../utils/errors';
+import * as Errors from '../utils/errors';
 import { HandlerMiddleware } from './HandlerMiddleware';
-
-jest.mock('../utils/errors', () => ({
-  trackError: jest.fn(),
-}));
 
 describe('HandlerMiddleware', () => {
   const mockLogger = mock<Logger>();
   const mockSnapClient = mock<SnapClient>({
-    getPreferences: jest.fn(),
+    getPreferences: vi.fn(),
   });
   const mockTranslator = mock<Translator>({
-    load: jest.fn(),
+    load: vi.fn(),
   });
-  const mockTrackError = jest.mocked(trackError);
+  let mockTrackError: Mock;
 
   const middleware = new HandlerMiddleware(
     mockLogger,
@@ -32,8 +29,10 @@ describe('HandlerMiddleware', () => {
   );
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockTrackError.mockResolvedValue(undefined);
+    vi.clearAllMocks();
+    mockTrackError = vi
+      .spyOn(Errors, 'trackError')
+      .mockResolvedValue(undefined) as unknown as Mock;
     mockSnapClient.getPreferences.mockResolvedValue({
       locale: 'en',
     } as GetPreferencesResult);
@@ -42,7 +41,7 @@ describe('HandlerMiddleware', () => {
 
   describe('handle', () => {
     it('executes the function successfully', async () => {
-      const mockFn = jest.fn().mockResolvedValue('success');
+      const mockFn = vi.fn().mockResolvedValue('success');
 
       const result = await middleware.handle(mockFn);
 
@@ -51,7 +50,7 @@ describe('HandlerMiddleware', () => {
 
     it('wraps an unexpected Error and preserves its message', async () => {
       const error = new Error('boom');
-      const mockFn = jest.fn().mockRejectedValue(error);
+      const mockFn = vi.fn().mockRejectedValue(error);
 
       await expect(middleware.handle(mockFn)).rejects.toThrow('boom');
       expect(mockSnapClient.getPreferences).toHaveBeenCalled();
@@ -62,7 +61,7 @@ describe('HandlerMiddleware', () => {
 
     it('tracks an unexpected Error before rethrowing it as a SnapError', async () => {
       const error = new Error('tracked boom');
-      const mockFn = jest.fn().mockRejectedValue(error);
+      const mockFn = vi.fn().mockRejectedValue(error);
 
       await expect(middleware.handle(mockFn)).rejects.toThrow('tracked boom');
       expect(mockTrackError).toHaveBeenCalledWith(error);
@@ -70,16 +69,16 @@ describe('HandlerMiddleware', () => {
 
     it('continues to throw a SnapError when trackError is invoked', async () => {
       const error = new Error('boom after tracking failure');
-      const mockFn = jest.fn().mockRejectedValue(error);
+      const mockFn = vi.fn().mockRejectedValue(error);
 
-      await expect(middleware.handle(mockFn)).rejects.toThrow(error);
+      await expect(middleware.handle(mockFn)).rejects.toThrow(error.message);
 
       expect(mockTrackError).toHaveBeenCalledWith(error);
       expect(mockSnapClient.getPreferences).toHaveBeenCalled();
     });
 
     it('wraps a non-Error thrown value by stringifying it', async () => {
-      const mockFn = jest.fn().mockRejectedValue('string failure');
+      const mockFn = vi.fn().mockRejectedValue('string failure');
 
       await expect(middleware.handle(mockFn)).rejects.toThrow('string failure');
       expect(mockLogger.error).toHaveBeenCalledWith('string failure');
@@ -88,7 +87,7 @@ describe('HandlerMiddleware', () => {
 
     it('wraps a thrown plain object by stringifying it', async () => {
       const thrown = { foo: 'bar' };
-      const mockFn = jest.fn().mockRejectedValue(thrown);
+      const mockFn = vi.fn().mockRejectedValue(thrown);
 
       await expect(middleware.handle(mockFn)).rejects.toThrow(
         '[object Object]',
@@ -99,7 +98,7 @@ describe('HandlerMiddleware', () => {
 
     it('uses the message property if it exists on a thrown plain object', async () => {
       const thrown = { message: 'InsufficientFunds', code: 11 };
-      const mockFn = jest.fn().mockRejectedValue(thrown);
+      const mockFn = vi.fn().mockRejectedValue(thrown);
 
       await expect(middleware.handle(mockFn)).rejects.toThrow(
         'InsufficientFunds',
@@ -110,7 +109,7 @@ describe('HandlerMiddleware', () => {
 
     it('handles error successfully if instance of BaseError', async () => {
       const error = new BaseError('Test error', 1);
-      const mockFn = jest.fn().mockRejectedValue(error);
+      const mockFn = vi.fn().mockRejectedValue(error);
       mockTranslator.load.mockResolvedValue({
         'error.1': { message: 'Test error' },
       });
@@ -126,7 +125,7 @@ describe('HandlerMiddleware', () => {
       const error = new ExternalServiceError('Failed to synchronize account', {
         account: 'account-1',
       });
-      const mockFn = jest.fn().mockRejectedValue(error);
+      const mockFn = vi.fn().mockRejectedValue(error);
       mockTranslator.load.mockResolvedValue({
         'error.3000': { message: 'Connection error' },
       });

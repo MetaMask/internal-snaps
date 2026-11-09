@@ -15,6 +15,7 @@ import {
 } from '@metamask/snaps-sdk/jsx';
 
 import { Networks } from '../../../../constants';
+import { TRANSACTION_TAPOS_EXPIRED } from '../../../../services/transaction-scan/isTransactionDeadlinePassedError';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
 import { FetchStatus } from '../../../../types/snap';
@@ -47,14 +48,13 @@ export const ConfirmSignTransaction = ({
   } = context;
 
   /**
-   * Only disable the confirm button on the first load (FetchStatus.Loading),
-   * not during subsequent cron re-scans (FetchStatus.Fetching), and whenever
-   * the simulation has failed — including the expired/TAPOS-expired case, so
-   * the user is blocked from confirming a transaction that won't broadcast.
+   * Block the initial scan load and local validation failures. Remote
+   * simulation failures and background refreshes do not block confirmation.
    */
   const shouldDisableConfirmButton =
     scanFetchStatus === FetchStatus.Loading ||
-    scan?.simulationStatus === SimulationStatus.Failed ||
+    scan?.error?.type === TRANSACTION_TAPOS_EXPIRED ||
+    scan?.error?.type === 'MALFORMED_TRANSACTION' ||
     isInsufficientBalance;
 
   const addressCaip10 = account ? `${scope}:${account.address}` : null;

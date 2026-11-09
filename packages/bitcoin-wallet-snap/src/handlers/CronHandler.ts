@@ -5,7 +5,9 @@ import {
   SynchronizationError,
   getSyncFailuresFromSettledResult,
 } from '@metamask/snap-networks-utils';
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
+import type { Describe } from 'superstruct';
 import { array, assert, is, object, string } from 'superstruct';
 
 import {
@@ -16,7 +18,9 @@ import {
 import type {
   BitcoinAccount,
   Logger,
+  RescanState,
   SnapClient,
+  SnapState,
   SyncResult,
 } from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
@@ -42,7 +46,7 @@ export const FullScanAccountRequest = object({
   accountId: string(),
 });
 
-const RescanState = object({
+const RescanStateStruct: Describe<RescanState> = object({
   pending: array(string()),
 });
 
@@ -52,6 +56,8 @@ export class CronHandler {
   readonly #sendFlowUseCases: SendFlowUseCases;
 
   readonly #snapClient: SnapClient;
+
+  readonly #unencryptedState: IStateManager<Partial<SnapState>>;
 
   readonly #snap: SnapsProvider;
 
@@ -63,12 +69,14 @@ export class CronHandler {
     accounts: AccountUseCases,
     sendFlow: SendFlowUseCases,
     snapClient: SnapClient,
+    unencryptedState: IStateManager<Partial<SnapState>>,
     snap: SnapsProvider,
     logger: Logger,
   ) {
     this.#accountsUseCases = accounts;
     this.#sendFlowUseCases = sendFlow;
     this.#snapClient = snapClient;
+    this.#unencryptedState = unencryptedState;
     this.#snap = snap;
     this.#logger = logger;
   }
@@ -136,20 +144,9 @@ export class CronHandler {
   }
 
   async synchronizeAccounts(): Promise<void> {
-    // Sync triggers stack up (the 30s cronjob, `onActive`, background
-    // events), so concurrent invocations share one in-flight run instead of
-    // duplicating network fetches, state writes, and keyring events. Note
-    // that coalesced callers share the run's outcome, including the reported
-    // synchronization failures.
+    // Keep regular synchronization and repair in one coalesced run so a later
+    // synchronization cannot publish newer data before this run's repair finishes.
     await this.#syncCoalescer.run('synchronizeAccounts', async () => {
-      try {
-        await this.#repairNextAccount();
-      } catch (error) {
-        await this.#snapClient.emitTrackingError(
-          new Error('Account repair scan failed', { cause: error }),
-        );
-      }
-
       const selectedAccounts: Set<string> = new Set(
         await getSelectedAccounts(this.#snap),
       );
@@ -173,6 +170,21 @@ export class CronHandler {
         results,
         accounts.map(({ id }) => id),
       );
+
+      // Publish normal balance and activity updates before the slower repair scan.
+      try {
+        // Normal synchronization may have taken long enough for the client to lock.
+        const { active, locked } = await this.#snapClient.getClientStatus();
+        if (!active || locked) {
+          return;
+        }
+
+        await this.#repairNextAccount();
+      } catch (error) {
+        await this.#snapClient.emitTrackingError(
+          new Error('Account repair scan failed', { cause: error }),
+        );
+      }
     });
   }
 
@@ -288,20 +300,22 @@ export class CronHandler {
    * next sync run instead of being marked done prematurely.
    */
   async #repairNextAccount(): Promise<void> {
-    const stored = await this.#snapClient.getState('rescanV1');
-    if (is(stored, RescanState) && stored.pending.length === 0) {
+    const stored = await this.#unencryptedState.getKey<RescanState>('rescanV1');
+    const hasValidRescanState = is(stored, RescanStateStruct);
+
+    if (hasValidRescanState && stored.pending.length === 0) {
       return;
     }
 
     const accounts = await this.#accountsUseCases.list();
     const liveIds = new Set(accounts.map((account) => account.id));
 
-    const pending = is(stored, RescanState)
+    const pending = hasValidRescanState
       ? stored.pending.filter((id) => liveIds.has(id))
       : accounts.map((account) => account.id);
 
-    if (!is(stored, RescanState) || pending.length !== stored.pending.length) {
-      await this.#snapClient.setState('rescanV1', { pending });
+    if (!hasValidRescanState || pending.length !== stored.pending.length) {
+      await this.#unencryptedState.setKey('rescanV1', { pending });
     }
 
     const account = accounts.find(({ id }) => id === pending[0]);
@@ -327,6 +341,8 @@ export class CronHandler {
     }
 
     await this.#emitSyncEvents([result]);
-    await this.#snapClient.setState('rescanV1', { pending: pending.slice(1) });
+    await this.#unencryptedState.setKey('rescanV1', {
+      pending: pending.slice(1),
+    });
   }
 }

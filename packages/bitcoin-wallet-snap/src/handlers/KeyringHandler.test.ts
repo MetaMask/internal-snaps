@@ -20,9 +20,14 @@ import {
   BtcMethod,
   BtcScope,
 } from '@metamask/keyring-api';
-import { mock } from 'jest-mock-extended';
 import { assert } from 'superstruct';
+import * as Superstruct from 'superstruct';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import { encode } from 'wif';
+import * as Wif from 'wif';
 
+import snapManifest from '../../snap.manifest.json';
 import type { BitcoinAccount, Logger, SnapClient } from '../entities';
 import {
   AccountCapability,
@@ -34,31 +39,7 @@ import { Caip19Asset } from './caip';
 import { KeyringHandler } from './KeyringHandler';
 import type { KeyringRequestHandler } from './KeyringRequestHandler';
 
-jest.mock('superstruct', () => ({
-  ...jest.requireActual('superstruct'),
-  assert: jest.fn(),
-}));
-
-jest.mock('wif', () => ({
-  encode: jest.fn(() => 'K1WIFprivateKeyMockValue'),
-}));
-
-// TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
 /* eslint-disable @typescript-eslint/naming-convention */
-jest.mock('@metamask/bitcoindevkit', () => {
-  return {
-    Address: {
-      from_script: jest.fn(),
-    },
-    Amount: {
-      from_sat: (sats: bigint) => ({
-        to_btc: () => Number(sats) / 100_000_000,
-        to_sat: () => sats,
-      }),
-    },
-  };
-});
-
 /**
  * Narrows `T | undefined` after `expect(value).toBeDefined()` for use in tests.
  *
@@ -105,8 +86,14 @@ describe('KeyringHandler', () => {
     mockLogger,
   );
 
+  // Captured before `vi.spyOn` replaces the live binding.
+  const realWifEncode = Wif.encode;
+
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
+    vi.spyOn(Superstruct, 'assert').mockImplementation(() => undefined);
+    vi.spyOn(Address, 'from_script');
+    vi.spyOn(Wif, 'encode').mockReturnValue('K1WIFprivateKeyMockValue');
   });
 
   describe('createAccounts', () => {
@@ -426,7 +413,7 @@ describe('KeyringHandler', () => {
           groupIndex: 0,
           entropySource,
         }),
-      ).rejects.toThrow(error);
+      ).rejects.toThrow(error.message);
     });
 
     describe('bip44:discover', () => {
@@ -443,28 +430,45 @@ describe('KeyringHandler', () => {
             AccountCapability.SignPsbt,
             AccountCapability.ComputeFee,
           ],
-          listTransactions: jest.fn().mockReturnValue(hasTxs ? [{}] : []),
+          listTransactions: vi.fn().mockReturnValue(hasTxs ? [{}] : []),
         });
 
-      it('discovers then returns the account when it has on-chain history', async () => {
-        mockAccounts.discover.mockResolvedValue(buildDiscoveredAccount(true));
+      it.each([0, 5])(
+        'creates active accounts and returns their persisted IDs at index %s',
+        async (groupIndex) => {
+          mockAccounts.discover.mockResolvedValue(buildDiscoveredAccount(true));
+          mockAccounts.createMany.mockResolvedValue([
+            buildMockAccount(groupIndex),
+          ]);
 
-        const result = await handler.createAccounts({
-          type: AccountCreationType.Bip44Discover,
-          groupIndex: 0,
-          entropySource,
-        });
+          const result = await handler.createAccounts({
+            type: AccountCreationType.Bip44Discover,
+            groupIndex,
+            entropySource,
+          });
 
-        expect(mockAccounts.discover).toHaveBeenCalledWith({
-          network: 'bitcoin',
-          entropySource,
-          index: 0,
-          addressType: 'p2wpkh',
-        });
-        expect(mockAccounts.delete).not.toHaveBeenCalled();
-        expect(result).toHaveLength(1);
-        expect(result[0]?.id).toBe('discovered-id');
-      });
+          expect(mockAccounts.discover).toHaveBeenCalledWith({
+            network: 'bitcoin',
+            entropySource,
+            index: groupIndex,
+            addressType: 'p2wpkh',
+          });
+          expect(mockAccounts.createMany).toHaveBeenCalledTimes(1);
+          expect(mockAccounts.createMany).toHaveBeenCalledWith([
+            {
+              network: 'bitcoin',
+              entropySource,
+              index: groupIndex,
+              addressType: 'p2wpkh',
+              synchronize: false,
+            },
+          ]);
+          expect(mockAccounts.delete).not.toHaveBeenCalled();
+          expect(result).toHaveLength(1);
+          expect(result[0]?.id).toBe(`id-${groupIndex}`);
+          expect(mnemonicGroupIndex(expectDefined(result[0]))).toBe(groupIndex);
+        },
+      );
 
       it('returns empty array when no on-chain history', async () => {
         mockAccounts.discover.mockResolvedValue(buildDiscoveredAccount(false));
@@ -476,8 +480,76 @@ describe('KeyringHandler', () => {
         });
 
         expect(mockAccounts.discover).toHaveBeenCalled();
+        expect(mockAccounts.createMany).not.toHaveBeenCalled();
         expect(mockAccounts.delete).not.toHaveBeenCalled();
         expect(result).toHaveLength(0);
+      });
+
+      describe('multiple scopes', () => {
+        const { scopes } =
+          snapManifest.initialPermissions['endowment:keyring'].capabilities;
+        const originalScopes = [...scopes];
+
+        beforeEach(() => {
+          scopes.push(BtcScope.Testnet, BtcScope.Regtest);
+        });
+
+        afterEach(() => {
+          scopes.splice(0, scopes.length, ...originalScopes);
+        });
+
+        it.each([true, false])(
+          'creates active scopes in a single batch (testnet active: %s)',
+          async (testnetActive) => {
+            mockAccounts.discover
+              .mockResolvedValueOnce(buildDiscoveredAccount(true))
+              .mockResolvedValueOnce(buildDiscoveredAccount(testnetActive))
+              .mockResolvedValueOnce(buildDiscoveredAccount(false));
+
+            const mainnetAccount = buildMockAccount(0);
+            const testnetAccount = buildMockAccount(0);
+            testnetAccount.id = 'testnet-id';
+            testnetAccount.network = 'testnet';
+            testnetAccount.derivationPath = ['myEntropy', "84'", "1'", "0'"];
+            const persistedAccounts = testnetActive
+              ? [mainnetAccount, testnetAccount]
+              : [mainnetAccount];
+            mockAccounts.createMany.mockResolvedValue(persistedAccounts);
+
+            const result = await handler.createAccounts({
+              type: AccountCreationType.Bip44Discover,
+              groupIndex: 0,
+              entropySource,
+            });
+
+            expect(mockAccounts.discover).toHaveBeenCalledTimes(3);
+            for (const [index, network] of [
+              'bitcoin',
+              'testnet',
+              'regtest',
+            ].entries()) {
+              expect(mockAccounts.discover).toHaveBeenNthCalledWith(index + 1, {
+                network,
+                entropySource,
+                index: 0,
+                addressType: 'p2wpkh',
+              });
+            }
+            expect(mockAccounts.createMany).toHaveBeenCalledTimes(1);
+            expect(mockAccounts.createMany).toHaveBeenCalledWith(
+              persistedAccounts.map(({ network }) => ({
+                network,
+                entropySource,
+                index: 0,
+                addressType: 'p2wpkh',
+                synchronize: false,
+              })),
+            );
+            expect(result.map(({ id }) => id)).toStrictEqual(
+              persistedAccounts.map(({ id }) => id),
+            );
+          },
+        );
       });
 
       it('propagates errors from discover as SnapError', async () => {
@@ -491,6 +563,22 @@ describe('KeyringHandler', () => {
             entropySource,
           }),
         ).rejects.toThrow('discover error');
+        expect(mockAccounts.createMany).not.toHaveBeenCalled();
+      });
+
+      it('propagates errors from persisting active accounts as SnapError', async () => {
+        mockAccounts.discover.mockResolvedValue(buildDiscoveredAccount(true));
+        mockAccounts.createMany.mockRejectedValue(
+          new Error('Storage unavailable'),
+        );
+
+        await expect(
+          handler.createAccounts({
+            type: AccountCreationType.Bip44Discover,
+            groupIndex: 0,
+            entropySource,
+          }),
+        ).rejects.toThrow('Storage unavailable');
       });
     });
 
@@ -551,8 +639,7 @@ describe('KeyringHandler', () => {
       mockSnapClient.getPrivateEntropy.mockResolvedValue({
         privateKey: fakePrivateKey,
       } as never);
-      const { encode } = jest.requireMock<{ encode: jest.Mock }>('wif');
-      encode.mockReturnValue(fakeWif);
+      vi.mocked(encode).mockReturnValue(fakeWif);
     });
 
     it('exports account as WIF (base58) private key by default', async () => {
@@ -599,8 +686,7 @@ describe('KeyringHandler', () => {
     });
 
     it('wraps wif encoding errors in SnapError without leaking private key', async () => {
-      const { encode } = jest.requireMock<{ encode: jest.Mock }>('wif');
-      encode.mockImplementation(() => {
+      vi.mocked(encode).mockImplementation(() => {
         throw new Error('encoding failed: privatekey=SENSITIVE');
       });
 
@@ -623,16 +709,7 @@ describe('KeyringHandler', () => {
     });
 
     it('produces a valid WIF-encoded private key using the real encoder', async () => {
-      const { encode: realEncode } = jest.requireActual<{
-        encode: (wif: {
-          version: number;
-          privateKey: Uint8Array;
-          compressed: boolean;
-        }) => string;
-      }>('wif');
-      jest
-        .requireMock<{ encode: jest.Mock }>('wif')
-        .encode.mockImplementation(realEncode);
+      vi.mocked(encode).mockImplementation(realWifEncode);
 
       // Known 32-byte secp256k1 private key (from Bitcoin wiki WIF test vector)
       const privateKeyHex =
@@ -641,7 +718,7 @@ describe('KeyringHandler', () => {
         privateKey: `0x${privateKeyHex}`,
       } as never);
 
-      const expectedWif = realEncode({
+      const expectedWif = realWifEncode({
         version: 0x80, // mainnet — matches mockAccount.network === 'bitcoin'
         privateKey: Buffer.from(privateKeyHex, 'hex'),
         compressed: true,
@@ -660,6 +737,28 @@ describe('KeyringHandler', () => {
   });
 
   describe('getAccountBalances', () => {
+    it.each([
+      [1n, '0.00000001'],
+      [77n, '0.00000077'],
+    ])(
+      'returns a decimal balance for %s satoshis',
+      async (satoshis, amount) => {
+        const account = mock<BitcoinAccount>({
+          id: 'small-balance',
+          network: 'bitcoin',
+          balance: {
+            trusted_spendable: { to_sat: () => satoshis },
+          },
+          listUnspent: () => [],
+        });
+        mockAccounts.get.mockResolvedValue(account);
+
+        expect(await handler.getAccountBalances(account.id)).toStrictEqual({
+          [Caip19Asset.Bitcoin]: { amount, unit: 'BTC' },
+        });
+      },
+    );
+
     it('gets the account balance', async () => {
       mockAccounts.get.mockResolvedValue(mockAccount);
       const expectedResponse = {
@@ -836,6 +935,7 @@ describe('KeyringHandler', () => {
     const pagination = { limit: 10, next: null };
 
     const mockAmount = mock<Amount>({
+      to_sat: () => 2_100_000_000n,
       to_btc: () => 21,
     });
     const mockScriptPubkey = mock<ScriptBuf>({
@@ -910,7 +1010,7 @@ describe('KeyringHandler', () => {
       mockAccount.sentAndReceived.mockReturnValue([mockAmount, mockAmount]);
       mockAccount.listTransactions.mockReturnValue([mockWalletTx]);
       mockAccounts.resolveTransactionSenders.mockResolvedValue(new Map());
-      (Address.from_script as jest.Mock).mockReturnValue(mockAddress);
+      (Address.from_script as Mock).mockReturnValue(mockAddress);
     });
 
     it('lists transactions successfully: send', async () => {
@@ -1073,9 +1173,10 @@ describe('KeyringHandler', () => {
         },
       };
 
-      jest
-        .spyOn(handler, 'getAccounts')
-        .mockResolvedValueOnce([mockKeyringAccount1, mockKeyringAccount2]);
+      vi.spyOn(handler, 'getAccounts').mockResolvedValueOnce([
+        mockKeyringAccount1,
+        mockKeyringAccount2,
+      ]);
 
       const result = await handler.resolveAccountAddress(
         BtcScope.Regtest,
@@ -1099,9 +1200,10 @@ describe('KeyringHandler', () => {
         },
       };
 
-      jest
-        .spyOn(handler, 'getAccounts')
-        .mockResolvedValue([mockKeyringAccount1, mockKeyringAccount2]);
+      vi.spyOn(handler, 'getAccounts').mockResolvedValue([
+        mockKeyringAccount1,
+        mockKeyringAccount2,
+      ]);
 
       const result = await handler.resolveAccountAddress(
         BtcScope.Regtest,
@@ -1128,9 +1230,9 @@ describe('KeyringHandler', () => {
         scopes: [BtcScope.Mainnet],
       });
 
-      jest
-        .spyOn(handler, 'getAccounts')
-        .mockResolvedValue([accountWithDifferentScope]);
+      vi.spyOn(handler, 'getAccounts').mockResolvedValue([
+        accountWithDifferentScope,
+      ]);
 
       const result = await handler.resolveAccountAddress(
         BtcScope.Regtest,
@@ -1152,7 +1254,7 @@ describe('KeyringHandler', () => {
       };
       const error = new Error('Invalid scope');
 
-      jest.mocked(assert).mockImplementationOnce(() => {
+      vi.mocked(assert).mockImplementationOnce(() => {
         throw error;
       });
 
@@ -1173,13 +1275,13 @@ describe('KeyringHandler', () => {
         params: {},
       };
 
-      jest
-        .spyOn(handler, 'getAccounts')
-        .mockResolvedValue([mockKeyringAccount1, mockKeyringAccount2]);
+      vi.spyOn(handler, 'getAccounts').mockResolvedValue([
+        mockKeyringAccount1,
+        mockKeyringAccount2,
+      ]);
 
       // First assert (scope) passes, second assert (request struct) throws
-      jest
-        .mocked(assert)
+      vi.mocked(assert)
         .mockImplementationOnce(() => undefined)
         .mockImplementationOnce(() => {
           throw new Error('Invalid request');

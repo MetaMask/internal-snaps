@@ -30,12 +30,12 @@ describe('KeyringTransactionBuilder', () => {
     }) as const;
 
   beforeEach(() => {
-    jest.useFakeTimers();
-    jest.setSystemTime(mockNow);
+    vi.useFakeTimers();
+    vi.setSystemTime(mockNow);
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('creates a send transaction with expected keyring fields', () => {
