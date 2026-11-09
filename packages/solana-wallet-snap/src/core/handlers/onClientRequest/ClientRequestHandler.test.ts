@@ -3,8 +3,11 @@ import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import { getBase64Codec, getUtf8Codec, pipe } from '@solana/kit';
+import * as SolanaKit from '@solana/kit';
+import type { Mocked } from 'vitest';
 
 import { KnownCaip19Id, Network } from '../../constants/solana';
+import * as Codecs from '../../sdk-extensions/codecs';
 import type { AccountsService, ApproveTokenService } from '../../services';
 import type { SendService } from '../../services/send/SendService';
 import type { ValidationResponse } from '../../services/send/types';
@@ -17,65 +20,52 @@ import {
 import { ClientRequestHandler } from './ClientRequestHandler';
 import { ClientRequestMethod } from './types';
 
-// Mock the compileTransaction function
-jest.mock('@solana/kit', () => {
-  const actual = jest.requireActual('@solana/kit');
-  return {
-    ...actual,
-    compileTransaction: jest.fn().mockReturnValue({
-      messageBytes: new Uint8Array([1, 2, 3]),
-      signatures: {},
-    }),
-  };
-});
-
-// Mock the fromTransactionToBase64String function
-jest.mock('../../sdk-extensions/codecs', () => ({
-  ...jest.requireActual('../../sdk-extensions/codecs'),
-  fromTransactionToBase64String: jest
-    .fn()
-    .mockReturnValue('mockBase64Transaction'),
-}));
-
 describe('ClientRequestHandler', () => {
   let handler: ClientRequestHandler;
-  let mockAccountsService: jest.Mocked<AccountsService>;
-  let mockWalletService: jest.Mocked<WalletService>;
-  let mockLogger: jest.Mocked<Logger>;
-  let sendService: jest.Mocked<SendService>;
-  let mockApproveTokenService: jest.Mocked<ApproveTokenService>;
+  let mockAccountsService: Mocked<AccountsService>;
+  let mockWalletService: Mocked<WalletService>;
+  let mockLogger: Mocked<Logger>;
+  let sendService: Mocked<SendService>;
+  let mockApproveTokenService: Mocked<ApproveTokenService>;
 
   beforeEach(() => {
+    vi.spyOn(SolanaKit, 'compileTransaction').mockReturnValue({
+      messageBytes: new Uint8Array([1, 2, 3]),
+      signatures: {},
+    } as never);
+    vi.spyOn(Codecs, 'fromTransactionToBase64String').mockReturnValue(
+      'mockBase64Transaction' as never,
+    );
     // Create mock keyring
     mockAccountsService = {
-      findById: jest.fn(),
-      findByIds: jest.fn(),
-      findByAddress: jest.fn(),
-    } as unknown as jest.Mocked<AccountsService>;
+      findById: vi.fn(),
+      findByIds: vi.fn(),
+      findByAddress: vi.fn(),
+    } as unknown as Mocked<AccountsService>;
 
     // Create mock wallet service
     mockWalletService = {
-      signAndSendTransaction: jest.fn(),
-      signMessage: jest.fn(),
-      signMessages: jest.fn(),
-    } as unknown as jest.Mocked<WalletService>;
+      signAndSendTransaction: vi.fn(),
+      signMessage: vi.fn(),
+      signMessages: vi.fn(),
+    } as unknown as Mocked<WalletService>;
 
     // Create mock logger
     mockLogger = {
-      log: jest.fn(),
-      withPrefix: jest.fn().mockReturnThis(),
-    } as unknown as jest.Mocked<Logger>;
+      log: vi.fn(),
+      withPrefix: vi.fn().mockReturnThis(),
+    } as unknown as Mocked<Logger>;
 
     sendService = {
-      onAmountInput: jest.fn(),
-      onAddressInput: jest.fn(),
-      confirmSend: jest.fn(),
-    } as unknown as jest.Mocked<SendService>;
+      onAmountInput: vi.fn(),
+      onAddressInput: vi.fn(),
+      confirmSend: vi.fn(),
+    } as unknown as Mocked<SendService>;
 
     // Create mock approve token service
     mockApproveTokenService = {
-      buildApprovalTransactionMessage: jest.fn(),
-    } as unknown as jest.Mocked<ApproveTokenService>;
+      buildApprovalTransactionMessage: vi.fn(),
+    } as unknown as Mocked<ApproveTokenService>;
 
     // Create handler instance
     handler = new ClientRequestHandler(
@@ -87,7 +77,7 @@ describe('ClientRequestHandler', () => {
     );
 
     // Reset all mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('handle', () => {
@@ -397,7 +387,7 @@ describe('ClientRequestHandler', () => {
         },
       };
 
-      jest.spyOn(sendService, 'confirmSend').mockResolvedValue(response);
+      vi.spyOn(sendService, 'confirmSend').mockResolvedValue(response);
 
       const result = await handler.handle(request);
 
@@ -407,9 +397,7 @@ describe('ClientRequestHandler', () => {
 
     it('propagates send service errors', async () => {
       const sendServiceError = new Error('Transaction failed');
-      jest
-        .spyOn(sendService, 'confirmSend')
-        .mockRejectedValue(sendServiceError);
+      vi.spyOn(sendService, 'confirmSend').mockRejectedValue(sendServiceError);
 
       await expect(handler.handle(request)).rejects.toThrow(
         'Transaction failed',
@@ -450,7 +438,7 @@ describe('ClientRequestHandler', () => {
         errors: [],
       };
 
-      jest.spyOn(sendService, 'onAddressInput').mockResolvedValue(response);
+      vi.spyOn(sendService, 'onAddressInput').mockResolvedValue(response);
 
       const result = await handler.handle(request);
 
@@ -467,7 +455,7 @@ describe('ClientRequestHandler', () => {
         errors: [],
       };
 
-      jest.spyOn(sendService, 'onAddressInput').mockResolvedValue(response);
+      vi.spyOn(sendService, 'onAddressInput').mockResolvedValue(response);
 
       const requestWithNoScope: JsonRpcRequest = {
         jsonrpc: '2.0',
@@ -505,7 +493,7 @@ describe('ClientRequestHandler', () => {
         property: 'invalid',
       } as unknown as ValidationResponse;
 
-      jest.spyOn(sendService, 'onAddressInput').mockResolvedValue(response);
+      vi.spyOn(sendService, 'onAddressInput').mockResolvedValue(response);
 
       await expect(handler.handle(request)).rejects.toThrow(/At path: valid/iu);
     });
@@ -529,7 +517,7 @@ describe('ClientRequestHandler', () => {
         errors: [],
       };
 
-      jest.spyOn(sendService, 'onAmountInput').mockResolvedValue(response);
+      vi.spyOn(sendService, 'onAmountInput').mockResolvedValue(response);
 
       const result = await handler.handle(request);
 
@@ -555,7 +543,7 @@ describe('ClientRequestHandler', () => {
         property: 'invalid',
       } as unknown as ValidationResponse;
 
-      jest.spyOn(sendService, 'onAmountInput').mockResolvedValue(response);
+      vi.spyOn(sendService, 'onAmountInput').mockResolvedValue(response);
 
       await expect(handler.handle(request)).rejects.toThrow(/At path: valid/iu);
     });
@@ -583,12 +571,12 @@ describe('ClientRequestHandler', () => {
     });
 
     beforeEach(() => {
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date(mockTimestamp * 1000));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(mockTimestamp * 1000));
     });
 
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('calls the wallet service and returns the response', async () => {
@@ -599,10 +587,10 @@ describe('ClientRequestHandler', () => {
           'cmV3YXJkcyxCTHczUndlSm1mYlRhcEpSZ25QUnZkOTYyWURqRllBblZHZDFwNWhtWjV0UCwxNzM2NjYwMDAw',
         signatureType: 'ed25519' as const,
       };
-      jest
-        .spyOn(mockAccountsService, 'findById')
-        .mockResolvedValue(MOCK_SOLANA_KEYRING_ACCOUNT_0);
-      jest.spyOn(mockWalletService, 'signMessage').mockResolvedValue(response);
+      vi.spyOn(mockAccountsService, 'findById').mockResolvedValue(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+      vi.spyOn(mockWalletService, 'signMessage').mockResolvedValue(response);
 
       const request = createRequest();
 
@@ -678,10 +666,10 @@ describe('ClientRequestHandler', () => {
         '2AXDGYSE4f2sz7tvMMzyHvUfcoJmxudvdhBcmiUSo6ijwfYmfZYsKRxboQMPh3R4kUhXRVdtSXFXMheka4Rc4P2';
       const expectedBase64Message = utf8ToBase64(buildProofMessage());
 
-      jest
-        .spyOn(mockAccountsService, 'findById')
-        .mockResolvedValue(MOCK_SOLANA_KEYRING_ACCOUNT_0);
-      jest.spyOn(mockWalletService, 'signMessage').mockResolvedValue({
+      vi.spyOn(mockAccountsService, 'findById').mockResolvedValue(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+      vi.spyOn(mockWalletService, 'signMessage').mockResolvedValue({
         signature: base58Signature,
         signedMessage: expectedBase64Message,
         signatureType: 'ed25519' as const,
@@ -728,12 +716,12 @@ describe('ClientRequestHandler', () => {
     });
 
     it('propagates errors from the wallet service', async () => {
-      jest
-        .spyOn(mockAccountsService, 'findById')
-        .mockResolvedValue(MOCK_SOLANA_KEYRING_ACCOUNT_0);
-      jest
-        .spyOn(mockWalletService, 'signMessage')
-        .mockRejectedValue(new Error('signer unavailable'));
+      vi.spyOn(mockAccountsService, 'findById').mockResolvedValue(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+      vi.spyOn(mockWalletService, 'signMessage').mockRejectedValue(
+        new Error('signer unavailable'),
+      );
 
       await expect(handler.handle(createRequest())).rejects.toThrow(
         'signer unavailable',
@@ -934,10 +922,10 @@ describe('ClientRequestHandler', () => {
         signedMessage: base64Message,
         signatureType: 'ed25519' as const,
       };
-      jest
-        .spyOn(mockAccountsService, 'findById')
-        .mockResolvedValue(MOCK_SOLANA_KEYRING_ACCOUNT_0);
-      jest.spyOn(mockWalletService, 'signMessage').mockResolvedValue(response);
+      vi.spyOn(mockAccountsService, 'findById').mockResolvedValue(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+      vi.spyOn(mockWalletService, 'signMessage').mockResolvedValue(response);
 
       const request = createRequest(validMessage);
 
@@ -970,10 +958,10 @@ describe('ClientRequestHandler', () => {
         signedMessage: base64Message,
         signatureType: 'ed25519' as const,
       };
-      jest
-        .spyOn(mockAccountsService, 'findById')
-        .mockResolvedValue(MOCK_SOLANA_KEYRING_ACCOUNT_0);
-      jest.spyOn(mockWalletService, 'signMessage').mockResolvedValue(response);
+      vi.spyOn(mockAccountsService, 'findById').mockResolvedValue(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+      vi.spyOn(mockWalletService, 'signMessage').mockResolvedValue(response);
 
       const request = createRequest(newlineMessage);
       const result = await handler.handle(request);
@@ -995,10 +983,10 @@ describe('ClientRequestHandler', () => {
         signedMessage: base64Message,
         signatureType: 'ed25519' as const,
       };
-      jest
-        .spyOn(mockAccountsService, 'findById')
-        .mockResolvedValue(MOCK_SOLANA_KEYRING_ACCOUNT_0);
-      jest.spyOn(mockWalletService, 'signMessage').mockResolvedValue(response);
+      vi.spyOn(mockAccountsService, 'findById').mockResolvedValue(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+      vi.spyOn(mockWalletService, 'signMessage').mockResolvedValue(response);
 
       const request = createRequest(messageWithoutExpiration);
       const result = await handler.handle(request);
@@ -1078,14 +1066,12 @@ describe('ClientRequestHandler', () => {
         {} as any,
       );
 
-      jest
-        .spyOn(mockAccountsService, 'findById')
-        .mockResolvedValue(MOCK_SOLANA_KEYRING_ACCOUNT_0);
-      jest
-        .spyOn(mockWalletService, 'signAndSendTransaction')
-        .mockResolvedValue({
-          signature: mockSignature,
-        });
+      vi.spyOn(mockAccountsService, 'findById').mockResolvedValue(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+      vi.spyOn(mockWalletService, 'signAndSendTransaction').mockResolvedValue({
+        signature: mockSignature,
+      });
 
       const request = createRequest('100.50');
 

@@ -18,7 +18,7 @@ import {
 } from '@metamask/key-tree';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import { Signer } from 'bip322-js';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type {
   BitcoinAccount,
@@ -83,10 +83,11 @@ describe('AccountUseCases', () => {
    */
   const stubSentAmount = (account: BitcoinAccount, sentBtc = 1): void => {
     const sentAmount = mock<Amount>();
-    jest.spyOn(sentAmount, 'to_btc').mockReturnValue(sentBtc);
-    jest
-      .mocked(account.sentAndReceived)
-      .mockReturnValue([sentAmount, mock<Amount>()]);
+    sentAmount.to_btc.mockReturnValue(sentBtc);
+    vi.mocked(account.sentAndReceived).mockReturnValue([
+      sentAmount,
+      mock<Amount>(),
+    ]);
   };
 
   describe('get', () => {
@@ -189,16 +190,12 @@ describe('AccountUseCases', () => {
       id: 'new-id',
       network: createParams.network,
     });
-    const mockSnapshot = {
-      accounts: null,
-      derivationPaths: null,
-    };
 
     it('reuses existing accounts and bulk-inserts newly-created accounts', async () => {
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [existingAccount, null],
-        snapshot: mockSnapshot,
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([
+        existingAccount,
+        null,
+      ]);
       mockRepository.createMany.mockResolvedValue([newAccount]);
 
       const result = await useCases.createMany([
@@ -218,10 +215,7 @@ describe('AccountUseCases', () => {
         },
       ]);
       expect(newAccount.revealNextAddress).toHaveBeenCalled();
-      expect(mockRepository.insertMany).toHaveBeenCalledWith(
-        [newAccount],
-        mockSnapshot,
-      );
+      expect(mockRepository.insertMany).toHaveBeenCalledWith([newAccount]);
       expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
         duration: 'PT1S',
         method: CronMethod.FullScanAccount,
@@ -231,10 +225,7 @@ describe('AccountUseCases', () => {
     });
 
     it('creates only one account for duplicate derivation paths in the same batch', async () => {
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null],
-        snapshot: mockSnapshot,
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.createMany.mockResolvedValue([newAccount]);
 
       const result = await useCases.createMany([createParams, createParams]);
@@ -250,18 +241,12 @@ describe('AccountUseCases', () => {
           addressType: createParams.addressType,
         },
       ]);
-      expect(mockRepository.insertMany).toHaveBeenCalledWith(
-        [newAccount],
-        mockSnapshot,
-      );
+      expect(mockRepository.insertMany).toHaveBeenCalledWith([newAccount]);
       expect(result).toStrictEqual([newAccount, newAccount]);
     });
 
     it('does not create or insert accounts when all accounts already exist', async () => {
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [existingAccount],
-        snapshot: mockSnapshot,
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([existingAccount]);
 
       const result = await useCases.createMany([createParams]);
 
@@ -272,26 +257,17 @@ describe('AccountUseCases', () => {
 
     it('propagates insertMany errors without emitting account-created events', async () => {
       const error = new Error('insertMany failed');
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null],
-        snapshot: mockSnapshot,
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.createMany.mockResolvedValue([newAccount]);
       mockRepository.insertMany.mockRejectedValue(error);
 
       await expect(useCases.createMany([createParams])).rejects.toBe(error);
 
-      expect(mockRepository.insertMany).toHaveBeenCalledWith(
-        [newAccount],
-        mockSnapshot,
-      );
+      expect(mockRepository.insertMany).toHaveBeenCalledWith([newAccount]);
     });
 
     it('logs phase timings for a batch creation', async () => {
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null],
-        snapshot: mockSnapshot,
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.createMany.mockResolvedValue([newAccount]);
 
       await useCases.createMany([createParams]);
@@ -305,10 +281,7 @@ describe('AccountUseCases', () => {
 
     it('propagates createMany errors without inserting accounts', async () => {
       const error = new Error('createMany failed');
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null],
-        snapshot: mockSnapshot,
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.createMany.mockRejectedValue(error);
 
       await expect(useCases.createMany([createParams])).rejects.toBe(error);
@@ -330,6 +303,18 @@ describe('AccountUseCases', () => {
 
     beforeEach(() => {
       mockRepository.create.mockResolvedValue(mockAccount);
+      mockAccount.listTransactions.mockReturnValue([]);
+    });
+
+    it('returns the scanned candidate without persisting it', async () => {
+      mockAccount.listTransactions.mockReturnValue([mock<WalletTx>()]);
+
+      const discovered = await useCases.discover(discoverParams);
+
+      expect(discovered).toBe(mockAccount);
+      expect(mockChain.fullScan).toHaveBeenCalledWith(discovered, 'discovery');
+      expect(mockRepository.insert).not.toHaveBeenCalled();
+      expect(mockRepository.insertMany).not.toHaveBeenCalled();
     });
 
     it.each([
@@ -445,6 +430,7 @@ describe('AccountUseCases', () => {
       expect(mockRepository.getByDerivationPath).toHaveBeenCalled();
       expect(mockRepository.create).toHaveBeenCalled();
       expect(mockChain.fullScan).toHaveBeenCalled();
+      expect(mockRepository.insert).not.toHaveBeenCalled();
     });
   });
 
@@ -452,12 +438,12 @@ describe('AccountUseCases', () => {
     const mockAccount = mock<BitcoinAccount>({
       id: 'some-id',
       network: 'bitcoin',
-      listTransactions: jest.fn(),
+      listTransactions: vi.fn(),
     });
 
     beforeEach(() => {
       const receivedAmount = mock<Amount>();
-      jest.spyOn(receivedAmount, 'to_btc').mockReturnValue(0);
+      receivedAmount.to_btc.mockReturnValue(0);
       mockAccount.listTransactions.mockReturnValue([]);
       mockAccount.sentAndReceived.mockReturnValue([
         receivedAmount,
@@ -823,7 +809,7 @@ describe('AccountUseCases', () => {
 
     beforeEach(() => {
       const receivedAmount = mock<Amount>();
-      jest.spyOn(receivedAmount, 'to_btc').mockReturnValue(0);
+      receivedAmount.to_btc.mockReturnValue(0);
       mockAccount.sentAndReceived.mockReturnValue([
         receivedAmount,
         receivedAmount,
@@ -955,7 +941,7 @@ describe('AccountUseCases', () => {
     });
 
     it('resolves the funding addresses of receives', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
       mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
 
       const result = await useCases.resolveTransactionSenders(mockAccount2, [
@@ -970,7 +956,7 @@ describe('AccountUseCases', () => {
     });
 
     it('does not query the indexer for sends', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0.5);
+      mockSentAmount.to_btc.mockReturnValue(0.5);
 
       const result = await useCases.resolveTransactionSenders(mockAccount2, [
         createTx('txid-send'),
@@ -981,7 +967,7 @@ describe('AccountUseCases', () => {
     });
 
     it('returns undefined when receives have no senders', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
       mockChain.getTransactionSenders.mockResolvedValue([]);
 
       const result = await useCases.resolveTransactionSenders(mockAccount2, [
@@ -992,7 +978,7 @@ describe('AccountUseCases', () => {
     });
 
     it('skips a failed lookup without failing the others', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
       mockChain.getTransactionSenders
         .mockRejectedValueOnce(new Error('indexer unavailable'))
         .mockResolvedValueOnce(['bc1qsender']);
@@ -1010,7 +996,7 @@ describe('AccountUseCases', () => {
     });
 
     it('bounds concurrent indexer lookups', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
 
       let inFlight = 0;
       let peak = 0;
@@ -1035,7 +1021,7 @@ describe('AccountUseCases', () => {
     });
 
     it('shares the concurrency budget across accounts', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
 
       let inFlight = 0;
       let peak = 0;
@@ -1072,7 +1058,7 @@ describe('AccountUseCases', () => {
     });
 
     it('releases the concurrency slot when a lookup fails', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
       mockChain.getTransactionSenders.mockRejectedValue(
         new Error('indexer unavailable'),
       );
@@ -1097,7 +1083,7 @@ describe('AccountUseCases', () => {
     });
 
     it('caps the lookups at the given limit', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
       mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
 
       const txs = [createTx('txid-1'), createTx('txid-2'), createTx('txid-3')];
@@ -1126,7 +1112,7 @@ describe('AccountUseCases', () => {
     });
 
     it('resolves every receive when no limit is given', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
       mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
 
       const txs = Array.from({ length: SENDER_RESOLUTION_LIMIT + 5 }, (_, i) =>
@@ -1193,8 +1179,8 @@ describe('AccountUseCases', () => {
     const mockTransaction = mock<Transaction>({
       // TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
 
-      compute_txid: jest.fn(),
-      clone: jest.fn(),
+      compute_txid: vi.fn(),
+      clone: vi.fn(),
     });
     const mockSignedPsbt = mock<Psbt>({
       toString: () => 'mockSignedPsbt',
@@ -1202,7 +1188,7 @@ describe('AccountUseCases', () => {
     const mockAccount = mock<BitcoinAccount>({
       network: 'bitcoin',
       addressType: 'p2wpkh',
-      sign: jest.fn(),
+      sign: vi.fn(),
       capabilities: [AccountCapability.SignPsbt],
     });
     const mockWalletTx = mock<WalletTx>();
@@ -1216,12 +1202,12 @@ describe('AccountUseCases', () => {
       },
     });
     const mockTxBuilder = mock<TransactionBuilder>({
-      addRecipientByScript: jest.fn(),
-      feeRate: jest.fn(),
-      drainToByScript: jest.fn(),
-      drainWallet: jest.fn(),
-      finish: jest.fn(),
-      unspendable: jest.fn(),
+      addRecipientByScript: vi.fn(),
+      feeRate: vi.fn(),
+      drainToByScript: vi.fn(),
+      drainWallet: vi.fn(),
+      finish: vi.fn(),
+      unspendable: vi.fn(),
     });
 
     beforeEach(() => {
@@ -1579,7 +1565,7 @@ describe('AccountUseCases', () => {
     const mockAccount = mock<BitcoinAccount>({
       id: 'account-id',
       network: 'bitcoin',
-      sign: jest.fn(),
+      sign: vi.fn(),
       isMine: () => false,
       capabilities: [AccountCapability.FillPsbt],
     });
@@ -1594,12 +1580,12 @@ describe('AccountUseCases', () => {
       },
     });
     const mockTxBuilder = mock<TransactionBuilder>({
-      addRecipientByScript: jest.fn(),
-      feeRate: jest.fn(),
-      drainToByScript: jest.fn(),
-      drainWallet: jest.fn(),
-      finish: jest.fn(),
-      unspendable: jest.fn(),
+      addRecipientByScript: vi.fn(),
+      feeRate: vi.fn(),
+      drainToByScript: vi.fn(),
+      drainWallet: vi.fn(),
+      finish: vi.fn(),
+      unspendable: vi.fn(),
     });
 
     beforeEach(() => {
@@ -2132,11 +2118,11 @@ describe('AccountUseCases', () => {
       },
     });
     const mockTxBuilder = mock<TransactionBuilder>({
-      addRecipientByScript: jest.fn(),
-      feeRate: jest.fn(),
-      drainToByScript: jest.fn(),
-      finish: jest.fn(),
-      unspendable: jest.fn(),
+      addRecipientByScript: vi.fn(),
+      feeRate: vi.fn(),
+      drainToByScript: vi.fn(),
+      finish: vi.fn(),
+      unspendable: vi.fn(),
     });
 
     beforeEach(() => {
@@ -2250,8 +2236,8 @@ describe('AccountUseCases', () => {
     const mockTransaction = mock<Transaction>({
       // TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
 
-      compute_txid: jest.fn(),
-      clone: jest.fn(),
+      compute_txid: vi.fn(),
+      clone: vi.fn(),
     });
     const mockSignedPsbt = mock<Psbt>({
       toString: () => 'mockSignedPsbt',
@@ -2259,7 +2245,7 @@ describe('AccountUseCases', () => {
     const mockAccount = mock<BitcoinAccount>({
       network: 'bitcoin',
       addressType: 'p2wpkh',
-      sign: jest.fn(),
+      sign: vi.fn(),
       capabilities: [AccountCapability.SendTransfer],
     });
     const mockWalletTx = mock<WalletTx>();
@@ -2273,13 +2259,13 @@ describe('AccountUseCases', () => {
       },
     });
     const mockTxBuilder = mock<TransactionBuilder>({
-      addRecipient: jest.fn(),
-      addRecipientByScript: jest.fn(),
-      feeRate: jest.fn(),
-      drainToByScript: jest.fn(),
-      drainWallet: jest.fn(),
-      finish: jest.fn(),
-      unspendable: jest.fn(),
+      addRecipient: vi.fn(),
+      addRecipientByScript: vi.fn(),
+      feeRate: vi.fn(),
+      drainToByScript: vi.fn(),
+      drainWallet: vi.fn(),
+      finish: vi.fn(),
+      unspendable: vi.fn(),
     });
 
     beforeEach(() => {
@@ -2419,8 +2405,8 @@ describe('AccountUseCases', () => {
     const mockTxid = mock<Txid>();
     const mockPsbt = mock<Psbt>();
     const mockTransaction = mock<Transaction>({
-      compute_txid: jest.fn(),
-      clone: jest.fn(),
+      compute_txid: vi.fn(),
+      clone: vi.fn(),
     });
     const mockWalletTx = mock<WalletTx>();
     const mockAccount = mock<BitcoinAccount>({
@@ -2668,8 +2654,7 @@ describe('AccountUseCases', () => {
     });
 
     it('signs messages with one private entropy fetch for accounts sharing a parent path', async () => {
-      jest
-        .spyOn(Signer, 'sign')
+      vi.spyOn(Signer, 'sign')
         .mockReturnValueOnce('mock-bip322-signature-0')
         .mockReturnValueOnce('mock-bip322-signature-1');
 
@@ -2705,8 +2690,8 @@ describe('AccountUseCases', () => {
 
     it('does not expose derivation error details in batch signing results', async () => {
       const sensitiveError = 'derived private key bytes: secret';
-      jest.spyOn(RealSlip10Node, 'fromJSON').mockResolvedValueOnce({
-        derive: jest.fn().mockRejectedValue(new Error(sensitiveError)),
+      vi.spyOn(RealSlip10Node, 'fromJSON').mockResolvedValueOnce({
+        derive: vi.fn().mockRejectedValue(new Error(sensitiveError)),
       } as never);
 
       const result = await useCases.signProofOfOwnershipMessages([
@@ -2773,10 +2758,7 @@ describe('AccountUseCases', () => {
     it('keeps a new account unknown until its first full scan succeeds, and retries a failed scan', async () => {
       const { useCases: testUseCases } = buildStatefulUseCases();
       const account = buildAccount('new-id', true);
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null],
-        snapshot: { accounts: null, derivationPaths: null },
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.createMany.mockResolvedValue([account]);
       mockRepository.update.mockResolvedValue();
 
@@ -2830,7 +2812,7 @@ describe('AccountUseCases', () => {
 
   describe('full scan coordination (single-flight, on-demand, recovery)', () => {
     const NOW = 1_700_000_000_000;
-    let nowSpy: jest.SpyInstance<number, []>;
+    let nowSpy: MockInstance<number, []>;
 
     const buildUseCases = (): {
       useCases: AccountUseCases;
@@ -2879,7 +2861,7 @@ describe('AccountUseCases', () => {
       mockChain.fullScan.mockReset();
       mockChain.sync.mockReset();
       mockRepository.update.mockResolvedValue();
-      nowSpy = jest.spyOn(Date, 'now').mockReturnValue(NOW);
+      nowSpy = vi.spyOn(Date, 'now').mockReturnValue(NOW);
     });
 
     afterEach(() => {
@@ -2971,10 +2953,7 @@ describe('AccountUseCases', () => {
     it('starts the first full scan of new accounts right away, even without `synchronize`', async () => {
       const { useCases: testUseCases, snapClient } = buildUseCases();
       const accounts = ['n1', 'n2', 'n3'].map((id) => buildAccount(id));
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null, null, null],
-        snapshot: { accounts: null, derivationPaths: null },
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null, null, null]);
       mockRepository.createMany.mockResolvedValue(accounts);
       mockRepository.insertMany.mockResolvedValue(accounts);
 
@@ -3068,10 +3047,7 @@ describe('AccountUseCases', () => {
     it('runs the pending full scan promptly once syncs succeed again after an outage', async () => {
       const { useCases: testUseCases, snapClient } = buildUseCases();
       const account = buildAccount('a');
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null],
-        snapshot: { accounts: null, derivationPaths: null },
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.createMany.mockResolvedValue([account]);
       mockRepository.insertMany.mockResolvedValue([account]);
       await testUseCases.createMany([
@@ -3118,10 +3094,7 @@ describe('AccountUseCases', () => {
     it('lets a successful sync trigger the pending scan, bounded by the on-demand backoff', async () => {
       const { useCases: testUseCases, snapClient } = buildUseCases();
       const account = buildAccount('a');
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null],
-        snapshot: { accounts: null, derivationPaths: null },
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.createMany.mockResolvedValue([account]);
       mockRepository.insertMany.mockResolvedValue([account]);
       await testUseCases.createMany([
@@ -3164,10 +3137,7 @@ describe('AccountUseCases', () => {
     it('treats a failed full scan joined by a sync as a failed sync, so the next successful sync recovers promptly (v3 item 6)', async () => {
       const { useCases: testUseCases, snapClient } = buildUseCases();
       const account = buildAccount('a');
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null],
-        snapshot: { accounts: null, derivationPaths: null },
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.createMany.mockResolvedValue([account]);
       mockRepository.insertMany.mockResolvedValue([account]);
       await testUseCases.createMany([
@@ -3225,10 +3195,7 @@ describe('AccountUseCases', () => {
         snapClient: ReturnType<typeof mock<SnapClient>>,
       ): Promise<BitcoinAccount> => {
         const account = buildAccount('a', false);
-        mockRepository.getByDerivationPaths.mockResolvedValue({
-          accounts: [null],
-          snapshot: { accounts: null, derivationPaths: null },
-        });
+        mockRepository.getByDerivationPaths.mockResolvedValue([null]);
         mockRepository.createMany.mockResolvedValue([account]);
         mockRepository.insertMany.mockResolvedValue([account]);
         await testUseCases.createMany([
@@ -3328,7 +3295,7 @@ describe('AccountUseCases', () => {
         // following syncs request nothing more.
         mockChain.fullScan.mockResolvedValue();
         await testUseCases.fullScan(account);
-        jest.mocked(account.hasSynchronized).mockReturnValue(true);
+        vi.mocked(account.hasSynchronized).mockReturnValue(true);
         expect(await testUseCases.isBalanceUnknown(account)).toBe(false);
         at(147_000);
         await testUseCases.synchronize(account, 'cron');
@@ -3388,7 +3355,7 @@ describe('AccountUseCases', () => {
 
   describe('discovery scan reuse and the discovery frontier (v3 item 1)', () => {
     const NOW = 1_700_000_000_000;
-    let nowSpy: jest.SpyInstance<number, []>;
+    let nowSpy: MockInstance<number, []>;
 
     const buildUseCases = (): {
       useCases: AccountUseCases;
@@ -3469,7 +3436,7 @@ describe('AccountUseCases', () => {
       mockRepository.createMany.mockReset();
       mockRepository.insertMany.mockReset();
       mockRepository.update.mockResolvedValue();
-      nowSpy = jest.spyOn(Date, 'now').mockReturnValue(NOW);
+      nowSpy = vi.spyOn(Date, 'now').mockReturnValue(NOW);
     });
 
     afterEach(() => {
@@ -3480,20 +3447,14 @@ describe('AccountUseCases', () => {
       const { useCases: testUseCases, snapClient } = buildUseCases();
       const discovered = buildAccount('d1');
       await discover(testUseCases, discovered, 1);
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null],
-        snapshot: { accounts: null, derivationPaths: null },
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.insertMany.mockResolvedValue([discovered]);
 
       const created = await testUseCases.createMany([request(1)]);
 
       expect(created).toStrictEqual([discovered]);
       expect(mockRepository.createMany).not.toHaveBeenCalled();
-      expect(mockRepository.insertMany).toHaveBeenCalledWith(
-        [discovered],
-        expect.anything(),
-      );
+      expect(mockRepository.insertMany).toHaveBeenCalledWith([discovered]);
       expect(discovered.revealNextAddress).toHaveBeenCalled();
       // No second full scan: not scheduled, not queued.
       expect(mockChain.fullScan).toHaveBeenCalledTimes(1);
@@ -3511,10 +3472,7 @@ describe('AccountUseCases', () => {
       const fresh = ['a2', 'a3', 'a4'].map((id) =>
         buildAccount(id, { synchronized: false }),
       );
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null, null, null, null],
-        snapshot: { accounts: null, derivationPaths: null },
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null, null, null, null]);
       mockRepository.createMany.mockResolvedValue(fresh);
       mockRepository.insertMany.mockResolvedValue([discovered, ...fresh]);
 
@@ -3547,10 +3505,7 @@ describe('AccountUseCases', () => {
       const { useCases: testUseCases, snapClient } = buildUseCases();
       await discover(testUseCases, buildAccount('d1'), 1);
       const fresh = buildAccount('a2', { synchronized: false });
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null],
-        snapshot: { accounts: null, derivationPaths: null },
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.createMany.mockResolvedValue([fresh]);
       mockRepository.insertMany.mockResolvedValue([fresh]);
       await testUseCases.createMany([request(2)]);
@@ -3567,7 +3522,7 @@ describe('AccountUseCases', () => {
 
       // After its first successful sync, it is a regular account again.
       mockChain.sync.mockResolvedValueOnce();
-      jest.mocked(fresh.hasSynchronized).mockReturnValue(true);
+      vi.mocked(fresh.hasSynchronized).mockReturnValue(true);
       await testUseCases.synchronize(fresh, 'cron');
       snapClient.scheduleBackgroundEvent.mockClear();
       nowSpy.mockReturnValue(NOW + 60_000);
@@ -3584,10 +3539,7 @@ describe('AccountUseCases', () => {
       // Discovery found activity at index 1 (frontier not set by it).
       await discover(testUseCases, buildAccount('d1', { transactions: 2 }), 1);
       const next = buildAccount('a2', { synchronized: false });
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null],
-        snapshot: { accounts: null, derivationPaths: null },
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
       mockRepository.createMany.mockResolvedValue([next]);
       mockRepository.insertMany.mockResolvedValue([next]);
 
@@ -3609,10 +3561,7 @@ describe('AccountUseCases', () => {
       const { useCases: testUseCases, snapClient } = buildUseCases();
       const discovered = buildAccount('d1', { transactions: 3 });
       await discover(testUseCases, discovered, 1);
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null],
-        snapshot: { accounts: null, derivationPaths: null },
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null]);
 
       await testUseCases.createMany([request(1)]);
 
@@ -3634,10 +3583,7 @@ describe('AccountUseCases', () => {
       nowSpy.mockReturnValue(NOW + DISCOVERY_SCAN_REUSE_TTL_MS);
       const derived = buildAccount('n1', { synchronized: false });
       const fresh = buildAccount('n2', { synchronized: false });
-      mockRepository.getByDerivationPaths.mockResolvedValue({
-        accounts: [null, null],
-        snapshot: { accounts: null, derivationPaths: null },
-      });
+      mockRepository.getByDerivationPaths.mockResolvedValue([null, null]);
       mockRepository.createMany.mockResolvedValue([derived, fresh]);
       mockRepository.insertMany.mockResolvedValue([derived, fresh]);
 

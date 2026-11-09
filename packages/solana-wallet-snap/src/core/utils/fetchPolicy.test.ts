@@ -20,7 +20,7 @@ describe('toFetchPolicyError', () => {
     };
     error.context = {
       headers: {
-        get: jest.fn().mockReturnValue('3'),
+        get: vi.fn().mockReturnValue('3'),
       },
       statusCode: 429,
     };
@@ -66,8 +66,8 @@ describe('shared policy integration', () => {
       service: 'test',
       logger: mockLogger,
     });
-    const operation = jest
-      .fn<Promise<string>, []>()
+    const operation = vi
+      .fn<() => Promise<string>>()
       .mockRejectedValueOnce(new TypeError('fetch failed'))
       .mockResolvedValue('ok');
 
@@ -87,7 +87,7 @@ describe('shared policy integration', () => {
       });
       const controller = new AbortController();
       const callerReason = new Error('Caller aborted request');
-      const fetchMock = jest.fn().mockImplementation(async () => {
+      const fetchMock = vi.fn().mockImplementation(async () => {
         controller.abort(callerReason);
         throw callerReason;
       });

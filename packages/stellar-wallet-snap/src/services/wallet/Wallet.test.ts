@@ -6,8 +6,6 @@ import { buildMockClassicTransaction } from '../transaction/__mocks__/transactio
 import { getTestWallet } from './__mocks__/wallet.fixtures';
 import { Wallet } from './Wallet';
 
-jest.mock('../../utils/logger');
-
 describe('Wallet', () => {
   const seed = hexToBytes(
     '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',

@@ -1,3 +1,4 @@
+import { expect } from '@jest/globals';
 import { BtcAccountType, BtcScope } from '@metamask/keyring-api';
 
 import { CurrencyUnit } from '../src/entities';

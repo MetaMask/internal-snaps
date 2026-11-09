@@ -1,4 +1,5 @@
 import type { JsonRpcRequest } from '@metamask/utils';
+import type { MockInstance } from 'vitest';
 
 import { AccountService, StellarKeyringAccount } from '../../services/account';
 import { generateStellarKeyringAccount } from '../../services/account/__mocks__/account.fixtures';
@@ -10,8 +11,6 @@ import { AccountResolver } from '../accountResolver';
 import { ClientRequestMethod } from './api';
 import { SignProofOfOwnershipHandler } from './signProofOfOwnership';
 
-jest.mock('../../utils/logger');
-
 describe('SignProofOfOwnershipHandler', () => {
   const accountId = '11111111-1111-4111-8111-111111111111';
   const nonce = 'a1b2c3d4e5f6789012345678';
@@ -20,14 +19,14 @@ describe('SignProofOfOwnershipHandler', () => {
     handler: SignProofOfOwnershipHandler;
     account: StellarKeyringAccount;
     wallet: Wallet;
-    resolveAccountSpy: jest.SpyInstance;
-    resolveWalletSpy: jest.SpyInstance;
+    resolveAccountSpy: MockInstance;
+    resolveWalletSpy: MockInstance;
     buildProofMessage: (proofNonce?: string, proofAddress?: string) => string;
     createRequest: (message?: string) => JsonRpcRequest;
   };
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   function setup(): SetupResult {
@@ -47,11 +46,11 @@ describe('SignProofOfOwnershipHandler', () => {
       walletService,
     });
 
-    const resolveAccountSpy = jest
+    const resolveAccountSpy = vi
       .spyOn(AccountService.prototype, 'resolveAccount')
       .mockResolvedValue({ account });
 
-    const resolveWalletSpy = jest
+    const resolveWalletSpy = vi
       .spyOn(WalletService.prototype, 'resolveWallet')
       .mockResolvedValue(wallet);
 

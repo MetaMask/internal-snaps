@@ -5,6 +5,7 @@ import {
   TransactionType,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import { InMemoryState } from '@metamask/snap-networks-utils';
 import type { Horizon } from '@stellar/stellar-sdk';
 import { Keypair, Networks } from '@stellar/stellar-sdk';
@@ -37,12 +38,6 @@ import { Transaction } from './Transaction';
 import { TransactionMapper } from './TransactionMapper';
 import { TransactionRepository } from './TransactionRepository';
 import { TransactionSynchronizeService } from './TransactionSynchronizeService';
-
-jest.mock('../../utils/logger');
-jest.mock('../../utils/snap');
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: jest.fn(),
-}));
 
 function buildOnChainPaymentTransaction(params: {
   sourceAddress: string;
@@ -87,6 +82,11 @@ function buildOnChainPaymentTransaction(params: {
 }
 
 describe('TransactionSynchronizeService', () => {
+  beforeEach(() => {
+    vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
+      undefined,
+    );
+  });
   const scope = KnownCaip2ChainId.Mainnet;
   const destinationAddress = Keypair.random().publicKey();
   const sep41SenderAddress =
@@ -119,9 +119,7 @@ describe('TransactionSynchronizeService', () => {
       logger,
     });
     const accountService = {
-      listAccountsByScope: jest
-        .fn()
-        .mockResolvedValue(params?.allAccounts ?? []),
+      listAccountsByScope: vi.fn().mockResolvedValue(params?.allAccounts ?? []),
     } as unknown as AccountService;
     const service = new TransactionSynchronizeService({
       networkService,
@@ -136,18 +134,18 @@ describe('TransactionSynchronizeService', () => {
       networkService,
       transactionRepository,
       accountService,
-      getTransactionsSpy: jest.spyOn(networkService, 'getTransactions'),
-      getTransactionSpy: jest.spyOn(networkService, 'getTransaction'),
-      findStellarTransactionsByAccountIdsSpy: jest.spyOn(
+      getTransactionsSpy: vi.spyOn(networkService, 'getTransactions'),
+      getTransactionSpy: vi.spyOn(networkService, 'getTransaction'),
+      findStellarTransactionsByAccountIdsSpy: vi.spyOn(
         transactionRepository,
         'findStellarTransactionsByAccountIds',
       ),
-      findLastScanTokenSpy: jest.spyOn(
+      findLastScanTokenSpy: vi.spyOn(
         transactionRepository,
         'findLastScanTokenByAccountIds',
       ),
-      saveManySpy: jest.spyOn(transactionRepository, 'saveMany'),
-      emitSnapKeyringEventSpy: jest.mocked(emitSnapKeyringEvent),
+      saveManySpy: vi.spyOn(transactionRepository, 'saveMany'),
+      emitSnapKeyringEventSpy: vi.mocked(emitSnapKeyringEvent),
     };
   };
 

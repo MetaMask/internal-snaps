@@ -1,0 +1,121 @@
+diff --git a/lib/commonjs/lib/TransactionBuilder/TransactionBuilder.js b/lib/commonjs/lib/TransactionBuilder/TransactionBuilder.js
+index 4812e90adcc6651c8b353f9ba2cf50abb75ae0e2..c21ff8024018bf34048ffacafd61aed2d95219f5 100644
+--- a/lib/commonjs/lib/TransactionBuilder/TransactionBuilder.js
++++ b/lib/commonjs/lib/TransactionBuilder/TransactionBuilder.js
+@@ -35,11 +35,6 @@ class TransactionBuilder {
+                 type: 'address',
+                 value: from,
+             },
+-            {
+-                names: ['recipient', 'origin'],
+-                type: 'notEqual',
+-                msg: 'Cannot transfer TRX to the same account',
+-            },
+             {
+                 name: 'amount',
+                 type: 'integer',
+@@ -68,11 +63,6 @@ class TransactionBuilder {
+                 type: 'address',
+                 value: from,
+             },
+-            {
+-                names: ['recipient', 'origin'],
+-                type: 'notEqual',
+-                msg: 'Cannot transfer tokens to the same account',
+-            },
+             {
+                 name: 'amount',
+                 type: 'integer',
+diff --git a/lib/commonjs/lib/providers/HttpProvider.js b/lib/commonjs/lib/providers/HttpProvider.js
+index ecb512f68fc9a4e4211baf84bb695ffc44758733..aa11290e2140141356cb37fc28f5de55c99a5363 100644
+--- a/lib/commonjs/lib/providers/HttpProvider.js
++++ b/lib/commonjs/lib/providers/HttpProvider.js
+@@ -18,7 +18,6 @@ class HttpProvider {
+             throw new Error('Invalid timeout duration provided');
+         if (!(0, validations_js_1.isObject)(headers))
+             throw new Error('Invalid headers object provided');
+-        host = host.replace(/\/+$/, '');
+         this.host = host;
+         this.timeout = timeout;
+         this.user = user;
+diff --git a/lib/esm/lib/TransactionBuilder/TransactionBuilder.js b/lib/esm/lib/TransactionBuilder/TransactionBuilder.js
+index dad1254699efc433343678795f30245731ea0cf3..13fc0ef92938107f1417a9d56c29397c2bf5a790 100644
+--- a/lib/esm/lib/TransactionBuilder/TransactionBuilder.js
++++ b/lib/esm/lib/TransactionBuilder/TransactionBuilder.js
+@@ -32,11 +32,6 @@ export class TransactionBuilder {
+                 type: 'address',
+                 value: from,
+             },
+-            {
+-                names: ['recipient', 'origin'],
+-                type: 'notEqual',
+-                msg: 'Cannot transfer TRX to the same account',
+-            },
+             {
+                 name: 'amount',
+                 type: 'integer',
+@@ -65,11 +60,6 @@ export class TransactionBuilder {
+                 type: 'address',
+                 value: from,
+             },
+-            {
+-                names: ['recipient', 'origin'],
+-                type: 'notEqual',
+-                msg: 'Cannot transfer tokens to the same account',
+-            },
+             {
+                 name: 'amount',
+                 type: 'integer',
+diff --git a/lib/esm/lib/providers/HttpProvider.js b/lib/esm/lib/providers/HttpProvider.js
+index cadb4d034f4577c35f2ad0f02eb4cc8272c30032..7d67ad67b62c53a0d7724160b70966555f0b7463 100644
+--- a/lib/esm/lib/providers/HttpProvider.js
++++ b/lib/esm/lib/providers/HttpProvider.js
+@@ -15,7 +15,6 @@ export default class HttpProvider {
+             throw new Error('Invalid timeout duration provided');
+         if (!isObject(headers))
+             throw new Error('Invalid headers object provided');
+-        host = host.replace(/\/+$/, '');
+         this.host = host;
+         this.timeout = timeout;
+         this.user = user;
+diff --git a/src/lib/TransactionBuilder/TransactionBuilder.ts b/src/lib/TransactionBuilder/TransactionBuilder.ts
+index 7484685f9e707b51e18c3c5b36b937a70236bab4..11947b48ea5d8f76d01c9bb9973a8cdb5ad8c21b 100644
+--- a/src/lib/TransactionBuilder/TransactionBuilder.ts
++++ b/src/lib/TransactionBuilder/TransactionBuilder.ts
+@@ -113,11 +113,6 @@ export class TransactionBuilder {
+                 type: 'address',
+                 value: from as string,
+             },
+-            {
+-                names: ['recipient', 'origin'],
+-                type: 'notEqual',
+-                msg: 'Cannot transfer TRX to the same account',
+-            },
+             {
+                 name: 'amount',
+                 type: 'integer',
+@@ -161,11 +156,6 @@ export class TransactionBuilder {
+                 type: 'address',
+                 value: from as string,
+             },
+-            {
+-                names: ['recipient', 'origin'],
+-                type: 'notEqual',
+-                msg: 'Cannot transfer tokens to the same account',
+-            },
+             {
+                 name: 'amount',
+                 type: 'integer',
+diff --git a/src/lib/providers/HttpProvider.ts b/src/lib/providers/HttpProvider.ts
+index ae22a66859a3d7895df9d644c2a0fd48976a9aaa..f4e70faf26878cb6a31b94980479552f785f1a83 100644
+--- a/src/lib/providers/HttpProvider.ts
++++ b/src/lib/providers/HttpProvider.ts
+@@ -17,8 +17,6 @@ export default class HttpProvider {
+ 
+         if (!isObject(headers)) throw new Error('Invalid headers object provided');
+ 
+-        host = host.replace(/\/+$/, '');
+-
+         this.host = host;
+         this.timeout = timeout;
+         this.user = user;

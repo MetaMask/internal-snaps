@@ -21,13 +21,13 @@ describe('SubscriptionRepository', () => {
 
   beforeEach(() => {
     mockStateManager = {
-      get: jest.fn(),
-      getKey: jest.fn(),
-      setKey: jest.fn(),
-      setKeyWith: jest.fn(),
-      update: jest.fn(),
-      deleteKey: jest.fn(),
-      deleteKeys: jest.fn(),
+      get: vi.fn(),
+      getKey: vi.fn(),
+      setKey: vi.fn(),
+      setKeyWith: vi.fn(),
+      update: vi.fn(),
+      deleteKey: vi.fn(),
+      deleteKeys: vi.fn(),
     };
 
     repository = new SubscriptionRepository(mockStateManager);
@@ -35,7 +35,7 @@ describe('SubscriptionRepository', () => {
 
   describe('getAll', () => {
     it('returns an empty array if there are no subscriptions', async () => {
-      jest.spyOn(mockStateManager, 'getKey').mockResolvedValue({});
+      vi.spyOn(mockStateManager, 'getKey').mockResolvedValue({});
 
       const subscriptions = await repository.getAll();
       expect(subscriptions).toStrictEqual([]);
@@ -45,7 +45,7 @@ describe('SubscriptionRepository', () => {
       const subscription0 = createMockSubscription('0');
       const subscription1 = createMockSubscription('1');
 
-      jest.spyOn(mockStateManager, 'getKey').mockResolvedValue({
+      vi.spyOn(mockStateManager, 'getKey').mockResolvedValue({
         [subscription0.id]: subscription0,
         [subscription1.id]: subscription1,
       });
@@ -55,7 +55,7 @@ describe('SubscriptionRepository', () => {
     });
 
     it('returns empty array if there are no subscriptions', async () => {
-      jest.spyOn(mockStateManager, 'getKey').mockResolvedValue(undefined);
+      vi.spyOn(mockStateManager, 'getKey').mockResolvedValue(undefined);
 
       const subscriptions = await repository.getAll();
       expect(subscriptions).toStrictEqual([]);
@@ -65,7 +65,7 @@ describe('SubscriptionRepository', () => {
   describe('getById', () => {
     it('returns the subscription if it exists', async () => {
       const subscription = createMockSubscription('0');
-      jest.spyOn(mockStateManager, 'getKey').mockResolvedValue(subscription);
+      vi.spyOn(mockStateManager, 'getKey').mockResolvedValue(subscription);
 
       const foundSubscription = await repository.getById(subscription.id);
       expect(foundSubscription).toStrictEqual(subscription);
@@ -124,7 +124,7 @@ describe('SubscriptionRepository', () => {
     it('finds the subscription by the requestId', async () => {
       const subscription = createMockSubscription('0');
 
-      jest.spyOn(mockStateManager, 'getKey').mockResolvedValue({
+      vi.spyOn(mockStateManager, 'getKey').mockResolvedValue({
         [subscription.id]: subscription,
       });
 
@@ -139,7 +139,7 @@ describe('SubscriptionRepository', () => {
     it('returns undefined if the subscription is not found', async () => {
       const subscription = createMockSubscription('0');
 
-      jest.spyOn(mockStateManager, 'getKey').mockResolvedValue({
+      vi.spyOn(mockStateManager, 'getKey').mockResolvedValue({
         [subscription.id]: subscription,
       });
 
@@ -150,7 +150,7 @@ describe('SubscriptionRepository', () => {
     });
 
     it('returns undefined if there are no subscriptions', async () => {
-      jest.spyOn(mockStateManager, 'getKey').mockResolvedValue({});
+      vi.spyOn(mockStateManager, 'getKey').mockResolvedValue({});
 
       const foundSubscription = await repository.findBy('requestId', '1');
       expect(foundSubscription).toBeUndefined();

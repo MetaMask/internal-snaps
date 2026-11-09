@@ -1,9 +1,11 @@
 import type { FeeType } from '@metamask/keyring-api';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
+import type { Mocked, Mock } from 'vitest';
 
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
 import type { SnapExecutionContext } from '../../../../context';
+import defaultSnapContext from '../../../../context';
 import type { AssetEntity } from '../../../../entities/assets';
 import type { TronKeyringAccount } from '../../../../entities/tronKeyringAccount';
 import { TronMultichainMethod } from '../../../../handlers/keyring/keyring-types';
@@ -22,17 +24,6 @@ import { FetchStatus } from '../../../../types/snap';
 import type { Preferences } from '../../../../types/snap';
 import type { TronWalletKeyringRequest } from '../../../../validation/structs';
 import { render } from './render';
-
-// Mock the context module
-jest.mock('../../../../context', () => ({
-  __esModule: true,
-  default: {
-    snapClient: null,
-    transactionScanService: null,
-    transactionExpirationRefresherService: null,
-    state: null,
-  },
-}));
 
 /**
  * Helper function to convert string to base64.
@@ -125,7 +116,7 @@ const mockAccount: TronKeyringAccount = {
 
 type WithSnapContextCallback<ReturnValue> = (payload: {
   snapContext: SnapExecutionContext;
-  mockSnapClient: jest.Mocked<
+  mockSnapClient: Mocked<
     Pick<
       SnapClient,
       | 'createInterface'
@@ -136,18 +127,16 @@ type WithSnapContextCallback<ReturnValue> = (payload: {
       | 'trackError'
     >
   >;
-  mockTransactionScanService: jest.Mocked<
+  mockTransactionScanService: Mocked<
     Pick<TransactionScanService, 'scanTransaction'>
   >;
   mockTransactionExpirationRefresherService: {
-    isTransactionExpired: jest.Mock;
+    isTransactionExpired: Mock;
   };
-  mockState: { setKey: jest.Mock };
-  mockAssetsService: jest.Mocked<Pick<AssetsService, 'getAccountAssetsByIDs'>>;
-  mockFeeCalculatorService: jest.Mocked<
-    Pick<FeeCalculatorService, 'computeFee'>
-  >;
-  mockPriceApiClient: { getMultipleSpotPrices: jest.Mock };
+  mockState: { setKey: Mock };
+  mockAssetsService: Mocked<Pick<AssetsService, 'getAccountAssetsByIDs'>>;
+  mockFeeCalculatorService: Mocked<Pick<FeeCalculatorService, 'computeFee'>>;
+  mockPriceApiClient: { getMultipleSpotPrices: Mock };
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -162,19 +151,19 @@ type WithSnapContextCallback<ReturnValue> = (payload: {
 async function withSnapContext<ReturnValue>(
   testFunction: WithSnapContextCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  const mockAssetsService: jest.Mocked<
+  const mockAssetsService: Mocked<
     Pick<AssetsService, 'getAccountAssetsByIDs'>
   > = {
-    getAccountAssetsByIDs: jest.fn().mockResolvedValue(mockAssets),
+    getAccountAssetsByIDs: vi.fn().mockResolvedValue(mockAssets),
   };
 
-  const mockFeeCalculatorService: jest.Mocked<
+  const mockFeeCalculatorService: Mocked<
     Pick<FeeCalculatorService, 'computeFee'>
   > = {
-    computeFee: jest.fn().mockResolvedValue(mockComputeFeeResult),
+    computeFee: vi.fn().mockResolvedValue(mockComputeFeeResult),
   };
 
-  const mockSnapClient: jest.Mocked<
+  const mockSnapClient: Mocked<
     Pick<
       SnapClient,
       | 'createInterface'
@@ -185,37 +174,34 @@ async function withSnapContext<ReturnValue>(
       | 'trackError'
     >
   > = {
-    createInterface: jest.fn().mockResolvedValue('interface-id-123'),
-    showDialog: jest.fn().mockResolvedValue(true),
-    updateInterface: jest.fn(),
-    getPreferences: jest.fn().mockResolvedValue(mockPreferences),
-    scheduleBackgroundEvent: jest.fn(),
-    trackError: jest.fn(),
+    createInterface: vi.fn().mockResolvedValue('interface-id-123'),
+    showDialog: vi.fn().mockResolvedValue(true),
+    updateInterface: vi.fn(),
+    getPreferences: vi.fn().mockResolvedValue(mockPreferences),
+    scheduleBackgroundEvent: vi.fn(),
+    trackError: vi.fn(),
   };
 
-  const mockTransactionScanService: jest.Mocked<
+  const mockTransactionScanService: Mocked<
     Pick<TransactionScanService, 'scanTransaction'>
   > = {
-    scanTransaction: jest.fn().mockResolvedValue(mockScanResult),
+    scanTransaction: vi.fn().mockResolvedValue(mockScanResult),
   };
 
   const mockTransactionExpirationRefresherService = {
-    isTransactionExpired: jest.fn(),
+    isTransactionExpired: vi.fn(),
   };
 
   const mockState = {
-    setKey: jest.fn(),
+    setKey: vi.fn(),
   };
 
   const mockPriceApiClient = {
-    getMultipleSpotPrices: jest.fn().mockResolvedValue({}),
+    getMultipleSpotPrices: vi.fn().mockResolvedValue({}),
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, no-restricted-globals
-  const snapContext = require('../../../../context')
-    .default as SnapExecutionContext;
   const freshSnapContext = {
-    ...snapContext,
+    ...defaultSnapContext,
     snapClient: mockSnapClient,
     transactionScanService: mockTransactionScanService,
     transactionExpirationRefresherService:
@@ -226,10 +212,10 @@ async function withSnapContext<ReturnValue>(
     priceApiClient: mockPriceApiClient,
   } as unknown as SnapExecutionContext;
 
-  Object.assign(snapContext, freshSnapContext);
+  Object.assign(defaultSnapContext, freshSnapContext);
 
   return await testFunction({
-    snapContext,
+    snapContext: defaultSnapContext,
     mockSnapClient,
     mockTransactionScanService,
     mockTransactionExpirationRefresherService,
@@ -241,9 +227,143 @@ async function withSnapContext<ReturnValue>(
 }
 
 describe('ConfirmSignTransaction render', () => {
+  it.each([
+    [true, true, FetchStatus.Loading],
+    [true, false, FetchStatus.Loading],
+    [false, true, FetchStatus.Loading],
+    [false, false, FetchStatus.Fetched],
+  ])(
+    'sets initial scan state with security alerts %s and simulation %s',
+    async (useSecurityAlerts, simulateOnChainActions, scanFetchStatus) => {
+      await withSnapContext(async ({ mockSnapClient }) => {
+        mockSnapClient.getPreferences.mockResolvedValue({
+          ...mockPreferences,
+          useSecurityAlerts,
+          simulateOnChainActions,
+        });
+        mockSnapClient.createInterface.mockImplementation(
+          async (ui, context) => {
+            expect(context).toMatchObject({ scanFetchStatus });
+            expect(JSON.stringify(ui).includes('"disabled":true')).toBe(
+              scanFetchStatus === FetchStatus.Loading,
+            );
+            return 'interface-id-123';
+          },
+        );
+
+        await render(
+          {
+            id: '00000000-0000-4000-8000-000000000001',
+            origin: 'https://example.com',
+            account: mockAccount.id,
+            scope: Network.Mainnet,
+            request: {
+              method: TronMultichainMethod.SignTransaction,
+              params: {
+                address: mockAccount.address,
+                transaction: {
+                  rawDataHex: toHex('transaction'),
+                  type: 'TransferContract',
+                },
+              },
+            },
+          },
+          mockAccount,
+          {
+            contract: [],
+            ref_block_bytes: '0000',
+            ref_block_hash: '0000000000000000',
+            expiration: 60000,
+            timestamp: 0,
+          },
+        );
+
+        expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
+      });
+    },
+  );
+
+  it.each(['expiry', 'insufficient balance'])(
+    'keeps local %s blocking on the initial screen with scans disabled',
+    async (blocker) => {
+      await withSnapContext(
+        async ({
+          mockSnapClient,
+          mockTransactionExpirationRefresherService,
+          mockAssetsService,
+        }) => {
+          mockSnapClient.getPreferences.mockResolvedValue({
+            ...mockPreferences,
+            useSecurityAlerts: false,
+            simulateOnChainActions: false,
+          });
+          mockTransactionExpirationRefresherService.isTransactionExpired.mockResolvedValue(
+            blocker === 'expiry',
+          );
+          if (blocker === 'insufficient balance') {
+            mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+              { ...mockAssets[0], rawAmount: '0' } as AssetEntity,
+              ...mockAssets.slice(1),
+            ]);
+          }
+          mockSnapClient.createInterface.mockImplementation(
+            async (ui, context) => {
+              expect(context).toMatchObject({
+                scanFetchStatus: FetchStatus.Fetched,
+              });
+              expect(JSON.stringify(ui)).toContain('"disabled":true');
+              expect(JSON.stringify(ui)).not.toContain(
+                'Checking for security issues',
+              );
+              expect(context).toMatchObject(
+                blocker === 'expiry'
+                  ? { scan: { error: { type: 'TransactionTaposExpired' } } }
+                  : { isInsufficientBalance: true },
+              );
+              return 'interface-id-123';
+            },
+          );
+
+          await render(
+            {
+              id: '00000000-0000-4000-8000-000000000001',
+              origin: 'https://example.com',
+              account: mockAccount.id,
+              scope: Network.Mainnet,
+              request: {
+                method: TronMultichainMethod.SignTransaction,
+                params: {
+                  address: mockAccount.address,
+                  transaction: {
+                    rawDataHex: toHex('transaction'),
+                    type: 'TransferContract',
+                  },
+                },
+              },
+            },
+            mockAccount,
+            {
+              contract: [],
+              ref_block_bytes: '0000',
+              ref_block_hash: '0000000000000000',
+              expiration: 60000,
+              timestamp: 0,
+            },
+          );
+
+          expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
+        },
+      );
+    },
+  );
+
   it('renders the confirmation dialog with security scan', async () => {
     await withSnapContext(
-      async ({ mockSnapClient, mockTransactionScanService }) => {
+      async ({
+        mockSnapClient,
+        mockTransactionScanService,
+        mockTransactionExpirationRefresherService,
+      }) => {
         const testOrigin = 'https://example.com';
         const testTransaction = toHex('mock-transaction-data');
 
@@ -305,6 +425,14 @@ describe('ConfirmSignTransaction render', () => {
 
         // Verify interface was updated with scan results
         expect(mockSnapClient.updateInterface).toHaveBeenCalled();
+        // A transaction can expire while a remote scan is in flight.
+        expect(
+          mockTransactionExpirationRefresherService.isTransactionExpired.mock
+            .invocationCallOrder[0],
+        ).toBeGreaterThan(
+          mockTransactionScanService.scanTransaction.mock
+            .invocationCallOrder[0] ?? 0,
+        );
       },
     );
   });

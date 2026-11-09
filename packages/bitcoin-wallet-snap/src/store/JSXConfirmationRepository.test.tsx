@@ -9,7 +9,7 @@ import type {
 import { Address as BdkAddress } from '@metamask/bitcoindevkit';
 import { TransactionType } from '@metamask/keyring-api';
 import type { GetPreferencesResult } from '@metamask/snaps-sdk';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type {
   AssetRatesClient,
@@ -21,28 +21,14 @@ import type {
   SpotPrice,
 } from '../entities';
 import { networkToCurrencyUnit } from '../entities';
+import * as JsxViews from '../infra/jsx';
 import { SignMessageConfirmationView } from '../infra/jsx';
+import * as UnifiedSendFlow from '../infra/jsx/unified-send-flow';
 import { UnifiedSendFormView } from '../infra/jsx/unified-send-flow';
 import { JSXConfirmationRepository } from './JSXConfirmationRepository';
 
 /* eslint-disable @typescript-eslint/naming-convention */
-jest.mock('@metamask/bitcoindevkit', () => ({
-  Address: {
-    from_script: jest.fn(),
-    from_string: jest.fn(),
-  },
-}));
-
-const MockedBdkAddress = jest.mocked(BdkAddress);
-
-jest.mock('../infra/jsx', () => ({
-  SignMessageConfirmationView: jest.fn(),
-  SignPsbtConfirmationView: jest.fn(),
-}));
-
-jest.mock('../infra/jsx/unified-send-flow', () => ({
-  UnifiedSendFormView: jest.fn(),
-}));
+const MockedBdkAddress = vi.mocked(BdkAddress);
 
 describe('JSXConfirmationRepository', () => {
   const mockMessages = { foo: { message: 'bar' } };
@@ -59,6 +45,20 @@ describe('JSXConfirmationRepository', () => {
     mockRatesClient,
     mockLogger,
   );
+
+  beforeEach(() => {
+    vi.spyOn(BdkAddress, 'from_script');
+    vi.spyOn(BdkAddress, 'from_string');
+    vi.spyOn(JsxViews, 'SignMessageConfirmationView').mockReturnValue(
+      undefined as never,
+    );
+    vi.spyOn(JsxViews, 'SignPsbtConfirmationView').mockReturnValue(
+      undefined as never,
+    );
+    vi.spyOn(UnifiedSendFlow, 'UnifiedSendFormView').mockReturnValue(
+      undefined as never,
+    );
+  });
 
   describe('insertSignMessage', () => {
     const mockAccount = mock<BitcoinAccount>({

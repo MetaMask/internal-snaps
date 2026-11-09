@@ -1,14 +1,17 @@
 import type { Txid, Psbt, Amount, LocalOutput } from '@metamask/bitcoindevkit';
 import type { KeyringRequest } from '@metamask/keyring-api';
-import { mock } from 'jest-mock-extended';
 import { assert } from 'superstruct';
+import * as Superstruct from 'superstruct';
+import { mock } from 'vitest-mock-extended';
 
 import type { BitcoinAccount, ConfirmationRepository } from '../entities';
 import { AccountCapability } from '../entities';
 import type { AccountUseCases } from '../use-cases';
 import { KeyringRequestHandler } from './KeyringRequestHandler';
 import type { Utxo } from './mappings';
+import * as Mappings from './mappings';
 import { mapToUtxo } from './mappings';
+import * as Parsers from './parsers';
 import { parsePsbt } from './parsers';
 import {
   BroadcastPsbtRequest,
@@ -20,24 +23,7 @@ import {
 } from './validation';
 
 /* eslint-disable @typescript-eslint/naming-convention */
-jest.mock('@metamask/bitcoindevkit', () => ({
-  Address: { from_string: jest.fn() },
-  Amount: { from_btc: jest.fn() },
-}));
-
-jest.mock('superstruct', () => ({
-  ...jest.requireActual('superstruct'),
-  assert: jest.fn(),
-}));
-
 const mockPsbt = mock<Psbt>();
-jest.mock('./parsers', () => ({
-  parsePsbt: jest.fn(),
-}));
-jest.mock('./mappings', () => ({
-  mapToUtxo: jest.fn(),
-}));
-
 type TestKeyringRequest = {
   account?: string;
   id?: string;
@@ -83,7 +69,9 @@ describe('KeyringRequestHandler', () => {
   );
 
   beforeEach(() => {
-    jest.mocked(parsePsbt).mockReturnValue(mockPsbt);
+    vi.spyOn(Superstruct, 'assert').mockImplementation(() => undefined);
+    vi.spyOn(Parsers, 'parsePsbt').mockReturnValue(mockPsbt);
+    vi.spyOn(Mappings, 'mapToUtxo');
   });
 
   describe('route', () => {
@@ -128,7 +116,7 @@ describe('KeyringRequestHandler', () => {
       mockAccountsUseCases.signPsbt.mockResolvedValue({
         psbt: 'psbtBase64',
         txid: mock<Txid>({
-          toString: jest.fn().mockReturnValue('txid'),
+          toString: vi.fn().mockReturnValue('txid'),
         }),
         canBeMalleable: false,
       });
@@ -187,7 +175,7 @@ describe('KeyringRequestHandler', () => {
       mockAccountsUseCases.signPsbt.mockResolvedValue({
         psbt: 'psbtBase64',
         txid: mock<Txid>({
-          toString: jest.fn().mockReturnValue('txid'),
+          toString: vi.fn().mockReturnValue('txid'),
         }),
         // canBeMalleable intentionally omitted — protocol violation
       });
@@ -201,7 +189,7 @@ describe('KeyringRequestHandler', () => {
       mockAccountsUseCases.signPsbt.mockResolvedValue({
         psbt: 'psbtBase64',
         txid: mock<Txid>({
-          toString: jest.fn().mockReturnValue('txid'),
+          toString: vi.fn().mockReturnValue('txid'),
         }),
         canBeMalleable: true,
       });
@@ -232,7 +220,7 @@ describe('KeyringRequestHandler', () => {
       });
 
       const filledPsbt = mock<Psbt>({
-        toString: jest.fn().mockReturnValue('filledPsbtBase64'),
+        toString: vi.fn().mockReturnValue('filledPsbtBase64'),
       });
       const psbtForConfirmation = mock<Psbt>();
       const psbtForSigning = mock<Psbt>();
@@ -240,12 +228,11 @@ describe('KeyringRequestHandler', () => {
       mockAccountsUseCases.signPsbt.mockResolvedValue({
         psbt: 'signedPsbtBase64',
         txid: mock<Txid>({
-          toString: jest.fn().mockReturnValue('txid'),
+          toString: vi.fn().mockReturnValue('txid'),
         }),
         canBeMalleable: false,
       });
-      jest
-        .mocked(parsePsbt)
+      vi.mocked(parsePsbt)
         .mockReturnValueOnce(mockPsbt)
         .mockReturnValueOnce(psbtForConfirmation)
         .mockReturnValueOnce(psbtForSigning);
@@ -335,7 +322,7 @@ describe('KeyringRequestHandler', () => {
 
     it('propagates errors from parsePsbt', async () => {
       const error = new Error('parsePsbt');
-      jest.mocked(parsePsbt).mockImplementationOnce(() => {
+      vi.mocked(parsePsbt).mockImplementationOnce(() => {
         throw error;
       });
 
@@ -402,7 +389,7 @@ describe('KeyringRequestHandler', () => {
 
     it('propagates errors from parsePsbt', async () => {
       const error = new Error('parsePsbt');
-      jest.mocked(parsePsbt).mockImplementationOnce(() => {
+      vi.mocked(parsePsbt).mockImplementationOnce(() => {
         throw error;
       });
 
@@ -444,7 +431,7 @@ describe('KeyringRequestHandler', () => {
 
     it('executes fillPsbt', async () => {
       const mockFilledPsbt = mock<Psbt>({
-        toString: jest.fn().mockReturnValue('filledPsbtBase64'),
+        toString: vi.fn().mockReturnValue('filledPsbtBase64'),
       });
       mockAccountsUseCases.fillPsbt.mockResolvedValue(mockFilledPsbt);
 
@@ -464,7 +451,7 @@ describe('KeyringRequestHandler', () => {
 
     it('propagates errors from parsePsbt', async () => {
       const error = new Error('parsePsbt');
-      jest.mocked(parsePsbt).mockImplementationOnce(() => {
+      vi.mocked(parsePsbt).mockImplementationOnce(() => {
         throw error;
       });
 
@@ -507,7 +494,7 @@ describe('KeyringRequestHandler', () => {
 
     it('executes broadcastPsbt and propagates canBeMalleable', async () => {
       const mockTxid = mock<Txid>({
-        toString: jest.fn().mockReturnValue('txid'),
+        toString: vi.fn().mockReturnValue('txid'),
       });
       mockAccountsUseCases.broadcastPsbt.mockResolvedValue({
         txid: mockTxid,
@@ -530,7 +517,7 @@ describe('KeyringRequestHandler', () => {
 
     it('passes canBeMalleable=true through for legacy P2PKH accounts', async () => {
       const mockTxid = mock<Txid>({
-        toString: jest.fn().mockReturnValue('txid'),
+        toString: vi.fn().mockReturnValue('txid'),
       });
       mockAccountsUseCases.broadcastPsbt.mockResolvedValue({
         txid: mockTxid,
@@ -544,7 +531,7 @@ describe('KeyringRequestHandler', () => {
 
     it('propagates errors from parsePsbt', async () => {
       const error = new Error('parsePsbt');
-      jest.mocked(parsePsbt).mockImplementationOnce(() => {
+      vi.mocked(parsePsbt).mockImplementationOnce(() => {
         throw error;
       });
 
@@ -593,7 +580,7 @@ describe('KeyringRequestHandler', () => {
 
     it('executes sendTransfer and propagates canBeMalleable', async () => {
       const mockTxid = mock<Txid>({
-        toString: jest.fn().mockReturnValue('txid'),
+        toString: vi.fn().mockReturnValue('txid'),
       });
       mockAccountsUseCases.sendTransfer.mockResolvedValue({
         txid: mockTxid,
@@ -617,7 +604,7 @@ describe('KeyringRequestHandler', () => {
 
     it('passes canBeMalleable=true through for legacy P2PKH accounts', async () => {
       const mockTxid = mock<Txid>({
-        toString: jest.fn().mockReturnValue('txid'),
+        toString: vi.fn().mockReturnValue('txid'),
       });
       mockAccountsUseCases.sendTransfer.mockResolvedValue({
         txid: mockTxid,
@@ -666,7 +653,7 @@ describe('KeyringRequestHandler', () => {
         scriptPubkeyHex: 'scriptPubkeyHex',
       };
       mockAccountsUseCases.get.mockResolvedValue(mockAccount);
-      jest.mocked(mapToUtxo).mockReturnValue(expectedUtxo);
+      vi.mocked(mapToUtxo).mockReturnValue(expectedUtxo);
       const result = await handler.route(mockRequest);
 
       expect(assert).toHaveBeenCalledWith(
@@ -713,7 +700,7 @@ describe('KeyringRequestHandler', () => {
         scriptPubkeyHex: 'scriptPubkeyHex',
       });
       mockAccountsUseCases.get.mockResolvedValue(mockAccount);
-      jest.mocked(mapToUtxo).mockReturnValue(mockUtxo);
+      vi.mocked(mapToUtxo).mockReturnValue(mockUtxo);
       const result = await handler.route(mockRequest);
 
       expect(mockAccountsUseCases.get).toHaveBeenCalledWith('account-id');

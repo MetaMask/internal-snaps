@@ -16,10 +16,10 @@ const createStateClient = (
 ): { client: SnapClient; state: Record<string, unknown> } => {
   const state: Record<string, unknown> = clone(initial);
   const client = {
-    getState: jest.fn(async (key: string) =>
+    getState: vi.fn(async (key: string) =>
       Object.hasOwn(state, key) ? clone(state[key]) : null,
     ),
-    setState: jest.fn(async (key: string, value: unknown) => {
+    setState: vi.fn(async (key: string, value: unknown) => {
       state[key] = clone(value);
     }),
   } as unknown as SnapClient;

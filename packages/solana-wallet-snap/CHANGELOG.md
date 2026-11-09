@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.3.0]
+
+### Changed
+
+- Remove the temporary fallback that injected `https://metamask.io` as the request origin when `keyring_submitRequest` was called without one. ([#533](https://github.com/MetaMask/internal-snaps/pull/533))
+
 ## [7.2.0]
 
 ### Added
@@ -100,7 +106,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING:** Re-licensed split into LICENSE.MIT or LICENSE.APACHE2 files (SPDX expression unchanged) ([#72](https://github.com/MetaMask/internal-snaps/pull/72))
 - This package was migrated from [snap-solana-wallet](https://github.com/MetaMask/snap-solana-wallet). See the source repository for the original [changelog](https://github.com/MetaMask/snap-solana-wallet/blob/main/packages/snap/CHANGELOG.md). ([#72](https://github.com/MetaMask/internal-snaps/pull/72))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.2.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.3.0...HEAD
+[7.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.2.0...@metamask/solana-wallet-snap@7.3.0
 [7.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.1.0...@metamask/solana-wallet-snap@7.2.0
 [7.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.0.0...@metamask/solana-wallet-snap@7.1.0
 [7.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@6.0.0...@metamask/solana-wallet-snap@7.0.0

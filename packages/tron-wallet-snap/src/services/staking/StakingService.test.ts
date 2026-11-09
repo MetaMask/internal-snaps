@@ -1,5 +1,6 @@
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
+import type { Mocked } from 'vitest';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
@@ -18,10 +19,10 @@ import { StakingService } from './StakingService';
 
 describe('StakingService', () => {
   let stakingService: StakingService;
-  let mockAccountsService: jest.Mocked<AccountsService>;
-  let mockTronWebFactory: jest.Mocked<TronWebFactory>;
-  let mockSnapClient: jest.Mocked<SnapClient>;
-  let mockTransactionExpirationRefresherService: jest.Mocked<TransactionExpirationRefresherService>;
+  let mockAccountsService: Mocked<AccountsService>;
+  let mockTronWebFactory: Mocked<TronWebFactory>;
+  let mockSnapClient: Mocked<SnapClient>;
+  let mockTransactionExpirationRefresherService: Mocked<TransactionExpirationRefresherService>;
   let mockTronWeb: any;
 
   const mockAccount: ExtendedKeyringAccount = {
@@ -83,47 +84,47 @@ describe('StakingService', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     mockTronWeb = {
       transactionBuilder: {
-        freezeBalanceV2: jest.fn().mockResolvedValue(mockTransaction),
-        unfreezeBalanceV2: jest.fn().mockResolvedValue(mockTransaction),
-        vote: jest.fn().mockResolvedValue(mockTransaction),
-        withdrawExpireUnfreeze: jest.fn().mockResolvedValue(mockTransaction),
-        withdrawBlockRewards: jest.fn().mockResolvedValue(mockTransaction),
+        freezeBalanceV2: vi.fn().mockResolvedValue(mockTransaction),
+        unfreezeBalanceV2: vi.fn().mockResolvedValue(mockTransaction),
+        vote: vi.fn().mockResolvedValue(mockTransaction),
+        withdrawExpireUnfreeze: vi.fn().mockResolvedValue(mockTransaction),
+        withdrawBlockRewards: vi.fn().mockResolvedValue(mockTransaction),
       },
       trx: {
-        sign: jest.fn().mockResolvedValue(mockSignedTransaction),
-        sendRawTransaction: jest
+        sign: vi.fn().mockResolvedValue(mockSignedTransaction),
+        sendRawTransaction: vi
           .fn()
           .mockResolvedValue({ result: true, txid: 'mock-tx-id' }),
       },
     };
 
     mockAccountsService = {
-      deriveTronKeypair: jest.fn().mockResolvedValue(mockKeypair),
-      findByIdOrThrow: jest.fn().mockResolvedValue(mockAccount),
-    } as unknown as jest.Mocked<AccountsService>;
+      deriveTronKeypair: vi.fn().mockResolvedValue(mockKeypair),
+      findByIdOrThrow: vi.fn().mockResolvedValue(mockAccount),
+    } as unknown as Mocked<AccountsService>;
 
     mockTronWebFactory = {
-      createClient: jest.fn().mockReturnValue(mockTronWeb),
-      executeBroadcast: jest
+      createClient: vi.fn().mockReturnValue(mockTronWeb),
+      executeBroadcast: vi
         .fn()
         .mockImplementation(
           async (_scope: Network, operation: () => Promise<unknown>) =>
             operation(),
         ),
-    } as unknown as jest.Mocked<TronWebFactory>;
+    } as unknown as Mocked<TronWebFactory>;
 
     mockSnapClient = {
-      scheduleBackgroundEvent: jest.fn().mockResolvedValue(undefined),
-    } as unknown as jest.Mocked<SnapClient>;
+      scheduleBackgroundEvent: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Mocked<SnapClient>;
     mockTransactionExpirationRefresherService = {
-      ensureFreshMetadata: jest
+      ensureFreshMetadata: vi
         .fn()
         .mockImplementation(async ({ transaction }) => transaction),
-    } as unknown as jest.Mocked<TransactionExpirationRefresherService>;
+    } as unknown as Mocked<TransactionExpirationRefresherService>;
 
     stakingService = new StakingService({
       logger: mockLogger,
@@ -370,7 +371,7 @@ describe('StakingService', () => {
       ];
 
       for (const testCase of testCases) {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
 
         await stakingService.stake({
           account: mockAccount,
@@ -394,7 +395,7 @@ describe('StakingService', () => {
       ];
 
       for (const testCase of testCases) {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
 
         await stakingService.stake({
           account: mockAccount,
@@ -558,7 +559,7 @@ describe('StakingService', () => {
       ];
 
       for (const testCase of testCases) {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
 
         await stakingService.unstake({
           account: mockAccount,
@@ -598,7 +599,7 @@ describe('StakingService', () => {
       ];
 
       for (const testCase of testCases) {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
 
         await stakingService.unstake({
           account: mockAccount,
@@ -661,7 +662,7 @@ describe('StakingService', () => {
       ];
 
       for (const testCase of testCases) {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
 
         await stakingService.unstake({
           account: mockAccount,

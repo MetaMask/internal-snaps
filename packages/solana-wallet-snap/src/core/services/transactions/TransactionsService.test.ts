@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { Transaction } from '@metamask/keyring-api';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import { address as asAddress } from '@solana/kit';
@@ -12,6 +13,7 @@ import {
 } from '../../test/mocks/solana-keyring-accounts';
 import { MOCK_GET_SIGNATURES_FOR_ADDRESS } from '../../test/mocks/transactions';
 import { ADDRESS_1_TRANSACTION_1_DATA } from '../../test/mocks/transactions-data/address-1/transaction-1';
+import * as Errors from '../../utils/errors';
 import { trackError } from '../../utils/errors';
 import { createMockConnection } from '../__mocks__/mockConnection';
 import type { AccountsService } from '../accounts/AccountsService';
@@ -34,14 +36,6 @@ const MOCK_TOKEN_ACCOUNT_RESPONSE = {
   pubkey: asAddress('9wt9PfjPD3JCy5r7o4K1cTGiuTG7fq2pQhdDCdQALKjg'),
 };
 
-jest.mock('../../utils/errors', () => ({
-  trackError: jest.fn().mockResolvedValue('tracked-error-id'),
-}));
-
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: jest.fn(),
-}));
-
 describe('TransactionsService', () => {
   let mockTransactionsRepository: TransactionsRepository;
   let mockTransactionMapper: TransactionMapper;
@@ -51,24 +45,28 @@ describe('TransactionsService', () => {
   let service: TransactionsService;
 
   beforeEach(() => {
+    vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
+      undefined,
+    );
+    vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
     mockTransactionsRepository = {
-      findByAccountId: jest.fn(),
-      getAll: jest.fn(),
-      saveMany: jest.fn(),
+      findByAccountId: vi.fn(),
+      getAll: vi.fn(),
+      saveMany: vi.fn(),
     } as unknown as TransactionsRepository;
 
     mockTransactionMapper = {
-      mapRpcTransaction: jest.fn(),
+      mapRpcTransaction: vi.fn(),
     } as unknown as TransactionMapper;
 
     mockAssetsService = {
-      getAssetsMetadata: jest.fn(),
+      getAssetsMetadata: vi.fn(),
     } as unknown as AssetsService;
 
     mockConnection = createMockConnection();
 
     mockAccountsService = {
-      getAll: jest.fn(),
+      getAll: vi.fn(),
     } as unknown as AccountsService;
 
     service = new TransactionsService(
@@ -80,7 +78,7 @@ describe('TransactionsService', () => {
     );
 
     const snap = {
-      request: jest.fn(),
+      request: vi.fn(),
     };
     (globalThis as any).snap = snap;
   });
@@ -93,15 +91,15 @@ describe('TransactionsService', () => {
     const mockSignature = mockTransactionData.transaction.signatures[1]!;
 
     it('fetches and returns a transaction by signature', async () => {
-      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getTransaction: jest.fn().mockReturnValue({
-          send: jest.fn().mockResolvedValue(mockTransactionData),
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getTransaction: vi.fn().mockReturnValue({
+          send: vi.fn().mockResolvedValue(mockTransactionData),
         }),
       } as unknown as ReturnType<SolanaConnection['getRpc']>);
 
-      jest
-        .spyOn(mockTransactionMapper, 'mapRpcTransaction')
-        .mockResolvedValue(mockMappedTransaction);
+      vi.spyOn(mockTransactionMapper, 'mapRpcTransaction').mockResolvedValue(
+        mockMappedTransaction,
+      );
 
       const result = await service.fetchBySignature(
         mockSignature,
@@ -113,9 +111,9 @@ describe('TransactionsService', () => {
     });
 
     it('returns null if the transaction is not found', async () => {
-      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getTransaction: jest.fn().mockReturnValue({
-          send: jest.fn().mockResolvedValue(null),
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getTransaction: vi.fn().mockReturnValue({
+          send: vi.fn().mockResolvedValue(null),
         }),
       } as unknown as ReturnType<SolanaConnection['getRpc']>);
 
@@ -131,9 +129,9 @@ describe('TransactionsService', () => {
 
   describe('fetchLatestSignatures', () => {
     it('fetches and returns signatures for the given address', async () => {
-      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getSignaturesForAddress: jest.fn().mockReturnValue({
-          send: jest.fn().mockResolvedValue(MOCK_GET_SIGNATURES_FOR_ADDRESS),
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getSignaturesForAddress: vi.fn().mockReturnValue({
+          send: vi.fn().mockResolvedValue(MOCK_GET_SIGNATURES_FOR_ADDRESS),
         }),
       } as unknown as ReturnType<SolanaConnection['getRpc']>);
 
@@ -167,8 +165,7 @@ describe('TransactionsService', () => {
       const mockTransaction01 = {} as unknown as Transaction;
       const mockTransaction10 = {} as unknown as Transaction;
 
-      jest
-        .spyOn(mockTransactionsRepository, 'findByAccountId')
+      vi.spyOn(mockTransactionsRepository, 'findByAccountId')
         .mockResolvedValueOnce([mockTransaction00, mockTransaction01])
         .mockResolvedValueOnce([mockTransaction10]);
 
@@ -196,19 +193,17 @@ describe('TransactionsService', () => {
       } as NativeAsset;
       const error = new Error('RPC failed');
 
-      jest
-        .spyOn(mockAccountsService, 'getAll')
-        .mockResolvedValue([MOCK_SOLANA_KEYRING_ACCOUNT_0]);
-      jest.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
-      jest.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
-      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getSignaturesForAddress: jest.fn().mockReturnValue({
-          send: jest
-            .fn()
-            .mockResolvedValue([MOCK_GET_SIGNATURES_FOR_ADDRESS[0]]),
+      vi.spyOn(mockAccountsService, 'getAll').mockResolvedValue([
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      ]);
+      vi.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
+      vi.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getSignaturesForAddress: vi.fn().mockReturnValue({
+          send: vi.fn().mockResolvedValue([MOCK_GET_SIGNATURES_FOR_ADDRESS[0]]),
         }),
-        getTransaction: jest.fn().mockReturnValue({
-          send: jest.fn().mockRejectedValue(error),
+        getTransaction: vi.fn().mockReturnValue({
+          send: vi.fn().mockRejectedValue(error),
         }),
       } as unknown as ReturnType<SolanaConnection['getRpc']>);
 
@@ -231,8 +226,8 @@ describe('TransactionsService', () => {
       const ata = '9wt9PfjPD3JCy5r7o4K1cTGiuTG7fq2pQhdDCdQALKjg';
       const nonAta = '7Gg2Y8vCj3v5nQj5xFfC3uT7wJ9sN4mK2pL8rH6dQ1eA';
       const signature = MOCK_GET_SIGNATURES_FOR_ADDRESS[0]!;
-      const getSignaturesForAddress = jest.fn((address: string) => ({
-        send: jest.fn().mockResolvedValue(
+      const getSignaturesForAddress = vi.fn((address: string) => ({
+        send: vi.fn().mockResolvedValue(
           address === nonAta
             ? [
                 {
@@ -244,15 +239,15 @@ describe('TransactionsService', () => {
         ),
       }));
 
-      jest
-        .spyOn(mockAccountsService, 'getAll')
-        .mockResolvedValue([MOCK_SOLANA_KEYRING_ACCOUNT_0]);
-      jest.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
-      jest.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
-      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getTokenAccountsByOwner: jest.fn(
+      vi.spyOn(mockAccountsService, 'getAll').mockResolvedValue([
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      ]);
+      vi.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
+      vi.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getTokenAccountsByOwner: vi.fn(
           (_owner: string, filter: { programId: string }) => ({
-            send: jest.fn().mockResolvedValue({
+            send: vi.fn().mockResolvedValue({
               value:
                 filter.programId === TOKEN_PROGRAM_ADDRESS
                   ? [
@@ -270,8 +265,8 @@ describe('TransactionsService', () => {
           }),
         ),
         getSignaturesForAddress,
-        getTransaction: jest.fn().mockReturnValue({
-          send: jest.fn().mockResolvedValue(null),
+        getTransaction: vi.fn().mockReturnValue({
+          send: vi.fn().mockResolvedValue(null),
         }),
       } as unknown as ReturnType<SolanaConnection['getRpc']>);
 
@@ -298,21 +293,21 @@ describe('TransactionsService', () => {
         uiAmount: '0.000001',
       };
       const tokenAccount = '9wt9PfjPD3JCy5r7o4K1cTGiuTG7fq2pQhdDCdQALKjg';
-      const getSignaturesForAddress = jest.fn().mockReturnValue({
-        send: jest.fn().mockResolvedValue([]),
+      const getSignaturesForAddress = vi.fn().mockReturnValue({
+        send: vi.fn().mockResolvedValue([]),
       });
 
-      jest
-        .spyOn(mockAccountsService, 'getAll')
-        .mockResolvedValue([MOCK_SOLANA_KEYRING_ACCOUNT_0]);
-      jest.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
-      jest.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
-      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getTokenAccountsByOwner: jest.fn(
+      vi.spyOn(mockAccountsService, 'getAll').mockResolvedValue([
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      ]);
+      vi.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
+      vi.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getTokenAccountsByOwner: vi.fn(
           (_owner: string, filter: { programId: string }) => ({
             send:
               filter.programId === TOKEN_PROGRAM_ADDRESS
-                ? jest.fn().mockResolvedValue({
+                ? vi.fn().mockResolvedValue({
                     value: [
                       {
                         ...MOCK_TOKEN_ACCOUNT_RESPONSE,
@@ -320,7 +315,7 @@ describe('TransactionsService', () => {
                       },
                     ],
                   })
-                : jest.fn().mockRejectedValue(new Error('Token-2022 failed')),
+                : vi.fn().mockRejectedValue(new Error('Token-2022 failed')),
           }),
         ),
         getSignaturesForAddress,
@@ -347,9 +342,9 @@ describe('TransactionsService', () => {
         uiAmount: '0.000001',
       };
       const token2022Account = '7Gg2Y8vCj3v5nQj5xFfC3uT7wJ9sN4mK2pL8rH6dQ1eA';
-      const getTokenAccountsByOwner = jest.fn(
+      const getTokenAccountsByOwner = vi.fn(
         (_owner: string, filter: { programId: string }) => ({
-          send: jest.fn().mockResolvedValue({
+          send: vi.fn().mockResolvedValue({
             value:
               filter.programId === TOKEN_2022_PROGRAM_ADDRESS
                 ? [
@@ -363,15 +358,15 @@ describe('TransactionsService', () => {
         }),
       );
 
-      jest
-        .spyOn(mockAccountsService, 'getAll')
-        .mockResolvedValue([MOCK_SOLANA_KEYRING_ACCOUNT_0]);
-      jest.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
-      jest.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
-      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
+      vi.spyOn(mockAccountsService, 'getAll').mockResolvedValue([
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      ]);
+      vi.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
+      vi.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
         getTokenAccountsByOwner,
-        getSignaturesForAddress: jest.fn().mockReturnValue({
-          send: jest.fn().mockResolvedValue([]),
+        getSignaturesForAddress: vi.fn().mockReturnValue({
+          send: vi.fn().mockResolvedValue([]),
         }),
       } as unknown as ReturnType<SolanaConnection['getRpc']>);
 
