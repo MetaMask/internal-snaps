@@ -1,5 +1,5 @@
 /**
- * @jest-environment node
+ * @vitest-environment node
  */
 
 import { BalanceStruct } from '@metamask/keyring-api';

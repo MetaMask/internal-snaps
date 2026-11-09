@@ -1,10 +1,6 @@
 import { CurrencyUnit } from '../../entities';
 import { displayAmount, displayOrigin } from './format';
 
-jest.mock('@metamask/bitcoindevkit', () => ({
-  BdkErrorCode: {},
-}));
-
 describe('displayAmount', () => {
   it('displays one satoshi as a plain decimal', () => {
     expect(displayAmount(1n)).toBe('0.00000001');

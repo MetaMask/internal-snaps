@@ -1,6 +1,7 @@
 import type { AddressType } from '@metamask/bitcoindevkit';
-import { mock } from 'jest-mock-extended';
+import { Amount } from '@metamask/bitcoindevkit';
 import { assert } from 'superstruct';
+import { mock } from 'vitest-mock-extended';
 
 import type { BitcoinAccount } from '../entities';
 import {
@@ -16,15 +17,6 @@ import {
 } from './validation';
 
 /* eslint-disable @typescript-eslint/naming-convention */
-jest.mock('@metamask/bitcoindevkit', () => ({
-  Address: {
-    from_string: jest.fn(),
-  },
-  Amount: {
-    from_btc: jest.fn(),
-  },
-}));
-
 describe('validation', () => {
   describe('feeRate request validation', () => {
     const account = { account: { address: 'test-account-address' } };
@@ -126,9 +118,8 @@ describe('validation', () => {
       'returns valid for amount above dust limit for $type',
       ({ type, dust }) => {
         const amountBtc = (Number(dust) / 1e8 + 0.00000001).toFixed(8);
-        const mockFromBtc = { to_sat: () => dust + 1n };
-        const { Amount } = jest.requireMock('@metamask/bitcoindevkit');
-        Amount.from_btc.mockReturnValue(mockFromBtc);
+        const mockFromBtc = { to_sat: (): bigint => dust + 1n };
+        vi.spyOn(Amount, 'from_btc').mockReturnValue(mockFromBtc as never);
 
         const result = validateDustLimit(amountBtc, makeAccount(type));
         expect(result.valid).toBe(true);
@@ -136,9 +127,8 @@ describe('validation', () => {
     );
 
     it('returns invalid for amount below dust limit', () => {
-      const mockFromBtc = { to_sat: () => 100n };
-      const { Amount } = jest.requireMock('@metamask/bitcoindevkit');
-      Amount.from_btc.mockReturnValue(mockFromBtc);
+      const mockFromBtc = { to_sat: (): bigint => 100n };
+      vi.spyOn(Amount, 'from_btc').mockReturnValue(mockFromBtc as never);
 
       const result = validateDustLimit('0.000001', makeAccount('p2pkh'));
       expect(result.valid).toBe(false);

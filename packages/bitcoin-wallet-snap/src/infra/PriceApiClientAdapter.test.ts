@@ -1,4 +1,5 @@
 import { Logger, LogLevel } from '@metamask/snap-networks-utils';
+import type { MockedFunction } from 'vitest';
 
 import type { PriceApiConfig } from '../entities';
 import { PriceApiClientAdapter } from './PriceApiClientAdapter';
@@ -20,7 +21,7 @@ const response = {
 };
 
 describe('PriceApiClientAdapter', () => {
-  const fetchMock = jest.fn() as jest.MockedFunction<typeof globalThis.fetch>;
+  const fetchMock = vi.fn() as MockedFunction<typeof globalThis.fetch>;
   const config: PriceApiConfig = { url: 'https://price.example' };
   const logger = new Logger({ level: LogLevel.SILENT });
 

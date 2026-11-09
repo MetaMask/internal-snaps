@@ -13,7 +13,8 @@ import {
   FeeType,
 } from '@metamask/keyring-api';
 import { assert } from '@metamask/superstruct';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { BitcoinAccount } from '../entities';
 import { Caip19Asset } from './caip';
@@ -23,14 +24,7 @@ import {
   mapToTransactionFees,
 } from './mappings';
 
-// Mock the entire bitcoindevkit module
 /* eslint-disable @typescript-eslint/naming-convention */
-jest.mock('@metamask/bitcoindevkit', () => ({
-  Address: {
-    from_script: jest.fn(),
-  },
-}));
-
 describe('mapToTransactionFees', () => {
   it.each([
     [0n, '0'],
@@ -57,12 +51,13 @@ describe('mapPsbtToTransaction', () => {
   const TIMESTAMP = 1234567890;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.spyOn(Date, 'now').mockReturnValue(TIMESTAMP);
+    vi.clearAllMocks();
+    vi.spyOn(Address, 'from_script');
+    vi.spyOn(Date, 'now').mockReturnValue(TIMESTAMP);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   /**
@@ -74,7 +69,7 @@ describe('mapPsbtToTransaction', () => {
    */
   function createMockTransaction(txid: string, outputs: TxOut[]) {
     const mockTxid = mock<Txid>();
-    jest.spyOn(mockTxid, 'toString').mockReturnValue(txid);
+    vi.spyOn(mockTxid, 'toString').mockReturnValue(txid);
 
     return mock<Transaction>({
       compute_txid: () => mockTxid,
@@ -90,11 +85,11 @@ describe('mapPsbtToTransaction', () => {
    */
   function createMockOutput(satoshis: number) {
     const mockAmount = mock<Amount>();
-    jest.spyOn(mockAmount, 'to_sat').mockReturnValue(BigInt(satoshis));
-    jest.spyOn(mockAmount, 'to_btc').mockReturnValue(satoshis / 100_000_000);
+    mockAmount.to_sat.mockReturnValue(BigInt(satoshis));
+    mockAmount.to_btc.mockReturnValue(satoshis / 100_000_000);
 
     const mockScript = mock<ScriptBuf>();
-    jest.spyOn(mockScript, 'is_op_return').mockReturnValue(false);
+    mockScript.is_op_return.mockReturnValue(false);
 
     return mock<TxOut>({
       script_pubkey: mockScript,
@@ -116,18 +111,16 @@ describe('mapPsbtToTransaction', () => {
     addressType: 'p2pkh' | 'p2sh' | 'p2wpkh' | 'p2wsh' | 'p2tr' = 'p2wpkh',
   ) {
     const mockFeeAmount = mock<Amount>();
-    jest.spyOn(mockFeeAmount, 'to_sat').mockReturnValue(BigInt(feeSatoshis));
-    jest
-      .spyOn(mockFeeAmount, 'to_btc')
-      .mockReturnValue(feeSatoshis / 100_000_000);
+    mockFeeAmount.to_sat.mockReturnValue(BigInt(feeSatoshis));
+    mockFeeAmount.to_btc.mockReturnValue(feeSatoshis / 100_000_000);
 
     const account = mock<BitcoinAccount>();
     account.id = ACCOUNT_ID;
     account.network = network;
     account.addressType = addressType;
-    jest.spyOn(account, 'calculateFee').mockReturnValue(mockFeeAmount);
-    jest.spyOn(account, 'isMine').mockReturnValue(false);
-    jest.spyOn(account, 'isChange').mockReturnValue(false);
+    account.calculateFee.mockReturnValue(mockFeeAmount);
+    account.isMine.mockReturnValue(false);
+    account.isChange.mockReturnValue(false);
 
     return account;
   }
@@ -138,7 +131,7 @@ describe('mapPsbtToTransaction', () => {
     const output = createMockOutput(10000);
     const transaction = createMockTransaction(txId, [output]);
 
-    jest.mocked(Address.from_script).mockImplementationOnce(
+    vi.mocked(Address.from_script).mockImplementationOnce(
       () =>
         ({
           toString: () => 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
@@ -192,7 +185,7 @@ describe('mapPsbtToTransaction', () => {
     const output = createMockOutput(10000);
     const transaction = createMockTransaction('p2pkhtx', [output]);
 
-    jest.mocked(Address.from_script).mockImplementationOnce(
+    vi.mocked(Address.from_script).mockImplementationOnce(
       () =>
         ({
           toString: () => '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
@@ -210,7 +203,7 @@ describe('mapPsbtToTransaction', () => {
     const output = createMockOutput(10000);
     const transaction = createMockTransaction('p2shtx', [output]);
 
-    jest.mocked(Address.from_script).mockImplementationOnce(
+    vi.mocked(Address.from_script).mockImplementationOnce(
       () =>
         ({
           toString: () => '3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy',
@@ -232,13 +225,12 @@ describe('mapPsbtToTransaction', () => {
     ]);
 
     // First output is change (internal keychain), second is recipient
-    jest
-      .spyOn(account, 'isChange')
+    account.isChange
       .mockReturnValueOnce(true) // change output
       .mockReturnValueOnce(false); // recipient output
 
     // Only mock for the recipient since change output won't call Address.from_script
-    jest.mocked(Address.from_script).mockImplementationOnce(
+    vi.mocked(Address.from_script).mockImplementationOnce(
       () =>
         ({
           toString: () => 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
@@ -269,13 +261,12 @@ describe('mapPsbtToTransaction', () => {
       changeOutput,
     ]);
 
-    jest.spyOn(account, 'isMine').mockReturnValue(true);
-    jest
-      .spyOn(account, 'isChange')
+    account.isMine.mockReturnValue(true);
+    account.isChange
       .mockReturnValueOnce(false) // recipient output (external)
       .mockReturnValueOnce(true); // change output (internal)
 
-    jest.mocked(Address.from_script).mockImplementationOnce(
+    vi.mocked(Address.from_script).mockImplementationOnce(
       () =>
         ({
           toString: () => 'bc1q0qr9ulgwv7hwp2xrhlkz0zs6eqxsm4kwnn757m',
@@ -301,7 +292,7 @@ describe('mapPsbtToTransaction', () => {
     const transaction = createMockTransaction('testnet123', [output]);
 
     // Mock Address.from_script for testnet address
-    jest.mocked(Address.from_script).mockImplementationOnce(
+    vi.mocked(Address.from_script).mockImplementationOnce(
       () =>
         ({
           toString: () =>
@@ -336,8 +327,7 @@ describe('mapPsbtToTransaction', () => {
       output3,
     ]);
 
-    jest
-      .mocked(Address.from_script)
+    vi.mocked(Address.from_script)
       .mockImplementationOnce(
         () => ({ toString: () => '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa' }) as any,
       )
@@ -386,7 +376,7 @@ describe('mapPsbtToTransaction', () => {
     // Test all outputs being change
     const changeOutput = createMockOutput(10000);
     const changeOnlyTx = createMockTransaction('change123', [changeOutput]);
-    jest.spyOn(account, 'isChange').mockReturnValue(true);
+    account.isChange.mockReturnValue(true);
 
     const changeOnlyResult = mapPsbtToTransaction(account, changeOnlyTx);
     expect(changeOnlyResult.to).toStrictEqual([]);
@@ -397,9 +387,9 @@ describe('mapPsbtToTransaction', () => {
     const output = createMockOutput(50000);
     const transaction = createMockTransaction('fee123', [output]);
 
-    jest
-      .mocked(Address.from_script)
-      .mockImplementationOnce(() => ({ toString: () => 'bc1qtest' }) as any);
+    vi.mocked(Address.from_script).mockImplementationOnce(
+      () => ({ toString: () => 'bc1qtest' }) as any,
+    );
 
     const result = mapPsbtToTransaction(account, transaction);
 
@@ -414,11 +404,12 @@ describe('mapToTransaction', () => {
   const ACCOUNT_ID = '724ac464-6572-4d9c-a8e2-4075c8846d65';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    vi.spyOn(Address, 'from_script');
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   /**
@@ -430,7 +421,7 @@ describe('mapToTransaction', () => {
    */
   function createMockTransaction(txid: string, outputs: TxOut[]): Transaction {
     const mockTxid = mock<Txid>();
-    jest.spyOn(mockTxid, 'toString').mockReturnValue(txid);
+    vi.spyOn(mockTxid, 'toString').mockReturnValue(txid);
 
     return mock<Transaction>({
       compute_txid: () => mockTxid,
@@ -447,11 +438,11 @@ describe('mapToTransaction', () => {
    */
   function createMockOutput(satoshis: number): TxOut {
     const mockAmount = mock<Amount>();
-    jest.spyOn(mockAmount, 'to_sat').mockReturnValue(BigInt(satoshis));
-    jest.spyOn(mockAmount, 'to_btc').mockReturnValue(satoshis / 100_000_000);
+    mockAmount.to_sat.mockReturnValue(BigInt(satoshis));
+    mockAmount.to_btc.mockReturnValue(satoshis / 100_000_000);
 
     const mockScript = mock<ScriptBuf>();
-    jest.spyOn(mockScript, 'is_op_return').mockReturnValue(false);
+    mockScript.is_op_return.mockReturnValue(false);
 
     return mock<TxOut>({
       script_pubkey: mockScript,
@@ -469,26 +460,22 @@ describe('mapToTransaction', () => {
   function createMockAccount(
     sentSatoshis = 100000,
     feeSatoshis = 281,
-  ): BitcoinAccount {
+  ): MockProxy<BitcoinAccount> {
     const sentAmount = mock<Amount>();
-    jest
-      .spyOn(sentAmount, 'to_btc')
-      .mockReturnValue(sentSatoshis / 100_000_000);
+    sentAmount.to_btc.mockReturnValue(sentSatoshis / 100_000_000);
 
     const feeAmount = mock<Amount>();
-    jest.spyOn(feeAmount, 'to_sat').mockReturnValue(BigInt(feeSatoshis));
-    jest.spyOn(feeAmount, 'to_btc').mockReturnValue(feeSatoshis / 100_000_000);
+    feeAmount.to_sat.mockReturnValue(BigInt(feeSatoshis));
+    feeAmount.to_btc.mockReturnValue(feeSatoshis / 100_000_000);
 
     const account = mock<BitcoinAccount>();
     account.id = ACCOUNT_ID;
     account.network = 'bitcoin';
     account.addressType = 'p2wpkh';
-    jest
-      .spyOn(account, 'sentAndReceived')
-      .mockReturnValue([sentAmount, mock<Amount>()]);
-    jest.spyOn(account, 'calculateFee').mockReturnValue(feeAmount);
-    jest.spyOn(account, 'isMine').mockReturnValue(false);
-    jest.spyOn(account, 'isChange').mockReturnValue(false);
+    account.sentAndReceived.mockReturnValue([sentAmount, mock<Amount>()]);
+    account.calculateFee.mockReturnValue(feeAmount);
+    account.isMine.mockReturnValue(false);
+    account.isChange.mockReturnValue(false);
 
     return account;
   }
@@ -499,7 +486,7 @@ describe('mapToTransaction', () => {
       const account = createMockAccount(100000, fee);
       const output = createMockOutput(1);
       const transaction = createMockTransaction('small-fee', [output]);
-      jest.mocked(Address.from_script).mockReturnValue({
+      vi.mocked(Address.from_script).mockReturnValue({
         toString: () => 'bc1qrecipient',
       } as Address);
 
@@ -526,13 +513,12 @@ describe('mapToTransaction', () => {
       changeOutput,
     ]);
 
-    jest.spyOn(account, 'isMine').mockReturnValue(true);
-    jest
-      .spyOn(account, 'isChange')
+    account.isMine.mockReturnValue(true);
+    account.isChange
       .mockReturnValueOnce(false) // recipient output (external)
       .mockReturnValueOnce(true); // change output (internal)
 
-    jest.mocked(Address.from_script).mockImplementationOnce(
+    vi.mocked(Address.from_script).mockImplementationOnce(
       () =>
         ({
           toString: () => 'bc1q0qr9ulgwv7hwp2xrhlkz0zs6eqxsm4kwnn757m',
@@ -564,12 +550,11 @@ describe('mapToTransaction', () => {
       recipientOutput,
     ]);
 
-    jest
-      .spyOn(account, 'isChange')
+    account.isChange
       .mockReturnValueOnce(true) // change output
       .mockReturnValueOnce(false); // recipient output
 
-    jest.mocked(Address.from_script).mockImplementationOnce(
+    vi.mocked(Address.from_script).mockImplementationOnce(
       () =>
         ({
           toString: () => 'bc1qstku2y3pfh9av50lxj55arm8r5gj8tf2yv5nxz',
@@ -593,8 +578,8 @@ describe('mapToTransaction', () => {
     const output = createMockOutput(5000);
     const transaction = createMockTransaction('receive111', [output]);
 
-    jest.spyOn(account, 'isMine').mockReturnValue(true);
-    jest.mocked(Address.from_script).mockImplementationOnce(
+    account.isMine.mockReturnValue(true);
+    vi.mocked(Address.from_script).mockImplementationOnce(
       () =>
         ({
           toString: () => 'bc1qreceiveoutput',
@@ -629,12 +614,10 @@ describe('mapToTransaction', () => {
     const output = createMockOutput(5000);
     const transaction = createMockTransaction('receive222', [output]);
 
-    jest.spyOn(account, 'isMine').mockReturnValue(true);
-    jest
-      .mocked(Address.from_script)
-      .mockImplementationOnce(
-        () => ({ toString: () => 'bc1qreceiveoutput' }) as unknown as Address,
-      );
+    account.isMine.mockReturnValue(true);
+    vi.mocked(Address.from_script).mockImplementationOnce(
+      () => ({ toString: () => 'bc1qreceiveoutput' }) as unknown as Address,
+    );
 
     const result = mapToTransaction(
       account,
@@ -657,12 +640,10 @@ describe('mapToTransaction', () => {
     const output = createMockOutput(5000);
     const transaction = createMockTransaction('receive333', [output]);
 
-    jest.spyOn(account, 'isMine').mockReturnValue(true);
-    jest
-      .mocked(Address.from_script)
-      .mockImplementationOnce(
-        () => ({ toString: () => 'bc1qreceiveoutput' }) as unknown as Address,
-      );
+    account.isMine.mockReturnValue(true);
+    vi.mocked(Address.from_script).mockImplementationOnce(
+      () => ({ toString: () => 'bc1qreceiveoutput' }) as unknown as Address,
+    );
 
     const result = mapToTransaction(account, {
       tx: transaction,

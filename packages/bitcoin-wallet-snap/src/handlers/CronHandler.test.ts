@@ -1,10 +1,12 @@
 import type { Amount, WalletTx } from '@metamask/bitcoindevkit';
 import { TransactionType } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import { State, SynchronizationError } from '@metamask/snap-networks-utils';
 import type { IStateManager } from '@metamask/snap-networks-utils';
 import type { Json, SnapsProvider, JsonRpcRequest } from '@metamask/snaps-sdk';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import snapManifest from '../../snap.manifest.json';
 import type {
@@ -16,10 +18,6 @@ import type {
 } from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 import { CronHandler, CronMethod } from './CronHandler';
-
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  getSelectedAccounts: jest.fn(),
-}));
 
 describe('CronHandler', () => {
   const mockSendFlowUseCases = mock<SendFlowUseCases>();
@@ -39,7 +37,8 @@ describe('CronHandler', () => {
   );
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.spyOn(KeyringSnapSdk, 'getSelectedAccounts');
+    vi.clearAllMocks();
     mockSnapClient.getClientStatus.mockResolvedValue({
       active: true,
       locked: false,
@@ -58,11 +57,12 @@ describe('CronHandler', () => {
     beforeEach(() => {
       // Transactions built from these accounts are classified as receives.
       const receivedAmount = mock<Amount>();
-      jest.spyOn(receivedAmount, 'to_btc').mockReturnValue(0);
+      receivedAmount.to_btc.mockReturnValue(0);
       for (const account of mockAccounts) {
-        jest
-          .mocked(account.sentAndReceived)
-          .mockReturnValue([receivedAmount, receivedAmount]);
+        vi.mocked(account.sentAndReceived).mockReturnValue([
+          receivedAmount,
+          receivedAmount,
+        ]);
       }
     });
 
@@ -75,7 +75,7 @@ describe('CronHandler', () => {
         account: mockAccount2,
         transactionsToNotify: [],
       };
-      (getSelectedAccounts as jest.Mock).mockResolvedValue([
+      (getSelectedAccounts as Mock).mockResolvedValue([
         'account-1',
         'account-2',
       ]);
@@ -109,7 +109,7 @@ describe('CronHandler', () => {
         account: mockAccount2,
         transactionsToNotify: [],
       };
-      (getSelectedAccounts as jest.Mock).mockResolvedValue([
+      (getSelectedAccounts as Mock).mockResolvedValue([
         'account-1',
         'account-2',
       ]);
@@ -136,7 +136,7 @@ describe('CronHandler', () => {
         transactionsToNotify: [mockTx],
         transactionSenders: senders,
       };
-      (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-1']);
+      (getSelectedAccounts as Mock).mockResolvedValue(['account-1']);
       mockAccountUseCases.list.mockResolvedValue([mockAccount1]);
       mockAccountUseCases.synchronize.mockResolvedValueOnce(mockResult1);
 
@@ -149,7 +149,7 @@ describe('CronHandler', () => {
 
     it('propagates errors from list', async () => {
       const error = new Error();
-      (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-1']);
+      (getSelectedAccounts as Mock).mockResolvedValue(['account-1']);
       mockAccountUseCases.list.mockRejectedValue(error);
 
       await expect(handler.route(request)).rejects.toThrow(error);
@@ -181,7 +181,7 @@ describe('CronHandler', () => {
         transactionsToNotify: [],
       };
       const syncError = new Error('error');
-      (getSelectedAccounts as jest.Mock).mockResolvedValue([
+      (getSelectedAccounts as Mock).mockResolvedValue([
         'account-1',
         'account-2',
       ]);
@@ -209,7 +209,7 @@ describe('CronHandler', () => {
     });
 
     it('reports every failed account with its reason when several fail', async () => {
-      (getSelectedAccounts as jest.Mock).mockResolvedValue([
+      (getSelectedAccounts as Mock).mockResolvedValue([
         'account-1',
         'account-2',
       ]);
@@ -233,7 +233,7 @@ describe('CronHandler', () => {
         account: mockAccount1,
         transactionsToNotify: [],
       };
-      (getSelectedAccounts as jest.Mock).mockResolvedValue([
+      (getSelectedAccounts as Mock).mockResolvedValue([
         'account-1',
         'account-2',
       ]);
@@ -261,7 +261,7 @@ describe('CronHandler', () => {
         account: mockAccount1,
         transactionsToNotify: [],
       };
-      (getSelectedAccounts as jest.Mock).mockResolvedValue([
+      (getSelectedAccounts as Mock).mockResolvedValue([
         'account-1',
         'account-2',
       ]);
@@ -289,7 +289,7 @@ describe('CronHandler', () => {
         });
 
       beforeEach(() => {
-        (getSelectedAccounts as jest.Mock).mockResolvedValue([
+        (getSelectedAccounts as Mock).mockResolvedValue([
           'account-1',
           'account-2',
         ]);
@@ -315,7 +315,7 @@ describe('CronHandler', () => {
       });
 
       it('publishes normal updates first and prevents later same-account sync from overtaking repair', async () => {
-        (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-1']);
+        (getSelectedAccounts as Mock).mockResolvedValue(['account-1']);
         mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
         const normalTransaction = buildTx('normal-tx');
         const pendingTransaction = mock<WalletTx>({
@@ -401,7 +401,7 @@ describe('CronHandler', () => {
       });
 
       it('waits for normal synchronization and event publication before starting repair', async () => {
-        (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-2']);
+        (getSelectedAccounts as Mock).mockResolvedValue(['account-2']);
         mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
         let releaseSynchronization!: (result: SyncResult) => void;
         const syncResult = new Promise<SyncResult>((resolve) => {
@@ -436,7 +436,7 @@ describe('CronHandler', () => {
       });
 
       it('does not start repair if the client locks during normal synchronization', async () => {
-        (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-2']);
+        (getSelectedAccounts as Mock).mockResolvedValue(['account-2']);
         mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
         let releaseSynchronization!: (result: SyncResult) => void;
         const syncResult = new Promise<SyncResult>((resolve) => {
@@ -677,7 +677,7 @@ describe('CronHandler', () => {
           rescanV1: { pending: ['account-1'] },
           derivationPaths: { existing: 'account-1' },
         };
-        const requestState = jest.fn(
+        const requestState = vi.fn(
           async ({
             method,
             params,
@@ -955,7 +955,7 @@ describe('CronHandler', () => {
 
   describe('sync coalescing', () => {
     it('coalesces concurrent synchronizeAccounts calls into one run', async () => {
-      (getSelectedAccounts as jest.Mock).mockResolvedValue([]);
+      (getSelectedAccounts as Mock).mockResolvedValue([]);
       mockAccountUseCases.list.mockResolvedValue([]);
 
       await Promise.all([
@@ -968,7 +968,7 @@ describe('CronHandler', () => {
     });
 
     it('runs synchronizeAccounts again once the previous run has finished', async () => {
-      (getSelectedAccounts as jest.Mock).mockResolvedValue([]);
+      (getSelectedAccounts as Mock).mockResolvedValue([]);
       mockAccountUseCases.list.mockResolvedValue([]);
 
       await handler.synchronizeAccounts();
@@ -979,7 +979,7 @@ describe('CronHandler', () => {
 
     it('reports failures once for coalesced synchronizeAccounts callers', async () => {
       const mockAccount = mock<BitcoinAccount>({ id: 'account-1' });
-      (getSelectedAccounts as jest.Mock).mockResolvedValue(['account-1']);
+      (getSelectedAccounts as Mock).mockResolvedValue(['account-1']);
       mockAccountUseCases.list.mockResolvedValue([mockAccount]);
       mockAccountUseCases.synchronize.mockRejectedValue(
         new Error('sync failed'),
