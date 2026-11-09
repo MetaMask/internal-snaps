@@ -1,0 +1,165 @@
+name: Audit
+
+on:
+  workflow_call:
+    secrets:
+      SLACK_WEBHOOK_INTERNAL_SNAPS:
+        required: false
+  # Overnight runs catch newly published CVEs even when no code was pushed.
+  # Manual runs on main can (re)bootstrap the audit baseline artifact.
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required to create tracking issues for new audit advisories on main.
+      issues: write
+      # Required to find and download the baseline artifact, and to re-run
+      # the audit job when a PR is blocked only by ambient CVEs.
+      actions: write
+    env:
+      # For a `pull_request` event, the branch is `github.head_ref``.
+      # For a `push` event, the branch is `github.ref_name`.
+      BRANCH: ${{ github.head_ref || github.ref_name }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SLACK_WEBHOOK_INTERNAL_SNAPS: ${{ secrets.SLACK_WEBHOOK_INTERNAL_SNAPS }}
+      # True only when the PR head lives in a different repository (no secrets).
+      IS_CROSS_REPO_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+    steps:
+      - name: Checkout and setup environment
+        uses: MetaMask/action-checkout-and-setup@v3
+        with:
+          is-high-risk-environment: false
+          skip-allow-scripts: true
+          cache-node-modules: true
+          force-setup: true
+
+      # --- Baseline download (PR, push-to-main, and cron) ---
+      # When the download fails (first rollout, expired artifact, or cross-repo PR
+      # with read-only token), NO_BASELINE=true tells the triage script to
+      # fall back to the same criteria as the package.json `audit` script:
+      #   yarn audit --recursive --all --severity moderate
+      #
+      # merge_group runs skip the diff entirely: by the time a PR enters the
+      # merge queue it has already passed the diff check. Any new advisory
+      # that appeared on main since then wasn't introduced by this PR and
+      # will be surfaced by the next push-to-main run.
+      #
+      # schedule (cron) runs also diff against the latest baseline. This
+      # catches newly published CVEs overnight — even when no code was pushed.
+      - name: Audit -- find baseline run
+        id: find-baseline-run
+        if: >-
+          ${{
+            !cancelled()
+            && (
+              github.event_name == 'pull_request'
+              || github.event_name == 'push'
+              || github.event_name == 'schedule'
+              || github.event_name == 'workflow_dispatch'
+            )
+          }}
+        continue-on-error: true
+        uses: actions/github-script@v8
+        with:
+          script: |
+            // Artifact-first search: find the audit-baseline artifact from
+            // the most recent main-branch run. Using the artifact API avoids
+            // race conditions with re-runs — a re-run of an older run may
+            // upload a newer artifact, but we always prefer the highest
+            // run ID (latest workflow run) to stay on the newest commit.
+            //
+            // Security: filter to head_branch === 'main' so a PR branch
+            // can never supply a poisoned baseline.
+            const { data } = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'audit-baseline',
+              per_page: 20,
+            });
+            const baseline = data.artifacts
+              .filter(a => a.workflow_run?.head_branch === 'main')
+              .sort((a, b) => b.workflow_run.id - a.workflow_run.id)[0];
+            if (!baseline) {
+              core.setFailed('No audit-baseline artifact found from a main-branch run');
+              return;
+            }
+            const runId = baseline.workflow_run.id;
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${runId}`;
+            core.info(`Using baseline from run ${runId} (${runUrl})`);
+            core.setOutput('run-id', String(runId));
+
+      - name: Audit -- download baseline
+        id: download-baseline
+        if: ${{ !cancelled() && steps.find-baseline-run.outcome == 'success' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: audit-baseline
+          path: .tmp
+          run-id: ${{ steps.find-baseline-run.outputs.run-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Audit -- check for vulnerabilities
+        if: ${{ !cancelled() && github.event_name != 'merge_group' }}
+        env:
+          NO_BASELINE: ${{ steps.download-baseline.outcome != 'success' }}
+        run: |
+          mkdir -p .tmp
+          yarn tsx .github/scripts/yarn-audit-and-triage.mts
+
+      # --- Diff (runs when a real baseline was downloaded) ---
+      # On push-to-main and cron this detects advisories introduced since the
+      # last green build and opens a tracking issue (plus a Slack notification
+      # when a webhook secret is configured). On PRs it fails the check when
+      # new moderate+ advisories are found.
+      - name: Audit -- diff against baseline
+        if: ${{ !cancelled() && steps.download-baseline.outcome == 'success' }}
+        env:
+          BASELINE_RUN_ID: ${{ steps.find-baseline-run.outputs.run-id }}
+        run: |
+          yarn tsx .github/scripts/yarn-audit-diff.mts
+
+      # On push-to-main (and bootstrap runs), rename the audit output to
+      # audit-baseline.json so the uploaded artifact name matches what PR
+      # runs download to .tmp.
+      - name: Audit -- rename baseline
+        if: >-
+          ${{
+            !cancelled()
+            && (
+              github.event_name == 'push'
+              || github.event_name == 'schedule'
+              || github.event_name == 'workflow_dispatch'
+            )
+            && github.ref == 'refs/heads/main'
+          }}
+        run: mv .tmp/audit-current.json .tmp/audit-baseline.json
+
+      - name: Audit -- upload baseline artifact
+        if: >-
+          ${{
+            !cancelled()
+            && (
+              github.event_name == 'push'
+              || github.event_name == 'schedule'
+              || github.event_name == 'workflow_dispatch'
+            )
+            && github.ref == 'refs/heads/main'
+          }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: audit-baseline
+          path: .tmp/audit-baseline.json
