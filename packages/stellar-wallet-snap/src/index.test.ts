@@ -1,6 +1,7 @@
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
 import { noopAssetHandlers } from '@metamask/snap-networks-utils';
 import { SnapError } from '@metamask/snaps-sdk';
+import type { Mock } from 'vitest';
 
 import {
   onAssetHistoricalPrice,
@@ -15,14 +16,19 @@ import {
 import { AccountBalanceUnavailableException } from './handlers/keyring/exceptions';
 import { logger } from './utils/logger';
 
-const mockKeyringHandle = jest.fn();
-const mockUserInputHandle = jest.fn();
-const mockClientRequestHandle = jest.fn();
-const mockCronjobHandle = jest.fn();
+const {
+  mockKeyringHandle,
+  mockUserInputHandle,
+  mockClientRequestHandle,
+  mockCronjobHandle,
+} = vi.hoisted(() => ({
+  mockKeyringHandle: vi.fn(),
+  mockUserInputHandle: vi.fn(),
+  mockClientRequestHandle: vi.fn(),
+  mockCronjobHandle: vi.fn(),
+}));
 
-jest.mock('./utils/logger');
-
-jest.mock('./context', () => ({
+vi.mock('./context', () => ({
   keyringHandler: {
     handle: async (...args: unknown[]): Promise<unknown> =>
       mockKeyringHandle(...args),
@@ -42,7 +48,7 @@ jest.mock('./context', () => ({
 }));
 
 describe('entrypoints', () => {
-  const snapRequest = jest.fn();
+  const snapRequest = vi.fn();
   const origin = 'https://example.com';
   const request = { jsonrpc: '2.0', id: 1, method: 'foo' } as const;
   const userInputParams = { id: 'id', event: {}, context: null };
@@ -50,7 +56,7 @@ describe('entrypoints', () => {
   const entrypoints: [
     string,
     () => Promise<unknown>,
-    jest.Mock,
+    Mock,
     unknown[],
     string[],
   ][] = [
@@ -86,7 +92,7 @@ describe('entrypoints', () => {
   ];
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     snapRequest.mockResolvedValue(undefined);
     Object.assign(globalThis, { snap: { request: snapRequest } });
   });
@@ -135,7 +141,7 @@ describe('entrypoints', () => {
     } as const;
 
     const keyringThrowing = (error: Error): unknown => ({
-      getAccountBalances: jest.fn().mockRejectedValue(error),
+      getAccountBalances: vi.fn().mockRejectedValue(error),
     });
 
     it('is re-created by handleKeyringRequest as a plain Error, yet not tracked', async () => {

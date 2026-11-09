@@ -1,44 +1,39 @@
 import { SYSTEM_PROGRAM_ADDRESS } from '@solana-program/system';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
+import * as SolanaKit from '@solana/kit';
+import type { Mock } from 'vitest';
 
 import { Network } from '../../constants/solana';
 import { mockLogger } from '../__mocks__/logger';
 import type { SolanaConnection } from '../connection';
 import { RecipientClassifier } from './RecipientClassifier';
 
-// Mock the @solana/kit functions
-jest.mock('@solana/kit', () => ({
-  address: jest.fn(),
-  assertAccountExists: jest.fn(),
-}));
-
-const { assertAccountExists, address: asAddress } =
-  jest.requireMock('@solana/kit');
-
 describe('RecipientClassifier', () => {
   let classifier: RecipientClassifier;
   let mockConnection: SolanaConnection;
   let mockRpc: any;
+  let assertAccountExists: Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    vi.spyOn(SolanaKit, 'address').mockImplementation(
+      (value) => value as never,
+    );
+    assertAccountExists = vi.spyOn(
+      SolanaKit,
+      'assertAccountExists',
+    ) as unknown as Mock;
+    assertAccountExists.mockImplementation(() => undefined);
 
     mockRpc = {
-      getAccountInfo: jest.fn(),
+      getAccountInfo: vi.fn(),
     };
 
     mockConnection = {
-      getRpc: jest.fn().mockReturnValue(mockRpc),
-      fetchJsonParsedAccount: jest.fn(),
+      getRpc: vi.fn().mockReturnValue(mockRpc),
+      fetchJsonParsedAccount: vi.fn(),
     } as unknown as SolanaConnection;
-
-    // Mock asAddress to return the input address
-    asAddress.mockImplementation((address: string) => address);
-
-    assertAccountExists.mockImplementation(() => {
-      // No error
-    });
 
     classifier = new RecipientClassifier(mockConnection, mockLogger);
   });
@@ -50,9 +45,9 @@ describe('RecipientClassifier', () => {
     it('classifies non-existent account as SYSTEM', async () => {
       const mockAccountInfo = null;
 
-      jest
-        .spyOn(mockConnection, 'fetchJsonParsedAccount')
-        .mockResolvedValue(mockAccountInfo as any);
+      vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
+        mockAccountInfo as any,
+      );
 
       assertAccountExists.mockImplementation(() => {
         throw new Error('Account does not exist');
@@ -72,9 +67,9 @@ describe('RecipientClassifier', () => {
         programAddress: SYSTEM_PROGRAM_ADDRESS,
       } as any;
 
-      jest
-        .spyOn(mockConnection, 'fetchJsonParsedAccount')
-        .mockResolvedValue(mockAccountInfo);
+      vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
+        mockAccountInfo,
+      );
 
       const result = await classifier.classify(recipientAddress, network);
 
@@ -93,9 +88,9 @@ describe('RecipientClassifier', () => {
         },
       } as any;
 
-      jest
-        .spyOn(mockConnection, 'fetchJsonParsedAccount')
-        .mockResolvedValue(mockAccountInfo);
+      vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
+        mockAccountInfo,
+      );
 
       const result = await classifier.classify(recipientAddress, network);
 
@@ -117,9 +112,9 @@ describe('RecipientClassifier', () => {
         },
       } as any;
 
-      jest
-        .spyOn(mockConnection, 'fetchJsonParsedAccount')
-        .mockResolvedValue(mockAccountInfo);
+      vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
+        mockAccountInfo,
+      );
 
       const result = await classifier.classify(recipientAddress, network);
 
@@ -140,9 +135,9 @@ describe('RecipientClassifier', () => {
         },
       } as any;
 
-      jest
-        .spyOn(mockConnection, 'fetchJsonParsedAccount')
-        .mockResolvedValue(mockAccountInfo);
+      vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
+        mockAccountInfo,
+      );
 
       const result = await classifier.classify(recipientAddress, network);
 
@@ -160,9 +155,9 @@ describe('RecipientClassifier', () => {
         },
       } as any;
 
-      jest
-        .spyOn(mockConnection, 'fetchJsonParsedAccount')
-        .mockResolvedValue(mockAccountInfo);
+      vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
+        mockAccountInfo,
+      );
 
       const result = await classifier.classify(recipientAddress, network);
 
@@ -180,9 +175,9 @@ describe('RecipientClassifier', () => {
         },
       } as any;
 
-      jest
-        .spyOn(mockConnection, 'fetchJsonParsedAccount')
-        .mockResolvedValue(mockAccountInfo);
+      vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
+        mockAccountInfo,
+      );
 
       const result = await classifier.classify(recipientAddress, network);
 
@@ -195,9 +190,9 @@ describe('RecipientClassifier', () => {
         data: {},
       } as any;
 
-      jest
-        .spyOn(mockConnection, 'fetchJsonParsedAccount')
-        .mockResolvedValue(mockAccountInfo);
+      vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
+        mockAccountInfo,
+      );
 
       const result = await classifier.classify(recipientAddress, network);
 

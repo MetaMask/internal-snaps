@@ -1,16 +1,12 @@
 import type { Logger } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
+import type { Mock } from 'vitest';
 
 import { mockLogger } from '../../utils/mockLogger';
 import { SnapClient } from './SnapClient';
 
-jest.mock('../../utils/logger', () => ({
-  __esModule: true,
-  default: jest.requireActual('../../utils/mockLogger').mockLogger,
-}));
-
 // Mock the global snap object
-const mockSnapRequest = jest.fn();
+const mockSnapRequest = vi.fn();
 (globalThis as any).snap = {
   request: mockSnapRequest,
 };
@@ -25,7 +21,7 @@ const mockSnapRequest = jest.fn();
 async function withSnapClient(
   testFn: (setup: {
     snapClient: SnapClient;
-    mockSnapRequest: jest.Mock;
+    mockSnapRequest: Mock;
     mockLogger: Logger;
   }) => void | Promise<void>,
 ) {

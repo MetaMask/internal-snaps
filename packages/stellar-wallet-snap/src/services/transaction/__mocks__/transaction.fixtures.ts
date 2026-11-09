@@ -43,15 +43,15 @@ export const createMockTransactionService = () => {
     accountService,
   });
 
-  const transactionRepositorySaveSpy = jest.spyOn(
+  const transactionRepositorySaveSpy = vi.spyOn(
     TransactionRepository.prototype,
     'save',
   );
-  const transactionRepositorySaveManySpy = jest.spyOn(
+  const transactionRepositorySaveManySpy = vi.spyOn(
     TransactionRepository.prototype,
     'saveMany',
   );
-  const transactionServiceFindByAccountIdSpy = jest.spyOn(
+  const transactionServiceFindByAccountIdSpy = vi.spyOn(
     TransactionService.prototype,
     'findByAccountId',
   );

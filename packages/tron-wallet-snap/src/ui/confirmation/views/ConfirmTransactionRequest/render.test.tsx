@@ -1,6 +1,8 @@
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { IStateManager } from '@metamask/snap-networks-utils';
+import { InvalidParamsError } from '@metamask/snaps-sdk';
 import { Types as TronwebTypes } from 'tronweb';
+import type { Mocked, Mock } from 'vitest';
 
 import {
   buildTransactionRawData,
@@ -8,6 +10,7 @@ import {
 } from '../../../../clients/security-alerts-api/utils';
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
+import snapContext from '../../../../context';
 import type { AssetEntity } from '../../../../entities/assets';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
 import type { UnencryptedStateValue } from '../../../../services/state/stateTypes';
@@ -18,14 +21,6 @@ import { FetchStatus } from '../../../../types/snap';
 import type { Preferences } from '../../../../types/snap';
 import { render } from './render';
 
-// Mock the context module
-jest.mock('../../../../context', () => ({
-  __esModule: true,
-  default: {
-    transactionScanService: null,
-  },
-}));
-
 // ---------------------------------------------------------------------------
 // Mock types
 // ---------------------------------------------------------------------------
@@ -33,7 +28,7 @@ jest.mock('../../../../context', () => ({
 /**
  * Subset of SnapClient methods exercised by `render`.
  */
-type MockSnapClient = jest.Mocked<
+type MockSnapClient = Mocked<
   Pick<
     SnapClient,
     | 'createInterface'
@@ -47,7 +42,7 @@ type MockSnapClient = jest.Mocked<
 /**
  * Subset of TransactionScanService methods exercised by `render`.
  */
-type MockTransactionScanService = jest.Mocked<
+type MockTransactionScanService = Mocked<
   Pick<TransactionScanService, 'scanTransaction'>
 >;
 
@@ -55,9 +50,9 @@ type MockTransactionScanService = jest.Mocked<
  * Subset of State methods exercised by `render`.
  */
 type MockState = {
-  getKey: jest.Mock;
-  setKey: jest.Mock;
-  setKeyWith: jest.Mock;
+  getKey: Mock;
+  setKey: Mock;
+  setKeyWith: Mock;
 };
 
 // ---------------------------------------------------------------------------
@@ -142,11 +137,11 @@ const defaultIncomingContext = {
  */
 function buildMockSnapClient(): MockSnapClient {
   return {
-    createInterface: jest.fn().mockResolvedValue('interface-id-123'),
-    showDialog: jest.fn().mockResolvedValue(true),
-    updateInterface: jest.fn().mockResolvedValue(undefined),
-    getPreferences: jest.fn().mockResolvedValue(defaultPreferences),
-    scheduleBackgroundEvent: jest.fn().mockResolvedValue(undefined),
+    createInterface: vi.fn().mockResolvedValue('interface-id-123'),
+    showDialog: vi.fn().mockResolvedValue(true),
+    updateInterface: vi.fn().mockResolvedValue(undefined),
+    getPreferences: vi.fn().mockResolvedValue(defaultPreferences),
+    scheduleBackgroundEvent: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -158,7 +153,7 @@ function buildMockSnapClient(): MockSnapClient {
  */
 function buildMockTransactionScanService(): MockTransactionScanService {
   return {
-    scanTransaction: jest.fn().mockResolvedValue(defaultScanResult),
+    scanTransaction: vi.fn().mockResolvedValue(defaultScanResult),
   };
 }
 
@@ -169,9 +164,9 @@ function buildMockTransactionScanService(): MockTransactionScanService {
  */
 function buildMockState(): MockState {
   return {
-    setKey: jest.fn().mockResolvedValue(undefined),
-    setKeyWith: jest.fn().mockResolvedValue(undefined),
-    getKey: jest.fn().mockResolvedValue({}),
+    setKey: vi.fn().mockResolvedValue(undefined),
+    setKeyWith: vi.fn().mockResolvedValue(undefined),
+    getKey: vi.fn().mockResolvedValue({}),
   };
 }
 
@@ -215,11 +210,9 @@ async function withRender(
   const mockState = buildMockState();
   const mockTransactionScanService = buildMockTransactionScanService();
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, no-restricted-globals
-  const snapContext = require('../../../../context').default;
-  snapContext.transactionScanService = hasTransactionScanService
+  snapContext.transactionScanService = (hasTransactionScanService
     ? mockTransactionScanService
-    : null;
+    : null) as unknown as TransactionScanService;
 
   const callRender = async (
     contextOverrides?: Partial<Parameters<typeof render>[2]>,
@@ -243,6 +236,65 @@ async function withRender(
 // ---------------------------------------------------------------------------
 
 describe('ConfirmTransactionRequest render', () => {
+  it('rejects a malformed transaction before reading preferences or opening confirmation', async () => {
+    await withRender(
+      async ({ callRender, mockSnapClient, mockTransactionScanService }) => {
+        await expect(
+          callRender({
+            transactionRawData: {
+              ...defaultTransactionRawData,
+              contract: [
+                ...defaultTransactionRawData.contract,
+                ...defaultTransactionRawData.contract,
+              ],
+            },
+          }),
+        ).rejects.toThrow(InvalidParamsError);
+
+        expect(mockSnapClient.getPreferences).not.toHaveBeenCalled();
+        expect(mockSnapClient.createInterface).not.toHaveBeenCalled();
+        expect(
+          mockTransactionScanService.scanTransaction,
+        ).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it.each([
+    [true, true, FetchStatus.Loading],
+    [true, false, FetchStatus.Loading],
+    [false, true, FetchStatus.Loading],
+    [false, false, FetchStatus.Fetched],
+  ])(
+    'sets initial scan state with security alerts %s and simulation %s',
+    async (useSecurityAlerts, simulateOnChainActions, scanFetchStatus) => {
+      await withRender(async ({ callRender, mockSnapClient }) => {
+        mockSnapClient.getPreferences.mockResolvedValue({
+          ...defaultPreferences,
+          useSecurityAlerts,
+          simulateOnChainActions,
+        });
+        // Inspect the initial context before render mutates it with scan results.
+        mockSnapClient.createInterface.mockImplementation(
+          async (ui, context) => {
+            expect(context).toMatchObject({ scanFetchStatus });
+            expect(JSON.stringify(ui).includes('"disabled":true')).toBe(
+              scanFetchStatus === FetchStatus.Loading,
+            );
+            expect(
+              JSON.stringify(ui).includes('Checking for security issues'),
+            ).toBe(useSecurityAlerts);
+            return 'interface-id-123';
+          },
+        );
+
+        await callRender();
+
+        expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
+      });
+    },
+  );
+
   it('triggers security scan when preferences enable it', async () => {
     await withRender(
       async ({ callRender, mockSnapClient, mockTransactionScanService }) => {
@@ -270,7 +322,7 @@ describe('ConfirmTransactionRequest render', () => {
     );
   });
 
-  it('always triggers scan even when security preferences are disabled', async () => {
+  it('skips the scan when security alerts and simulation are disabled', async () => {
     await withRender(
       async ({ callRender, mockSnapClient, mockTransactionScanService }) => {
         mockSnapClient.getPreferences.mockResolvedValue({
@@ -281,9 +333,15 @@ describe('ConfirmTransactionRequest render', () => {
 
         await callRender();
 
-        expect(mockTransactionScanService.scanTransaction).toHaveBeenCalledWith(
+        expect(
+          mockTransactionScanService.scanTransaction,
+        ).not.toHaveBeenCalled();
+        expect(mockSnapClient.updateInterface).toHaveBeenCalledWith(
+          'interface-id-123',
+          expect.anything(),
           expect.objectContaining({
-            options: ['simulation'],
+            scan: null,
+            scanFetchStatus: FetchStatus.Fetched,
           }),
         );
         expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
@@ -363,7 +421,7 @@ describe('ConfirmTransactionRequest render', () => {
     );
   });
 
-  it('includes both simulation and validation when useSecurityAlerts is true', async () => {
+  it('requests only validation when security alerts are enabled and simulation is disabled', async () => {
     await withRender(
       async ({ callRender, mockSnapClient, mockTransactionScanService }) => {
         mockSnapClient.getPreferences.mockResolvedValue({
@@ -376,7 +434,7 @@ describe('ConfirmTransactionRequest render', () => {
 
         expect(mockTransactionScanService.scanTransaction).toHaveBeenCalledWith(
           expect.objectContaining({
-            options: ['simulation', 'validation'],
+            options: ['validation'],
           }),
         );
       },

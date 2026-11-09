@@ -1,6 +1,7 @@
 import { hexToBytes } from '@metamask/utils';
 import { Keypair } from '@stellar/stellar-sdk';
 import { BigNumber } from 'bignumber.js';
+import type { MockInstance } from 'vitest';
 
 import { KnownCaip2ChainId } from '../../api';
 import { MAX_INT64 } from '../../constants';
@@ -38,21 +39,18 @@ import type { OnChainAccountSerializableFull } from './OnChainAccountSerializabl
 import { OnChainAccountService } from './OnChainAccountService';
 import { OnChainAccountSynchronizeService } from './OnChainAccountSynchronizeService';
 
-jest.mock('../../utils/logger');
-jest.mock('../../utils/snap');
-
 describe('OnChainAccountService', () => {
   const seed = hexToBytes(
     '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
   );
 
   const getNetworkServiceSpies = () => ({
-    getAccountSpy: jest.spyOn(NetworkService.prototype, 'getAccount'),
-    loadOnChainAccountSpy: jest.spyOn(
+    getAccountSpy: vi.spyOn(NetworkService.prototype, 'getAccount'),
+    loadOnChainAccountSpy: vi.spyOn(
       NetworkService.prototype,
       'loadOnChainAccount',
     ),
-    getSep41AssetBalancesSpy: jest.spyOn(
+    getSep41AssetBalancesSpy: vi.spyOn(
       NetworkService.prototype,
       'getSep41AssetBalances',
     ),
@@ -126,8 +124,8 @@ describe('OnChainAccountService', () => {
     type ResolveOnChainAccountSetup = {
       accountAddress: string;
       scope: KnownCaip2ChainId;
-      loadOnChainAccountSpy: jest.SpyInstance;
-      getSep41AssetBalancesSpy: jest.SpyInstance;
+      loadOnChainAccountSpy: MockInstance;
+      getSep41AssetBalancesSpy: MockInstance;
       onChainAccountService: OnChainAccountService;
     };
 
@@ -162,7 +160,7 @@ describe('OnChainAccountService', () => {
         getNetworkServiceSpies();
       loadOnChainAccountSpy.mockResolvedValue(loaded);
 
-      const fetchSep41Spy = jest.spyOn(
+      const fetchSep41Spy = vi.spyOn(
         AssetMetadataService.prototype,
         'fetchAndPersistSep41AssetMetadata',
       );
@@ -399,7 +397,7 @@ describe('OnChainAccountService', () => {
       if (usdcSep41 === undefined) {
         throw new Error('expected USDC SEP-41 metadata');
       }
-      const fetchMetadataSpy = jest
+      const fetchMetadataSpy = vi
         .spyOn(
           AssetMetadataService.prototype,
           'fetchAndPersistAssetsByAssetIds',
@@ -436,8 +434,8 @@ describe('OnChainAccountService', () => {
       const accountAddress = Keypair.random().publicKey();
       const { onChainAccountService, onChainAccountRepository, assetsService } =
         mockOnChainAccountService();
-      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
-      const findByAccountIdSpy = jest.spyOn(
+      vi.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
+      const findByAccountIdSpy = vi.spyOn(
         onChainAccountRepository,
         'findByKeyringAccountId',
       );
@@ -471,8 +469,8 @@ describe('OnChainAccountService', () => {
 
       const { onChainAccountService, onChainAccountRepository, assetsService } =
         mockOnChainAccountService();
-      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
-      const findByAccountIdSpy = jest.spyOn(
+      vi.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
+      const findByAccountIdSpy = vi.spyOn(
         onChainAccountRepository,
         'findByKeyringAccountId',
       );
@@ -496,11 +494,11 @@ describe('OnChainAccountService', () => {
       const keyringAccountId = globalThis.crypto.randomUUID();
       const { onChainAccountService, assetsService, onChainAccountRepository } =
         mockOnChainAccountService();
-      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
-      const getAccountAssetsByScopeSpy = jest
+      vi.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+      const getAccountAssetsByScopeSpy = vi
         .spyOn(assetsService, 'getAccountAssetsByScope')
         .mockResolvedValue([]);
-      const findByAccountIdSpy = jest.spyOn(
+      const findByAccountIdSpy = vi.spyOn(
         onChainAccountRepository,
         'findByKeyringAccountId',
       );
@@ -525,8 +523,8 @@ describe('OnChainAccountService', () => {
       const usdcIssuer = USDC_CLASSIC.split('-').at(1) as string;
       const { onChainAccountService, assetsService } =
         mockOnChainAccountService();
-      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
-      const getAccountAssetsByScopeSpy = jest
+      vi.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+      const getAccountAssetsByScopeSpy = vi
         .spyOn(assetsService, 'getAccountAssetsByScope')
         .mockResolvedValue([
           {
@@ -614,8 +612,8 @@ describe('OnChainAccountService', () => {
       const keyringAccountId = globalThis.crypto.randomUUID();
       const { onChainAccountService, assetsService } =
         mockOnChainAccountService();
-      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
-      jest.spyOn(assetsService, 'getAccountAssetsByScope').mockResolvedValue([
+      vi.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+      vi.spyOn(assetsService, 'getAccountAssetsByScope').mockResolvedValue([
         {
           id: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
           chainId: KnownCaip2ChainId.Mainnet,
@@ -654,8 +652,8 @@ describe('OnChainAccountService', () => {
       const keyringAccountId = globalThis.crypto.randomUUID();
       const { onChainAccountService, assetsService } =
         mockOnChainAccountService();
-      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
-      jest.spyOn(assetsService, 'getAccountAssetsByScope').mockResolvedValue([
+      vi.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+      vi.spyOn(assetsService, 'getAccountAssetsByScope').mockResolvedValue([
         {
           id: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
           chainId: KnownCaip2ChainId.Mainnet,
@@ -671,7 +669,7 @@ describe('OnChainAccountService', () => {
         },
       ]);
       const cause = new Error('invalid snapshot');
-      const fromSerializableSpy = jest
+      const fromSerializableSpy = vi
         .spyOn(OnChainAccount, 'fromSerializable')
         .mockImplementation(() => {
           throw cause;
@@ -719,8 +717,8 @@ describe('OnChainAccountService', () => {
       }));
       const { onChainAccountService, assetsService } =
         mockOnChainAccountService();
-      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
-      const synchronizeSpy = jest.spyOn(
+      vi.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
+      const synchronizeSpy = vi.spyOn(
         OnChainAccountSynchronizeService.prototype,
         'synchronize',
       );
@@ -741,8 +739,8 @@ describe('OnChainAccountService', () => {
     it('skips persist when assets migration is on', async () => {
       const { onChainAccountService, assetsService } =
         mockOnChainAccountService();
-      jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
-      const synchronizeSpy = jest.spyOn(
+      vi.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+      const synchronizeSpy = vi.spyOn(
         OnChainAccountSynchronizeService.prototype,
         'synchronize',
       );
@@ -762,14 +760,14 @@ describe('OnChainAccountService', () => {
     const ACCOUNT_B = '22222222-2222-4222-8222-222222222222';
 
     beforeEach(() => {
-      jest.mocked(snap.request).mockReset();
+      vi.mocked(snap.request).mockReset();
     });
 
     const setupWithMigration = (
       migrationEnabled: boolean,
     ): ReturnType<typeof mockOnChainAccountService> => {
       const mocks = mockOnChainAccountService();
-      jest
+      vi
         .spyOn(mocks.assetsService, 'isMigrationEnabled')
         .mockResolvedValue(migrationEnabled);
       return mocks;
@@ -791,10 +789,10 @@ describe('OnChainAccountService', () => {
         ),
       ).toBe(true);
       expect(snap.request).toHaveBeenCalledTimes(1);
-      expect(JSON.stringify(jest.mocked(snap.request).mock.calls[0])).toContain(
+      expect(JSON.stringify(vi.mocked(snap.request).mock.calls[0])).toContain(
         'notify:accountBalancesUpdated',
       );
-      expect(JSON.stringify(jest.mocked(snap.request).mock.calls[0])).toContain(
+      expect(JSON.stringify(vi.mocked(snap.request).mock.calls[0])).toContain(
         ACCOUNT_A,
       );
 
@@ -819,7 +817,7 @@ describe('OnChainAccountService', () => {
 
     it('still records the marker when emitting the balance event fails', async () => {
       const { onChainAccountService } = setupWithMigration(false);
-      jest
+      vi
         .mocked(snap.request)
         .mockRejectedValueOnce(new Error('emit failed'))
         .mockResolvedValue(null);
@@ -841,7 +839,7 @@ describe('OnChainAccountService', () => {
     it('neither records nor emits while the assets migration is on, and treats a missing snapshot as unfunded', async () => {
       const { onChainAccountService, onChainAccountRepository } =
         setupWithMigration(true);
-      const markUnfundedSpy = jest.spyOn(
+      const markUnfundedSpy = vi.spyOn(
         onChainAccountRepository,
         'markUnfunded',
       );

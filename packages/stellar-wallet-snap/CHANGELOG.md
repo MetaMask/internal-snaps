@@ -7,16 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Read account asset balances from AssetsController when the feature flag `enableAssetMigration` and local flag `enableAssetMigration` are on ([#331](https://github.com/MetaMask/internal-snaps/pull/331))
-  - Include SEP-41 balances on keyring `getAccountAssets` and `getAccountBalances`.
-- Read asset metadata from AssetsController when feature flag `enableAssetMigration` and local flag `enableAssetMigration` is on ([#493](https://github.com/MetaMask/internal-snaps/pull/493))
-  - `enableAssetMigration` set to off.
+## [2.1.0]
 
 ### Changed
 
-- **BREAKING:** Stop falling back to Soroban RPC and Horizon for asset metadata ([#505](https://github.com/MetaMask/internal-snaps/pull/505))
+- Client request handler `confirmSend` now throws when signing, or submission fails after the user confirms, instead of returning a JSON error response such as `{ valid: false, errors }` ([#550](https://github.com/MetaMask/internal-snaps/pull/550))
+- Bump `@stellar/stellar-sdk` from `^17.2.1` to `^17.4.0` ([#545](https://github.com/MetaMask/internal-snaps/pull/545))
+- Retry transient Token API, Price API, and Security Alerts API failures with bounded timeouts and circuit breaking ([#534](https://github.com/MetaMask/internal-snaps/pull/534))
+- Retry transient RPC and Horizon failures with bounded timeouts and circuit breaking ([#551](https://github.com/MetaMask/internal-snaps/pull/551))
+  - Transaction submission still uses the raw RPC client and does not apply the fetch policy.
+
+### Fixed
+
+- Fix `onAmountInput` to accept optional destination as `toAddress` instead of `to` ([#558](https://github.com/MetaMask/internal-snaps/pull/558))
+
+## [2.0.0]
+
+### Added
+
+- **BREAKING:** Read account asset balances from AssetsController when the feature flag `networkAssetsSnapsMigrationStellar` is on ([#331](https://github.com/MetaMask/internal-snaps/pull/331), [#513](https://github.com/MetaMask/internal-snaps/pull/513))
+  - Keyring methods `getAccountAssets` and `getAccountBalances` include watched SEP-41 assets and return the latest live balances.
+  - While the flag is on, account sync no longer persists asset snapshots or emits `AccountBalancesUpdated` and `AccountAssetListUpdated`.
+- **BREAKING:** Read asset metadata from AssetsController first when feature flag `networkAssetsSnapsMigrationStellar` is on ([#493](https://github.com/MetaMask/internal-snaps/pull/493), [#513](https://github.com/MetaMask/internal-snaps/pull/513))
+
+### Changed
+
+- Stop falling back to Soroban RPC and Horizon for asset metadata ([#505](https://github.com/MetaMask/internal-snaps/pull/505))
   - Fetch asset metadata from the local catalog or the mainnet token API.
 - **BREAKING:** Return classic keyring balance metadata `limit` in integer stroop string ([#495](https://github.com/MetaMask/internal-snaps/pull/495))
   - Keyring method `getAccountBalances` and the Keyring event `AccountBalancesUpdated` now return this `limit` in stroops.
@@ -24,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Keep in-progress memo edits in `memoDraft` so Back does not commit unsaved memo text on send confirmation. ([#406](https://github.com/MetaMask/internal-snaps/pull/406))
+- After a memo is saved, resume price updates, security scanning, and transaction rebuild and validation with the user preferences captured when the confirmation opened. ([#378](https://github.com/MetaMask/internal-snaps/pull/378))
 
 ## [1.3.0]
 
@@ -115,7 +132,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial package release ([#181](https://github.com/MetaMask/internal-snaps/pull/181))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.3.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@2.1.0...HEAD
+[2.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@2.0.0...@metamask/stellar-wallet-snap@2.1.0
+[2.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.3.0...@metamask/stellar-wallet-snap@2.0.0
 [1.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.2.0...@metamask/stellar-wallet-snap@1.3.0
 [1.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.1...@metamask/stellar-wallet-snap@1.2.0
 [1.1.1]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.0...@metamask/stellar-wallet-snap@1.1.1

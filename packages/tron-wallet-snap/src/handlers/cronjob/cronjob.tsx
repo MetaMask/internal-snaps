@@ -311,7 +311,7 @@ export class CronHandler {
   }
 
   /**
-   * Background job to refresh the security scan for simple send confirmation dialogs.
+   * Refresh transaction validity and enabled scans for send confirmation dialogs.
    */
   async refreshConfirmationSend(): Promise<void> {
     this.#logger.info(
@@ -347,6 +347,11 @@ export class CronHandler {
     }
 
     const { preferences, scope, fromAddress, origin } = interfaceContext;
+
+    const { useSecurityAlerts, simulateOnChainActions } = preferences;
+
+    const shouldRefreshScan = useSecurityAlerts || simulateOnChainActions;
+
     const transactionRawData =
       interfaceContext.transactionRawData as JsonTransactionRawData | null;
 
@@ -360,7 +365,9 @@ export class CronHandler {
     try {
       const fetchingContext: ConfirmTransactionRequestContext = {
         ...interfaceContext,
-        scanFetchStatus: FetchStatus.Fetching,
+        scanFetchStatus: shouldRefreshScan
+          ? FetchStatus.Fetching
+          : interfaceContext.scanFetchStatus,
       };
 
       await this.#snapClient.updateInterface(
@@ -368,16 +375,6 @@ export class CronHandler {
         <ConfirmTransactionRequest context={fetchingContext} />,
         fetchingContext,
       );
-
-      const options: SecurityAlertsScanOption[] = ['simulation'];
-      if (preferences.useSecurityAlerts) {
-        options.push('validation');
-      }
-
-      const scanAccount = {
-        type: interfaceContext.accountType,
-        address: fromAddress,
-      } as ExtendedKeyringAccount;
 
       let { scan } = interfaceContext;
       let { scanFetchStatus } = interfaceContext;
@@ -390,16 +387,33 @@ export class CronHandler {
             rawData: transactionRawData,
           });
 
-        scan = await this.#transactionScanService.scanTransaction({
-          accountAddress: fromAddress,
-          transactionRawData: freshTransactionRawData,
-          origin,
-          scope,
-          options,
-          account: scanAccount,
-        });
-        scanFetchStatus = scan ? FetchStatus.Fetched : FetchStatus.Error;
-        this.#logger.info('Successfully refreshed send confirmation scan');
+        if (shouldRefreshScan) {
+          const options: SecurityAlertsScanOption[] = [];
+
+          if (simulateOnChainActions) {
+            options.push('simulation');
+          }
+
+          if (useSecurityAlerts) {
+            options.push('validation');
+          }
+
+          const scanAccount = {
+            type: interfaceContext.accountType,
+            address: fromAddress,
+          } as ExtendedKeyringAccount;
+
+          scan = await this.#transactionScanService.scanTransaction({
+            accountAddress: fromAddress,
+            transactionRawData: freshTransactionRawData,
+            origin,
+            scope,
+            options,
+            account: scanAccount,
+          });
+          scanFetchStatus = scan ? FetchStatus.Fetched : FetchStatus.Error;
+          this.#logger.info('Successfully refreshed send confirmation scan');
+        }
       } catch (error) {
         this.#logger.error('Error refreshing send confirmation scan:', error);
         scan = null;
@@ -487,8 +501,9 @@ export class CronHandler {
     const { preferences, scope, account, origin, transaction } =
       interfaceContext;
 
-    const shouldRefreshScan =
-      preferences.simulateOnChainActions || preferences.useSecurityAlerts;
+    const { useSecurityAlerts, simulateOnChainActions } = preferences;
+
+    const shouldRefreshScan = simulateOnChainActions || useSecurityAlerts;
 
     try {
       const fetchingContext: ConfirmSignTransactionContext = {
@@ -531,10 +546,12 @@ export class CronHandler {
 
       if (shouldRefreshScan && rawData) {
         const options: SecurityAlertsScanOption[] = [];
-        if (preferences.simulateOnChainActions) {
+
+        if (simulateOnChainActions) {
           options.push('simulation');
         }
-        if (preferences.useSecurityAlerts) {
+
+        if (useSecurityAlerts) {
           options.push('validation');
         }
 

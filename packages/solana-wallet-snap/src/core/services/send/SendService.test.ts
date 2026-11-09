@@ -9,12 +9,15 @@ import type {
   Serializable,
 } from '@metamask/snap-networks-utils';
 import { lamports } from '@solana/kit';
+import * as SolanaKit from '@solana/kit';
+import type { Mock } from 'vitest';
 
 import type { AssetEntity } from '../../../entities';
 import { KnownCaip19Id, Network, Networks } from '../../constants/solana';
 import { ClientRequestMethod } from '../../handlers/onClientRequest/types';
 import type { SolanaKeyring } from '../../handlers/onKeyringRequest/Keyring';
 import { fromTransactionToBase64String } from '../../sdk-extensions/codecs';
+import * as Codecs from '../../sdk-extensions/codecs';
 import {
   MOCK_SOLANA_KEYRING_ACCOUNT_0,
   MOCK_SOLANA_KEYRING_ACCOUNT_1,
@@ -30,35 +33,6 @@ import type { SendSplTokenBuilder } from './SendSplTokenBuilder';
 import { SendErrorCodes } from './types';
 import type { OnAmountInputRequest, OnConfirmSendRequest } from './types';
 
-// Mock dependencies
-jest.mock('../../sdk-extensions/codecs');
-
-// Mock crypto.randomUUID
-Object.defineProperty(globalThis, 'crypto', {
-  value: {
-    randomUUID: jest.fn(() => 'test-uuid'),
-  },
-});
-
-jest.mock('@solana/kit', () => ({
-  ...jest.requireActual('@solana/kit'),
-  address: jest.requireActual('@solana/kit').address,
-  lamports: jest.requireActual('@solana/kit').lamports,
-  compileTransaction: jest.fn().mockReturnValue({
-    message: {
-      version: 0,
-      header: {
-        numRequiredSignatures: 1,
-        numReadonlySignedAccounts: 0,
-        numReadonlyUnsignedAccounts: 0,
-      },
-      staticAccounts: [],
-      compiledInstructions: [],
-      addressTableLookups: [],
-    },
-  }),
-}));
-
 describe('SendService', () => {
   let sendService: SendService;
   let mockConnection: SolanaConnection;
@@ -72,47 +46,64 @@ describe('SendService', () => {
   const mockAccount: ExtendedKeyringAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
+      'test-uuid' as ReturnType<typeof globalThis.crypto.randomUUID>,
+    );
+    vi.spyOn(Codecs, 'fromTransactionToBase64String');
+    vi.spyOn(SolanaKit, 'compileTransaction').mockReturnValue({
+      message: {
+        version: 0,
+        header: {
+          numRequiredSignatures: 1,
+          numReadonlySignedAccounts: 0,
+          numReadonlyUnsignedAccounts: 0,
+        },
+        staticAccounts: [],
+        compiledInstructions: [],
+        addressTableLookups: [],
+      },
+    } as never);
 
     mockConnection = createMockConnection();
     mockCache = new InMemoryCache(mockLogger);
 
-    jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
-      getMinimumBalanceForRentExemption: jest.fn().mockReturnValue({
-        send: jest.fn().mockResolvedValue(lamports(1000000n)),
+    vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+      getMinimumBalanceForRentExemption: vi.fn().mockReturnValue({
+        send: vi.fn().mockResolvedValue(lamports(1000000n)),
       }),
     } as any);
 
     mockKeyring = {
-      getAccountOrThrow: jest.fn().mockResolvedValue(mockAccount),
-      submitRequest: jest.fn().mockResolvedValue({ success: true }),
+      getAccountOrThrow: vi.fn().mockResolvedValue(mockAccount),
+      submitRequest: vi.fn().mockResolvedValue({ success: true }),
     } as unknown as SolanaKeyring;
 
     mockRecipientClassifier = {
-      classify: jest.fn().mockResolvedValue({ type: 'SYSTEM' }),
+      classify: vi.fn().mockResolvedValue({ type: 'SYSTEM' }),
     } as unknown as RecipientClassifier;
 
     mockSendSolBuilder = {
-      buildTransactionMessage: jest.fn().mockResolvedValue({} as any),
-      getComputeUnitLimit: jest.fn().mockReturnValue(200000),
-      getComputeUnitPriceMicroLamportsPerComputeUnit: jest
+      buildTransactionMessage: vi.fn().mockResolvedValue({} as any),
+      getComputeUnitLimit: vi.fn().mockReturnValue(200000),
+      getComputeUnitPriceMicroLamportsPerComputeUnit: vi
         .fn()
         .mockReturnValue(1000n),
     } as unknown as SendSolBuilder;
 
     mockSendSplTokenBuilder = {
-      buildTransactionMessage: jest.fn().mockResolvedValue({} as any),
-      getComputeUnitLimit: jest.fn().mockReturnValue(200000),
-      getComputeUnitPriceMicroLamportsPerComputeUnit: jest
+      buildTransactionMessage: vi.fn().mockResolvedValue({} as any),
+      getComputeUnitLimit: vi.fn().mockReturnValue(200000),
+      getComputeUnitPriceMicroLamportsPerComputeUnit: vi
         .fn()
         .mockReturnValue(1000n),
     } as unknown as SendSplTokenBuilder;
 
     mockAssetsService = {
-      getAccountAssetsByIDs: jest.fn(),
+      getAccountAssetsByIDs: vi.fn(),
     } as unknown as AssetsService;
 
-    (fromTransactionToBase64String as jest.Mock).mockReturnValue(
+    (fromTransactionToBase64String as Mock).mockReturnValue(
       'base64-encoded-tx',
     );
 
@@ -195,7 +186,7 @@ describe('SendService', () => {
 
     it('handles errors from keyring.getAccountOrThrow', async () => {
       const error = new Error('Account not found');
-      jest.spyOn(mockKeyring, 'getAccountOrThrow').mockRejectedValue(error);
+      vi.spyOn(mockKeyring, 'getAccountOrThrow').mockRejectedValue(error);
 
       await expect(sendService.confirmSend(mockRequest)).rejects.toThrow(
         'Account not found',
@@ -204,9 +195,9 @@ describe('SendService', () => {
 
     it('handles errors from builder.buildTransactionMessage', async () => {
       const error = new Error('Failed to build transaction');
-      jest
-        .spyOn(mockSendSolBuilder, 'buildTransactionMessage')
-        .mockRejectedValue(error);
+      vi.spyOn(mockSendSolBuilder, 'buildTransactionMessage').mockRejectedValue(
+        error,
+      );
 
       await expect(sendService.confirmSend(mockRequest)).rejects.toThrow(
         'Failed to build transaction',
@@ -215,7 +206,7 @@ describe('SendService', () => {
 
     it('handles errors from keyring.submitRequest', async () => {
       const error = new Error('Failed to submit request');
-      jest.spyOn(mockKeyring, 'submitRequest').mockRejectedValue(error);
+      vi.spyOn(mockKeyring, 'submitRequest').mockRejectedValue(error);
 
       await expect(sendService.confirmSend(mockRequest)).rejects.toThrow(
         'Failed to submit request',
@@ -291,9 +282,8 @@ describe('SendService', () => {
     ];
 
     beforeEach(() => {
-      jest
-        .spyOn(mockAssetsService, 'getAccountAssetsByIDs')
-        .mockImplementation(async (_accountId, assetIds) =>
+      vi.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockImplementation(
+        async (_accountId, assetIds) =>
           Object.fromEntries(
             assetIds.map((assetId) => [
               assetId,
@@ -301,11 +291,11 @@ describe('SendService', () => {
                 null,
             ]),
           ),
-        );
+      );
 
-      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getMinimumBalanceForRentExemption: jest.fn().mockReturnValue({
-          send: jest.fn().mockResolvedValue(lamports(1000000n)),
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getMinimumBalanceForRentExemption: vi.fn().mockReturnValue({
+          send: vi.fn().mockResolvedValue(lamports(1000000n)),
         }),
       } as any);
     });
@@ -334,7 +324,7 @@ describe('SendService', () => {
     });
 
     it('rejects when asset balance not found', async () => {
-      jest.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
+      vi.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
         [mockRequest.params.assetId]: null,
         [Networks[Network.Mainnet].nativeToken.caip19Id]: null,
       });
@@ -350,7 +340,7 @@ describe('SendService', () => {
         params: { ...mockRequest.params, value: '0.000001' },
       };
 
-      jest.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
+      vi.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
         [Networks[Network.Mainnet].nativeToken.caip19Id]: {
           assetType: Networks[Network.Mainnet].nativeToken.caip19Id,
           uiAmount: '0.00001',
@@ -419,7 +409,7 @@ describe('SendService', () => {
         },
       };
 
-      jest.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
+      vi.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
         [Networks[Network.Mainnet].nativeToken.caip19Id]: {
           assetType: Networks[Network.Mainnet].nativeToken.caip19Id,
           uiAmount: '0.1',
@@ -456,7 +446,7 @@ describe('SendService', () => {
         params: { ...mockRequest.params, value: '0.1' },
       };
 
-      jest.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
+      vi.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
         [Networks[Network.Mainnet].nativeToken.caip19Id]: {
           assetType: Networks[Network.Mainnet].nativeToken.caip19Id,
           uiAmount: '0',
@@ -496,7 +486,7 @@ describe('SendService', () => {
         },
       };
 
-      jest.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
+      vi.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
         [KnownCaip19Id.UsdcMainnet]: {
           assetType: KnownCaip19Id.UsdcMainnet,
           uiAmount: '100.0',
@@ -536,7 +526,7 @@ describe('SendService', () => {
         },
       };
 
-      jest.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
+      vi.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
         [KnownCaip19Id.UsdcMainnet]: {
           assetType: KnownCaip19Id.UsdcMainnet,
           uiAmount: '100.0',
@@ -569,7 +559,7 @@ describe('SendService', () => {
 
     it('handles errors if account is not found', async () => {
       const error = new Error('Account not found');
-      jest.spyOn(mockKeyring, 'getAccountOrThrow').mockRejectedValue(error);
+      vi.spyOn(mockKeyring, 'getAccountOrThrow').mockRejectedValue(error);
 
       await expect(sendService.onAmountInput(mockRequest)).rejects.toThrow(
         'Account not found',
@@ -578,9 +568,9 @@ describe('SendService', () => {
 
     it('handles errors if balances are not found', async () => {
       const error = new Error('Failed to fetch balances');
-      jest
-        .spyOn(mockAssetsService, 'getAccountAssetsByIDs')
-        .mockRejectedValue(error);
+      vi.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockRejectedValue(
+        error,
+      );
 
       await expect(sendService.onAmountInput(mockRequest)).rejects.toThrow(
         'Failed to fetch balances',
@@ -589,9 +579,9 @@ describe('SendService', () => {
 
     it('handles errors if connection fails', async () => {
       const error = new Error('RPC connection failed');
-      jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getMinimumBalanceForRentExemption: jest.fn().mockReturnValue({
-          send: jest.fn().mockRejectedValue(error),
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getMinimumBalanceForRentExemption: vi.fn().mockReturnValue({
+          send: vi.fn().mockRejectedValue(error),
         }),
       } as any);
 

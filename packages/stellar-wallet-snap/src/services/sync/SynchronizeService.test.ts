@@ -2,6 +2,7 @@ import { AssetType, KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
 import { BackgroundEventMethod } from '../../handlers/cronjob/api';
 import { Duration, scheduleBackgroundEvent } from '../../utils';
+import * as Utils from '../../utils';
 import { logger } from '../../utils/logger';
 import type { StellarKeyringAccount } from '../account';
 import { generateMockStellarKeyringAccounts } from '../account/__mocks__/account.fixtures';
@@ -20,19 +21,11 @@ import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { createMockTransactionService } from '../transaction/__mocks__/transaction.fixtures';
 import { SynchronizeService } from './SynchronizeService';
 
-jest.mock('../../utils/logger');
-jest.mock('../../utils', () => ({
-  ...jest.requireActual('../../utils'),
-  scheduleBackgroundEvent: jest.fn().mockResolvedValue('scheduled'),
-}));
-
-const scheduleBackgroundEventMock = jest.mocked(scheduleBackgroundEvent);
-
 describe('SynchronizeService', () => {
   const scope = KnownCaip2ChainId.Mainnet;
 
   beforeEach(() => {
-    scheduleBackgroundEventMock.mockClear();
+    vi.spyOn(Utils, 'scheduleBackgroundEvent').mockResolvedValue('scheduled');
   });
 
   const buildOnChainAccount = (
@@ -58,10 +51,10 @@ describe('SynchronizeService', () => {
     const { transactionService } = createMockTransactionService();
     const { service: assetMetadataService } = createMockAssetMetadataService();
     const sep41Assets = getMockSep41Assets();
-    const synchronizeIfStaleSpy = jest
+    const synchronizeIfStaleSpy = vi
       .spyOn(assetMetadataService, 'synchronizeIfStale')
       .mockResolvedValue(undefined);
-    const getSep41AssetsSpy = jest
+    const getSep41AssetsSpy = vi
       .spyOn(assetMetadataService, 'getAssetsByScopeAndType')
       .mockResolvedValue(sep41Assets);
     const service = new SynchronizeService({
@@ -79,13 +72,13 @@ describe('SynchronizeService', () => {
       sep41Assets,
       synchronizeIfStaleSpy,
       getSep41AssetsSpy,
-      onChainSynchronizeSpy: jest
+      onChainSynchronizeSpy: vi
         .spyOn(onChainAccountService, 'synchronize')
         .mockResolvedValue(undefined),
-      transactionSynchronizeSpy: jest
+      transactionSynchronizeSpy: vi
         .spyOn(transactionService, 'synchronize')
         .mockResolvedValue(undefined),
-      resolveOnChainAccountSpy: jest.spyOn(
+      resolveOnChainAccountSpy: vi.spyOn(
         onChainAccountService,
         'resolveOnChainAccount',
       ),
@@ -196,7 +189,7 @@ describe('SynchronizeService', () => {
       2,
       'sync-mark-unfunded-entropy',
     ) as [StellarKeyringAccount, StellarKeyringAccount];
-    const markSpy = jest
+    const markSpy = vi
       .spyOn(onChainAccountService, 'markAccountsUnfunded')
       .mockResolvedValue([unfunded.id]);
     resolveOnChainAccountSpy.mockImplementation(async (accountAddress) => {
@@ -219,7 +212,7 @@ describe('SynchronizeService', () => {
       1,
       'sync-load-failed-entropy',
     ) as [StellarKeyringAccount];
-    const markSpy = jest.spyOn(onChainAccountService, 'markAccountsUnfunded');
+    const markSpy = vi.spyOn(onChainAccountService, 'markAccountsUnfunded');
     resolveOnChainAccountSpy.mockRejectedValue(new Error('Failed to fetch'));
 
     await service.synchronize([account], { scope });
@@ -239,7 +232,7 @@ describe('SynchronizeService', () => {
       1,
       'sync-mark-fails-entropy',
     ) as [StellarKeyringAccount];
-    jest
+    vi
       .spyOn(onChainAccountService, 'markAccountsUnfunded')
       .mockRejectedValue(new Error('state write failed'));
     resolveOnChainAccountSpy.mockRejectedValue(
@@ -423,7 +416,7 @@ describe('SynchronizeService', () => {
     expect(getSep41AssetsSpy).toHaveBeenCalledTimes(1);
     expect(onChainSynchronizeSpy).not.toHaveBeenCalled();
     expect(transactionSynchronizeSpy).not.toHaveBeenCalled();
-    expect(scheduleBackgroundEventMock).not.toHaveBeenCalled();
+    expect(vi.mocked(scheduleBackgroundEvent)).not.toHaveBeenCalled();
 
     releaseFirstSync();
     await firstSync;
@@ -471,7 +464,7 @@ describe('SynchronizeService', () => {
     expect(getSep41AssetsSpy).toHaveBeenCalledTimes(1);
     expect(onChainSynchronizeSpy).not.toHaveBeenCalled();
     expect(transactionSynchronizeSpy).not.toHaveBeenCalled();
-    expect(scheduleBackgroundEventMock).toHaveBeenCalledWith({
+    expect(vi.mocked(scheduleBackgroundEvent)).toHaveBeenCalledWith({
       method: BackgroundEventMethod.SynchronizeAccounts,
       params: { accountIds: [secondAccount.id] },
       duration: Duration.TwoSeconds,
@@ -519,7 +512,7 @@ describe('SynchronizeService', () => {
 
     expect(synchronizeIfStaleSpy).toHaveBeenCalledTimes(1);
     expect(getSep41AssetsSpy).toHaveBeenCalledTimes(1);
-    expect(scheduleBackgroundEventMock).toHaveBeenCalledWith({
+    expect(vi.mocked(scheduleBackgroundEvent)).toHaveBeenCalledWith({
       method: BackgroundEventMethod.SynchronizeAccounts,
       params: { accountIds: [secondAccount.id] },
       duration: Duration.TwoSeconds,
@@ -556,12 +549,12 @@ describe('SynchronizeService', () => {
       scope,
       sep41Assets,
     );
-    expect(scheduleBackgroundEventMock).not.toHaveBeenCalled();
+    expect(vi.mocked(scheduleBackgroundEvent)).not.toHaveBeenCalled();
   });
 
   it('delegates asset synchronization to AssetMetadataService', async () => {
     const { service, assetMetadataService } = setup();
-    const synchronizeSpy = jest
+    const synchronizeSpy = vi
       .spyOn(assetMetadataService, 'synchronize')
       .mockResolvedValue(undefined);
 
@@ -572,7 +565,7 @@ describe('SynchronizeService', () => {
 
   it('logs and does not throw when asset synchronization fails', async () => {
     const { service, assetMetadataService } = setup();
-    const synchronizeSpy = jest
+    const synchronizeSpy = vi
       .spyOn(assetMetadataService, 'synchronize')
       .mockRejectedValue(new Error('token api down'));
 

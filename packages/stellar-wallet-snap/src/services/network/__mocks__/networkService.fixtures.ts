@@ -7,6 +7,7 @@ import {
   rpc as StellarRpc,
   TransactionBuilder as StellarTransactionBuilder,
 } from '@stellar/stellar-sdk';
+import type { Mock, MockInstance } from 'vitest';
 
 import {
   buildMockClassicTransaction,
@@ -16,39 +17,30 @@ import { Transaction } from '../../transaction/Transaction';
 import { generateStellarAddress } from '../../wallet/__mocks__/wallet.fixtures';
 
 export const getHorizonClientSpies = (): {
-  fetchBaseFeeSpy: jest.SpyInstance;
-  loadAccountSpy: jest.SpyInstance;
+  fetchBaseFeeSpy: MockInstance;
+  loadAccountSpy: MockInstance;
 } => ({
-  fetchBaseFeeSpy: jest.spyOn(StellarHorizon.Server.prototype, 'fetchBaseFee'),
-  loadAccountSpy: jest.spyOn(StellarHorizon.Server.prototype, 'loadAccount'),
+  fetchBaseFeeSpy: vi.spyOn(StellarHorizon.Server.prototype, 'fetchBaseFee'),
+  loadAccountSpy: vi.spyOn(StellarHorizon.Server.prototype, 'loadAccount'),
 });
 
 export const getRpcServerSpies = (): {
-  pollTransactionSpy: jest.SpyInstance;
-  sendTransactionSpy: jest.SpyInstance;
-  getAccountSpy: jest.SpyInstance;
-  getAccountEntrySpy: jest.SpyInstance;
-  getLedgerEntriesSpy: jest.SpyInstance;
-  simulateTransactionSpy: jest.SpyInstance;
+  pollTransactionSpy: MockInstance;
+  sendTransactionSpy: MockInstance;
+  getAccountSpy: MockInstance;
+  getAccountEntrySpy: MockInstance;
+  getLedgerEntriesSpy: MockInstance;
+  simulateTransactionSpy: MockInstance;
 } => ({
-  pollTransactionSpy: jest.spyOn(
-    StellarRpc.Server.prototype,
-    'pollTransaction',
-  ),
-  sendTransactionSpy: jest.spyOn(
-    StellarRpc.Server.prototype,
-    'sendTransaction',
-  ),
-  getAccountSpy: jest.spyOn(StellarRpc.Server.prototype, 'getAccount'),
-  getAccountEntrySpy: jest.spyOn(
-    StellarRpc.Server.prototype,
-    'getAccountEntry',
-  ),
-  getLedgerEntriesSpy: jest.spyOn(
+  pollTransactionSpy: vi.spyOn(StellarRpc.Server.prototype, 'pollTransaction'),
+  sendTransactionSpy: vi.spyOn(StellarRpc.Server.prototype, 'sendTransaction'),
+  getAccountSpy: vi.spyOn(StellarRpc.Server.prototype, 'getAccount'),
+  getAccountEntrySpy: vi.spyOn(StellarRpc.Server.prototype, 'getAccountEntry'),
+  getLedgerEntriesSpy: vi.spyOn(
     StellarRpc.Server.prototype,
     'getLedgerEntries',
   ),
-  simulateTransactionSpy: jest.spyOn(
+  simulateTransactionSpy: vi.spyOn(
     StellarRpc.Server.prototype,
     'simulateTransaction',
   ),
@@ -72,17 +64,15 @@ export const createMockTransaction = (accountId?: string): Transaction => {
   );
 };
 
-export const mockHorizonAccountTransactions = (
-  call: jest.Mock,
-): jest.SpyInstance => {
-  return jest
+export const mockHorizonAccountTransactions = (call: Mock): MockInstance => {
+  return vi
     .spyOn(StellarHorizon.Server.prototype, 'transactions')
     .mockReturnValue({
-      forAccount: jest.fn().mockReturnValue({
-        order: jest.fn().mockReturnValue({
-          cursor: jest.fn().mockReturnValue({
-            limit: jest.fn().mockReturnValue({
-              includeFailed: jest.fn().mockReturnValue({ call }),
+      forAccount: vi.fn().mockReturnValue({
+        order: vi.fn().mockReturnValue({
+          cursor: vi.fn().mockReturnValue({
+            limit: vi.fn().mockReturnValue({
+              includeFailed: vi.fn().mockReturnValue({ call }),
             }),
           }),
         }),

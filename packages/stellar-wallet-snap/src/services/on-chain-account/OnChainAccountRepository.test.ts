@@ -75,7 +75,7 @@ describe('OnChainAccountRepository', () => {
 
     it('does nothing for an empty list', async () => {
       const { repository, state } = setup();
-      const updateSpy = jest.spyOn(state, 'update');
+      const updateSpy = vi.spyOn(state, 'update');
 
       expect(
         await repository.markUnfunded([], KnownCaip2ChainId.Mainnet),

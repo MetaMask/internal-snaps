@@ -123,7 +123,7 @@ For more on these commands, see:
 ### Running tests
 
 - Run `yarn workspace <package-name> run test` to run all tests for a package.
-- Run `yarn workspace <package-name> run jest --no-coverage <file>` to run a specific test file.
+- Run `yarn workspace <package-name> run jest --no-coverage <file>` to run a specific Jest test file. Bitcoin, Solana, Stellar, and Tron unit tests run on Vitest: `yarn workspace <package-name> exec vitest run <file>`. Bitcoin integration tests stay on Jest via `yarn workspace @metamask/bitcoin-wallet-snap run test:integration`.
 - Prefer the above two commands, but if you must, run `yarn test` to run tests for all packages in the monorepo.
 
 ### Linting and formatting
@@ -228,8 +228,8 @@ This repo is a Yarn 4 monorepo of MetaMask Snaps. The products live in `packages
 
 Standard commands are documented above (see "Running tests", "Linting and formatting", "Building packages"). Non-obvious caveats for running things here:
 
-- **Build before testing.** A Snap's Jest suite (`@metamask/snaps-jest`) expects the built bundle. CI always runs `yarn workspace <pkg> build` before `yarn workspace <pkg> run test`. If tests behave unexpectedly, run `yarn build` (or the per-package build) first.
+- **Build before testing.** Snap-install tests that use `@metamask/snaps-jest` expect the built bundle. CI always runs `yarn workspace <pkg> build` before `yarn workspace <pkg> run test`. If tests behave unexpectedly, run `yarn build` (or the per-package build) first. Bitcoin, Stellar, Tron, and Solana unit tests run on Vitest and do not use `@metamask/snaps-jest`. Bitcoin integration tests still do: `yarn workspace @metamask/bitcoin-wallet-snap run test:integration`.
 - **`yarn lint` deletes `dist/`.** `lint:eslint` runs `build:only-clean` (`rimraf -g 'packages/*/dist'`) before linting. After running `yarn lint`, re-run `yarn build` before serving a snap or running snap tests.
 - **Running a snap:** `yarn workspace <pkg> run serve` serves the pre-built bundle at `http://localhost:8080` (`/snap.manifest.json` and `/dist/bundle.js`); `yarn workspace <pkg> run start` (`mm-snap watch`) rebuilds on change. Both snaps use port 8080, so only run one at a time.
-- **No headless end-to-end.** Fully exercising a snap normally requires the MetaMask extension in a browser, which isn't available headless. Use the `snaps-jest` test suites (they install the snap and invoke its JSON-RPC methods, e.g. the generated snap's `hello`) to exercise core functionality without a browser.
+- **No headless end-to-end.** Fully exercising a snap normally requires the MetaMask extension in a browser, which isn't available headless. Bitcoin, Stellar, Tron, and Solana unit tests mock the snap provider under Vitest. Bitcoin integration tests still install the snap with `@metamask/snaps-jest` (`jest.integration.config.mjs`); Jest stays installed for that suite. Solana's four `installSnap` files (`src/index.test.ts` and the three confirmation `render.test.tsx` files) use Vitest syntax but are excluded from the test run, because `@metamask/snaps-jest` cannot execute under Vitest. Tron's `jest.integration.config.mjs` remains for snaps-jest integration tests.
 - **`.env` is optional** for `bitcoin-wallet-snap`; `snap.config.ts` reads it via dotenv but all values have sane defaults (see `.env.example`), so the snap builds and serves without one.

@@ -10,7 +10,7 @@ describe('EventEmitter', () => {
 
   describe('on', () => {
     it('adds a listener for an event', () => {
-      const listener = jest.fn();
+      const listener = vi.fn();
 
       eventEmitter.on('someEvent', listener);
 
@@ -18,8 +18,8 @@ describe('EventEmitter', () => {
     });
 
     it('adds multiple listeners for an event', () => {
-      const listener1 = jest.fn();
-      const listener2 = jest.fn();
+      const listener1 = vi.fn();
+      const listener2 = vi.fn();
 
       eventEmitter.on('someEvent', listener1);
       eventEmitter.on('someEvent', listener2);
@@ -30,7 +30,7 @@ describe('EventEmitter', () => {
 
   describe('off', () => {
     it('removes a listener for an event', () => {
-      const listener = jest.fn();
+      const listener = vi.fn();
       eventEmitter.on('someEvent', listener);
 
       eventEmitter.off('someEvent', listener);
@@ -39,8 +39,8 @@ describe('EventEmitter', () => {
     });
 
     it('removes multiple listeners for an event', () => {
-      const listener1 = jest.fn();
-      const listener2 = jest.fn();
+      const listener1 = vi.fn();
+      const listener2 = vi.fn();
       eventEmitter.on('someEvent', listener1);
       eventEmitter.on('someEvent', listener2);
 
@@ -52,9 +52,9 @@ describe('EventEmitter', () => {
 
   describe('emit', () => {
     it('calls all listeners for an event', async () => {
-      const listener1 = jest.fn();
-      const listener2 = jest.fn();
-      const listener3 = jest.fn();
+      const listener1 = vi.fn();
+      const listener2 = vi.fn();
+      const listener3 = vi.fn();
       eventEmitter.on('someEvent', listener1);
       eventEmitter.on('someEvent', listener2);
       eventEmitter.on('someEvent', listener3);
@@ -67,8 +67,8 @@ describe('EventEmitter', () => {
     });
 
     it('does not call listeners for a different event', async () => {
-      const listener1 = jest.fn();
-      const listener2 = jest.fn();
+      const listener1 = vi.fn();
+      const listener2 = vi.fn();
       eventEmitter.on('someEvent', listener1);
       eventEmitter.on('someOtherEvent', listener2);
 
@@ -81,8 +81,8 @@ describe('EventEmitter', () => {
 
   describe('removeAllListeners', () => {
     it('removes all listeners for an event', () => {
-      const listener1 = jest.fn();
-      const listener2 = jest.fn();
+      const listener1 = vi.fn();
+      const listener2 = vi.fn();
       eventEmitter.on('someEvent', listener1);
       eventEmitter.on('someEvent', listener2);
 
@@ -92,8 +92,8 @@ describe('EventEmitter', () => {
     });
 
     it('removes all listeners for all events', () => {
-      const listener1 = jest.fn();
-      const listener2 = jest.fn();
+      const listener1 = vi.fn();
+      const listener2 = vi.fn();
       eventEmitter.on('someEvent', listener1);
       eventEmitter.on('someOtherEvent', listener2);
 
@@ -106,8 +106,8 @@ describe('EventEmitter', () => {
 
   describe('eventNames', () => {
     it('returns the names of all events', () => {
-      eventEmitter.on('someEvent', jest.fn());
-      eventEmitter.on('someOtherEvent', jest.fn());
+      eventEmitter.on('someEvent', vi.fn());
+      eventEmitter.on('someOtherEvent', vi.fn());
 
       expect(eventEmitter.eventNames()).toStrictEqual([
         'someEvent',

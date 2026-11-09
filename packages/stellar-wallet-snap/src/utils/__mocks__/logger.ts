@@ -1,14 +1,15 @@
 import { Logger, LogLevel } from '@metamask/snap-networks-utils';
+import type { Mocked } from 'vitest';
 
 export const logger = {
-  log: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn(),
-  trace: jest.fn(),
+  log: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  trace: vi.fn(),
   withPrefix: (prefix: string): Logger => createPrefixedLogger([prefix]),
-} as unknown as jest.Mocked<Logger>;
+} as unknown as Mocked<Logger>;
 
 export const noOpLogger = new Logger({ level: LogLevel.SILENT });
 

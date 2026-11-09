@@ -185,12 +185,12 @@ describe('Transaction', () => {
   describe('expiration time', () => {
     const mockNow = 1700000000000;
     beforeEach(() => {
-      jest.useFakeTimers();
-      jest.setSystemTime(mockNow);
+      vi.useFakeTimers();
+      vi.setSystemTime(mockNow);
     });
 
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('reads expiration time from inner transaction for a fee-bump envelope', () => {

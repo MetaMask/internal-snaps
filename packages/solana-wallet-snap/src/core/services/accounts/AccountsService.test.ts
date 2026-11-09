@@ -6,7 +6,7 @@ describe('AccountsService', () => {
       const account0 = { id: 'account-0' };
       const account1 = { id: 'account-1' };
       const mockAccountsRepository = {
-        getAll: jest.fn().mockResolvedValue([account0, account1]),
+        getAll: vi.fn().mockResolvedValue([account0, account1]),
       };
       const service = new AccountsService(
         mockAccountsRepository as unknown as never,
@@ -14,7 +14,7 @@ describe('AccountsService', () => {
 
       // The client reports the currently selected account ids.
       (globalThis as { snap?: unknown }).snap = {
-        request: jest.fn().mockResolvedValue([account1.id]),
+        request: vi.fn().mockResolvedValue([account1.id]),
       };
 
       const result = await service.getAllSelected();
@@ -25,14 +25,14 @@ describe('AccountsService', () => {
     it('returns an empty list when the client selected none of the accounts', async () => {
       const account0 = { id: 'account-0' };
       const mockAccountsRepository = {
-        getAll: jest.fn().mockResolvedValue([account0]),
+        getAll: vi.fn().mockResolvedValue([account0]),
       };
       const service = new AccountsService(
         mockAccountsRepository as unknown as never,
       );
 
       (globalThis as { snap?: unknown }).snap = {
-        request: jest.fn().mockResolvedValue([]),
+        request: vi.fn().mockResolvedValue([]),
       };
 
       const result = await service.getAllSelected();

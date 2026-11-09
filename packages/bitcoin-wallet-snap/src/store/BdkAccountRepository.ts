@@ -10,11 +10,11 @@ import {
 } from '@metamask/bitcoindevkit';
 import type { BIP32Node } from '@metamask/key-tree';
 import { SLIP10Node } from '@metamask/key-tree';
+import type { IStateManager } from '@metamask/snap-networks-utils';
 import { v4 } from 'uuid';
 
 import { StorageError } from '../entities';
 import type {
-  AccountStateSnapshot,
   BitcoinAccountRepository,
   BitcoinAccount,
   SnapClient,
@@ -79,14 +79,24 @@ function getAccountState(
 export class BdkAccountRepository implements BitcoinAccountRepository {
   readonly #snapClient: SnapClient;
 
-  constructor(snapClient: SnapClient) {
+  readonly #encryptedState: IStateManager<Partial<SnapState>>;
+
+  readonly #unencryptedState: IStateManager<Partial<SnapState>>;
+
+  constructor(
+    snapClient: SnapClient,
+    encryptedState: IStateManager<Partial<SnapState>>,
+    unencryptedState: IStateManager<Partial<SnapState>>,
+  ) {
     this.#snapClient = snapClient;
+    this.#encryptedState = encryptedState;
+    this.#unencryptedState = unencryptedState;
   }
 
   async get(id: string): Promise<BitcoinAccount | null> {
-    const account = (await this.#snapClient.getState(
+    const account = await this.#encryptedState.getKey<AccountState | null>(
       `accounts.${id}`,
-    )) as AccountState | null;
+    );
     if (!account) {
       return null;
     }
@@ -95,9 +105,8 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
   }
 
   async getAll(): Promise<BitcoinAccount[]> {
-    const accounts = (await this.#snapClient.getState('accounts')) as
-      | SnapState['accounts']
-      | null;
+    const accounts =
+      await this.#encryptedState.getKey<SnapState['accounts']>('accounts');
     if (!accounts) {
       return [];
     }
@@ -112,9 +121,8 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
       return [];
     }
 
-    const accounts = (await this.#snapClient.getState('accounts')) as
-      | SnapState['accounts']
-      | null;
+    const accounts =
+      await this.#encryptedState.getKey<SnapState['accounts']>('accounts');
     if (!accounts) {
       return [];
     }
@@ -137,34 +145,28 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
   async getByDerivationPath(
     derivationPath: string[],
   ): Promise<BitcoinAccount | null> {
-    const id = await this.#snapClient.getState(
+    const id = await this.#unencryptedState.getKey<string>(
       `derivationPaths.${getDerivationPathKey(derivationPath)}`,
     );
     if (!id) {
       return null;
     }
 
-    return this.get(id as string);
+    return this.get(id);
   }
 
-  async getByDerivationPaths(derivationPaths: string[][]): Promise<{
-    accounts: (BitcoinAccount | null)[];
-    snapshot: AccountStateSnapshot;
-  }> {
+  async getByDerivationPaths(
+    derivationPaths: string[][],
+  ): Promise<(BitcoinAccount | null)[]> {
     if (derivationPaths.length === 0) {
-      return {
-        accounts: [],
-        snapshot: { accounts: null, derivationPaths: null },
-      };
+      return [];
     }
 
     const [derivationPathIndex, accounts] = await Promise.all([
-      this.#snapClient.getState('derivationPaths') as Promise<
-        SnapState['derivationPaths'] | null
-      >,
-      this.#snapClient.getState('accounts') as Promise<
-        SnapState['accounts'] | null
-      >,
+      this.#unencryptedState.getKey<SnapState['derivationPaths']>(
+        'derivationPaths',
+      ),
+      this.#encryptedState.getKey<SnapState['accounts']>('accounts'),
     ]);
 
     const accountsById = accounts ?? {};
@@ -201,25 +203,21 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
     });
 
     const hasRepairs = Object.keys(repairs).length > 0;
-    const repairedIndex = hasRepairs
-      ? { ...existingDerivationPathIndex, ...repairs }
-      : derivationPathIndex;
 
     if (hasRepairs) {
-      await this.#snapClient.setState('derivationPaths', repairedIndex);
+      await this.#unencryptedState.setKeyWith<SnapState['derivationPaths']>(
+        'derivationPaths',
+        (current) => ({ ...current, ...repairs }),
+      );
     }
 
-    return {
-      accounts: results,
-      // Include repairs so a later merge from this snapshot preserves them.
-      snapshot: { accounts, derivationPaths: repairedIndex },
-    };
+    return results;
   }
 
   async getWithSigner(id: string): Promise<BitcoinAccount | null> {
-    const accountState = (await this.#snapClient.getState(
+    const accountState = await this.#encryptedState.getKey<AccountState | null>(
       `accounts.${id}`,
-    )) as AccountState | null;
+    );
     if (!accountState) {
       return null;
     }
@@ -356,11 +354,11 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
     }
 
     await Promise.all([
-      this.#snapClient.setState(
+      this.#unencryptedState.setKey(
         `derivationPaths.${getDerivationPathKey(derivationPath)}`,
         id,
       ),
-      this.#snapClient.setState(
+      this.#encryptedState.setKey(
         `accounts.${id}`,
         getAccountState(account, walletData),
       ),
@@ -369,10 +367,7 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
     return account;
   }
 
-  async insertMany(
-    accounts: BitcoinAccount[],
-    snapshot?: AccountStateSnapshot,
-  ): Promise<BitcoinAccount[]> {
+  async insertMany(accounts: BitcoinAccount[]): Promise<BitcoinAccount[]> {
     if (accounts.length === 0) {
       return [];
     }
@@ -405,31 +400,22 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
       derivationPathEntries.push([getDerivationPathKey(derivationPath), id]);
     }
 
-    // Re-read accounts before the full-map write so account updates from sync
-    // are not overwritten by a stale lookup snapshot. Derivation paths are only
-    // mutated by account lifecycle operations, so the mutation-local snapshot
-    // can still safely avoid one redundant state read.
-    const [existingAccounts, existingDerivationPaths] = await Promise.all([
-      this.#snapClient.getState('accounts') as Promise<
-        SnapState['accounts'] | null
-      >,
-      snapshot
-        ? Promise.resolve(snapshot.derivationPaths)
-        : (this.#snapClient.getState('derivationPaths') as Promise<
-            SnapState['derivationPaths'] | null
-          >),
-    ]);
-
-    // The two maps are independent, so write them in parallel.
+    // Merge each map with its latest persisted value while holding its write lock.
     await Promise.all([
-      this.#snapClient.setState('accounts', {
-        ...(existingAccounts ?? {}),
-        ...Object.fromEntries(accountStateEntries),
-      }),
-      this.#snapClient.setState('derivationPaths', {
-        ...(existingDerivationPaths ?? {}),
-        ...Object.fromEntries(derivationPathEntries),
-      }),
+      this.#encryptedState.setKeyWith<SnapState['accounts']>(
+        'accounts',
+        (current) => ({
+          ...current,
+          ...Object.fromEntries(accountStateEntries),
+        }),
+      ),
+      this.#unencryptedState.setKeyWith<SnapState['derivationPaths']>(
+        'derivationPaths',
+        (current) => ({
+          ...current,
+          ...Object.fromEntries(derivationPathEntries),
+        }),
+      ),
     ]);
 
     return accounts;
@@ -447,22 +433,23 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
       return;
     }
 
-    const walletData = await this.#snapClient.getState(`accounts.${id}.wallet`);
-    if (!walletData) {
-      throw new StorageError(
-        `Inconsistent state: account "${id}" not found for update`,
-      );
-    }
-
-    newWalletData.merge(ChangeSet.from_json(walletData as string));
-    await this.#snapClient.setState(
+    await this.#encryptedState.setKeyWith<string>(
       `accounts.${id}.wallet`,
-      newWalletData.to_json(),
+      (walletData) => {
+        if (!walletData) {
+          throw new StorageError(
+            `Inconsistent state: account "${id}" not found for update`,
+          );
+        }
+
+        newWalletData.merge(ChangeSet.from_json(walletData));
+        return newWalletData.to_json();
+      },
     );
 
     // Inscriptions are overwritten and not merged
     if (inscriptions) {
-      await this.#snapClient.setState(
+      await this.#encryptedState.setKey(
         `accounts.${id}.inscriptions`,
         inscriptions,
       );
@@ -470,9 +457,9 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
   }
 
   async delete(id: string): Promise<void> {
-    const account = (await this.#snapClient.getState(
+    const account = await this.#encryptedState.getKey<AccountState | null>(
       `accounts.${id}`,
-    )) as AccountState | null;
+    );
     if (!account) {
       return;
     }
@@ -480,31 +467,31 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
     const derivationPath = account.derivationPath.join('/');
 
     await Promise.all([
-      this.#snapClient.setState(`derivationPaths.${derivationPath}`, null),
-      this.#snapClient.setState(`accounts.${id}`, null),
+      this.#unencryptedState.setKey(`derivationPaths.${derivationPath}`, null),
+      this.#encryptedState.setKey(`accounts.${id}`, null),
     ]);
   }
 
   async fetchInscriptions(id: string): Promise<Inscription[] | null> {
-    const inscriptions = await this.#snapClient.getState(
+    const inscriptions = await this.#encryptedState.getKey<Inscription[]>(
       `accounts.${id}.inscriptions`,
     );
     if (!inscriptions) {
       return null;
     }
 
-    return inscriptions as Inscription[];
+    return inscriptions;
   }
 
   async getFrozenUTXOs(id: string): Promise<string[]> {
-    const inscriptions = await this.#snapClient.getState(
+    const inscriptions = await this.#encryptedState.getKey<Inscription[]>(
       `accounts.${id}.inscriptions`,
     );
     if (!inscriptions) {
       return [];
     }
 
-    return (inscriptions as AccountState['inscriptions']).map((inscription) => {
+    return inscriptions.map((inscription) => {
       // format: <txid>:<vout>:<offset>
       const [txid, vout] = inscription.location.split(':');
       return `${txid}:${vout}`;

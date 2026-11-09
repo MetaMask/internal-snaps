@@ -70,7 +70,7 @@ describe('toSmallestUnit and normalizeAmount', () => {
 
 describe('formatFiat', () => {
   it('rounds to two decimals before locale formatting and passes currency options', () => {
-    const toLocaleStringSpy = jest
+    const toLocaleStringSpy = vi
       .spyOn(Number.prototype, 'toLocaleString')
       .mockImplementation(function formatFiatLocaleSpy(
         this: number,

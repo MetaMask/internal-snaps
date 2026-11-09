@@ -24,22 +24,22 @@ describe('TransactionScan', () => {
 
   beforeEach(() => {
     mockSecurityAlertsApiClient = {
-      scanTransaction: jest.fn().mockResolvedValue({}),
+      scanTransaction: vi.fn().mockResolvedValue({}),
     } as unknown as SecurityAlertsApiClient;
 
     mockLogger = {
-      error: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      withPrefix: jest.fn().mockReturnThis(),
+      error: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      withPrefix: vi.fn().mockReturnThis(),
     } as unknown as Logger;
 
     mockAnalyticsService = {
-      trackSecurityScanCompleted: jest.fn().mockResolvedValue(undefined),
-      trackSecurityAlertDetected: jest.fn().mockResolvedValue(undefined),
+      trackSecurityScanCompleted: vi.fn().mockResolvedValue(undefined),
+      trackSecurityAlertDetected: vi.fn().mockResolvedValue(undefined),
     } as unknown as AnalyticsService;
 
-    mockTrackError = jest.fn();
+    mockTrackError = vi.fn();
 
     transactionScanService = new TransactionScanService({
       securityAlertsApiClient: mockSecurityAlertsApiClient,
@@ -51,11 +51,12 @@ describe('TransactionScan', () => {
 
   describe('scanTransaction', () => {
     it('scans a transaction', async () => {
-      jest
-        .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
-        .mockResolvedValue({
-          status: 'SUCCESS',
-        } as SecurityAlertSimulationValidationResponse);
+      vi.spyOn(
+        mockSecurityAlertsApiClient,
+        'scanTransaction',
+      ).mockResolvedValue({
+        status: 'SUCCESS',
+      } as SecurityAlertSimulationValidationResponse);
 
       const result = await transactionScanService.scanTransaction({
         method: 'method',
@@ -72,9 +73,10 @@ describe('TransactionScan', () => {
 
     it('returns null if the scan fails', async () => {
       const error = new Error('Scan failed');
-      jest
-        .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
-        .mockRejectedValue(error);
+      vi.spyOn(
+        mockSecurityAlertsApiClient,
+        'scanTransaction',
+      ).mockRejectedValue(error);
 
       const result = await transactionScanService.scanTransaction({
         method: 'method',
@@ -89,11 +91,12 @@ describe('TransactionScan', () => {
     });
 
     it('posts the scan body extracted from the transaction', async () => {
-      jest
-        .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
-        .mockResolvedValue({
-          status: 'SUCCESS',
-        } as SecurityAlertSimulationValidationResponse);
+      vi.spyOn(
+        mockSecurityAlertsApiClient,
+        'scanTransaction',
+      ).mockResolvedValue({
+        status: 'SUCCESS',
+      } as SecurityAlertSimulationValidationResponse);
 
       await transactionScanService.scanTransaction({
         method: 'signAndSendTransaction',
@@ -118,11 +121,12 @@ describe('TransactionScan', () => {
     });
 
     it('sends a non-dApp marker for the MetaMask origin', async () => {
-      jest
-        .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
-        .mockResolvedValue({
-          status: 'SUCCESS',
-        } as SecurityAlertSimulationValidationResponse);
+      vi.spyOn(
+        mockSecurityAlertsApiClient,
+        'scanTransaction',
+      ).mockResolvedValue({
+        status: 'SUCCESS',
+      } as SecurityAlertSimulationValidationResponse);
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -142,11 +146,12 @@ describe('TransactionScan', () => {
     it('tracks an error scan when the API returns an invalid result and account is provided', async () => {
       const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 
-      jest
-        .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
-        .mockResolvedValue(
-          null as unknown as SecurityAlertSimulationValidationResponse,
-        );
+      vi.spyOn(
+        mockSecurityAlertsApiClient,
+        'scanTransaction',
+      ).mockResolvedValue(
+        null as unknown as SecurityAlertSimulationValidationResponse,
+      );
 
       const result = await transactionScanService.scanTransaction({
         method: 'method',
@@ -176,30 +181,31 @@ describe('TransactionScan', () => {
     it('reports unrecognized security alert types as-is', async () => {
       const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 
-      jest
-        .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
-        .mockResolvedValue({
-          status: SecurityAlertsScanStatus.SUCCESS,
-          encoding: 'base58',
-          error: null,
-          error_details: null,
-          request_id: 'test-request-id',
-          result: {
-            validation: {
-              result_type: 'Unexpected',
-              reason: 'other',
-              features: [],
-            },
-            simulation: {
-              account_summary: {
-                account_assets_diff: [],
-                account_delegations: [],
-                account_ownerships_diff: [],
-                total_usd_diff: { in: 0, out: 0, total: 0 },
-              },
+      vi.spyOn(
+        mockSecurityAlertsApiClient,
+        'scanTransaction',
+      ).mockResolvedValue({
+        status: SecurityAlertsScanStatus.SUCCESS,
+        encoding: 'base58',
+        error: null,
+        error_details: null,
+        request_id: 'test-request-id',
+        result: {
+          validation: {
+            result_type: 'Unexpected',
+            reason: 'other',
+            features: [],
+          },
+          simulation: {
+            account_summary: {
+              account_assets_diff: [],
+              account_delegations: [],
+              account_ownerships_diff: [],
+              total_usd_diff: { in: 0, out: 0, total: 0 },
             },
           },
-        } as unknown as SecurityAlertSimulationValidationResponse);
+        },
+      } as unknown as SecurityAlertSimulationValidationResponse);
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -224,69 +230,70 @@ describe('TransactionScan', () => {
     });
 
     it('maps asset diffs and error details', async () => {
-      jest
-        .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
-        .mockResolvedValue({
-          status: SecurityAlertsScanStatus.ERROR,
-          encoding: 'base58',
-          error: 'failed',
-          error_details: {
-            type: 'TransactionError',
-            message: 'failed',
-            code: '0x1',
-            transaction_index: 0,
+      vi.spyOn(
+        mockSecurityAlertsApiClient,
+        'scanTransaction',
+      ).mockResolvedValue({
+        status: SecurityAlertsScanStatus.ERROR,
+        encoding: 'base58',
+        error: 'failed',
+        error_details: {
+          type: 'TransactionError',
+          message: 'failed',
+          code: '0x1',
+          transaction_index: 0,
+        },
+        request_id: 'test-request-id',
+        result: {
+          validation: {
+            result_type: SecurityAlertResponse.Benign,
+            reason: '',
+            features: [],
           },
-          request_id: 'test-request-id',
-          result: {
-            validation: {
-              result_type: SecurityAlertResponse.Benign,
-              reason: '',
-              features: [],
-            },
-            simulation: {
-              account_summary: {
-                account_assets_diff: [
-                  {
-                    asset_type: 'NativeToken',
-                    asset: {
-                      type: 'NativeToken',
-                      decimals: 9,
-                      logo: null,
-                    },
-                    in: {
-                      usd_price: 10,
-                      summary: null,
-                      value: 1,
-                      raw_value: 1,
-                    },
-                    out: null,
+          simulation: {
+            account_summary: {
+              account_assets_diff: [
+                {
+                  asset_type: 'NativeToken',
+                  asset: {
+                    type: 'NativeToken',
+                    decimals: 9,
+                    logo: null,
                   },
-                  {
-                    asset_type: 'TOKEN',
-                    asset: {
-                      type: 'TOKEN',
-                      address: 'mint',
-                      symbol: 'USDC',
-                      name: 'USD Coin',
-                      logo: 'https://example.com/usdc.png',
-                      decimals: 6,
-                    },
-                    in: null,
-                    out: {
-                      usd_price: 20,
-                      summary: null,
-                      value: 2,
-                      raw_value: 2,
-                    },
+                  in: {
+                    usd_price: 10,
+                    summary: null,
+                    value: 1,
+                    raw_value: 1,
                   },
-                ],
-                account_delegations: [],
-                account_ownerships_diff: [],
-                total_usd_diff: { in: 0, out: 0, total: 0 },
-              },
+                  out: null,
+                },
+                {
+                  asset_type: 'TOKEN',
+                  asset: {
+                    type: 'TOKEN',
+                    address: 'mint',
+                    symbol: 'USDC',
+                    name: 'USD Coin',
+                    logo: 'https://example.com/usdc.png',
+                    decimals: 6,
+                  },
+                  in: null,
+                  out: {
+                    usd_price: 20,
+                    summary: null,
+                    value: 2,
+                    raw_value: 2,
+                  },
+                },
+              ],
+              account_delegations: [],
+              account_ownerships_diff: [],
+              total_usd_diff: { in: 0, out: 0, total: 0 },
             },
           },
-        } as unknown as SecurityAlertSimulationValidationResponse);
+        },
+      } as unknown as SecurityAlertSimulationValidationResponse);
 
       const result = await transactionScanService.scanTransaction({
         method: 'method',
@@ -328,30 +335,31 @@ describe('TransactionScan', () => {
     it('tracks security scan completion when account is provided', async () => {
       const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 
-      jest
-        .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
-        .mockResolvedValue({
-          status: SecurityAlertsScanStatus.SUCCESS,
-          encoding: 'base58',
-          error: null,
-          error_details: null,
-          request_id: 'test-request-id',
-          result: {
-            validation: {
-              result_type: SecurityAlertResponse.Benign,
-              reason: '',
-              features: [],
-            },
-            simulation: {
-              account_summary: {
-                account_assets_diff: [],
-                account_delegations: [],
-                account_ownerships_diff: [],
-                total_usd_diff: { in: 0, out: 0, total: 0 },
-              },
+      vi.spyOn(
+        mockSecurityAlertsApiClient,
+        'scanTransaction',
+      ).mockResolvedValue({
+        status: SecurityAlertsScanStatus.SUCCESS,
+        encoding: 'base58',
+        error: null,
+        error_details: null,
+        request_id: 'test-request-id',
+        result: {
+          validation: {
+            result_type: SecurityAlertResponse.Benign,
+            reason: '',
+            features: [],
+          },
+          simulation: {
+            account_summary: {
+              account_assets_diff: [],
+              account_delegations: [],
+              account_ownerships_diff: [],
+              total_usd_diff: { in: 0, out: 0, total: 0 },
             },
           },
-        } as unknown as SecurityAlertSimulationValidationResponse);
+        },
+      } as unknown as SecurityAlertSimulationValidationResponse);
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -375,18 +383,19 @@ describe('TransactionScan', () => {
     });
 
     it('does not track analytics without an account', async () => {
-      jest
-        .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
-        .mockResolvedValue({
-          status: SecurityAlertsScanStatus.SUCCESS,
-          result: {
-            validation: {
-              result_type: SecurityAlertResponse.Benign,
-              reason: null,
-              features: [],
-            },
+      vi.spyOn(
+        mockSecurityAlertsApiClient,
+        'scanTransaction',
+      ).mockResolvedValue({
+        status: SecurityAlertsScanStatus.SUCCESS,
+        result: {
+          validation: {
+            result_type: SecurityAlertResponse.Benign,
+            reason: null,
+            features: [],
           },
-        } as unknown as SecurityAlertSimulationValidationResponse);
+        },
+      } as unknown as SecurityAlertSimulationValidationResponse);
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -407,30 +416,31 @@ describe('TransactionScan', () => {
     it('tracks security alert when malicious transaction is detected', async () => {
       const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 
-      jest
-        .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
-        .mockResolvedValue({
-          status: SecurityAlertsScanStatus.SUCCESS,
-          encoding: 'base58',
-          error: null,
-          error_details: null,
-          request_id: 'test-request-id',
-          result: {
-            validation: {
-              result_type: SecurityAlertResponse.Warning,
-              reason: 'transfer_farming',
-              features: [],
-            },
-            simulation: {
-              account_summary: {
-                account_assets_diff: [],
-                account_delegations: [],
-                account_ownerships_diff: [],
-                total_usd_diff: { in: 0, out: 0, total: 0 },
-              },
+      vi.spyOn(
+        mockSecurityAlertsApiClient,
+        'scanTransaction',
+      ).mockResolvedValue({
+        status: SecurityAlertsScanStatus.SUCCESS,
+        encoding: 'base58',
+        error: null,
+        error_details: null,
+        request_id: 'test-request-id',
+        result: {
+          validation: {
+            result_type: SecurityAlertResponse.Warning,
+            reason: 'transfer_farming',
+            features: [],
+          },
+          simulation: {
+            account_summary: {
+              account_assets_diff: [],
+              account_delegations: [],
+              account_ownerships_diff: [],
+              total_usd_diff: { in: 0, out: 0, total: 0 },
             },
           },
-        } as unknown as SecurityAlertSimulationValidationResponse);
+        },
+      } as unknown as SecurityAlertSimulationValidationResponse);
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -468,9 +478,10 @@ describe('TransactionScan', () => {
     it('tracks error when scan fails and account is provided', async () => {
       const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 
-      jest
-        .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
-        .mockRejectedValue(new Error('Scan failed'));
+      vi.spyOn(
+        mockSecurityAlertsApiClient,
+        'scanTransaction',
+      ).mockRejectedValue(new Error('Scan failed'));
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -497,30 +508,31 @@ describe('TransactionScan', () => {
     it('returns correct description for known reasons', async () => {
       const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 
-      jest
-        .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
-        .mockResolvedValue({
-          status: SecurityAlertsScanStatus.SUCCESS,
-          encoding: 'base58',
-          error: null,
-          error_details: null,
-          request_id: 'test-request-id',
-          result: {
-            validation: {
-              result_type: SecurityAlertResponse.Warning,
-              reason: 'transfer_farming',
-              features: [],
-            },
-            simulation: {
-              account_summary: {
-                account_assets_diff: [],
-                account_delegations: [],
-                account_ownerships_diff: [],
-                total_usd_diff: { in: 0, out: 0, total: 0 },
-              },
+      vi.spyOn(
+        mockSecurityAlertsApiClient,
+        'scanTransaction',
+      ).mockResolvedValue({
+        status: SecurityAlertsScanStatus.SUCCESS,
+        encoding: 'base58',
+        error: null,
+        error_details: null,
+        request_id: 'test-request-id',
+        result: {
+          validation: {
+            result_type: SecurityAlertResponse.Warning,
+            reason: 'transfer_farming',
+            features: [],
+          },
+          simulation: {
+            account_summary: {
+              account_assets_diff: [],
+              account_delegations: [],
+              account_ownerships_diff: [],
+              total_usd_diff: { in: 0, out: 0, total: 0 },
             },
           },
-        } as unknown as SecurityAlertSimulationValidationResponse);
+        },
+      } as unknown as SecurityAlertSimulationValidationResponse);
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -547,30 +559,31 @@ describe('TransactionScan', () => {
     it('returns fallback description for unknown reasons', async () => {
       const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 
-      jest
-        .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
-        .mockResolvedValue({
-          status: SecurityAlertsScanStatus.SUCCESS,
-          encoding: 'base58',
-          error: null,
-          error_details: null,
-          request_id: 'test-request-id',
-          result: {
-            validation: {
-              result_type: SecurityAlertResponse.Warning,
-              reason: 'unknown_reason',
-              features: [],
-            },
-            simulation: {
-              account_summary: {
-                account_assets_diff: [],
-                account_delegations: [],
-                account_ownerships_diff: [],
-                total_usd_diff: { in: 0, out: 0, total: 0 },
-              },
+      vi.spyOn(
+        mockSecurityAlertsApiClient,
+        'scanTransaction',
+      ).mockResolvedValue({
+        status: SecurityAlertsScanStatus.SUCCESS,
+        encoding: 'base58',
+        error: null,
+        error_details: null,
+        request_id: 'test-request-id',
+        result: {
+          validation: {
+            result_type: SecurityAlertResponse.Warning,
+            reason: 'unknown_reason',
+            features: [],
+          },
+          simulation: {
+            account_summary: {
+              account_assets_diff: [],
+              account_delegations: [],
+              account_ownerships_diff: [],
+              total_usd_diff: { in: 0, out: 0, total: 0 },
             },
           },
-        } as unknown as SecurityAlertSimulationValidationResponse);
+        },
+      } as unknown as SecurityAlertSimulationValidationResponse);
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -596,30 +609,31 @@ describe('TransactionScan', () => {
     it('returns fallback description when reason is missing', async () => {
       const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 
-      jest
-        .spyOn(mockSecurityAlertsApiClient, 'scanTransaction')
-        .mockResolvedValue({
-          status: SecurityAlertsScanStatus.SUCCESS,
-          encoding: 'base58',
-          error: null,
-          error_details: null,
-          request_id: 'test-request-id',
-          result: {
-            validation: {
-              result_type: SecurityAlertResponse.Malicious,
-              reason: null,
-              features: [],
-            },
-            simulation: {
-              account_summary: {
-                account_assets_diff: [],
-                account_delegations: [],
-                account_ownerships_diff: [],
-                total_usd_diff: { in: 0, out: 0, total: 0 },
-              },
+      vi.spyOn(
+        mockSecurityAlertsApiClient,
+        'scanTransaction',
+      ).mockResolvedValue({
+        status: SecurityAlertsScanStatus.SUCCESS,
+        encoding: 'base58',
+        error: null,
+        error_details: null,
+        request_id: 'test-request-id',
+        result: {
+          validation: {
+            result_type: SecurityAlertResponse.Malicious,
+            reason: null,
+            features: [],
+          },
+          simulation: {
+            account_summary: {
+              account_assets_diff: [],
+              account_delegations: [],
+              account_ownerships_diff: [],
+              total_usd_diff: { in: 0, out: 0, total: 0 },
             },
           },
-        } as unknown as SecurityAlertSimulationValidationResponse);
+        },
+      } as unknown as SecurityAlertSimulationValidationResponse);
 
       await transactionScanService.scanTransaction({
         method: 'method',

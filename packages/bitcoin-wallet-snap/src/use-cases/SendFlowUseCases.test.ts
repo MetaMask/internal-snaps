@@ -6,7 +6,8 @@ import type {
 import { Psbt, Address, Amount } from '@metamask/bitcoindevkit';
 import { TransactionType } from '@metamask/keyring-api';
 import type { GetPreferencesResult } from '@metamask/snaps-sdk';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type {
   SendFormContext,
@@ -33,19 +34,6 @@ import { SendFlowUseCases } from './SendFlowUseCases';
 
 // TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
 
-jest.mock('@metamask/bitcoindevkit', () => {
-  return {
-    Address: {
-      from_string: jest.fn(),
-    },
-    Amount: {
-      from_btc: jest.fn(),
-      from_sat: jest.fn(),
-    },
-    Psbt: { from_string: jest.fn() },
-  };
-});
-
 describe('SendFlowUseCases', () => {
   const mockLogger = mock<Logger>();
   const mockSnapClient = mock<SnapClient>();
@@ -60,8 +48,8 @@ describe('SendFlowUseCases', () => {
   const explorerUrl = 'http://myeplorer.com';
   const mockAccount = mock<BitcoinAccount>({
     network: 'bitcoin',
-    buildTx: jest.fn(),
-    sign: jest.fn(),
+    buildTx: vi.fn(),
+    sign: vi.fn(),
     id: 'acc-id',
     // TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
     /* eslint-disable @typescript-eslint/naming-convention */
@@ -73,7 +61,7 @@ describe('SendFlowUseCases', () => {
     locale: 'en',
   });
   const mockPsbt = mock<Psbt>({
-    toString: jest.fn(),
+    toString: vi.fn(),
   });
 
   const useCases = new SendFlowUseCases(
@@ -88,6 +76,13 @@ describe('SendFlowUseCases', () => {
     fallbackFeeRate,
     ratesRefreshInterval,
   );
+
+  beforeEach(() => {
+    vi.spyOn(Address, 'from_string');
+    vi.spyOn(Amount, 'from_btc');
+    vi.spyOn(Amount, 'from_sat');
+    vi.spyOn(Psbt, 'from_string');
+  });
 
   describe('displayForm', () => {
     beforeEach(() => {
@@ -111,7 +106,7 @@ describe('SendFlowUseCases', () => {
     });
 
     it('displays Send form and returns PSBT when resolved', async () => {
-      (Psbt.from_string as jest.Mock).mockReturnValue(mockPsbt);
+      (Psbt.from_string as Mock).mockReturnValue(mockPsbt);
       mockSnapClient.displayInterface.mockResolvedValue('psbtBase64');
 
       const result = await useCases.display('account-id');
@@ -162,12 +157,12 @@ describe('SendFlowUseCases', () => {
       locale: 'en',
     };
     const mockTxBuilder = mock<TransactionBuilder>({
-      addRecipient: jest.fn(),
-      feeRate: jest.fn(),
-      drainTo: jest.fn(),
-      drainWallet: jest.fn(),
-      finish: jest.fn(),
-      unspendable: jest.fn(),
+      addRecipient: vi.fn(),
+      feeRate: vi.fn(),
+      drainTo: vi.fn(),
+      drainWallet: vi.fn(),
+      finish: vi.fn(),
+      unspendable: vi.fn(),
     });
 
     beforeEach(() => {
@@ -403,7 +398,7 @@ describe('SendFlowUseCases', () => {
     });
 
     it('sets recipient on Recipient event', async () => {
-      (Address.from_string as jest.Mock).mockReturnValue({
+      (Address.from_string as Mock).mockReturnValue({
         toString: () => 'newAddressValidated',
       });
 
@@ -437,7 +432,7 @@ describe('SendFlowUseCases', () => {
     });
 
     it('sets amount on Amount event', async () => {
-      (Amount.from_btc as jest.Mock).mockReturnValue({
+      (Amount.from_btc as Mock).mockReturnValue({
         to_sat: () => BigInt('1111'), // Use different amount than state to verify that we get the result from the toString of the bigint
       });
 
@@ -476,7 +471,7 @@ describe('SendFlowUseCases', () => {
         code: 18,
         message: 'base58 error',
       });
-      (Address.from_string as jest.Mock).mockImplementation(() => {
+      (Address.from_string as Mock).mockImplementation(() => {
         throw mockError as unknown as Error;
       });
 
@@ -508,7 +503,7 @@ describe('SendFlowUseCases', () => {
     });
 
     it('sets amount on Amount: switched currencies', async () => {
-      (Amount.from_sat as jest.Mock).mockReturnValue({
+      (Amount.from_sat as Mock).mockReturnValue({
         to_sat: () => BigInt('22222'),
       });
 
@@ -586,7 +581,7 @@ describe('SendFlowUseCases', () => {
     });
 
     it('computes the fee when amount and recipient are filled', async () => {
-      (Address.from_string as jest.Mock).mockReturnValue({
+      (Address.from_string as Mock).mockReturnValue({
         toString: () => 'newAddressValidated',
       });
       mockPsbt.fee.mockReturnValue({
@@ -785,7 +780,7 @@ describe('SendFlowUseCases', () => {
   });
 
   describe('refreshRates', () => {
-    const mockFeeEstimates = mock<FeeEstimates>({ get: jest.fn() });
+    const mockFeeEstimates = mock<FeeEstimates>({ get: vi.fn() });
     const mockContext: SendFormContext = {
       account: { id: 'account-id', address: 'myAddress' },
       balance: '20000',
@@ -830,7 +825,7 @@ describe('SendFlowUseCases', () => {
     });
 
     it('sets fee and exchange rates successfully', async () => {
-      (mockFeeEstimates.get as jest.Mock).mockReturnValue(mockFeeRate);
+      (mockFeeEstimates.get as Mock).mockReturnValue(mockFeeRate);
 
       await useCases.refresh('interface-id');
 
@@ -855,7 +850,7 @@ describe('SendFlowUseCases', () => {
     });
 
     it('uses fallback fee rate when the estimate is zero', async () => {
-      (mockFeeEstimates.get as jest.Mock).mockReturnValue(0);
+      (mockFeeEstimates.get as Mock).mockReturnValue(0);
 
       await useCases.refresh('interface-id');
 
@@ -866,7 +861,7 @@ describe('SendFlowUseCases', () => {
     });
 
     it('clamps a fractional estimate below 1 sat/vB instead of using zero', async () => {
-      (mockFeeEstimates.get as jest.Mock).mockReturnValue(0.285);
+      (mockFeeEstimates.get as Mock).mockReturnValue(0.285);
 
       await useCases.refresh('interface-id');
 
@@ -877,7 +872,7 @@ describe('SendFlowUseCases', () => {
     });
 
     it('does not set exchange rate if network is not bitcoin', async () => {
-      (mockFeeEstimates.get as jest.Mock).mockReturnValue(mockFeeRate);
+      (mockFeeEstimates.get as Mock).mockReturnValue(mockFeeRate);
       mockSendFlowRepository.getContext.mockResolvedValueOnce({
         ...mockContext,
         network: 'notBitcoin' as Network,
@@ -898,7 +893,7 @@ describe('SendFlowUseCases', () => {
     });
 
     it('does not set exchange rate if currency is not supported', async () => {
-      (mockFeeEstimates.get as jest.Mock).mockReturnValue(mockFeeRate);
+      (mockFeeEstimates.get as Mock).mockReturnValue(mockFeeRate);
       mockSnapClient.getPreferences.mockResolvedValue({
         ...mockPreferences,
         currency: 'unknown',
@@ -941,10 +936,10 @@ describe('SendFlowUseCases', () => {
   describe('confirmSendFlow', () => {
     const mockTxBuilder = mock<TransactionBuilder>();
     const mockTemplatePsbt = mock<Psbt>({
-      toString: jest.fn().mockReturnValue('template-psbt-base64'),
+      toString: vi.fn().mockReturnValue('template-psbt-base64'),
     });
     const mockSignedPsbt = mock<Psbt>({
-      toString: jest.fn().mockReturnValue('signed-psbt-base64'),
+      toString: vi.fn().mockReturnValue('signed-psbt-base64'),
     });
     const mockTransaction = mock<Transaction>();
     const mockAmount = mock<Amount>();
@@ -956,7 +951,7 @@ describe('SendFlowUseCases', () => {
       mockAccount.buildTx.mockReturnValue(mockTxBuilder);
       mockAccount.extractTransaction.mockReturnValue(mockTransaction);
       mockAmount.to_sat.mockReturnValue(BigInt(10000));
-      (Amount.from_btc as jest.Mock).mockReturnValue(mockAmount);
+      (Amount.from_btc as Mock).mockReturnValue(mockAmount);
       mockTxBuilder.feeRate.mockReturnThis();
       mockTxBuilder.addRecipient.mockReturnThis();
       mockTxBuilder.drainWallet.mockReturnThis();
@@ -973,7 +968,7 @@ describe('SendFlowUseCases', () => {
       mockAccountUseCases.signPsbt.mockResolvedValue({
         psbt: mockSignedPsbt,
       } as any);
-      (Psbt.from_string as jest.Mock).mockReturnValue(mockSignedPsbt);
+      (Psbt.from_string as Mock).mockReturnValue(mockSignedPsbt);
       mockRatesClient.spotPrices.mockResolvedValue({
         price: { value: 50000, currency: 'usd' },
       } as any);
@@ -1013,7 +1008,7 @@ describe('SendFlowUseCases', () => {
 
     it('marks the recipient as isMine when the address belongs to the account', async () => {
       const recipientScript = {} as any;
-      (Address.from_string as jest.Mock).mockReturnValue({
+      (Address.from_string as Mock).mockReturnValue({
         script_pubkey: recipientScript,
       });
       mockAccount.isMine.mockReturnValue(true);
@@ -1032,7 +1027,7 @@ describe('SendFlowUseCases', () => {
 
     it('defaults isMine to false when the recipient address fails to parse', async () => {
       const error = new Error('Invalid address');
-      (Address.from_string as jest.Mock).mockImplementation(() => {
+      (Address.from_string as Mock).mockImplementation(() => {
         throw error;
       });
 

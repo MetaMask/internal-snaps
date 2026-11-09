@@ -3,33 +3,21 @@ import type { Transaction, Txid } from '@metamask/bitcoindevkit';
 import type { Transaction as KeyringTransaction } from '@metamask/keyring-api';
 import { BtcScope, FeeType, TransactionType } from '@metamask/keyring-api';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { Logger, BitcoinAccount } from '../entities';
 import type { AccountUseCases, SendFlowUseCases } from '../use-cases';
 import { Caip19Asset } from './caip';
+import * as Mappings from './mappings';
 import { mapPsbtToTransaction } from './mappings';
 import { RpcHandler } from './RpcHandler';
 import { RpcMethod, SendErrorCodes } from './validation';
 
 const mockPsbt = mock<Psbt>();
+
 // TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
 /* eslint-disable @typescript-eslint/naming-convention */
-jest.mock('@metamask/bitcoindevkit', () => ({
-  Psbt: { from_string: jest.fn() },
-  Address: {
-    from_string: jest.fn(),
-  },
-  Amount: {
-    from_btc: jest.fn(),
-  },
-}));
-
-jest.mock('./mappings', () => ({
-  ...jest.requireActual('./mappings'),
-  mapPsbtToTransaction: jest.fn(),
-}));
-
 describe('RpcHandler', () => {
   const mockSendFlowUseCases = mock<SendFlowUseCases>();
   const mockAccountsUseCases = mock<AccountUseCases>();
@@ -44,9 +32,13 @@ describe('RpcHandler', () => {
   );
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    vi.spyOn(Psbt, 'from_string');
+    vi.spyOn(Address, 'from_string');
+    vi.spyOn(Amount, 'from_btc');
+    vi.spyOn(Mappings, 'mapPsbtToTransaction');
 
-    jest.mocked(Psbt.from_string).mockReturnValue(mockPsbt);
+    vi.mocked(Psbt.from_string).mockReturnValue(mockPsbt);
 
     // setup Address mock with validation logic
     const validAddresses = [
@@ -56,14 +48,14 @@ describe('RpcHandler', () => {
       '3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy', // P2SH mainnet
     ];
 
-    jest
-      .mocked(Address.from_string)
-      .mockImplementation((address: string, _: string) => {
+    vi.mocked(Address.from_string).mockImplementation(
+      (address: string, _: string) => {
         if (validAddresses.includes(address)) {
           return { toString: () => address } as any;
         }
         throw new Error(`Invalid address: ${address}`);
-      });
+      },
+    );
   });
 
   describe('parameter validation', () => {
@@ -325,7 +317,7 @@ describe('RpcHandler', () => {
       mockAccountsUseCases.signPsbt.mockResolvedValue({
         psbt: 'psbtBase64',
         txid: mock<Txid>({
-          toString: jest.fn().mockReturnValue('txId'),
+          toString: vi.fn().mockReturnValue('txId'),
         }),
         canBeMalleable: false,
       });
@@ -350,7 +342,7 @@ describe('RpcHandler', () => {
       mockAccountsUseCases.signPsbt.mockResolvedValue({
         psbt: 'psbtBase64',
         txid: mock<Txid>({
-          toString: jest.fn().mockReturnValue('txId'),
+          toString: vi.fn().mockReturnValue('txId'),
         }),
         canBeMalleable: true,
       });
@@ -368,7 +360,7 @@ describe('RpcHandler', () => {
       mockAccountsUseCases.signPsbt.mockResolvedValue({
         psbt: 'psbtBase64',
         txid: mock<Txid>({
-          toString: jest.fn().mockReturnValue('txId'),
+          toString: vi.fn().mockReturnValue('txId'),
         }),
         // canBeMalleable intentionally omitted
       });
@@ -417,7 +409,7 @@ describe('RpcHandler', () => {
       mockAccountsUseCases.signPsbt.mockResolvedValue({
         psbt: 'psbtBase64',
         txid: mock<Txid>({
-          toString: jest.fn().mockReturnValue('txId'),
+          toString: vi.fn().mockReturnValue('txId'),
         }),
         canBeMalleable: false,
       });
@@ -442,7 +434,7 @@ describe('RpcHandler', () => {
       mockAccountsUseCases.signPsbt.mockResolvedValue({
         psbt: 'psbtBase64',
         txid: mock<Txid>({
-          toString: jest.fn().mockReturnValue('txId'),
+          toString: vi.fn().mockReturnValue('txId'),
         }),
         canBeMalleable: false,
       });
@@ -472,7 +464,7 @@ describe('RpcHandler', () => {
       mockAccountsUseCases.signPsbt.mockResolvedValue({
         psbt: 'psbtBase64',
         txid: mock<Txid>({
-          toString: jest.fn().mockReturnValue('txId'),
+          toString: vi.fn().mockReturnValue('txId'),
         }),
         canBeMalleable: false,
       });
@@ -524,7 +516,8 @@ describe('RpcHandler', () => {
 
     it('executes computeFee', async () => {
       const mockAmount = mock<Amount>({
-        to_btc: jest.fn().mockReturnValue('0.00001'),
+        to_sat: () => 1000n,
+        to_btc: vi.fn().mockReturnValue('0.00001'),
       });
       mockAccountsUseCases.computeFee.mockResolvedValue(mockAmount);
 
@@ -569,7 +562,7 @@ describe('RpcHandler', () => {
         },
       };
 
-      jest.mocked(Psbt.from_string).mockImplementationOnce(() => {
+      vi.mocked(Psbt.from_string).mockImplementationOnce(() => {
         throw new Error('Invalid PSBT');
       });
 
@@ -654,7 +647,7 @@ describe('RpcHandler', () => {
       };
       mockAccountsUseCases.get.mockResolvedValue(mockAmountAccount as any);
 
-      (Amount.from_btc as jest.Mock).mockImplementation((btc) => ({
+      (Amount.from_btc as Mock).mockImplementation((btc) => ({
         to_sat: () => BigInt(Math.round(btc * 100_000_000)),
       }));
     });
@@ -816,13 +809,13 @@ describe('RpcHandler', () => {
       mockSendFlowUseCases.confirmSendFlow.mockResolvedValue(mockTransaction);
 
       // mock Amount.from_btc to return an object with to_sat method
-      (Amount.from_btc as jest.Mock).mockImplementation((btc) => ({
+      (Amount.from_btc as Mock).mockImplementation((btc) => ({
         to_sat: () => BigInt(Math.round(btc * 100_000_000)),
       }));
 
       // we mock the mapping function since we don't care about the result structure here
       // it is tested in mappings.test.ts
-      jest.mocked(mapPsbtToTransaction).mockReturnValue({
+      vi.mocked(mapPsbtToTransaction).mockReturnValue({
         canBeMalleable: false,
       } as KeyringTransaction & {
         canBeMalleable: boolean;
@@ -847,7 +840,7 @@ describe('RpcHandler', () => {
     });
 
     it('passes the canBeMalleable flag through from mapPsbtToTransaction', async () => {
-      jest.mocked(mapPsbtToTransaction).mockReturnValueOnce({
+      vi.mocked(mapPsbtToTransaction).mockReturnValueOnce({
         id: 'tx-id',
         canBeMalleable: true,
       } as unknown as KeyringTransaction & { canBeMalleable: boolean });
@@ -1062,7 +1055,7 @@ describe('RpcHandler', () => {
       const mockFeeAmount = mock<Amount>();
       mockFeeAmount.to_sat.mockReturnValue(BigInt(1000)); // 0.00001 BTC fee in satoshis
       mockSignedPsbtWithFee.fee.mockReturnValue(mockFeeAmount);
-      jest.mocked(Psbt.from_string).mockReturnValue(mockSignedPsbtWithFee);
+      vi.mocked(Psbt.from_string).mockReturnValue(mockSignedPsbtWithFee);
 
       const insufficientBalanceRequest: JsonRpcRequest = {
         id: 1,
@@ -1100,13 +1093,13 @@ describe('RpcHandler', () => {
       const message = btoa(`rewards,${address},${timestamp}`);
 
       mockAccountsUseCases.get.mockResolvedValue(mockBitcoinAccount);
-      jest
-        .mocked(Address.from_string)
-        .mockReturnValue(mockBitcoinAccount.publicAddress);
+      vi.mocked(Address.from_string).mockReturnValue(
+        mockBitcoinAccount.publicAddress,
+      );
 
-      const signMessageSpy = jest
-        .spyOn(mockAccountsUseCases, 'signMessage' as keyof AccountUseCases)
-        .mockResolvedValue('mock-signature-base64' as never);
+      const signMessageSpy = mockAccountsUseCases.signMessage.mockResolvedValue(
+        'mock-signature-base64' as never,
+      );
 
       const request: JsonRpcRequest = {
         jsonrpc: '2.0',
@@ -1137,9 +1130,9 @@ describe('RpcHandler', () => {
       const message = btoa(`rewards,${differentAddress},${timestamp}`);
 
       mockAccountsUseCases.get.mockResolvedValue(mockBitcoinAccount);
-      jest
-        .mocked(Address.from_string)
-        .mockReturnValue(mockBitcoinAccount.publicAddress);
+      vi.mocked(Address.from_string).mockReturnValue(
+        mockBitcoinAccount.publicAddress,
+      );
 
       const request: JsonRpcRequest = {
         jsonrpc: '2.0',
@@ -1204,16 +1197,16 @@ describe('RpcHandler', () => {
     });
 
     beforeEach(() => {
-      jest
-        .mocked(Address.from_string)
-        .mockReturnValue(mockBitcoinAccount.publicAddress);
+      vi.mocked(Address.from_string).mockReturnValue(
+        mockBitcoinAccount.publicAddress,
+      );
     });
 
     it('signs the proof message and returns the BIP-322 signature', async () => {
       mockAccountsUseCases.get.mockResolvedValue(mockBitcoinAccount);
-      const signMessageSpy = jest
-        .spyOn(mockAccountsUseCases, 'signMessage' as keyof AccountUseCases)
-        .mockResolvedValue('mock-bip322-signature' as never);
+      const signMessageSpy = mockAccountsUseCases.signMessage.mockResolvedValue(
+        'mock-bip322-signature' as never,
+      );
 
       const message = `metamask:proof-of-ownership:${nonce}:${accountAddress}`;
       const result = await handler.route(origin, buildRequest(message));
@@ -1234,9 +1227,9 @@ describe('RpcHandler', () => {
 
     it('canonicalizes mixed-case bech32 addresses before validating and comparing', async () => {
       mockAccountsUseCases.get.mockResolvedValue(mockBitcoinAccount);
-      jest
-        .spyOn(mockAccountsUseCases, 'signMessage' as keyof AccountUseCases)
-        .mockResolvedValue('mock-bip322-signature' as never);
+      mockAccountsUseCases.signMessage.mockResolvedValue(
+        'mock-bip322-signature' as never,
+      );
 
       const uppercased = accountAddress.toUpperCase();
       const message = `metamask:proof-of-ownership:${nonce}:${uppercased}`;
@@ -1282,7 +1275,7 @@ describe('RpcHandler', () => {
 
     it('throws when the embedded address is invalid for the account network', async () => {
       mockAccountsUseCases.get.mockResolvedValue(mockBitcoinAccount);
-      jest.mocked(Address.from_string).mockImplementationOnce(() => {
+      vi.mocked(Address.from_string).mockImplementationOnce(() => {
         throw new Error('invalid address');
       });
 
@@ -1306,9 +1299,9 @@ describe('RpcHandler', () => {
 
     it('propagates errors from the signer', async () => {
       mockAccountsUseCases.get.mockResolvedValue(mockBitcoinAccount);
-      jest
-        .spyOn(mockAccountsUseCases, 'signMessage' as keyof AccountUseCases)
-        .mockRejectedValue(new Error('signer unavailable') as never);
+      mockAccountsUseCases.signMessage.mockRejectedValue(
+        new Error('signer unavailable') as never,
+      );
 
       const message = `metamask:proof-of-ownership:${nonce}:${accountAddress}`;
       await expect(

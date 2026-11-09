@@ -1,6 +1,7 @@
 import type { Transaction } from '@metamask/keyring-api';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import type { IStateManager } from '@metamask/snap-networks-utils';
+import type { Mocked } from 'vitest';
 
 import { KnownCaip19Id, Network } from '../../constants';
 import type { UnencryptedStateValue } from '../state/stateTypes';
@@ -8,7 +9,7 @@ import { TransactionsRepository } from './TransactionsRepository';
 
 describe('TransactionsRepository', () => {
   let transactionsRepository: TransactionsRepository;
-  let mockState: jest.Mocked<IStateManager<UnencryptedStateValue>>;
+  let mockState: Mocked<IStateManager<UnencryptedStateValue>>;
 
   const mockAccountId = 'test-account-id';
 
@@ -50,11 +51,11 @@ describe('TransactionsRepository', () => {
 
   beforeEach(() => {
     mockState = {
-      getKey: jest.fn(),
-      setKey: jest.fn(),
-      setKeyWith: jest.fn(),
-      update: jest.fn(),
-    } as unknown as jest.Mocked<IStateManager<UnencryptedStateValue>>;
+      getKey: vi.fn(),
+      setKey: vi.fn(),
+      setKeyWith: vi.fn(),
+      update: vi.fn(),
+    } as unknown as Mocked<IStateManager<UnencryptedStateValue>>;
 
     transactionsRepository = new TransactionsRepository(mockState);
   });
