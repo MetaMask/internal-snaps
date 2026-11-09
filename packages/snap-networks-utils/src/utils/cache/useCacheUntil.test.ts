@@ -1,4 +1,5 @@
 import type { Mock } from 'vitest';
+
 import type { Serializable } from '../serialization/types';
 import type { ICache } from './types';
 import { useCacheUntil } from './useCacheUntil';
@@ -228,9 +229,9 @@ describe('useCacheUntil', () => {
 
     it('handles cache set errors gracefully', async () => {
       vi.spyOn(cache, 'get').mockResolvedValue(undefined);
-      vi
-        .spyOn(cache, 'set')
-        .mockRejectedValueOnce(new Error('Cache set error'));
+      vi.spyOn(cache, 'set').mockRejectedValueOnce(
+        new Error('Cache set error'),
+      );
 
       const result = await cachedTestFunction();
 
@@ -243,12 +244,12 @@ describe('useCacheUntil', () => {
         error: vi.fn(),
       };
 
-      vi
-        .spyOn(cache, 'get')
-        .mockRejectedValueOnce(new Error('Cache get error'));
-      vi
-        .spyOn(cache, 'set')
-        .mockRejectedValueOnce(new Error('Cache set error'));
+      vi.spyOn(cache, 'get').mockRejectedValueOnce(
+        new Error('Cache get error'),
+      );
+      vi.spyOn(cache, 'set').mockRejectedValueOnce(
+        new Error('Cache set error'),
+      );
 
       const loggedCachedFunction = useCacheUntil(testFunction, cache, {
         ...cacheOptions,
@@ -357,9 +358,10 @@ describe('useCacheUntil', () => {
       // Advance time to just before maintenance
       vi.setSystemTime(maintenanceTime - 1000);
       actualExecutionSpy.mockClear();
-      vi
-        .spyOn(cache, 'get')
-        .mockResolvedValue({ energyFee: 420, transactionFee: 1000 });
+      vi.spyOn(cache, 'get').mockResolvedValue({
+        energyFee: 420,
+        transactionFee: 1000,
+      });
 
       await cachedTestFunction();
       expect(actualExecutionSpy).not.toHaveBeenCalled(); // Still using cache

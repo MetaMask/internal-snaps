@@ -1,4 +1,5 @@
 import type { Mock } from 'vitest';
+
 import type { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { Logger } from '../../utils/logger/Logger';
 import type { AnalyticsService } from '../analytics/AnalyticsService';

@@ -1,4 +1,3 @@
-import type { Mock } from 'vitest';
 import {
   ChainDisconnectedError,
   DisconnectedError,
@@ -18,6 +17,7 @@ import {
   UnsupportedMethodError,
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
+import type { Mock } from 'vitest';
 
 import { mockLogger } from '../logger/__mocks__/Logger';
 import { createWithCatchAndThrowSnapError, normalizeError } from './errors';

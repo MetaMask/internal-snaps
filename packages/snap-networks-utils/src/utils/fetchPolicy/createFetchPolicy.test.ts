@@ -1,6 +1,6 @@
-import type { Mock } from 'vitest';
 import { CircuitState, ConstantBackoff } from '@metamask/base-data-service';
 import type { ServicePolicy } from '@metamask/base-data-service';
+import type { Mock } from 'vitest';
 
 import {
   BrokenCircuitError,
@@ -182,9 +182,9 @@ describe('createFetchPolicy', () => {
     const { policy, logger } = setup({ chainIdCaip: undefined });
     const error = httpError(503);
 
-    await expect(
-      policy.execute(vi.fn().mockRejectedValue(error)),
-    ).rejects.toBe(error);
+    await expect(policy.execute(vi.fn().mockRejectedValue(error))).rejects.toBe(
+      error,
+    );
 
     expect(logger.warn).toHaveBeenCalledWith('[test_api] Giving up:', error);
   });

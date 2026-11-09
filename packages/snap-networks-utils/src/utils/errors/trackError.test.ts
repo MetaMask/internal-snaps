@@ -1,5 +1,5 @@
-import type { Mock } from 'vitest';
 import { SnapError, UserRejectedRequestError } from '@metamask/snaps-sdk';
+import type { Mock } from 'vitest';
 
 import { mockLogger } from '../logger/__mocks__/Logger';
 import type { TrackErrorFn } from './errors';

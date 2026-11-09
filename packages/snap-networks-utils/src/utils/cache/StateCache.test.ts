@@ -204,9 +204,7 @@ describe('StateCache', () => {
         __cache__default: {},
       });
       const cache = createStateCache(stateWithCache);
-      const mockDateNow = vi
-        .spyOn(Date, 'now')
-        .mockReturnValue(1704067200000); // January 1, 2024
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValue(1704067200000); // January 1, 2024
 
       await cache.set('someKey', 'someValue', 0);
       const stateValue = await stateWithCache.get();
@@ -561,9 +559,7 @@ describe('StateCache', () => {
       const cache = createStateCache(stateWithCache);
 
       // Mock Date.now to return a time after the expiration
-      const mockDateNow = vi
-        .spyOn(Date, 'now')
-        .mockReturnValue(1704067200001); // January 1, 2024 + 1 millisecond
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValue(1704067200001); // January 1, 2024 + 1 millisecond
 
       const result = await cache.mget(['someKey']);
 
@@ -614,9 +610,7 @@ describe('StateCache', () => {
       const cache = createStateCache(stateWithCache);
 
       // Mock Date.now to return a time after the expiration
-      const mockDateNow = vi
-        .spyOn(Date, 'now')
-        .mockReturnValue(1704067200001); // January 1, 2024 + 1 millisecond
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValue(1704067200001); // January 1, 2024 + 1 millisecond
 
       await cache.mget(['someKey']);
       const stateValue = await stateWithCache.get();

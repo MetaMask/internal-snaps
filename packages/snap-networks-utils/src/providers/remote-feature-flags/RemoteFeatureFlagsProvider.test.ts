@@ -1,5 +1,5 @@
-import type { Mocked } from 'vitest';
 import type { RemoteFeatureFlagControllerState } from '@metamask/remote-feature-flag-controller';
+import type { Mocked } from 'vitest';
 
 import type { RemoteFeatureFlagsProviderMessenger } from './RemoteFeatureFlagsProvider';
 import { RemoteFeatureFlagsProvider } from './RemoteFeatureFlagsProvider';

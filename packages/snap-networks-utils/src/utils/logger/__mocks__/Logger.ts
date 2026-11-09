@@ -1,4 +1,5 @@
 import type { Mocked } from 'vitest';
+
 import type { Logger } from '../Logger';
 
 export const mockLogger = {

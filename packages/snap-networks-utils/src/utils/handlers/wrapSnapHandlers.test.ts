@@ -1,4 +1,3 @@
-import type { Mock } from 'vitest';
 import type {
   OnAssetHistoricalPriceHandler,
   OnAssetsConversionHandler,
@@ -7,6 +6,7 @@ import type {
   OnClientRequestHandler,
   OnKeyringRequestHandler,
 } from '@metamask/snaps-sdk';
+import type { Mock } from 'vitest';
 
 import { noopAssetHandlers, wrapSnapHandlers } from './wrapSnapHandlers';
 import type { WithCatchAndThrowSnapError } from './wrapSnapHandlers';

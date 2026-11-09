@@ -1,4 +1,3 @@
-import type { Mocked } from 'vitest';
 import type {
   AccountId,
   Asset,
@@ -6,6 +5,7 @@ import type {
 } from '@metamask/assets-controller';
 import type { InternalAccount } from '@metamask/keyring-internal-api';
 import type { CaipChainId } from '@metamask/utils';
+import type { Mocked } from 'vitest';
 
 import type { AssetsProviderMessenger } from './AssetsProvider';
 import { AssetsProvider } from './AssetsProvider';

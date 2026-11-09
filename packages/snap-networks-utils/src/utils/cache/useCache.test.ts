@@ -1,4 +1,5 @@
 import type { Mock } from 'vitest';
+
 import type { Serializable } from '../serialization/types';
 import type { ICache } from './types';
 import { useCache } from './useCache';
@@ -147,9 +148,9 @@ describe('useCache', () => {
 
     it('should handle cache set errors gracefully', async () => {
       vi.spyOn(cache, 'get').mockResolvedValue(undefined);
-      vi
-        .spyOn(cache, 'set')
-        .mockRejectedValueOnce(new Error('Cache set error'));
+      vi.spyOn(cache, 'set').mockRejectedValueOnce(
+        new Error('Cache set error'),
+      );
       actualExecutionSpy.mockResolvedValueOnce('test');
 
       const result = await cachedTestFunction();
@@ -163,12 +164,12 @@ describe('useCache', () => {
         error: vi.fn(),
       };
 
-      vi
-        .spyOn(cache, 'get')
-        .mockRejectedValueOnce(new Error('Cache get error'));
-      vi
-        .spyOn(cache, 'set')
-        .mockRejectedValueOnce(new Error('Cache set error'));
+      vi.spyOn(cache, 'get').mockRejectedValueOnce(
+        new Error('Cache get error'),
+      );
+      vi.spyOn(cache, 'set').mockRejectedValueOnce(
+        new Error('Cache set error'),
+      );
       actualExecutionSpy.mockResolvedValueOnce('test');
 
       const loggedCachedFunction = useCache(testFunction, cache, {

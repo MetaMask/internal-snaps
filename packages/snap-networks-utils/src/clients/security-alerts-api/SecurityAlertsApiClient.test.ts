@@ -1,5 +1,5 @@
-import type { Mock, MockedFunction } from 'vitest';
 import { ConstantBackoff } from '@metamask/base-data-service';
+import type { Mock, MockedFunction } from 'vitest';
 
 import { HttpError } from '../../utils/errors';
 import { createFetchPolicy } from '../../utils/fetchPolicy/createFetchPolicy';

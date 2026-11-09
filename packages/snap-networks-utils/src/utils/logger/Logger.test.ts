@@ -1,4 +1,5 @@
 import type { MockInstance } from 'vitest';
+
 import { Logger, LogLevel } from './Logger';
 
 const loggerMethodConfigurations = [

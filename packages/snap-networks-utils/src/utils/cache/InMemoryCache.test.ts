@@ -26,9 +26,7 @@ describe('InMemoryCache', () => {
 
     it('returns undefined and removes the entry if it is expired', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = vi
-        .spyOn(Date, 'now')
-        .mockReturnValueOnce(JAN_1_2024);
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValueOnce(JAN_1_2024);
 
       await cache.set('key', 'value', 1000);
       mockDateNow.mockReturnValue(JAN_1_2024 + 1001);
@@ -55,9 +53,7 @@ describe('InMemoryCache', () => {
 
     it('stores the value with the provided ttl', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = vi
-        .spyOn(Date, 'now')
-        .mockReturnValueOnce(JAN_1_2024);
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValueOnce(JAN_1_2024);
 
       await cache.set('key', 'value', 1000);
 
@@ -174,9 +170,7 @@ describe('InMemoryCache', () => {
 
     it('returns false and removes the entry if it is expired', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = vi
-        .spyOn(Date, 'now')
-        .mockReturnValueOnce(JAN_1_2024);
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValueOnce(JAN_1_2024);
 
       await cache.set('key', 'value', 1000);
       mockDateNow.mockReturnValue(JAN_1_2024 + 1001);
@@ -271,9 +265,7 @@ describe('InMemoryCache', () => {
 
     it('returns undefined and removes the entry if it is expired', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = vi
-        .spyOn(Date, 'now')
-        .mockReturnValueOnce(JAN_1_2024);
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValueOnce(JAN_1_2024);
 
       await cache.set('key', 'value', 1000);
       mockDateNow.mockReturnValue(JAN_1_2024 + 1001);
@@ -309,9 +301,7 @@ describe('InMemoryCache', () => {
 
     it('removes expired entries before reading', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = vi
-        .spyOn(Date, 'now')
-        .mockReturnValueOnce(JAN_1_2024);
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValueOnce(JAN_1_2024);
 
       await cache.set('key', 'value', 1000);
       mockDateNow.mockReturnValue(JAN_1_2024 + 1001);
