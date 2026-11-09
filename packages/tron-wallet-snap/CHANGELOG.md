@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Let explicit balance and asset requests (wallet Retry) reach TronGrid while the fetch-policy circuit breaker is open, at most once every 10 seconds per request, and report repeated sync failures to Sentry once per failure streak ([#526](https://github.com/MetaMask/internal-snaps/pull/526))
+
 ## [4.4.0]
 
 ### Added

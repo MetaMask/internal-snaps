@@ -127,11 +127,9 @@ describe('TronHttpClient', () => {
      * @param client - The client.
      */
     async function openCircuit(client: TronHttpClient): Promise<void> {
-      vi
-        .spyOn(global, 'fetch')
-        .mockImplementation(
-          async () => new globalThis.Response('', { status: 501 }),
-        );
+      vi.spyOn(global, 'fetch').mockImplementation(
+        async () => new globalThis.Response('', { status: 501 }),
+      );
       for (let attempt = 0; attempt < 30; attempt++) {
         try {
           await client.getReward(Network.Mainnet, `address-${attempt}`);

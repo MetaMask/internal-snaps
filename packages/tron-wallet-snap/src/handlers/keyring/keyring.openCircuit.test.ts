@@ -1,11 +1,11 @@
 import { KeyringRpcMethod } from '@metamask/keyring-api';
-import type { Json, JsonRpcRequest } from '@metamask/utils';
 import {
   BaseConfigProvider,
   BrokenCircuitError,
   InMemoryCache,
   InMemoryState,
 } from '@metamask/snap-networks-utils';
+import type { Json, JsonRpcRequest } from '@metamask/utils';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -15,8 +15,8 @@ import { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
 import { KnownCaip19Id, Network } from '../../constants';
 import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import type { AccountsService } from '../../services/accounts/AccountsService';
-import { SnapAssetsAdapter } from '../../services/assets/adapters/SnapAssetsAdapter';
 import type { CoreAssetsAdapter } from '../../services/assets/adapters/CoreAssetsAdapter';
+import { SnapAssetsAdapter } from '../../services/assets/adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from '../../services/assets/AssetsRepository';
 import { AssetsService } from '../../services/assets/AssetsService';
 import {
@@ -184,9 +184,9 @@ async function openCircuits({
   trongridApiClient: TrongridApiClient;
   tronHttpClient: TronHttpClient;
 }): Promise<void> {
-  vi
-    .spyOn(global, 'fetch')
-    .mockImplementation(async () => new Response('', { status: 501 }));
+  vi.spyOn(global, 'fetch').mockImplementation(
+    async () => new Response('', { status: 501 }),
+  );
   const reads = [
     async (index: number): Promise<unknown> =>
       trongridApiClient.getAccountInfoByAddress(
@@ -312,11 +312,9 @@ describe('KeyringHandler balance refresh while the fetch circuit is open (v6)', 
   it('lets one direct attempt through per interval when it fails', async () => {
     const clients = setup();
     await openCircuits(clients);
-    const fetchMock = vi
-      .spyOn(global, 'fetch')
-      .mockImplementation(async () => {
-        throw new TypeError('Failed to fetch');
-      });
+    const fetchMock = vi.spyOn(global, 'fetch').mockImplementation(async () => {
+      throw new TypeError('Failed to fetch');
+    });
     // The spy is reused: forget the calls that opened the circuits.
     fetchMock.mockClear();
 

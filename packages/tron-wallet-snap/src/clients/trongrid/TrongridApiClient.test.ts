@@ -751,8 +751,7 @@ describe('TrongridApiClient', () => {
      * @param client - The client.
      */
     async function openCircuit(client: TrongridApiClient): Promise<void> {
-      vi
-        .spyOn(global, 'fetch')
+      vi.spyOn(global, 'fetch')
         // eslint-disable-next-line no-restricted-globals
         .mockImplementation(async () => new Response('', { status: 501 }));
       for (let attempt = 0; attempt < 30; attempt++) {
