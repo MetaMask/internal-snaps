@@ -352,7 +352,7 @@ export class KeyringHandler implements KeyringSnapRpc {
       GetAccountBalancesRequestStruct,
     );
 
-    const { enableAssetMigration, selectedNetwork: scope } = AppConfig;
+    const { selectedNetwork: scope } = AppConfig;
 
     const assetBalances = {} as Record<KnownCaip19AssetIdOrSlip44Id, Balance>;
 
@@ -372,7 +372,6 @@ export class KeyringHandler implements KeyringSnapRpc {
       // Reporting 0 for the latter shows a confident zero to the user; fail instead so the
       // client keeps the balance as unavailable and retries.
       if (
-        !enableAssetMigration &&
         !(await this.#onChainAccountService.isConfirmedUnfunded(
           accountId,
           scope,
