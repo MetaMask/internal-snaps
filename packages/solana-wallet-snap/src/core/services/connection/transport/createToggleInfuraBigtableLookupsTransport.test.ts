@@ -1,27 +1,23 @@
 import { createDefaultRpcTransport } from '@solana/kit';
+import * as SolanaKit from '@solana/kit';
+import type { Mock } from 'vitest';
 
 import { createToggleInfuraBigtableLookupsTransport } from './createToggleInfuraBigtableLookupsTransports';
 
-// Mock the createDefaultRpcTransport function
-jest.mock('@solana/kit', () => ({
-  createDefaultRpcTransport: jest.fn(),
-}));
-
 describe('createToggleInfuraBigtableLookupsTransport', () => {
   const mockUrl = 'https://test-url.com';
-  const mockTransportWithBigtableEnabled = jest.fn();
-  const mockTransportWithBigtableDisabled = jest.fn();
+  const mockTransportWithBigtableEnabled = vi.fn();
+  const mockTransportWithBigtableDisabled = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (createDefaultRpcTransport as jest.Mock).mockImplementation(
-      ({ headers }) => {
-        if (headers?.['x-bigtable'] === 'disabled') {
-          return mockTransportWithBigtableDisabled;
-        }
-        return mockTransportWithBigtableEnabled;
-      },
-    );
+    vi.clearAllMocks();
+    vi.spyOn(SolanaKit, 'createDefaultRpcTransport');
+    (createDefaultRpcTransport as Mock).mockImplementation(({ headers }) => {
+      if (headers?.['x-bigtable'] === 'disabled') {
+        return mockTransportWithBigtableDisabled;
+      }
+      return mockTransportWithBigtableEnabled;
+    });
   });
 
   it('creates transports with correct configurations', () => {

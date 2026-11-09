@@ -4,7 +4,6 @@ import type { TransactionScanResult } from '../../../services/transaction-scan/t
 import { FetchStatus } from '../../../types/snap';
 import type { Preferences } from '../../../types/snap';
 import { i18n } from '../../../utils/i18n';
-import { isFetchStatusLoadingOrFetching } from '../../../utils/isFetchStatusLoadingOrFetching';
 import { getErrorMessage } from './getErrorMessage';
 
 /**
@@ -40,14 +39,14 @@ export function getTransactionAlertProps({
       scanFailedMessage: translate('confirmation.simulationMessageAPIError'),
       maliciousTitle: translate('confirmation.validationErrorTitle'),
       maliciousMessage: translate('confirmation.validationErrorSubtitle'),
-      warningTitle: translate('confirmation.validationErrorTitle'),
-      warningMessage: translate('confirmation.validationErrorSubtitle'),
+      warningTitle: translate('confirmation.validationWarningTitle'),
+      warningMessage: translate('confirmation.validationWarningSubtitle'),
       learnMore: translate('confirmation.validationErrorLearnMore'),
       securityAdvisedBy: translate(
         'confirmation.validationErrorSecurityAdviced',
       ),
     },
-    isFetching: isFetchStatusLoadingOrFetching(scanFetchStatus),
+    isFetching: scanFetchStatus === FetchStatus.Loading,
     isFetchError: scanFetchStatus === FetchStatus.Error,
     error: scanError
       ? {

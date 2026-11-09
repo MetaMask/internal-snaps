@@ -1,10 +1,11 @@
 import { SnapsAssetsMigrationStage } from '@metamask/assets-controller';
 import type { RemoteFeatureFlagsProvider } from '@metamask/snap-networks-utils';
+import type { Mocked } from 'vitest';
 
 import type { CoreAssetsAdapter } from '../adapters/CoreAssetsAdapter';
 import { AssetsService } from '../AssetsService';
 
-type MockCoreAssetsAdapter = jest.Mocked<
+type MockCoreAssetsAdapter = Mocked<
   Pick<
     CoreAssetsAdapter,
     | 'getAccountAssetByID'
@@ -15,7 +16,7 @@ type MockCoreAssetsAdapter = jest.Mocked<
   >
 >;
 
-type MockRemoteFeatureFlagsProvider = jest.Mocked<
+type MockRemoteFeatureFlagsProvider = Mocked<
   Pick<RemoteFeatureFlagsProvider, 'getFeatureFlag' | 'getFeatureFlags'>
 >;
 
@@ -37,18 +38,18 @@ export function createMockAssetsService({
   remoteFeatureFlagsProvider: MockRemoteFeatureFlagsProvider;
 } {
   const coreAdapter = {
-    getAccountAssetByID: jest.fn(),
-    getAccountAssetsByIDs: jest.fn(),
-    getAccountAssetsByScope: jest.fn(),
-    getAccountAssets: jest.fn(),
-    getAssetMetadata: jest.fn().mockResolvedValue(null),
+    getAccountAssetByID: vi.fn(),
+    getAccountAssetsByIDs: vi.fn(),
+    getAccountAssetsByScope: vi.fn(),
+    getAccountAssets: vi.fn(),
+    getAssetMetadata: vi.fn().mockResolvedValue(null),
   } as MockCoreAssetsAdapter;
 
   const remoteFeatureFlagsProvider = {
-    getFeatureFlag: jest.fn().mockResolvedValue({
+    getFeatureFlag: vi.fn().mockResolvedValue({
       value: { stage: migrationStage },
     }),
-    getFeatureFlags: jest.fn().mockResolvedValue({}),
+    getFeatureFlags: vi.fn().mockResolvedValue({}),
   } as MockRemoteFeatureFlagsProvider;
 
   const service = new AssetsService({

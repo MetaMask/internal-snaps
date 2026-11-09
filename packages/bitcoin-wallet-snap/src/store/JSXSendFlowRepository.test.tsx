@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type {
   SnapClient,
@@ -7,20 +7,23 @@ import type {
   ReviewTransactionContext,
   Translator,
 } from '../entities';
+import * as JsxViews from '../infra/jsx';
 import { ReviewTransactionView, SendFormView } from '../infra/jsx';
+import * as UnifiedSendFlow from '../infra/jsx/unified-send-flow';
 import { UnifiedSendFormView } from '../infra/jsx/unified-send-flow';
 import { JSXSendFlowRepository } from './JSXSendFlowRepository';
 
-jest.mock('../infra/jsx', () => ({
-  SendFormView: jest.fn(),
-  ReviewTransactionView: jest.fn(),
-}));
-
-jest.mock('../infra/jsx/unified-send-flow', () => ({
-  UnifiedSendFormView: jest.fn(),
-}));
-
 describe('JSXSendFlowRepository', () => {
+  beforeEach(() => {
+    vi.spyOn(JsxViews, 'SendFormView').mockReturnValue(undefined as never);
+    vi.spyOn(JsxViews, 'ReviewTransactionView').mockReturnValue(
+      undefined as never,
+    );
+    vi.spyOn(UnifiedSendFlow, 'UnifiedSendFormView').mockReturnValue(
+      undefined as never,
+    );
+  });
+
   const mockMessages = { foo: { message: 'bar' } };
 
   const mockSnapClient = mock<SnapClient>();

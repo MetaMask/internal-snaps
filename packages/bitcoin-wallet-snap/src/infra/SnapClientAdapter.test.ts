@@ -1,33 +1,20 @@
 import type { Amount, WalletTx } from '@metamask/bitcoindevkit';
-import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
+import {
+  KeyringEvent,
+  TransactionStatus,
+  TransactionType,
+} from '@metamask/keyring-api';
 import { getJsonError } from '@metamask/snaps-sdk';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { BitcoinAccount, Logger } from '../entities';
 import { TrackingSnapEvent } from '../entities';
 import logger from '../utils/logger';
 import { SnapClientAdapter } from './SnapClientAdapter';
 
-jest.mock('@metamask/bitcoindevkit', () => ({
-  Amount: {
-    from_sat: jest.fn(() => ({
-      to_btc: jest.fn(() => ({
-        toString: jest.fn(() => '0'),
-      })),
-    })),
-  },
-}));
-
-jest.mock('../utils/logger', () => ({
-  __esModule: true,
-  default: {
-    error: jest.fn(),
-  },
-}));
-
 const setupTest = () => {
   const mockLogger = mock<Logger>();
-  const mockRequest = jest.fn();
+  const mockRequest = vi.fn();
   const snapClient = new SnapClientAdapter(mockLogger);
 
   Object.defineProperty(globalThis, 'snap', {
@@ -40,13 +27,13 @@ const setupTest = () => {
     snapClient,
     mockLogger,
     mockRequest,
-    mockTrackingLogger: jest.mocked(logger),
+    mockTrackingLogger: vi.mocked(logger),
   };
 };
 
 describe('SnapClientAdapter', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('emitTrackingEvent', () => {
@@ -198,7 +185,7 @@ describe('SnapClientAdapter', () => {
         TransactionType.Send,
       );
 
-      const { properties } = mockRequest.mock.calls[0][0].params.event;
+      const { properties } = mockRequest.mock.calls[0]?.[0]?.params.event ?? {};
       expect(properties).not.toHaveProperty('transaction_status');
     });
 
@@ -525,6 +512,42 @@ describe('SnapClientAdapter', () => {
     });
   });
 
+  describe('emitAccountBalancesUpdatedEvent', () => {
+    it.each([
+      [1n, '0.00000001'],
+      [77n, '0.00000077'],
+    ])('emits a decimal balance for %s satoshis', async (satoshis, amount) => {
+      const { snapClient, mockRequest } = setupTest();
+      const account = mock<BitcoinAccount>({
+        id: 'small-balance',
+        network: 'bitcoin',
+        balance: {
+          trusted_spendable: { to_sat: vi.fn().mockReturnValue(satoshis) },
+        },
+        listUnspent: () => [],
+      });
+
+      await snapClient.emitAccountBalancesUpdatedEvent([account]);
+
+      expect(mockRequest).toHaveBeenCalledWith({
+        method: 'snap_manageAccounts',
+        params: {
+          method: KeyringEvent.AccountBalancesUpdated,
+          params: {
+            balances: {
+              [account.id]: {
+                'bip122:000000000019d6689c085ae165831e93/slip44:0': {
+                  amount,
+                  unit: 'BTC',
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+  });
+
   describe('emitAccountTransactionsUpdatedEvent', () => {
     const createWalletTx = (txid: string): WalletTx =>
       mock<WalletTx>({
@@ -546,7 +569,7 @@ describe('SnapClientAdapter', () => {
         addressType: 'p2wpkh',
       });
       const receivedAmount = mock<Amount>();
-      jest.spyOn(receivedAmount, 'to_btc').mockReturnValue(0);
+      receivedAmount.to_btc.mockReturnValue(0);
       account.sentAndReceived.mockReturnValue([receivedAmount, mock<Amount>()]);
       account.isMine.mockReturnValue(true);
       return account;

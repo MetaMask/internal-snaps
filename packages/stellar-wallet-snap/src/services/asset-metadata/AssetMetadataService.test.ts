@@ -1,10 +1,12 @@
 import { buildUrl } from '@metamask/snap-networks-utils';
+import type { MockedFunction } from 'vitest';
 
 import type {
   KnownCaip19ClassicAssetId,
   KnownCaip19Sep41AssetId,
 } from '../../api';
 import { AssetType, KnownCaip2ChainId } from '../../api';
+import { AppConfig } from '../../config';
 import { getSlip44AssetId, logger } from '../../utils';
 import { createMockAssetsService } from '../assets/__mocks__/assetsService.fixtures';
 import { TESTNET_SEP41_USDC, USDC_SEP41 } from './__mocks__/assets.fixtures';
@@ -26,33 +28,8 @@ const MAINNET_CLASSIC_USDC =
 const TESTNET_CLASSIC_USDC =
   'stellar:testnet/asset:USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' as KnownCaip19ClassicAssetId;
 
-jest.mock('../../config', () => ({
-  AppConfig: {
-    api: {
-      tokenApi: {
-        baseUrl: 'https://tokens.test',
-      },
-      staticApi: {
-        baseUrl: 'https://static.test',
-      },
-    },
-    cache: {
-      ttlMilliseconds: {
-        // 1 hour — matches default `assetMetadata` TTL
-        assetMetadata: 60 * 60 * 1000,
-      },
-    },
-  },
-}));
-
-jest.mock('../../utils/logger');
-
-jest.mock('./token-api/TokenApiClient', () => ({
-  TokenApiClient: jest.fn(),
-}));
-
-const mockGetAssetsByAssetIds = jest.fn();
-const mockGetAssetsByChainId = jest.fn();
+const mockGetAssetsByAssetIds = vi.fn();
+const mockGetAssetsByChainId = vi.fn();
 
 function createCachedRow(
   assetId: KnownCaip19ClassicAssetId,
@@ -72,13 +49,13 @@ function createCachedRow(
 
 function createService(deps: { repo?: Partial<AssetMetadataRepository> }) {
   const defaults = {
-    getByAssetIds: jest.fn().mockResolvedValue([]),
-    saveMany: jest.fn().mockResolvedValue(undefined),
-    getByAssetType: jest.fn().mockResolvedValue([]),
-    getAll: jest.fn().mockResolvedValue([]),
-    getAllByScope: jest.fn().mockResolvedValue([]),
-    getByAssetId: jest.fn().mockResolvedValue(null),
-    isStale: jest.fn().mockResolvedValue(false),
+    getByAssetIds: vi.fn().mockResolvedValue([]),
+    saveMany: vi.fn().mockResolvedValue(undefined),
+    getByAssetType: vi.fn().mockResolvedValue([]),
+    getAll: vi.fn().mockResolvedValue([]),
+    getAllByScope: vi.fn().mockResolvedValue([]),
+    getByAssetId: vi.fn().mockResolvedValue(null),
+    isStale: vi.fn().mockResolvedValue(false),
   };
 
   const repo = {
@@ -86,10 +63,12 @@ function createService(deps: { repo?: Partial<AssetMetadataRepository> }) {
     ...deps.repo,
   } as unknown as AssetMetadataRepository;
 
-  (TokenApiClient as jest.Mock).mockImplementation(() => ({
-    getAssetsByAssetIds: mockGetAssetsByAssetIds,
-    getAssetsByChainId: mockGetAssetsByChainId,
-  }));
+  vi.spyOn(TokenApiClient.prototype, 'getAssetsByAssetIds').mockImplementation(
+    mockGetAssetsByAssetIds,
+  );
+  vi.spyOn(TokenApiClient.prototype, 'getAssetsByChainId').mockImplementation(
+    mockGetAssetsByChainId,
+  );
 
   const { service: assetsService } = createMockAssetsService();
   const service = new AssetMetadataService({
@@ -101,10 +80,10 @@ function createService(deps: { repo?: Partial<AssetMetadataRepository> }) {
   return {
     service,
     assetsService,
-    getByAssetIds: repo.getByAssetIds as jest.MockedFunction<
+    getByAssetIds: repo.getByAssetIds as MockedFunction<
       AssetMetadataRepository['getByAssetIds']
     >,
-    saveMany: repo.saveMany as jest.MockedFunction<
+    saveMany: repo.saveMany as MockedFunction<
       AssetMetadataRepository['saveMany']
     >,
   };
@@ -112,7 +91,7 @@ function createService(deps: { repo?: Partial<AssetMetadataRepository> }) {
 
 describe('AssetMetadataService', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockGetAssetsByAssetIds.mockResolvedValue([]);
     mockGetAssetsByChainId.mockResolvedValue({
       data: [],
@@ -150,7 +129,7 @@ describe('AssetMetadataService', () => {
     );
     const { service, getByAssetIds, saveMany } = createService({
       repo: {
-        getByAssetIds: jest.fn().mockResolvedValue([cached]),
+        getByAssetIds: vi.fn().mockResolvedValue([cached]),
       },
     });
 
@@ -208,11 +187,11 @@ describe('AssetMetadataService', () => {
     const cached = createCachedRow(classicId, KnownCaip2ChainId.Mainnet);
     const { service, assetsService, getByAssetIds, saveMany } = createService({
       repo: {
-        getByAssetIds: jest.fn().mockResolvedValue([cached]),
+        getByAssetIds: vi.fn().mockResolvedValue([cached]),
       },
     });
-    jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
-    const getAssetMetadata = jest
+    vi.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(false);
+    const getAssetMetadata = vi
       .spyOn(assetsService, 'getAssetMetadata')
       .mockResolvedValue({
         symbol: 'USDC',
@@ -280,7 +259,7 @@ describe('AssetMetadataService', () => {
       fungible: true,
       units: [{ name: 'USD Coin', symbol: 'USDC', decimals: 7 }],
       iconUrl: buildUrl({
-        baseUrl: 'https://static.test',
+        baseUrl: AppConfig.api.staticApi.baseUrl,
         path: '/api/v2/tokenIcons/assets/{assetId}.png',
         pathParams: {
           assetId: classicId.replace(/:/gu, '/'),
@@ -369,7 +348,7 @@ describe('AssetMetadataService', () => {
       'stellar:pubnet/sep41:CAUP7NFABXE5TJRL3FKTPMWRLC7IAXYDCTHQRFSCLR5TMGKHOOQO772J' as KnownCaip19Sep41AssetId;
 
     it('synchronizes when the catalog is stale', async () => {
-      const isStale = jest.fn().mockResolvedValue(true);
+      const isStale = vi.fn().mockResolvedValue(true);
       const { service, saveMany } = createService({
         repo: { isStale },
       });
@@ -388,7 +367,9 @@ describe('AssetMetadataService', () => {
 
       await service.synchronizeIfStale(KnownCaip2ChainId.Mainnet);
 
-      expect(isStale).toHaveBeenCalledWith(60 * 60 * 1000);
+      expect(isStale).toHaveBeenCalledWith(
+        AppConfig.cache.ttlMilliseconds.assetMetadata,
+      );
       expect(mockGetAssetsByChainId).toHaveBeenCalledWith(
         KnownCaip2ChainId.Mainnet,
       );
@@ -399,14 +380,16 @@ describe('AssetMetadataService', () => {
     });
 
     it('skips synchronize when the catalog is fresh', async () => {
-      const isStale = jest.fn().mockResolvedValue(false);
+      const isStale = vi.fn().mockResolvedValue(false);
       const { service, saveMany } = createService({
         repo: { isStale },
       });
 
       await service.synchronizeIfStale(KnownCaip2ChainId.Mainnet);
 
-      expect(isStale).toHaveBeenCalledWith(60 * 60 * 1000);
+      expect(isStale).toHaveBeenCalledWith(
+        AppConfig.cache.ttlMilliseconds.assetMetadata,
+      );
       expect(mockGetAssetsByChainId).not.toHaveBeenCalled();
       expect(saveMany).not.toHaveBeenCalled();
     });
@@ -428,7 +411,7 @@ describe('AssetMetadataService', () => {
           units: [{ name: 'Cached', symbol: 'CCH', decimals: 7 }],
         },
       ];
-      const getByAssetType = jest.fn().mockResolvedValue(sepRows);
+      const getByAssetType = vi.fn().mockResolvedValue(sepRows);
       const { service } = createService({
         repo: { getByAssetType },
       });
@@ -465,7 +448,7 @@ describe('AssetMetadataService', () => {
     it('returns fetched SEP-41 rows and skips other asset types', async () => {
       const sepRow = freshCatalogRow();
       const { service } = createService({});
-      const fetchByIds = jest
+      const fetchByIds = vi
         .spyOn(service, 'fetchAndPersistAssetsByAssetIds')
         .mockResolvedValue([
           createCachedRow(MAINNET_CLASSIC_USDC, KnownCaip2ChainId.Mainnet),
@@ -483,8 +466,8 @@ describe('AssetMetadataService', () => {
 
     it('returns the persisted catalog without syncing when ids are omitted', async () => {
       const catalog = [freshCatalogRow()];
-      const isStale = jest.fn().mockResolvedValue(true);
-      const getByAssetType = jest.fn().mockResolvedValue(catalog);
+      const isStale = vi.fn().mockResolvedValue(true);
+      const getByAssetType = vi.fn().mockResolvedValue(catalog);
       const { service, saveMany } = createService({
         repo: { isStale, getByAssetType },
       });
@@ -505,7 +488,7 @@ describe('AssetMetadataService', () => {
 
     it('returns the persisted catalog when asset ids are empty', async () => {
       const catalog = [freshCatalogRow()];
-      const getByAssetType = jest.fn().mockResolvedValue(catalog);
+      const getByAssetType = vi.fn().mockResolvedValue(catalog);
       const { service } = createService({
         repo: { getByAssetType },
       });
@@ -527,7 +510,7 @@ describe('AssetMetadataService', () => {
     const sep41AssetId =
       'stellar:pubnet/sep41:CAUP7NFABXE5TJRL3FKTPMWRLC7IAXYDCTHQRFSCLR5TMGKHOOQO772J' as KnownCaip19Sep41AssetId;
     const { service, assetsService, saveMany } = createService({});
-    jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+    vi.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
     mockGetAssetsByChainId.mockResolvedValueOnce({
       data: [
         {
@@ -563,8 +546,8 @@ describe('AssetMetadataService', () => {
     const { service, assetsService, getByAssetIds, saveMany } = createService(
       {},
     );
-    jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
-    const getAssetMetadata = jest
+    vi.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+    const getAssetMetadata = vi
       .spyOn(assetsService, 'getAssetMetadata')
       .mockResolvedValue({
         symbol: 'USDC',
@@ -593,11 +576,11 @@ describe('AssetMetadataService', () => {
     const cached = createCachedRow(classicId, KnownCaip2ChainId.Mainnet);
     const { service, assetsService, getByAssetIds } = createService({
       repo: {
-        getByAssetIds: jest.fn().mockResolvedValue([cached]),
+        getByAssetIds: vi.fn().mockResolvedValue([cached]),
       },
     });
-    jest.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
-    const getAssetMetadata = jest
+    vi.spyOn(assetsService, 'isMigrationEnabled').mockResolvedValue(true);
+    const getAssetMetadata = vi
       .spyOn(assetsService, 'getAssetMetadata')
       .mockResolvedValue(null);
 

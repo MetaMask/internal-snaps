@@ -10,6 +10,7 @@ import type { Infer } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
 import { TronWeb } from 'tronweb';
 import type { Types as TronwebTypes } from 'tronweb';
+import type { MockedFunction, Mock } from 'vitest';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
@@ -47,14 +48,14 @@ const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
 const createPassThroughTransactionExpirationRefresherService = () =>
   ({
-    ensureFreshMetadata: jest.fn(
+    ensureFreshMetadata: vi.fn(
       async <TransactionType>({
         transaction,
       }: {
         transaction: TransactionType;
       }) => transaction,
     ),
-    ensureFreshRawData: jest.fn(async ({ rawData }) => rawData),
+    ensureFreshRawData: vi.fn(async ({ rawData }) => rawData),
   }) as unknown as TransactionExpirationRefresherService;
 
 /**
@@ -77,61 +78,61 @@ const createMockExtendedKeyringAccount = (
 
 type MockTronWeb = {
   trx: {
-    sign: jest.Mock;
-    signMessageV2: jest.Mock;
-    getCurrentBlock: jest.Mock;
-    getBlockByNumber: jest.Mock;
-    sendRawTransaction: jest.Mock;
+    sign: Mock;
+    signMessageV2: Mock;
+    getCurrentBlock: Mock;
+    getBlockByNumber: Mock;
+    sendRawTransaction: Mock;
   };
   utils: {
-    deserializeTx: { deserializeTransaction: jest.Mock };
+    deserializeTx: { deserializeTransaction: Mock };
     transaction: {
-      txJsonToPb: jest.Mock;
-      txPbToRawDataHex: jest.Mock;
-      txPbToTxID: jest.Mock;
+      txJsonToPb: Mock;
+      txPbToRawDataHex: Mock;
+      txPbToTxID: Mock;
     };
   };
   transactionBuilder: {
-    freezeBalanceV2: jest.MockedFunction<
+    freezeBalanceV2: MockedFunction<
       TronWeb['transactionBuilder']['freezeBalanceV2']
     >;
   };
 };
 
 type MockTronWebFactory = {
-  createClient: jest.Mock;
-  executeBroadcast: jest.Mock;
+  createClient: Mock;
+  executeBroadcast: Mock;
 };
 
 const createMockTronWeb = (): MockTronWeb => ({
   trx: {
-    sign: jest.fn(),
-    signMessageV2: jest.fn(),
-    getCurrentBlock: jest.fn(),
-    getBlockByNumber: jest.fn(),
-    sendRawTransaction: jest
+    sign: vi.fn(),
+    signMessageV2: vi.fn(),
+    getCurrentBlock: vi.fn(),
+    getBlockByNumber: vi.fn(),
+    sendRawTransaction: vi
       .fn()
       .mockResolvedValue({ result: true, txid: 'mock-tx-id' }),
   },
   utils: {
-    deserializeTx: { deserializeTransaction: jest.fn() },
+    deserializeTx: { deserializeTransaction: vi.fn() },
     transaction: {
-      txJsonToPb: jest.fn((transaction) => transaction),
-      txPbToRawDataHex: jest.fn().mockReturnValue('1234567890abcdef'),
-      txPbToTxID: jest.fn().mockReturnValue('mock-tx-id'),
+      txJsonToPb: vi.fn((transaction) => transaction),
+      txPbToRawDataHex: vi.fn().mockReturnValue('1234567890abcdef'),
+      txPbToTxID: vi.fn().mockReturnValue('mock-tx-id'),
     },
   },
   transactionBuilder: {
     freezeBalanceV2:
-      jest.fn() as MockTronWeb['transactionBuilder']['freezeBalanceV2'],
+      vi.fn() as MockTronWeb['transactionBuilder']['freezeBalanceV2'],
   },
 });
 
 const createMockTronWebFactory = (
   mockTronWeb: MockTronWeb,
 ): MockTronWebFactory => ({
-  createClient: jest.fn().mockReturnValue(mockTronWeb as unknown as TronWeb),
-  executeBroadcast: jest.fn(
+  createClient: vi.fn().mockReturnValue(mockTronWeb as unknown as TronWeb),
+  executeBroadcast: vi.fn(
     async (_scope: Network, broadcast: () => Promise<unknown>) => broadcast(),
   ),
 });
@@ -141,7 +142,7 @@ type CreateClientRequestHandler = (
 ) => ClientRequestHandler;
 
 type MockMethods<MethodNames extends PropertyKey> = {
-  [MethodName in MethodNames]: jest.Mock;
+  [MethodName in MethodNames]: Mock;
 };
 
 type WithClientRequestHandlerCallback<ReturnValue> = (payload: {
@@ -196,11 +197,11 @@ async function withClientRequestHandler<ReturnValue>(
     | 'deriveTronKeypair'
     | 'deriveTronKeypairs'
   > = {
-    findById: jest.fn(),
-    findByIdOrThrow: jest.fn(),
-    findByIds: jest.fn(),
-    deriveTronKeypair: jest.fn(),
-    deriveTronKeypairs: jest.fn(),
+    findById: vi.fn(),
+    findByIdOrThrow: vi.fn(),
+    findByIds: vi.fn(),
+    deriveTronKeypair: vi.fn(),
+    deriveTronKeypairs: vi.fn(),
   };
 
   const mockAssetsService: MockMethods<
@@ -209,34 +210,34 @@ async function withClientRequestHandler<ReturnValue>(
     | 'fetchAccountAssetsByIDs'
     | 'fetchAccountAssetByID'
   > = {
-    getAccountAssetsByIDs: jest.fn(),
-    getAccountAssetByID: jest.fn(),
-    fetchAccountAssetsByIDs: jest.fn().mockResolvedValue([]),
-    fetchAccountAssetByID: jest.fn().mockResolvedValue(null),
+    getAccountAssetsByIDs: vi.fn(),
+    getAccountAssetByID: vi.fn(),
+    fetchAccountAssetsByIDs: vi.fn().mockResolvedValue([]),
+    fetchAccountAssetByID: vi.fn().mockResolvedValue(null),
   };
 
   const mockSendService: MockMethods<
     'buildTransaction' | 'validateSend' | 'signAndSendTransaction'
   > = {
-    buildTransaction: jest.fn(),
-    validateSend: jest.fn(),
-    signAndSendTransaction: jest.fn(),
+    buildTransaction: vi.fn(),
+    validateSend: vi.fn(),
+    signAndSendTransaction: vi.fn(),
   };
 
   const mockFeeCalculatorService: MockMethods<'computeFee'> = {
-    computeFee: jest.fn(),
+    computeFee: vi.fn(),
   };
   const mockStakingService: MockMethods<
     'claimUnstakedTrx' | 'claimTrxStakingRewards'
   > = {
-    claimUnstakedTrx: jest.fn(),
-    claimTrxStakingRewards: jest.fn(),
+    claimUnstakedTrx: vi.fn(),
+    claimTrxStakingRewards: vi.fn(),
   };
   const mockConfirmationHandler: MockMethods<
     'confirmClaimUnstakedTrx' | 'confirmTransactionRequest'
   > = {
-    confirmClaimUnstakedTrx: jest.fn(),
-    confirmTransactionRequest: jest.fn(),
+    confirmClaimUnstakedTrx: vi.fn(),
+    confirmTransactionRequest: vi.fn(),
   };
   const mockTransactionExpirationRefresherService: MockMethods<
     'ensureFreshMetadata' | 'ensureFreshRawData'
@@ -245,16 +246,16 @@ async function withClientRequestHandler<ReturnValue>(
       'ensureFreshMetadata' | 'ensureFreshRawData'
     >;
   const mockTransactionsService: MockMethods<'save'> = {
-    save: jest.fn(),
+    save: vi.fn(),
   };
   const mockSnapClient: MockMethods<'scheduleBackgroundEvent' | 'trackError'> =
     {
-      scheduleBackgroundEvent: jest.fn(),
-      trackError: jest.fn(),
+      scheduleBackgroundEvent: vi.fn(),
+      trackError: vi.fn(),
     };
 
   const mockAnalyticsService: MockMethods<'trackTransactionSubmitted'> = {
-    trackTransactionSubmitted: jest.fn(),
+    trackTransactionSubmitted: vi.fn(),
   };
 
   const mockTronWeb = createMockTronWeb();

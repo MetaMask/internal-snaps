@@ -42,6 +42,10 @@ export type StellarRouterParams = {
   simulationAccount: string;
 };
 
+export type SimulateTransaction = (
+  transaction: Transaction,
+) => ReturnType<rpc.Server['simulateTransaction']>;
+
 export class InvocationV0 {
   contract: Address | string;
 
@@ -78,22 +82,22 @@ export class InvocationV1 {
 }
 
 export class MultiCall {
-  readonly #rpcClient: rpc.Server;
+  readonly #simulateTransaction: SimulateTransaction;
 
   readonly #simulationAccount: string;
 
   readonly #routerContract: StellarRouterContract;
 
   constructor({
-    rpcClient,
+    simulateTransaction,
     simulationAccount = SIMULATION_ACCOUNT,
     routerContract = StellarRouterContract.V0,
   }: {
-    rpcClient: rpc.Server;
+    simulateTransaction: SimulateTransaction;
     simulationAccount?: string;
     routerContract?: StellarRouterContract;
   }) {
-    this.#rpcClient = rpcClient;
+    this.#simulateTransaction = simulateTransaction;
     this.#simulationAccount = simulationAccount;
     this.#routerContract = routerContract;
   }
@@ -169,7 +173,7 @@ export class MultiCall {
       .addOperation(this.exec(callerAccount, invocations))
       .build();
 
-    const sim = await this.#rpcClient.simulateTransaction(tx);
+    const sim = await this.#simulateTransaction(tx);
 
     if (rpc.Api.isSimulationError(sim)) {
       throw new Error(String(sim.error));

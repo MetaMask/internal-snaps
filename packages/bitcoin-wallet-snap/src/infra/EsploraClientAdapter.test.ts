@@ -7,6 +7,7 @@ import type {
   Wallet as BdkWallet,
   seed_to_descriptor as BdkSeedToDescriptor,
 } from '@metamask/bitcoindevkit';
+import * as BitcoinDevKit from '@metamask/bitcoindevkit';
 import { EsploraClient } from '@metamask/bitcoindevkit';
 import {
   FetchPolicyErrorName,
@@ -14,15 +15,12 @@ import {
   LogLevel,
 } from '@metamask/snap-networks-utils';
 import { readFile } from 'fs/promises';
-import { mock } from 'jest-mock-extended';
 import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import { mock } from 'vitest-mock-extended';
 
 import type { BitcoinAccount, ChainConfig, Keychain } from '../entities';
 import { EsploraClientAdapter, toScripthash } from './EsploraClientAdapter';
-
-jest.mock('@metamask/bitcoindevkit', () => ({
-  EsploraClient: jest.fn(),
-}));
 
 const setupTest = (): {
   adapter: EsploraClientAdapter;
@@ -31,7 +29,11 @@ const setupTest = (): {
   mockRequest: FullScanRequest;
 } => {
   const mockEsploraClient = mock<EsploraClient>();
-  jest.mocked(EsploraClient).mockReturnValue(mockEsploraClient);
+  vi.spyOn(BitcoinDevKit, 'EsploraClient').mockImplementation(
+    function mockCtor() {
+      return mockEsploraClient;
+    },
+  );
 
   const config = mock<ChainConfig>({
     parallelRequests: 5,
@@ -328,7 +330,7 @@ describe('EsploraClientAdapter', () => {
   });
 
   describe('getTransactionSenders', () => {
-    const mockFetch = jest.fn();
+    const mockFetch = vi.fn();
 
     beforeEach(() => {
       global.fetch = mockFetch;
@@ -391,7 +393,11 @@ describe('EsploraClientAdapter', () => {
 
     it('strips a mempool.space /v1 suffix from the configured url', async () => {
       const mockEsploraClient = mock<EsploraClient>();
-      jest.mocked(EsploraClient).mockReturnValue(mockEsploraClient);
+      vi.spyOn(BitcoinDevKit, 'EsploraClient').mockImplementation(
+        function mockCtor() {
+          return mockEsploraClient;
+        },
+      );
       const adapter = new EsploraClientAdapter(
         mock<ChainConfig>({
           url: {
@@ -657,14 +663,16 @@ describe('EsploraClientAdapter', () => {
       /* eslint-enable @typescript-eslint/naming-convention */
     };
 
-    const mockFetch = jest.fn();
+    const mockFetch = vi.fn();
     let realBdk: RealBdkBindings;
 
     beforeAll(async () => {
       const bdkDir = dirname(
-        require.resolve('@metamask/bitcoindevkit/package.json'),
+        fileURLToPath(
+          import.meta.resolve('@metamask/bitcoindevkit/package.json'),
+        ),
       );
-      realBdk = jest.requireActual(join(bdkDir, 'bitcoindevkit_bg.js'));
+      realBdk = await vi.importActual(join(bdkDir, 'bitcoindevkit_bg.js'));
       const wasmBytes = await readFile(join(bdkDir, 'bitcoindevkit_bg.wasm'));
       // eslint-disable-next-line no-restricted-globals
       const wasmModule = new WebAssembly.Module(wasmBytes);
@@ -678,12 +686,11 @@ describe('EsploraClientAdapter', () => {
 
     beforeEach(() => {
       global.fetch = mockFetch;
-      jest
-        .mocked(EsploraClient)
-        .mockImplementation(
-          (url: string, maxRetries: number) =>
-            new realBdk.EsploraClient(url, maxRetries),
-        );
+      vi.spyOn(BitcoinDevKit, 'EsploraClient').mockImplementation(
+        function mockCtor(url: string, maxRetries: number) {
+          return new realBdk.EsploraClient(url, maxRetries);
+        },
+      );
     });
 
     afterEach(() => {

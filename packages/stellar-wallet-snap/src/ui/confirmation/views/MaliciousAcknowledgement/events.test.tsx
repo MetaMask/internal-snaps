@@ -2,20 +2,12 @@ import type { UserInputEvent } from '@metamask/snaps-sdk';
 import { UserInputEventType } from '@metamask/snaps-sdk';
 
 import { resolveInterface, updateInterfaceIfExists } from '../../../../utils';
+import * as SnapUtils from '../../../../utils/snap';
 import { ConfirmationInterfaceKey, FetchStatus } from '../../api';
 import { renderConfirmationView } from '../render';
+import * as ConfirmationRender from '../render';
 import { MaliciousAcknowledgementFormNames } from './constants';
 import { createEventHandlers } from './events';
-
-jest.mock('../render', () => ({
-  renderConfirmationView: jest.fn(() => 'RENDERED'),
-}));
-
-jest.mock('../../../../utils', () => ({
-  ...jest.requireActual('../../../../utils'),
-  resolveInterface: jest.fn(),
-  updateInterfaceIfExists: jest.fn(),
-}));
 
 const INTERFACE_ID = 'interface-id';
 
@@ -42,12 +34,15 @@ describe('malicious acknowledgement events', () => {
   const handlers = createEventHandlers();
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest
-      .mocked(renderConfirmationView)
-      .mockReturnValue(
-        'RENDERED' as unknown as ReturnType<typeof renderConfirmationView>,
-      );
+    vi.spyOn(SnapUtils, 'resolveInterface').mockResolvedValue(null);
+    vi.spyOn(SnapUtils, 'updateInterfaceIfExists').mockResolvedValue(true);
+    vi.spyOn(ConfirmationRender, 'renderConfirmationView').mockReturnValue(
+      'RENDERED' as unknown as ReturnType<typeof renderConfirmationView>,
+    );
+    vi.clearAllMocks();
+    vi.mocked(renderConfirmationView).mockReturnValue(
+      'RENDERED' as unknown as ReturnType<typeof renderConfirmationView>,
+    );
   });
 
   it('opens the acknowledgement screen on "Review alerts"', async () => {

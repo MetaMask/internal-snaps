@@ -8,6 +8,8 @@ import {
   HttpException,
   HttpResponseException,
   InvalidHttpRequestParamsException,
+  isHttpException,
+  KnownHttpErrorCode,
   normalizeHttpException,
   rethrowIfInstanceElseThrow,
 } from './errors';
@@ -138,6 +140,32 @@ describe('errors', () => {
       expect(normalizeHttpException(brokenCircuitError)).toBeInstanceOf(
         HttpException,
       );
+    });
+
+    it.each([
+      KnownHttpErrorCode.ConnectionAborted,
+      KnownHttpErrorCode.Timeout,
+      KnownHttpErrorCode.Canceled,
+    ])('wraps transport code %s in HttpException', (code) => {
+      const error = Object.assign(new Error('transport'), { code });
+
+      expect(isHttpException(error)).toBe(true);
+      expect(normalizeHttpException(error)).toBeInstanceOf(HttpException);
+    });
+
+    it('recognizes a known code on error.cause', () => {
+      const error = new Error('wrapped', {
+        cause: { code: KnownHttpErrorCode.ConnectionReset },
+      });
+
+      expect(isHttpException(error)).toBe(true);
+    });
+
+    it('leaves an unknown transport code unchanged', () => {
+      const error = Object.assign(new Error('nope'), { code: 'ESOMETHING' });
+
+      expect(isHttpException(error)).toBe(false);
+      expect(normalizeHttpException(error)).toBe(error);
     });
   });
 });

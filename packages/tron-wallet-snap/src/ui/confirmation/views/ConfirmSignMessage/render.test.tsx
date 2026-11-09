@@ -1,7 +1,9 @@
 import { bytesToBase64, stringToBytes } from '@metamask/utils';
+import type { Mocked } from 'vitest';
 
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
+import snapContext from '../../../../context';
 import type { TronKeyringAccount } from '../../../../entities/tronKeyringAccount';
 import { TronMultichainMethod } from '../../../../handlers/keyring/keyring-types';
 import type { Preferences } from '../../../../types/snap';
@@ -47,18 +49,15 @@ describe('ConfirmSignMessage render', () => {
     useNftDetection: true,
   };
 
-  let mockSnapClient: jest.Mocked<SnapClient>;
+  let mockSnapClient: Mocked<SnapClient>;
 
   beforeEach(() => {
     mockSnapClient = {
-      createInterface: jest.fn().mockResolvedValue('interface-id-123'),
-      showDialog: jest.fn().mockResolvedValue(true),
-      getPreferences: jest.fn().mockResolvedValue(mockPreferences),
+      createInterface: vi.fn().mockResolvedValue('interface-id-123'),
+      showDialog: vi.fn().mockResolvedValue(true),
+      getPreferences: vi.fn().mockResolvedValue(mockPreferences),
     } as any;
 
-    // Update mocked context with our mocks
-    // eslint-disable-next-line @typescript-eslint/no-require-imports, no-restricted-globals
-    const snapContext = require('../../../../context').default;
     snapContext.snapClient = mockSnapClient;
   });
 

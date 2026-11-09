@@ -1,3 +1,5 @@
+import type { Mocked } from 'vitest';
+
 import { KnownCaip2ChainId } from '../../../api';
 import type { TransactionScanService } from '../../../services/transaction-scan';
 import {
@@ -45,10 +47,10 @@ describe('ConfirmationScanRefresher', () => {
   };
 
   function setup() {
-    const transactionScanService: jest.Mocked<
+    const transactionScanService: Mocked<
       Pick<TransactionScanService, 'scanTransaction'>
     > = {
-      scanTransaction: jest.fn().mockResolvedValue(scanResult),
+      scanTransaction: vi.fn().mockResolvedValue(scanResult),
     };
     const refresher = new ConfirmationScanRefresher({
       logger,

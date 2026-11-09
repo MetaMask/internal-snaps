@@ -7,9 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0]
+
 ### Changed
 
+- Client request handler `confirmSend` now throws when signing, or submission fails after the user confirms, instead of returning a JSON error response such as `{ valid: false, errors }` ([#550](https://github.com/MetaMask/internal-snaps/pull/550))
+- Bump `@stellar/stellar-sdk` from `^17.2.1` to `^17.4.0` ([#545](https://github.com/MetaMask/internal-snaps/pull/545))
 - Retry transient Token API, Price API, and Security Alerts API failures with bounded timeouts and circuit breaking ([#534](https://github.com/MetaMask/internal-snaps/pull/534))
+- Retry transient RPC and Horizon failures with bounded timeouts and circuit breaking ([#551](https://github.com/MetaMask/internal-snaps/pull/551))
+  - Transaction submission still uses the raw RPC client and does not apply the fetch policy.
+
+### Fixed
+
+- Fix `onAmountInput` to accept optional destination as `toAddress` instead of `to` ([#558](https://github.com/MetaMask/internal-snaps/pull/558))
 
 ## [2.0.0]
 
@@ -122,7 +132,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial package release ([#181](https://github.com/MetaMask/internal-snaps/pull/181))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@2.0.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@2.1.0...HEAD
+[2.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@2.0.0...@metamask/stellar-wallet-snap@2.1.0
 [2.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.3.0...@metamask/stellar-wallet-snap@2.0.0
 [1.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.2.0...@metamask/stellar-wallet-snap@1.3.0
 [1.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.1.1...@metamask/stellar-wallet-snap@1.2.0

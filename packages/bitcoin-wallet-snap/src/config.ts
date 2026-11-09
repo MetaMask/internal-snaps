@@ -8,7 +8,6 @@ import {
 } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import {
-  boolean,
   coerce,
   defaulted,
   enums,
@@ -27,7 +26,6 @@ const ADDRESS_TYPES: [AddressType, ...AddressType[]] = [
 
 export const ConfigStruct = object({
   logLevel: LogLevelStruct,
-  encrypt: boolean(),
   chain: object({
     parallelRequests: number(),
     stopGap: object({
@@ -69,7 +67,6 @@ export const ConfigStruct = object({
 export const ENVIRONMENT = {
   logLevel: process.env.LOG_LEVEL,
   defaultAddressType: process.env.DEFAULT_ADDRESS_TYPE,
-  encrypt: false,
   chain: {
     parallelRequests: 5,
     stopGap: { discovery: 5, scan: 20 },

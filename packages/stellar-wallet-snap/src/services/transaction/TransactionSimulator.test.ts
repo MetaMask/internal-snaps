@@ -439,8 +439,8 @@ describe('TransactionSimulator', () => {
 
     it('throws when the transaction has expired', () => {
       const mockNow = 1700000000000;
-      jest.useFakeTimers();
-      jest.setSystemTime(mockNow);
+      vi.useFakeTimers();
+      vi.setSystemTime(mockNow);
 
       try {
         const wallet = getTestWallet();
@@ -463,13 +463,13 @@ describe('TransactionSimulator', () => {
           mainnetSimulatorTxOptions(wallet.address, '1', { timeout: 1 }),
         );
 
-        jest.advanceTimersByTime(2000);
+        vi.advanceTimersByTime(2000);
 
         expect(() => simulator.simulate(tx, onChainAccount)).toThrow(
           TransactionExpireException,
         );
       } finally {
-        jest.useRealTimers();
+        vi.useRealTimers();
       }
     });
 
@@ -1822,11 +1822,9 @@ describe('TransactionSimulator', () => {
       });
       const otherSource = Keypair.random().publicKey();
       const [invokeOp] = sorobanTx.transactionOperations;
-      jest
-        .spyOn(sorobanTx, 'transactionOperations', 'get')
-        .mockReturnValue([
-          { ...invokeOp, source: otherSource } as OperationRecord,
-        ]);
+      vi.spyOn(sorobanTx, 'transactionOperations', 'get').mockReturnValue([
+        { ...invokeOp, source: otherSource } as OperationRecord,
+      ]);
 
       expect(() => simulator.simulate(sorobanTx, loaded)).toThrow(
         TransactionValidationException,
