@@ -1,5 +1,6 @@
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { IStateManager } from '@metamask/snap-networks-utils';
+import { InvalidParamsError } from '@metamask/snaps-sdk';
 import { Types as TronwebTypes } from 'tronweb';
 import type { Mocked, Mock } from 'vitest';
 
@@ -235,6 +236,65 @@ async function withRender(
 // ---------------------------------------------------------------------------
 
 describe('ConfirmTransactionRequest render', () => {
+  it('rejects a malformed transaction before reading preferences or opening confirmation', async () => {
+    await withRender(
+      async ({ callRender, mockSnapClient, mockTransactionScanService }) => {
+        await expect(
+          callRender({
+            transactionRawData: {
+              ...defaultTransactionRawData,
+              contract: [
+                ...defaultTransactionRawData.contract,
+                ...defaultTransactionRawData.contract,
+              ],
+            },
+          }),
+        ).rejects.toThrow(InvalidParamsError);
+
+        expect(mockSnapClient.getPreferences).not.toHaveBeenCalled();
+        expect(mockSnapClient.createInterface).not.toHaveBeenCalled();
+        expect(
+          mockTransactionScanService.scanTransaction,
+        ).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it.each([
+    [true, true, FetchStatus.Loading],
+    [true, false, FetchStatus.Loading],
+    [false, true, FetchStatus.Loading],
+    [false, false, FetchStatus.Fetched],
+  ])(
+    'sets initial scan state with security alerts %s and simulation %s',
+    async (useSecurityAlerts, simulateOnChainActions, scanFetchStatus) => {
+      await withRender(async ({ callRender, mockSnapClient }) => {
+        mockSnapClient.getPreferences.mockResolvedValue({
+          ...defaultPreferences,
+          useSecurityAlerts,
+          simulateOnChainActions,
+        });
+        // Inspect the initial context before render mutates it with scan results.
+        mockSnapClient.createInterface.mockImplementation(
+          async (ui, context) => {
+            expect(context).toMatchObject({ scanFetchStatus });
+            expect(JSON.stringify(ui).includes('"disabled":true')).toBe(
+              scanFetchStatus === FetchStatus.Loading,
+            );
+            expect(
+              JSON.stringify(ui).includes('Checking for security issues'),
+            ).toBe(useSecurityAlerts);
+            return 'interface-id-123';
+          },
+        );
+
+        await callRender();
+
+        expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
+      });
+    },
+  );
+
   it('triggers security scan when preferences enable it', async () => {
     await withRender(
       async ({ callRender, mockSnapClient, mockTransactionScanService }) => {
@@ -262,7 +322,7 @@ describe('ConfirmTransactionRequest render', () => {
     );
   });
 
-  it('always triggers scan even when security preferences are disabled', async () => {
+  it('skips the scan when security alerts and simulation are disabled', async () => {
     await withRender(
       async ({ callRender, mockSnapClient, mockTransactionScanService }) => {
         mockSnapClient.getPreferences.mockResolvedValue({
@@ -273,9 +333,15 @@ describe('ConfirmTransactionRequest render', () => {
 
         await callRender();
 
-        expect(mockTransactionScanService.scanTransaction).toHaveBeenCalledWith(
+        expect(
+          mockTransactionScanService.scanTransaction,
+        ).not.toHaveBeenCalled();
+        expect(mockSnapClient.updateInterface).toHaveBeenCalledWith(
+          'interface-id-123',
+          expect.anything(),
           expect.objectContaining({
-            options: ['simulation'],
+            scan: null,
+            scanFetchStatus: FetchStatus.Fetched,
           }),
         );
         expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
@@ -355,7 +421,7 @@ describe('ConfirmTransactionRequest render', () => {
     );
   });
 
-  it('includes both simulation and validation when useSecurityAlerts is true', async () => {
+  it('requests only validation when security alerts are enabled and simulation is disabled', async () => {
     await withRender(
       async ({ callRender, mockSnapClient, mockTransactionScanService }) => {
         mockSnapClient.getPreferences.mockResolvedValue({
@@ -368,7 +434,7 @@ describe('ConfirmTransactionRequest render', () => {
 
         expect(mockTransactionScanService.scanTransaction).toHaveBeenCalledWith(
           expect.objectContaining({
-            options: ['simulation', 'validation'],
+            options: ['validation'],
           }),
         );
       },

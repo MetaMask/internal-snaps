@@ -1,4 +1,5 @@
 import { TronWeb } from 'tronweb';
+import type { Types as TronwebTypes } from 'tronweb';
 
 import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
@@ -222,6 +223,15 @@ describe('TronWebFactory', () => {
       expect(client.defaultPrivateKey).toBe(false);
     });
 
+    it('preserves trailing slashes in provider URLs', () => {
+      const url = 'https://tron-mainnet.infura.io/v3/project-id/';
+      const factory = new TronWebFactory({
+        configProvider: createConfigProvider({ [Network.Mainnet]: url }),
+      });
+
+      expect(factory.createClient(Network.Mainnet).fullNode?.host).toBe(url);
+    });
+
     it('creates a fresh client instance on every call', () => {
       const configProvider = createConfigProvider();
       const factory = new TronWebFactory({ configProvider });
@@ -231,6 +241,91 @@ describe('TronWebFactory', () => {
 
       expect(secondClient).not.toBe(firstClient);
       expect(secondClient).toBeInstanceOf(TronWeb);
+    });
+  });
+
+  describe('transaction deserialization', () => {
+    const TEST_ADDRESS = TronWeb.address.fromHex(
+      '41a614f803b6fd780986a42c78ec9c7f77e6ded13c',
+    );
+
+    const createClient = (): TronWeb => {
+      const factory = new TronWebFactory({
+        configProvider: createConfigProvider(),
+      });
+      const client = factory.createClient(Network.Mainnet);
+      vi.spyOn(client.trx, 'getCurrentRefBlockParams').mockResolvedValue({
+        ref_block_bytes: '0123',
+        ref_block_hash: 'aabbccdd00112233',
+        expiration: 123456,
+        timestamp: 789,
+      });
+      return client;
+    };
+
+    const deserializeAndReserialize = (
+      client: TronWeb,
+      transaction: TronwebTypes.Transaction,
+    ): string => {
+      const [contract] = transaction.raw_data.contract;
+      if (!contract) {
+        throw new Error('Transaction has no contract');
+      }
+      const deserialized = client.utils.deserializeTx.deserializeTransaction(
+        contract.type,
+        transaction.raw_data_hex,
+      );
+      const transactionPb = client.utils.transaction.txJsonToPb({
+        raw_data: deserialized,
+      });
+      return client.utils.transaction.txPbToRawDataHex(transactionPb);
+    };
+
+    it('supports VoteWitnessContract transactions', async () => {
+      const client = createClient();
+      const witness = TronWeb.address.fromHex(
+        '41bace09b0c75ff01da2cb86cf05bc0d6d1af21f5d',
+      );
+      const transaction = await client.transactionBuilder.vote(
+        { [witness]: 1 },
+        TEST_ADDRESS,
+      );
+
+      expect(deserializeAndReserialize(client, transaction).toLowerCase()).toBe(
+        transaction.raw_data_hex.toLowerCase(),
+      );
+    });
+
+    it('supports AccountPermissionUpdateContract transactions', async () => {
+      const client = createClient();
+      const key = { address: TEST_ADDRESS, weight: 1 };
+      const ownerPermission: TronwebTypes.Permission = {
+        type: 0,
+        id: 0,
+        permission_name: 'owner',
+        threshold: 1,
+        keys: [key],
+      };
+      const activePermission: TronwebTypes.Permission = {
+        type: 2,
+        id: 2,
+        permission_name: 'active',
+        threshold: 1,
+        operations:
+          '7fff1fc0033e0000000000000000000000000000000000000000000000000000',
+        keys: [key],
+      };
+      const transaction =
+        await client.transactionBuilder.updateAccountPermissions(
+          TEST_ADDRESS,
+          ownerPermission,
+          null,
+          [activePermission],
+        );
+
+      expect(deserializeAndReserialize(client, transaction).toLowerCase()).toBe(
+        transaction.raw_data_hex.toLowerCase(),
+      );
     });
   });
 });

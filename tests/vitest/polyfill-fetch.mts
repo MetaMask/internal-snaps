@@ -10,7 +10,7 @@ async function installFetchPolyfill(): Promise<void> {
     [FETCH_POLYFILL_KEY]?: FetchPolyfill;
   };
 
-  // The `isomorphic-fetch` import only import once when vitest setup `isolate: false`
+  // `isomorphic-fetch` is imported only once when Vitest runs with `isolate: false`.
   // Without the cached function, the fetch function will be deleted and has no way to get it back.
   let polyfill = holder[FETCH_POLYFILL_KEY];
   if (!polyfill) {

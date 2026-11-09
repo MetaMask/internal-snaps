@@ -503,6 +503,50 @@ async function withCronHandler(
 
 describe('CronHandler', () => {
   describe('refreshConfirmationSend', () => {
+    it('refreshes transaction validity without scanning when both scan preferences are disabled', async () => {
+      const context = buildMockInterfaceContext();
+      const interfaceContext = {
+        ...context,
+        preferences: {
+          ...context.preferences,
+          useSecurityAlerts: false,
+          simulateOnChainActions: false,
+        },
+        scanFetchStatus: FetchStatus.Fetched,
+      };
+
+      await withCronHandler(
+        { interfaceContext, refreshRawData: true },
+        async ({ cronHandler, mockSnapClient, mockTransactionScanService }) => {
+          await cronHandler.refreshConfirmationSend();
+
+          expect(
+            mockTransactionScanService.scanTransaction,
+          ).not.toHaveBeenCalled();
+          expect(mockSnapClient.updateInterface).toHaveBeenCalledTimes(2);
+          expect(
+            mockSnapClient.updateInterface.mock.calls[0]?.[2],
+          ).toMatchObject({
+            scanFetchStatus: FetchStatus.Fetched,
+          });
+          expect(
+            mockSnapClient.updateInterface.mock.calls[1]?.[2],
+          ).toMatchObject({
+            scanFetchStatus: FetchStatus.Fetched,
+            transactionRawData: {
+              ref_block_bytes: getRefBlockBytes(200_000),
+              expiration: MOCK_BLOCK_TIMESTAMP + 60_000,
+              timestamp: MOCK_BLOCK_TIMESTAMP,
+            },
+          });
+          expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+            method: BackgroundEventMethod.RefreshConfirmationSend,
+            duration: 'PT20S',
+          });
+        },
+      );
+    });
+
     it('refreshes security scan and updates interface', async () => {
       await withCronHandler(
         async ({ cronHandler, mockSnapClient, mockTransactionScanService }) => {
