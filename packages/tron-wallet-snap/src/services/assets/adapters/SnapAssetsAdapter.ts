@@ -26,6 +26,7 @@ import {
   BANDWIDTH_METADATA,
   ENERGY_METADATA,
   ESSENTIAL_ASSETS,
+  isActiveNetwork,
   MAX_BANDWIDTH_METADATA,
   MAX_ENERGY_METADATA,
   Networks,
@@ -263,9 +264,10 @@ export class SnapAssetsAdapter {
   }
 
   async fetchAccountAssets(account: KeyringAccount): Promise<AssetEntity[]> {
+    const activeScopes = account.scopes.filter(isActiveNetwork);
     const results = await Promise.all(
-      account.scopes.map((scope) =>
-        this.fetchAssetsAndBalancesForAccount(scope as Network, account),
+      activeScopes.map((scope) =>
+        this.fetchAssetsAndBalancesForAccount(scope, account),
       ),
     );
 
