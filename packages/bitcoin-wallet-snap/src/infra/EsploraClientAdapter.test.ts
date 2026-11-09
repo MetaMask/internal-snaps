@@ -507,9 +507,9 @@ describe('EsploraClientAdapter', () => {
     };
 
     const checkedIndexes = (account: BitcoinAccount): [Keychain, number][] =>
-      vi.mocked(account.peekKeychainAddress).mock.calls.map(
-        ([keychain, index]) => [keychain, index],
-      );
+      vi
+        .mocked(account.peekKeychainAddress)
+        .mock.calls.map(([keychain, index]) => [keychain, index]);
 
     const range = (
       keychain: Keychain,
