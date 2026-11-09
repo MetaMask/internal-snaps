@@ -5,7 +5,6 @@ import type { SnapState } from '../entities';
 import {
   FULL_SCAN_QUEUE_KEY,
   FULL_SCAN_RETRY_BASE_MS,
-  FULL_SCAN_RETRY_KEY,
   FULL_SCAN_RETRY_MAX_MS,
   FullScanQueue,
   getFullScanRetryDelayMs,
@@ -182,7 +181,7 @@ describe('FullScanQueue', () => {
     const queue = new FullScanQueue(stateManager, clock);
 
     expect(await queue.due(['live'], 5)).toStrictEqual(['live']);
-    expect(state.fullScanRetryV1).toEqual({
+    expect(state.fullScanRetryV1).toStrictEqual({
       live: { attempts: 0, nextAttemptAt: now - 1 },
     });
   });

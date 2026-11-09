@@ -2722,7 +2722,7 @@ describe('AccountUseCases', () => {
           : undefined,
       );
       unencryptedState.setKey.mockImplementation(async (key, value) => {
-        state[key as string] = JSON.parse(JSON.stringify(value));
+        state[key] = JSON.parse(JSON.stringify(value));
       });
       return {
         useCases: new AccountUseCases(
@@ -2831,7 +2831,7 @@ describe('AccountUseCases', () => {
           : undefined,
       );
       unencryptedState.setKey.mockImplementation(async (key, value) => {
-        state[key as string] = JSON.parse(JSON.stringify(value));
+        state[key] = JSON.parse(JSON.stringify(value));
       });
       return {
         useCases: new AccountUseCases(
@@ -3374,7 +3374,7 @@ describe('AccountUseCases', () => {
           : undefined,
       );
       unencryptedState.setKey.mockImplementation(async (key, value) => {
-        state[key as string] = JSON.parse(JSON.stringify(value));
+        state[key] = JSON.parse(JSON.stringify(value));
       });
       return {
         useCases: new AccountUseCases(

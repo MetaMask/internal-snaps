@@ -412,7 +412,7 @@ export class AccountUseCases {
     this.#fallbackFeeRate = fallbackFeeRate;
     this.#targetBlocksConfirmation = targetBlocksConfirmation;
     this.#metaProtocols = metaProtocols;
-    this.#fullScanQueue = new FullScanQueue(unencryptedState);
+    this.#fullScanQueue = new FullScanQueue(this.#unencryptedState);
   }
 
   /**
