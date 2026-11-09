@@ -1,5 +1,5 @@
+import { installSnap } from '@metamask/snaps-jest';
 import { SnapError } from '@metamask/snaps-sdk';
-import { installSnap } from '@metamask/snaps-vi';
 
 import {
   onActive,

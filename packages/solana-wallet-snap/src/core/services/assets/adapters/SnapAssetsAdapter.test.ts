@@ -264,7 +264,7 @@ describe('SnapAssetsAdapter', () => {
 
   describe('fetchAccountAssets with failOnNetworks (v3: SOL must not fail silently)', () => {
     beforeEach(() => {
-      (mockConfigProvider.getActiveNetworks as vi.Mock).mockResolvedValue([
+      (mockConfigProvider.getActiveNetworks as Mock).mockResolvedValue([
         Network.Mainnet,
       ]);
     });
@@ -276,7 +276,7 @@ describe('SnapAssetsAdapter', () => {
       balanceFails?: boolean;
       tokensFail?: boolean;
     }): void => {
-      (mockConnection.getRpc as vi.Mock).mockReturnValue({
+      (mockConnection.getRpc as Mock).mockReturnValue({
         getBalance: vi.fn().mockReturnValue({
           send: balanceFails
             ? vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
