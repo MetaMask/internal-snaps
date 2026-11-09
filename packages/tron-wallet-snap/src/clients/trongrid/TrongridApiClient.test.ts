@@ -100,7 +100,7 @@ describe('TrongridApiClient', () => {
           { TGPuQ7g7H8GsUEXhwvvJop4zCncurEh2ht: '88123456' },
         ];
 
-        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        vi.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
@@ -133,7 +133,7 @@ describe('TrongridApiClient', () => {
 
     it('returns empty array when no TRC20 tokens are found', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        vi.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
@@ -157,7 +157,7 @@ describe('TrongridApiClient', () => {
 
     it('returns empty array when data is undefined', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        vi.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
@@ -209,7 +209,7 @@ describe('TrongridApiClient', () => {
 
     it('throws error when HTTP request fails', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        const fetchMock = jest
+        const fetchMock = vi
           .spyOn(global, 'fetch')
           .mockResolvedValueOnce(
             // eslint-disable-next-line no-restricted-globals
@@ -237,7 +237,7 @@ describe('TrongridApiClient', () => {
 
     it('does not retry 404 responses', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response('', { status: 404 }),
         );
@@ -253,10 +253,10 @@ describe('TrongridApiClient', () => {
       await withTrongridApiClient(async ({ client }) => {
         // eslint-disable-next-line no-restricted-globals
         const failedResponse = new Response('', { status: 200 });
-        jest
-          .spyOn(failedResponse, 'text')
-          .mockRejectedValueOnce(new Error('Body failed'));
-        const fetchMock = jest
+        vi.spyOn(failedResponse, 'text').mockRejectedValueOnce(
+          new Error('Body failed'),
+        );
+        const fetchMock = vi
           .spyOn(global, 'fetch')
           .mockResolvedValueOnce(failedResponse)
           .mockResolvedValueOnce(
@@ -280,7 +280,7 @@ describe('TrongridApiClient', () => {
 
     it('throws error when API returns success: false', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        vi.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
@@ -305,7 +305,7 @@ describe('TrongridApiClient', () => {
           { TTestToken123: '1000000' },
         ];
 
-        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        vi.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
@@ -339,7 +339,7 @@ describe('TrongridApiClient', () => {
           { TokenAddress2: '200' },
         ];
 
-        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        vi.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
@@ -371,7 +371,7 @@ describe('TrongridApiClient', () => {
 
     it('fetches transactions without a limit query parameter by default', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        vi.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
@@ -400,7 +400,7 @@ describe('TrongridApiClient', () => {
 
     it('appends limit to the query string when options.limit is set', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        vi.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
@@ -440,7 +440,7 @@ describe('TrongridApiClient', () => {
           ],
         };
 
-        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        vi.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
@@ -467,7 +467,7 @@ describe('TrongridApiClient', () => {
         // Example seen live on tx c4e8c4a45830e882e92062ede0ecd09702c51e4732385b9cf33590d470b08357,
         // where Trongrid omitted raw_data.timestamp entirely.
 
-        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        vi.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
@@ -494,18 +494,19 @@ describe('TrongridApiClient', () => {
     it('returns fresh parameters when persisted cache operations fail', async () => {
       await withTrongridApiClient(async ({ client, tronHttpClient, cache }) => {
         const chainParameters = [{ key: 'getTransactionFee', value: 1000 }];
-        jest
-          .spyOn(cache, 'get')
-          .mockRejectedValueOnce(new Error('Cache read failed'));
-        jest
-          .spyOn(cache, 'set')
-          .mockRejectedValueOnce(new Error('Cache write failed'));
-        jest
-          .spyOn(tronHttpClient, 'getChainParameters')
-          .mockResolvedValueOnce(chainParameters);
-        jest
-          .spyOn(tronHttpClient, 'getNextMaintenanceTime')
-          .mockResolvedValueOnce(Date.now() + 3_600_000);
+        vi.spyOn(cache, 'get').mockRejectedValueOnce(
+          new Error('Cache read failed'),
+        );
+        vi.spyOn(cache, 'set').mockRejectedValueOnce(
+          new Error('Cache write failed'),
+        );
+        vi.spyOn(tronHttpClient, 'getChainParameters').mockResolvedValueOnce(
+          chainParameters,
+        );
+        vi.spyOn(
+          tronHttpClient,
+          'getNextMaintenanceTime',
+        ).mockResolvedValueOnce(Date.now() + 3_600_000);
 
         expect(await client.getChainParameters(Network.Mainnet)).toStrictEqual(
           chainParameters,
@@ -518,13 +519,13 @@ describe('TrongridApiClient', () => {
         async ({ client, configProvider, tronHttpClient, cache }) => {
           const mainnetParameters = [{ key: 'getTransactionFee', value: 1000 }];
           const nileParameters = [{ key: 'getTransactionFee', value: 2000 }];
-          const getChainParameters = jest
+          const getChainParameters = vi
             .spyOn(tronHttpClient, 'getChainParameters')
             .mockResolvedValueOnce(mainnetParameters)
             .mockResolvedValueOnce(nileParameters);
-          jest
-            .spyOn(tronHttpClient, 'getNextMaintenanceTime')
-            .mockResolvedValue(Date.now() + 3_600_000);
+          vi.spyOn(tronHttpClient, 'getNextMaintenanceTime').mockResolvedValue(
+            Date.now() + 3_600_000,
+          );
 
           expect(
             await client.getChainParameters(Network.Mainnet),
@@ -557,13 +558,12 @@ describe('TrongridApiClient', () => {
         async ({ client, configProvider, tronHttpClient, cache }) => {
           const now = 1_700_000_000_000;
           const maintenanceTime = now + 3_600_000;
-          const dateNow = jest.spyOn(Date, 'now').mockReturnValue(now);
-          const getChainParameters = jest
+          const dateNow = vi.spyOn(Date, 'now').mockReturnValue(now);
+          const getChainParameters = vi
             .spyOn(tronHttpClient, 'getChainParameters')
             .mockResolvedValueOnce([{ key: 'getTransactionFee', value: 1000 }])
             .mockResolvedValueOnce([{ key: 'getTransactionFee', value: 2000 }]);
-          jest
-            .spyOn(tronHttpClient, 'getNextMaintenanceTime')
+          vi.spyOn(tronHttpClient, 'getNextMaintenanceTime')
             .mockResolvedValueOnce(maintenanceTime)
             .mockResolvedValueOnce(maintenanceTime + 3_600_000);
 
@@ -605,7 +605,7 @@ describe('TrongridApiClient', () => {
         // getChainParameters issues two fetches: chain parameters first, then
         // next-maintenance-time (the cache TTL).
 
-        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        vi.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(JSON.stringify({ chainParameter: chainParameters }), {
             status: 200,
@@ -613,7 +613,7 @@ describe('TrongridApiClient', () => {
           }),
         );
 
-        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        vi.spyOn(global, 'fetch').mockResolvedValueOnce(
           // eslint-disable-next-line no-restricted-globals
           new Response(
             JSON.stringify({
@@ -648,7 +648,7 @@ describe('TrongridApiClient', () => {
         const mockTrc20Balances: Trc20Balance[] = [
           { TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t: '24249143' },
         ];
-        const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+        const fetchMock = vi.spyOn(global, 'fetch').mockImplementation(
           async () =>
             // eslint-disable-next-line no-restricted-globals
             new Response(
@@ -680,13 +680,13 @@ describe('TrongridApiClient', () => {
     });
 
     it('refetches identical requests after the cache TTL elapses', async () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       try {
         await withTrongridApiClient(async ({ client }) => {
           const mockTrc20Balances: Trc20Balance[] = [
             { TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t: '24249143' },
           ];
-          const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+          const fetchMock = vi.spyOn(global, 'fetch').mockImplementation(
             async () =>
               // eslint-disable-next-line no-restricted-globals
               new Response(
@@ -703,19 +703,19 @@ describe('TrongridApiClient', () => {
           );
 
           await client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress);
-          jest.advanceTimersByTime(5_001);
+          vi.advanceTimersByTime(5_001);
           await client.getTrc20BalancesByAddress(Network.Mainnet, mockAddress);
 
           expect(fetchMock).toHaveBeenCalledTimes(2);
         });
       } finally {
-        jest.useRealTimers();
+        vi.useRealTimers();
       }
     });
 
     it('does not deduplicate different requests', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+        const fetchMock = vi.spyOn(global, 'fetch').mockImplementation(
           async () =>
             // eslint-disable-next-line no-restricted-globals
             new Response(

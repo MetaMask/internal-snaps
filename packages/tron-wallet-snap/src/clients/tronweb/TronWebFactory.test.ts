@@ -85,8 +85,8 @@ describe('TronWebFactory', () => {
       const factory = new TronWebFactory({
         configProvider: createConfigProvider(),
       });
-      const operation = jest
-        .fn<Promise<string>, []>()
+      const operation = vi
+        .fn<() => Promise<string>>()
         .mockRejectedValueOnce(
           Object.assign(new Error('unavailable'), {
             response: { status: 503 },
@@ -105,7 +105,7 @@ describe('TronWebFactory', () => {
       const error = Object.assign(new Error('not found'), {
         response: { status: 404 },
       });
-      const operation = jest.fn<Promise<string>, []>().mockRejectedValue(error);
+      const operation = vi.fn<() => Promise<string>>().mockRejectedValue(error);
 
       await expect(
         factory.executeRead(Network.Mainnet, operation),
@@ -118,7 +118,7 @@ describe('TronWebFactory', () => {
         configProvider: createConfigProvider(),
       });
       const signedTransaction = { txID: 'signed-transaction' };
-      const sendRawTransaction = jest
+      const sendRawTransaction = vi
         .fn()
         .mockRejectedValueOnce(
           Object.assign(new Error('unavailable'), {
@@ -126,7 +126,7 @@ describe('TronWebFactory', () => {
           }),
         )
         .mockResolvedValue({ result: true });
-      const operation = jest.fn(() => sendRawTransaction(signedTransaction));
+      const operation = vi.fn(() => sendRawTransaction(signedTransaction));
 
       await factory.executeBroadcast(Network.Mainnet, operation);
 
@@ -142,7 +142,7 @@ describe('TronWebFactory', () => {
       const error = Object.assign(new Error('invalid transaction'), {
         response: { status: 400 },
       });
-      const operation = jest.fn().mockRejectedValue(error);
+      const operation = vi.fn().mockRejectedValue(error);
 
       await expect(
         factory.executeBroadcast(Network.Mainnet, operation),
@@ -155,7 +155,7 @@ describe('TronWebFactory', () => {
         configProvider: createConfigProvider(),
       });
       const signedTransaction = { txID: 'signed-transaction' };
-      const sendRawTransaction = jest
+      const sendRawTransaction = vi
         .fn()
         .mockResolvedValueOnce({
           code: 'SERVER_BUSY',
@@ -254,7 +254,7 @@ describe('TronWebFactory', () => {
         configProvider: createConfigProvider(),
       });
       const client = factory.createClient(Network.Mainnet);
-      jest.spyOn(client.trx, 'getCurrentRefBlockParams').mockResolvedValue({
+      vi.spyOn(client.trx, 'getCurrentRefBlockParams').mockResolvedValue({
         ref_block_bytes: '0123',
         ref_block_hash: 'aabbccdd00112233',
         expiration: 123456,

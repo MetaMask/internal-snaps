@@ -1333,7 +1333,7 @@
   },
   "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest.test.tsx": {
     "@typescript-eslint/explicit-function-return-type": {
-      "count": 2
+      "count": 1
     }
   },
   "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmTransactionRequest/render.test.tsx": {

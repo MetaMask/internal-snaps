@@ -2,6 +2,7 @@ import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { IStateManager } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import { Types as TronwebTypes } from 'tronweb';
+import type { Mocked, Mock } from 'vitest';
 
 import {
   buildTransactionRawData,
@@ -9,6 +10,7 @@ import {
 } from '../../../../clients/security-alerts-api/utils';
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
+import snapContext from '../../../../context';
 import type { AssetEntity } from '../../../../entities/assets';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
 import type { UnencryptedStateValue } from '../../../../services/state/stateTypes';
@@ -19,14 +21,6 @@ import { FetchStatus } from '../../../../types/snap';
 import type { Preferences } from '../../../../types/snap';
 import { render } from './render';
 
-// Mock the context module
-jest.mock('../../../../context', () => ({
-  __esModule: true,
-  default: {
-    transactionScanService: null,
-  },
-}));
-
 // ---------------------------------------------------------------------------
 // Mock types
 // ---------------------------------------------------------------------------
@@ -34,7 +28,7 @@ jest.mock('../../../../context', () => ({
 /**
  * Subset of SnapClient methods exercised by `render`.
  */
-type MockSnapClient = jest.Mocked<
+type MockSnapClient = Mocked<
   Pick<
     SnapClient,
     | 'createInterface'
@@ -48,7 +42,7 @@ type MockSnapClient = jest.Mocked<
 /**
  * Subset of TransactionScanService methods exercised by `render`.
  */
-type MockTransactionScanService = jest.Mocked<
+type MockTransactionScanService = Mocked<
   Pick<TransactionScanService, 'scanTransaction'>
 >;
 
@@ -56,9 +50,9 @@ type MockTransactionScanService = jest.Mocked<
  * Subset of State methods exercised by `render`.
  */
 type MockState = {
-  getKey: jest.Mock;
-  setKey: jest.Mock;
-  setKeyWith: jest.Mock;
+  getKey: Mock;
+  setKey: Mock;
+  setKeyWith: Mock;
 };
 
 // ---------------------------------------------------------------------------
@@ -143,11 +137,11 @@ const defaultIncomingContext = {
  */
 function buildMockSnapClient(): MockSnapClient {
   return {
-    createInterface: jest.fn().mockResolvedValue('interface-id-123'),
-    showDialog: jest.fn().mockResolvedValue(true),
-    updateInterface: jest.fn().mockResolvedValue(undefined),
-    getPreferences: jest.fn().mockResolvedValue(defaultPreferences),
-    scheduleBackgroundEvent: jest.fn().mockResolvedValue(undefined),
+    createInterface: vi.fn().mockResolvedValue('interface-id-123'),
+    showDialog: vi.fn().mockResolvedValue(true),
+    updateInterface: vi.fn().mockResolvedValue(undefined),
+    getPreferences: vi.fn().mockResolvedValue(defaultPreferences),
+    scheduleBackgroundEvent: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -159,7 +153,7 @@ function buildMockSnapClient(): MockSnapClient {
  */
 function buildMockTransactionScanService(): MockTransactionScanService {
   return {
-    scanTransaction: jest.fn().mockResolvedValue(defaultScanResult),
+    scanTransaction: vi.fn().mockResolvedValue(defaultScanResult),
   };
 }
 
@@ -170,9 +164,9 @@ function buildMockTransactionScanService(): MockTransactionScanService {
  */
 function buildMockState(): MockState {
   return {
-    setKey: jest.fn().mockResolvedValue(undefined),
-    setKeyWith: jest.fn().mockResolvedValue(undefined),
-    getKey: jest.fn().mockResolvedValue({}),
+    setKey: vi.fn().mockResolvedValue(undefined),
+    setKeyWith: vi.fn().mockResolvedValue(undefined),
+    getKey: vi.fn().mockResolvedValue({}),
   };
 }
 
@@ -216,11 +210,9 @@ async function withRender(
   const mockState = buildMockState();
   const mockTransactionScanService = buildMockTransactionScanService();
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, no-restricted-globals
-  const snapContext = require('../../../../context').default;
-  snapContext.transactionScanService = hasTransactionScanService
+  snapContext.transactionScanService = (hasTransactionScanService
     ? mockTransactionScanService
-    : null;
+    : null) as unknown as TransactionScanService;
 
   const callRender = async (
     contextOverrides?: Partial<Parameters<typeof render>[2]>,

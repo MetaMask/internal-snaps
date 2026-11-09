@@ -79,8 +79,8 @@ describe('toFetchPolicyError', () => {
       service: 'test',
       logger: mockLogger,
     });
-    const operation = jest
-      .fn<Promise<string>, []>()
+    const operation = vi
+      .fn<() => Promise<string>>()
       .mockRejectedValueOnce(
         Object.assign(new Error('timeout of 10000ms exceeded'), {
           code: 'ECONNABORTED',

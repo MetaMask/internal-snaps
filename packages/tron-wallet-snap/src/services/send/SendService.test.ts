@@ -5,6 +5,7 @@ import type { AnalyticsService } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
 import { TronWeb } from 'tronweb';
 import type { Types as TronwebTypes } from 'tronweb';
+import type { Mock } from 'vitest';
 
 import {
   FEE_LIMIT,
@@ -22,7 +23,7 @@ import { SendService } from './SendService';
 type Transaction = TronwebTypes.Transaction<TronwebTypes.TransferContract>;
 
 const mockAnalyticsService = {
-  trackTransactionSubmitted: jest.fn().mockResolvedValue(undefined),
+  trackTransactionSubmitted: vi.fn().mockResolvedValue(undefined),
 } as unknown as AnalyticsService;
 
 describe('SendService', () => {
@@ -98,33 +99,33 @@ describe('SendService', () => {
       }) as unknown as TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract>;
 
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
 
       mockAccountsService = {
-        findByIdOrThrow: jest.fn().mockResolvedValue({
+        findByIdOrThrow: vi.fn().mockResolvedValue({
           id: TEST_ACCOUNT_ID,
           address: TEST_FROM_ADDRESS,
           type: 'tron:eoa',
           entropySource: 'test-entropy',
           derivationPath: [],
         }),
-        deriveTronKeypair: jest.fn().mockResolvedValue({
+        deriveTronKeypair: vi.fn().mockResolvedValue({
           privateKeyHex: 'test-private-key',
           address: TEST_FROM_ADDRESS,
         }),
       };
 
       mockAssetsService = {
-        getAccountAssetsByIDs: jest.fn(),
+        getAccountAssetsByIDs: vi.fn(),
       };
 
       mockTronWeb = {
         trx: {
-          sign: jest.fn().mockResolvedValue({
+          sign: vi.fn().mockResolvedValue({
             ...createMockTransaction(),
             signature: ['test-signature'],
           }),
-          sendRawTransaction: jest.fn().mockResolvedValue({
+          sendRawTransaction: vi.fn().mockResolvedValue({
             result: true,
             txid: 'broadcast-tx-id',
           }),
@@ -132,23 +133,23 @@ describe('SendService', () => {
       };
 
       mockTronWebFactory = {
-        createClient: jest.fn().mockReturnValue(mockTronWeb),
-        executeBroadcast: jest.fn(
+        createClient: vi.fn().mockReturnValue(mockTronWeb),
+        executeBroadcast: vi.fn(
           async (_network: Network, operation: () => Promise<unknown>) =>
             operation(),
         ),
       };
 
       mockFeeCalculatorService = {
-        computeFee: jest.fn(),
+        computeFee: vi.fn(),
       };
 
       mockSnapClient = {
-        scheduleBackgroundEvent: jest.fn(),
+        scheduleBackgroundEvent: vi.fn(),
       };
 
       mockTransactionExpirationRefresherService = {
-        ensureFreshMetadata: jest.fn(
+        ensureFreshMetadata: vi.fn(
           async ({ transaction }: { transaction: unknown }) => transaction,
         ),
       };
@@ -272,7 +273,7 @@ describe('SendService', () => {
     let mockSnapClient: any;
     let mockTronWeb: any;
     let mockTransactionExpirationRefresherService: {
-      ensureFreshMetadata: jest.Mock;
+      ensureFreshMetadata: Mock;
     };
 
     const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
@@ -355,11 +356,11 @@ describe('SendService', () => {
       number.toString(16).slice(-4).padStart(4, '0');
 
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
 
       mockAccountsService = {
-        deriveTronKeypair: jest.fn(),
-        findByIdOrThrow: jest.fn().mockResolvedValue({
+        deriveTronKeypair: vi.fn(),
+        findByIdOrThrow: vi.fn().mockResolvedValue({
           id: TEST_ACCOUNT_ID,
           address: TEST_FROM_ADDRESS,
           entropySource: 'test-entropy',
@@ -368,50 +369,50 @@ describe('SendService', () => {
       };
 
       mockAssetsService = {
-        getAccountAssetsByIDs: jest.fn(),
+        getAccountAssetsByIDs: vi.fn(),
       };
 
       mockTronWeb = {
         transactionBuilder: {
-          sendTrx: jest.fn().mockResolvedValue(createMockTransaction()),
-          sendToken: jest.fn().mockResolvedValue(createMockTransaction()),
-          triggerSmartContract: jest.fn().mockResolvedValue({
+          sendTrx: vi.fn().mockResolvedValue(createMockTransaction()),
+          sendToken: vi.fn().mockResolvedValue(createMockTransaction()),
+          triggerSmartContract: vi.fn().mockResolvedValue({
             transaction: createMockTransaction(),
           }),
         },
         utils: {
           transaction: {
-            txJsonToPb: jest.fn().mockImplementation((tx) => tx),
-            txPbToRawDataHex: jest.fn().mockReturnValue('1234567890abcdef'),
-            txPbToTxID: jest.fn().mockReturnValue('mock-tx-id'),
+            txJsonToPb: vi.fn().mockImplementation((tx) => tx),
+            txPbToRawDataHex: vi.fn().mockReturnValue('1234567890abcdef'),
+            txPbToTxID: vi.fn().mockReturnValue('mock-tx-id'),
           },
         },
         trx: {
-          getCurrentBlock: jest.fn(),
-          getBlockByNumber: jest.fn(),
-          sign: jest.fn(),
-          sendRawTransaction: jest.fn(),
+          getCurrentBlock: vi.fn(),
+          getBlockByNumber: vi.fn(),
+          sign: vi.fn(),
+          sendRawTransaction: vi.fn(),
         },
       };
 
       mockTronWebFactory = {
-        createClient: jest.fn().mockReturnValue(mockTronWeb),
-        executeBroadcast: jest.fn(
+        createClient: vi.fn().mockReturnValue(mockTronWeb),
+        executeBroadcast: vi.fn(
           async (_network: Network, operation: () => Promise<unknown>) =>
             operation(),
         ),
       };
 
       mockFeeCalculatorService = {
-        computeFee: jest.fn(),
+        computeFee: vi.fn(),
       };
 
       mockSnapClient = {
-        scheduleBackgroundEvent: jest.fn(),
+        scheduleBackgroundEvent: vi.fn(),
       };
 
       mockTransactionExpirationRefresherService = {
-        ensureFreshMetadata: jest.fn(
+        ensureFreshMetadata: vi.fn(
           async ({ transaction }: { transaction: unknown }) => transaction,
         ),
       };
@@ -1261,13 +1262,10 @@ describe('SendService', () => {
           derivationPath: [],
           type: 'tron:basic',
         });
-        jest
-          .spyOn(mockAccountsService, 'deriveTronKeypair')
-          .mockImplementation()
-          .mockResolvedValue({
-            privateKeyHex: 'test-private-key',
-            address: ownerAddress,
-          });
+        vi.spyOn(mockAccountsService, 'deriveTronKeypair').mockResolvedValue({
+          privateKeyHex: 'test-private-key',
+          address: ownerAddress,
+        });
         mockTronWeb.trx.sign.mockImplementation(
           async (transaction: unknown) => ({
             transaction,
@@ -1587,7 +1585,7 @@ describe('SendService', () => {
       const tronWeb = new TronWeb({ fullHost: 'https://api.trongrid.io' });
       const address = 'TRXcKoEvHr6Y38VMcDYGBEYKznvH3XUX4g';
 
-      jest.spyOn(tronWeb.trx, 'getCurrentRefBlockParams').mockResolvedValue({
+      vi.spyOn(tronWeb.trx, 'getCurrentRefBlockParams').mockResolvedValue({
         ref_block_bytes: '0123',
         ref_block_hash: 'aabbccdd00112233',
         expiration: 123456,

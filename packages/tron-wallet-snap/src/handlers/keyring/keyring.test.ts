@@ -8,6 +8,7 @@ import {
   InvalidParamsError,
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
+import type { Mocked } from 'vitest';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import { KnownCaip19Id, Network } from '../../constants';
@@ -59,12 +60,12 @@ describe('KeyringHandler', () => {
   };
 
   let keyringHandler: KeyringHandler;
-  let mockSnapClient: jest.Mocked<SnapClient>;
-  let mockAccountsService: jest.Mocked<AccountsService>;
-  let mockAssetsService: jest.Mocked<AssetsService>;
-  let mockTransactionsService: jest.Mocked<TransactionsService>;
-  let mockWalletService: jest.Mocked<WalletService>;
-  let mockConfirmationHandler: jest.Mocked<ConfirmationHandler>;
+  let mockSnapClient: Mocked<SnapClient>;
+  let mockAccountsService: Mocked<AccountsService>;
+  let mockAssetsService: Mocked<AssetsService>;
+  let mockTransactionsService: Mocked<TransactionsService>;
+  let mockWalletService: Mocked<WalletService>;
+  let mockConfirmationHandler: Mocked<ConfirmationHandler>;
 
   const mockLiveAsset: AssetEntity = {
     assetType: KnownCaip19Id.TrxMainnet,
@@ -85,40 +86,40 @@ describe('KeyringHandler', () => {
 
   beforeEach(() => {
     mockSnapClient = {
-      scheduleBackgroundEvent: jest.fn().mockResolvedValue(undefined),
-      trackError: jest.fn(),
-    } as unknown as jest.Mocked<SnapClient>;
+      scheduleBackgroundEvent: vi.fn().mockResolvedValue(undefined),
+      trackError: vi.fn(),
+    } as unknown as Mocked<SnapClient>;
     mockAccountsService = {
-      findById: jest.fn().mockResolvedValue(mockAccount),
-      findByIdOrThrow: jest.fn().mockResolvedValue(mockAccount),
-      createAccounts: jest.fn(),
-      delete: jest.fn().mockResolvedValue(undefined),
-      getAll: jest.fn().mockResolvedValue([mockAccount]),
-      deriveTronKeypair: jest.fn().mockResolvedValue({
+      findById: vi.fn().mockResolvedValue(mockAccount),
+      findByIdOrThrow: vi.fn().mockResolvedValue(mockAccount),
+      createAccounts: vi.fn(),
+      delete: vi.fn().mockResolvedValue(undefined),
+      getAll: vi.fn().mockResolvedValue([mockAccount]),
+      deriveTronKeypair: vi.fn().mockResolvedValue({
         privateKeyHex: 'a'.repeat(64),
         privateKeyBytes: new Uint8Array(32),
         publicKeyBytes: new Uint8Array(33),
         address: mockAccount.address,
       }),
-    } as unknown as jest.Mocked<AccountsService>;
+    } as unknown as Mocked<AccountsService>;
     mockAssetsService = {
-      fetchAccountAssetsFromTrongrid: jest
+      fetchAccountAssetsFromTrongrid: vi
         .fn()
         .mockResolvedValue([mockLiveAsset, mockShastaAsset]),
-      saveMany: jest.fn().mockResolvedValue(undefined),
-    } as unknown as jest.Mocked<AssetsService>;
+      saveMany: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Mocked<AssetsService>;
     mockTransactionsService = {
-      checkAddressActivity: jest.fn(),
-      findByAccounts: jest.fn().mockResolvedValue([]),
-    } as unknown as jest.Mocked<TransactionsService>;
+      checkAddressActivity: vi.fn(),
+      findByAccounts: vi.fn().mockResolvedValue([]),
+    } as unknown as Mocked<TransactionsService>;
     mockWalletService = {
-      handleKeyringRequest: jest
+      handleKeyringRequest: vi
         .fn()
         .mockResolvedValue({ signature: '0xsignature123' }),
-    } as unknown as jest.Mocked<WalletService>;
+    } as unknown as Mocked<WalletService>;
     mockConfirmationHandler = {
-      handleKeyringRequest: jest.fn().mockResolvedValue(true),
-    } as unknown as jest.Mocked<ConfirmationHandler>;
+      handleKeyringRequest: vi.fn().mockResolvedValue(true),
+    } as unknown as Mocked<ConfirmationHandler>;
 
     keyringHandler = new KeyringHandler({
       logger: mockLogger,
