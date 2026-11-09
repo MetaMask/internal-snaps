@@ -201,72 +201,26 @@ module.exports = defineConfig({
           '../../scripts/since-latest-release.sh',
         );
 
-        // Bitcoin, Stellar, Tron, Solana, and snap-networks-utils unit tests
-        // run on Vitest. `@metamask/snaps-jest` stays on Jest for Bitcoin
-        // integration tests (`test:integration`) and for the Solana files that
-        // install the built snap. That preset cannot execute under Vitest.
-        if (
-          workspace.ident === '@metamask/bitcoin-wallet-snap' ||
-          workspace.ident === '@metamask/stellar-wallet-snap' ||
-          workspace.ident === '@metamask/tron-wallet-snap' ||
-          workspace.ident === '@metamask/solana-wallet-snap' ||
-          workspace.ident === '@metamask/snap-networks-utils'
-        ) {
-          expectWorkspaceFieldRegex(
-            workspace,
-            'scripts.test',
-            /vitest run --coverage --reporter=dot --silent$/u,
-          );
-          expectWorkspaceFieldRegex(
-            workspace,
-            'scripts.test:clean',
-            /vitest --clearCache$/u,
-          );
-          expectWorkspaceFieldRegex(
-            workspace,
-            'scripts.test:verbose',
-            /vitest run --reporter=verbose$/u,
-          );
-          expectWorkspaceFieldRegex(
-            workspace,
-            'scripts.test:watch',
-            /vitest --silent$/u,
-          );
-        } else {
-          // All non-root packages must run Jest with the silent reporter. Extra
-          // prefixes (e.g. `NODE_OPTIONS=...`) are allowed. An optional
-          // `&& yarn coverage:ratchet` suffix is allowed so snaps can bump
-          // coverageThreshold after a passing local run.
-          expectWorkspaceFieldRegex(
-            workspace,
-            'scripts.test',
-            /jest --reporters=jest-silent-reporter(?: && yarn coverage:ratchet)?$/u,
-          );
-
-          // All non-root packages must have a "test:clean" script that clears the
-          // Jest cache. Extra prefixes (e.g. `NODE_OPTIONS=...`) are allowed.
-          expectWorkspaceFieldRegex(
-            workspace,
-            'scripts.test:clean',
-            /jest --clearCache$/u,
-          );
-
-          // All non-root packages must have a "test:verbose" script that runs Jest
-          // in verbose mode. Extra prefixes (e.g. `NODE_OPTIONS=...`) are allowed.
-          expectWorkspaceFieldRegex(
-            workspace,
-            'scripts.test:verbose',
-            /jest --verbose$/u,
-          );
-
-          // All non-root packages must have a "test:watch" script that runs Jest
-          // in watch mode. Extra prefixes (e.g. `NODE_OPTIONS=...`) are allowed.
-          expectWorkspaceFieldRegex(
-            workspace,
-            'scripts.test:watch',
-            /jest --watch$/u,
-          );
-        }
+        expectWorkspaceFieldRegex(
+          workspace,
+          'scripts.test',
+          /vitest run --coverage --reporter=dot --silent$/u,
+        );
+        expectWorkspaceFieldRegex(
+          workspace,
+          'scripts.test:clean',
+          /vitest --clearCache$/u,
+        );
+        expectWorkspaceFieldRegex(
+          workspace,
+          'scripts.test:verbose',
+          /vitest run --reporter=verbose$/u,
+        );
+        expectWorkspaceFieldRegex(
+          workspace,
+          'scripts.test:watch',
+          /vitest --silent$/u,
+        );
       }
 
       if (isChildWorkspace) {
