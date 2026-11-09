@@ -238,13 +238,14 @@ module.exports = defineConfig({
 
       if (isChildWorkspace) {
         if (isSnap) {
-          // Snap packages publish their bundled JS plus the manifest, images,
-          // and locale files. They do not have a `dist/` exports tree like
+          // Snap packages publish their bundled JS plus the manifest and
+          // images. Locale catalogs live in `@metamask/snap-networks-utils`
+          // and are bundled at build time, so snaps no longer publish a
+          // `locales/` directory. They do not have a `dist/` exports tree like
           // TypeScript packages do.
           expectWorkspaceArrayField(workspace, 'files', 'dist/');
           expectWorkspaceArrayField(workspace, 'files', 'snap.manifest.json');
           expectWorkspaceArrayField(workspace, 'files', 'images/');
-          expectWorkspaceArrayField(workspace, 'files', 'locales/');
         } else {
           // The list of files included in all non-root packages must only
           // include files generated during the build process.

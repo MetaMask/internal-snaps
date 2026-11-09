@@ -31,7 +31,7 @@ try {
   // Trailing newline keeps oxfmt / lint:misc happy and avoids shasum drift
   // after `locale:build` (locales are included in the snap checksum).
   writeFileSync(
-    join(__dirname, '../locales/en.json'),
+    join(__dirname, '../../snap-networks-utils/locales/solana/en.json'),
     `${JSON.stringify(englishLocale, null, 2)}\n`,
   );
   console.log('🌍 EN locale populated ✅');
