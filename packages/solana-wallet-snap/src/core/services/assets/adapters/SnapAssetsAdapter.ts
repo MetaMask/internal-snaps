@@ -65,6 +65,38 @@ type TokenAccountWithMetadata = {
   keyringAccount: ExtendedKeyringAccount;
 } & Serializable;
 
+/**
+ * A failed RPC fetch while collecting an account's assets.
+ */
+export type AccountAssetsFetchFailure = {
+  network: Network;
+  reason: unknown;
+};
+
+/**
+ * Thrown when an account's assets cannot be fetched completely for the
+ * networks a caller needs (see `fetchAccountAssets`'s `failOnNetworks`).
+ */
+export class AccountAssetsFetchError extends Error {
+  readonly failures: AccountAssetsFetchFailure[];
+
+  constructor(failures: AccountAssetsFetchFailure[]) {
+    const reasons = failures
+      .map(({ network, reason }) => {
+        const message =
+          reason instanceof Error ? reason.message : String(reason);
+        return `${network}: ${message}`;
+      })
+      .join('; ');
+    super(
+      `Failed to fetch account assets (${failures.length} failed): ${reasons}`,
+      { cause: failures[0]?.reason },
+    );
+    this.name = 'AccountAssetsFetchError';
+    this.failures = failures;
+  }
+}
+
 export class SnapAssetsAdapter {
   readonly #logger: Logger;
 
@@ -280,12 +312,14 @@ export class SnapAssetsAdapter {
    * @param accounts - The owners of the token accounts.
    * @param programIds - The program ids to fetch the token accounts for.
    * @param scopes - The networks to fetch the token accounts for.
+   * @param failures - Collects the per-network fetch failures, if given.
    * @returns The token accounts augmented with the scope and the caip-19 asset type for convenience.
    */
   async #fetchTokenAccountsMultiple(
     accounts: ExtendedKeyringAccount[],
     programIds: Address[] = [TOKEN_PROGRAM_ADDRESS, TOKEN_2022_PROGRAM_ADDRESS],
     scopes: Network[] = [Network.Mainnet],
+    failures?: AccountAssetsFetchFailure[],
   ): Promise<TokenAccountWithMetadata[]> {
     if (programIds.length === 0 || scopes.length === 0) {
       return [];
@@ -331,6 +365,13 @@ export class SnapAssetsAdapter {
       responses,
       combinations.map(({ account }) => account.id),
     );
+
+    responses.forEach((item, index) => {
+      const combination = combinations[index];
+      if (item.status === 'rejected' && combination) {
+        failures?.push({ network: combination.scope, reason: item.reason });
+      }
+    });
 
     return responses.flatMap((item) =>
       item.status === 'fulfilled' ? item.value : [],
@@ -383,17 +424,44 @@ export class SnapAssetsAdapter {
    * @param account - The account to get the assets and balances for.
    * @returns The live assets and balances of the account.
    */
+  /**
+   * Fetches the native and token assets of an account from the RPC.
+   *
+   * Individual fetch failures are reported to Sentry and left out of the
+   * result. Pass `failOnNetworks` when a partial result must not be used as a
+   * balance (e.g. `keyring_getAccountBalances`): if any fetch for one of those
+   * networks failed, an {@link AccountAssetsFetchError} is thrown instead, so
+   * the client flags the balance unavailable rather than keeping a stale one.
+   *
+   * @param account - The account.
+   * @param options - Options.
+   * @param options.failOnNetworks - Networks whose fetch failures must throw.
+   * @returns The account assets.
+   */
   async fetchAccountAssets(
     account: ExtendedKeyringAccount,
+    options: { failOnNetworks?: Network[] } = {},
   ): Promise<AssetEntity[]> {
+    const failures: AccountAssetsFetchFailure[] = [];
     const [nativeAssets, tokenAccounts] = await Promise.all([
-      this.#fetchNativeAssets(account),
+      this.#fetchNativeAssets(account, failures),
       this.#fetchTokenAccountsMultiple(
         [account],
         [TOKEN_PROGRAM_ADDRESS, TOKEN_2022_PROGRAM_ADDRESS],
         await this.#configProvider.getActiveNetworks(),
+        failures,
       ),
     ]);
+
+    const { failOnNetworks } = options;
+    if (failOnNetworks?.length) {
+      const blocking = failures.filter(({ network }) =>
+        failOnNetworks.includes(network),
+      );
+      if (blocking.length > 0) {
+        throw new AccountAssetsFetchError(blocking);
+      }
+    }
 
     const assetTypes = tokenAccounts.map(
       (tokenAccount) => tokenAccount.assetType,
@@ -458,6 +526,7 @@ export class SnapAssetsAdapter {
 
   async #fetchNativeAssets(
     account: ExtendedKeyringAccount,
+    failures?: AccountAssetsFetchFailure[],
   ): Promise<NativeAsset[]> {
     const nativeAssetsTypes = await this.getNativeAssetTypes();
 
@@ -488,6 +557,16 @@ export class SnapAssetsAdapter {
       results,
       results.map(() => account.id),
     );
+
+    results.forEach((item, index) => {
+      const assetType = nativeAssetsTypes[index];
+      if (item.status === 'rejected' && assetType) {
+        failures?.push({
+          network: getNetworkFromToken(assetType),
+          reason: item.reason,
+        });
+      }
+    });
 
     return results.flatMap((item) =>
       item.status === 'fulfilled' ? item.value : [],
