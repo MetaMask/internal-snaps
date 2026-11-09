@@ -2,6 +2,7 @@
 import type { Transaction } from '@metamask/keyring-api';
 import { TransactionType } from '@metamask/keyring-api';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
+import type { Mock } from 'vitest';
 
 import type {
   ConnectionRecoveryHandler,
@@ -11,6 +12,7 @@ import type {
 } from '../../../entities';
 import { Network } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNTS } from '../../test/mocks/solana-keyring-accounts';
+import * as Errors from '../../utils/errors';
 import { trackError } from '../../utils/errors';
 import { mockLogger } from '../__mocks__/logger';
 import type { AccountsService } from '../accounts';
@@ -18,10 +20,6 @@ import type { SolanaConnection } from '../connection';
 import type { TransactionsService } from '../transactions';
 import { SignatureMonitor } from './SignatureMonitor';
 import type { SubscriptionService } from './SubscriptionService';
-
-jest.mock('../../utils/errors', () => ({
-  trackError: jest.fn().mockResolvedValue('tracked-error-id'),
-}));
 
 describe('SignatureMonitor', () => {
   let signatureMonitor: SignatureMonitor;
@@ -51,19 +49,20 @@ describe('SignatureMonitor', () => {
   let connectionRecoveryHandlers: ConnectionRecoveryHandler[] = [];
 
   beforeEach(() => {
+    vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
     notificationHandlers = [];
     connectionRecoveryHandlers = [];
 
     mockSubscriptionService = {
-      subscribe: jest.fn(),
-      unsubscribe: jest.fn(),
-      registerNotificationHandler: jest
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+      registerNotificationHandler: vi
         .fn()
         .mockImplementation(async (_method, _network, handler) => {
           // This will let us capture and manually call the handler
           notificationHandlers.push(handler);
         }),
-      registerConnectionRecoveryHandler: jest
+      registerConnectionRecoveryHandler: vi
         .fn()
         .mockImplementation(async (_network, handler) => {
           // This will let us capture and manually call the handler
@@ -72,23 +71,23 @@ describe('SignatureMonitor', () => {
     } as unknown as SubscriptionService;
 
     mockAccountService = {
-      findById: jest.fn().mockResolvedValue(mockAccount),
+      findById: vi.fn().mockResolvedValue(mockAccount),
     } as unknown as AccountsService;
 
     mockTransactionsService = {
-      fetchBySignature: jest.fn().mockResolvedValue(mockTransaction),
-      save: jest.fn(),
+      fetchBySignature: vi.fn().mockResolvedValue(mockTransaction),
+      save: vi.fn(),
     } as unknown as TransactionsService;
 
     mockAnalyticsService = {
-      trackTransactionFinalized: jest.fn(),
-      trackTransactionSubmitted: jest.fn(),
+      trackTransactionFinalized: vi.fn(),
+      trackTransactionSubmitted: vi.fn(),
     } as unknown as AnalyticsService;
 
     mockConnection = {
-      getRpc: jest.fn().mockImplementation(() => ({
-        getSignatureStatuses: jest.fn().mockImplementation(() => ({
-          send: jest.fn().mockReturnValue({
+      getRpc: vi.fn().mockImplementation(() => ({
+        getSignatureStatuses: vi.fn().mockImplementation(() => ({
+          send: vi.fn().mockReturnValue({
             value: [{ confirmationStatus: 'confirmed' }],
           }),
         })),
@@ -345,7 +344,7 @@ describe('SignatureMonitor', () => {
         },
       } as unknown as Subscription;
 
-      jest.spyOn(mockTransactionsService, 'save').mockRejectedValue(error);
+      vi.spyOn(mockTransactionsService, 'save').mockRejectedValue(error);
 
       await signatureMonitor.monitor(
         signature,
@@ -375,8 +374,8 @@ describe('SignatureMonitor', () => {
         origin,
       );
 
-      (mockTransactionsService.fetchBySignature as jest.Mock).mockClear();
-      (mockTransactionsService.save as jest.Mock).mockClear();
+      (mockTransactionsService.fetchBySignature as Mock).mockClear();
+      (mockTransactionsService.save as Mock).mockClear();
 
       // Simulate connection recovery
       const handler = connectionRecoveryHandlers[0]!;
@@ -390,9 +389,9 @@ describe('SignatureMonitor', () => {
 
   it('does nothing if the tx has not reached the desired commitment', async () => {
     // The transaction is only processed, not confirmed
-    jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
-      getSignatureStatuses: jest.fn().mockReturnValue({
-        send: jest.fn().mockReturnValue({
+    vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+      getSignatureStatuses: vi.fn().mockReturnValue({
+        send: vi.fn().mockReturnValue({
           value: [{ confirmationStatus: 'processed' }],
         }),
       }),
@@ -406,8 +405,8 @@ describe('SignatureMonitor', () => {
       origin,
     );
 
-    (mockTransactionsService.fetchBySignature as jest.Mock).mockClear();
-    (mockTransactionsService.save as jest.Mock).mockClear();
+    (mockTransactionsService.fetchBySignature as Mock).mockClear();
+    (mockTransactionsService.save as Mock).mockClear();
 
     // Simulate connection recovery
     const handler = connectionRecoveryHandlers[0]!;

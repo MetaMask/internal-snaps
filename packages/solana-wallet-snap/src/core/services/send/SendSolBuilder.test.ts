@@ -8,7 +8,7 @@ import { createMockConnection } from '../__mocks__/mockConnection';
 import { SendSolBuilder } from './SendSolBuilder';
 
 describe('SendSolBuilder', () => {
-  const mockConnection = createMockConnection();
+  let mockConnection: ReturnType<typeof createMockConnection>;
 
   const mockFrom = MOCK_SOLANA_KEYRING_ACCOUNTS[0];
   const mockTo = address(MOCK_SOLANA_KEYRING_ACCOUNTS[1].address);
@@ -18,7 +18,8 @@ describe('SendSolBuilder', () => {
   let sendSolBuilder: SendSolBuilder;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    mockConnection = createMockConnection();
     sendSolBuilder = new SendSolBuilder(mockConnection, logger);
   });
 
@@ -74,9 +75,9 @@ describe('SendSolBuilder', () => {
 
     it('throws error when building message fails', async () => {
       const mockError = new Error('Failed to fetch blockhash');
-      jest
-        .spyOn(mockConnection, 'getLatestBlockhash')
-        .mockRejectedValue(mockError);
+      vi.spyOn(mockConnection, 'getLatestBlockhash').mockRejectedValue(
+        mockError,
+      );
 
       await expect(
         sendSolBuilder.buildTransactionMessage({

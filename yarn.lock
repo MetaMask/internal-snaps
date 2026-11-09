@@ -4079,7 +4079,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@metamask/solana-wallet-snap@workspace:packages/solana-wallet-snap"
   dependencies:
-    "@jest/globals": "npm:^29.5.0"
     "@metamask/assets-controller": "npm:^19.1.0"
     "@metamask/auto-changelog": "npm:^6.2.1"
     "@metamask/key-tree": "npm:^10.1.1"
@@ -4107,20 +4106,19 @@ __metadata:
     "@types/lodash": "npm:^4.17.15"
     "@types/react": "npm:18.2.4"
     "@types/react-dom": "npm:18.2.4"
+    "@vitest/coverage-istanbul": "npm:^5.0.5"
     bignumber.js: "npm:^9.3.1"
     bs58: "npm:^6.0.0"
     buffer: "npm:^6.0.3"
     concurrently: "npm:^10.0.3"
     dotenv: "npm:^17.2.1"
     express: "npm:^4.21.1"
-    jest: "npm:30.0.3"
-    jest-it-up: "npm:^2.0.2"
-    jest-transform-stub: "npm:2.0.0"
     lodash: "npm:^4.17.21"
     oxfmt: "npm:^0.70.0"
     rimraf: "npm:^6.0.1"
-    ts-jest: "npm:^29.4.14"
     typescript: "npm:~5.8.3"
+    vite: "npm:^8.3.5"
+    vitest: "npm:^5.0.5"
     webpack: "npm:5.107.2"
   languageName: unknown
   linkType: soft

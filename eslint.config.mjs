@@ -180,6 +180,9 @@ const config = createConfig([
       'packages/tron-wallet-snap/**/*.test.tsx',
       'packages/tron-wallet-snap/**/__mocks__/**/*.ts',
       'packages/tron-wallet-snap/src/utils/mockLogger.ts',
+      'packages/solana-wallet-snap/**/*.test.ts',
+      'packages/solana-wallet-snap/**/*.test.tsx',
+      'packages/solana-wallet-snap/**/__mocks__/**/*.ts',
     ],
     languageOptions: {
       globals: {
