@@ -25,6 +25,7 @@ import {
   ValidationError,
   WalletError,
   AssertionError,
+  isBalanceNotSynchronizedError,
 } from '../entities';
 import { trackError } from '../utils/errors';
 
@@ -45,13 +46,24 @@ export class HandlerMiddleware {
     try {
       return await fn();
     } catch (error) {
-      await trackError(error);
+      // An account that has not synchronized yet is an expected state, not a
+      // failure: it is still returned to the caller, but not reported. Match
+      // the stable message marker, not the class: `handleKeyringRequest`
+      // re-creates the error as a plain `Error` before it gets here.
+      const isExpectedState = isBalanceNotSynchronizedError(error);
+      if (!isExpectedState) {
+        await trackError(error);
+      }
 
       const { locale } = await this.#snapClient.getPreferences();
       const messages = await this.#translator.load(locale);
 
       if (error instanceof BaseError) {
-        this.#logger.error(error, error.data);
+        if (isExpectedState) {
+          this.#logger.debug(error.message, error.data);
+        } else {
+          this.#logger.error(error, error.data);
+        }
 
         const errMsg =
           messages[`error.${error.code}`]?.message ??
@@ -119,7 +131,11 @@ export class HandlerMiddleware {
         // branch replaced everything with a generic "Unexpected error"
         // string, making cross-boundary errors like KeyringControllerError
         // opaque in Sentry).
-        this.#logger.error(error);
+        if (isExpectedState) {
+          this.#logger.debug(getErrorMessage(error));
+        } else {
+          this.#logger.error(error);
+        }
         throw new SnapError(
           error instanceof Error ? error : getErrorMessage(error),
         );

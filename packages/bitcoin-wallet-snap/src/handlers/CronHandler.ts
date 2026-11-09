@@ -16,6 +16,7 @@ import {
   TrackingSnapEvent,
 } from '../entities';
 import type {
+  BitcoinAccount,
   Logger,
   RescanState,
   SnapClient,
@@ -255,10 +256,20 @@ export class CronHandler {
       return;
     }
 
-    // Emit one batched balance event for all accounts
-    await this.#snapClient.emitAccountBalancesUpdatedEvent(
-      results.map((syncResult) => syncResult.account),
-    );
+    // Emit one batched balance event for the accounts whose balance is
+    // known. Pushing the balance of an account that never synchronized would
+    // show a confident zero, so it is held back until a sync succeeds.
+    const knownBalanceAccounts: BitcoinAccount[] = [];
+    for (const { account } of results) {
+      if (!(await this.#accountsUseCases.isBalanceUnknown(account))) {
+        knownBalanceAccounts.push(account);
+      }
+    }
+    if (knownBalanceAccounts.length > 0) {
+      await this.#snapClient.emitAccountBalancesUpdatedEvent(
+        knownBalanceAccounts,
+      );
+    }
 
     // Emit transaction events per account
     for (const {

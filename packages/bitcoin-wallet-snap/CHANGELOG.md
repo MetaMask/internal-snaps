@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Report a balance-unavailable error, not sent to Sentry, instead of 0 BTC for accounts that have never synchronized, and hold back balance events for them ([#519](https://github.com/MetaMask/internal-snaps/pull/519))
+
 ## [3.3.0]
 
 ### Changed

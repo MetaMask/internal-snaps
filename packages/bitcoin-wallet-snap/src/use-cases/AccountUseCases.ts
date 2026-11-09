@@ -266,6 +266,18 @@ export class AccountUseCases {
     this.#metaProtocols = metaProtocols;
   }
 
+  /**
+   * Whether the account's balance is unknown rather than zero: the wallet
+   * never synchronized with the chain (it still sits on the genesis
+   * checkpoint), so its zero balance means "unknown", not "empty".
+   *
+   * @param account - The account.
+   * @returns `true` if the balance must not be reported as known.
+   */
+  async isBalanceUnknown(account: BitcoinAccount): Promise<boolean> {
+    return !account.hasSynchronized();
+  }
+
   async list(): Promise<BitcoinAccount[]> {
     this.#logger.debug('Listing accounts');
 

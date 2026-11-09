@@ -183,6 +183,12 @@ export class BdkAccountAdapter implements BitcoinAccount {
     return this.#wallet.apply_update(update);
   }
 
+  hasSynchronized(): boolean {
+    // A freshly created wallet only holds the genesis checkpoint (height 0);
+    // every successful sync or full scan applies a chain update to the tip.
+    return this.#wallet.latest_checkpoint.height > 0;
+  }
+
   takeStaged(): ChangeSet | undefined {
     const staged = this.#collectStaged();
     this.#staged = undefined;

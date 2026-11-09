@@ -45,7 +45,10 @@ describe('CronHandler', () => {
       clientVersion: '1.0.0',
       platformVersion: '1.0.0',
     });
+    // Default the repair rescan to nothing pending so existing tests don't
+    // trigger a repair scan.
     mockState.getKey.mockResolvedValue({ pending: [] });
+    mockAccountUseCases.isBalanceUnknown.mockResolvedValue(false);
   });
 
   describe('synchronizeAccounts', () => {
@@ -670,6 +673,37 @@ describe('CronHandler', () => {
           pending: ['account-1', 'account-2'],
         });
         expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount1);
+      });
+
+      it('holds back the balance of a synced account whose balance is still unknown', async () => {
+        mockAccountUseCases.synchronize
+          .mockResolvedValueOnce({
+            account: mockAccount1,
+            transactionsToNotify: [],
+          })
+          .mockResolvedValueOnce({
+            account: mockAccount2,
+            transactionsToNotify: [],
+          });
+        mockAccountUseCases.isBalanceUnknown.mockImplementation(
+          async (account) => account === mockAccount1,
+        );
+
+        await handler.route(request);
+
+        expect(
+          mockSnapClient.emitAccountBalancesUpdatedEvent,
+        ).toHaveBeenCalledWith([mockAccount2]);
+      });
+
+      it('emits no balance event when every synced balance is unknown', async () => {
+        mockAccountUseCases.isBalanceUnknown.mockResolvedValue(true);
+
+        await handler.route(request);
+
+        expect(
+          mockSnapClient.emitAccountBalancesUpdatedEvent,
+        ).not.toHaveBeenCalled();
       });
 
       it('uses shared unencrypted state without overwriting a concurrent index update', async () => {
