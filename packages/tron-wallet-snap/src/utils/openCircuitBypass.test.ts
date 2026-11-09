@@ -40,12 +40,12 @@ describe('OpenCircuitBypass', () => {
 
   beforeEach(() => {
     now = 1_000_000;
-    jest.spyOn(Date, 'now').mockImplementation(() => now);
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
   });
 
   it('returns the guarded result without a direct attempt', async () => {
     const bypass = new OpenCircuitBypass();
-    const direct = jest.fn();
+    const direct = vi.fn();
 
     expect(
       await bypass.run(
@@ -60,7 +60,7 @@ describe('OpenCircuitBypass', () => {
 
   it('makes one direct attempt when the circuit is open on an explicit request', async () => {
     const bypass = new OpenCircuitBypass();
-    const direct = jest.fn().mockResolvedValue('direct');
+    const direct = vi.fn().mockResolvedValue('direct');
 
     expect(
       await bypass.run(
@@ -77,7 +77,7 @@ describe('OpenCircuitBypass', () => {
 
   it('does not bypass the circuit for background reads', async () => {
     const bypass = new OpenCircuitBypass();
-    const direct = jest.fn();
+    const direct = vi.fn();
     const guarded = async (): Promise<string> => {
       throw new BrokenCircuitError();
     };
@@ -93,7 +93,7 @@ describe('OpenCircuitBypass', () => {
 
   it('rethrows other errors without a direct attempt', async () => {
     const bypass = new OpenCircuitBypass();
-    const direct = jest.fn();
+    const direct = vi.fn();
     const failure = new Error('HTTP 500');
 
     await expect(
@@ -111,7 +111,7 @@ describe('OpenCircuitBypass', () => {
 
   it('bypasses the circuit at most once per interval for the same request', async () => {
     const bypass = new OpenCircuitBypass();
-    const direct = jest.fn().mockRejectedValue(new Error('HTTP 429'));
+    const direct = vi.fn().mockRejectedValue(new Error('HTTP 429'));
     const guarded = async (): Promise<string> => {
       throw new BrokenCircuitError();
     };
@@ -135,7 +135,7 @@ describe('OpenCircuitBypass', () => {
   it('shares an in-flight direct attempt between identical requests', async () => {
     const bypass = new OpenCircuitBypass();
     let resolveDirect: (value: string) => void = () => undefined;
-    const direct = jest.fn(
+    const direct = vi.fn(
       async () =>
         new Promise<string>((resolve) => {
           resolveDirect = resolve;
@@ -206,12 +206,12 @@ describe('OpenCircuitBypass (v6)', () => {
 
   beforeEach(() => {
     now = 2_000_000;
-    jest.spyOn(Date, 'now').mockImplementation(() => now);
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
   });
 
   it('bypasses an error that only carries the open-circuit message', async () => {
     const bypass = new OpenCircuitBypass();
-    const direct = jest.fn().mockResolvedValue('direct');
+    const direct = vi.fn().mockResolvedValue('direct');
 
     expect(
       await bypass.run(
@@ -228,11 +228,11 @@ describe('OpenCircuitBypass (v6)', () => {
 
   it('goes direct without the guarded call when the policy reports an open circuit', async () => {
     const bypass = new OpenCircuitBypass();
-    const guarded = jest.fn();
-    const direct = jest.fn().mockResolvedValue('direct');
+    const guarded = vi.fn();
+    const direct = vi.fn().mockResolvedValue('direct');
     const policy = {
       getRemainingCircuitOpenDuration: (): number => 20_000,
-      reset: jest.fn(),
+      reset: vi.fn(),
     };
 
     expect(
@@ -250,8 +250,8 @@ describe('OpenCircuitBypass (v6)', () => {
 
   it('does not check the state of background reads', async () => {
     const bypass = new OpenCircuitBypass();
-    const guarded = jest.fn().mockResolvedValue('guarded');
-    const direct = jest.fn();
+    const guarded = vi.fn().mockResolvedValue('guarded');
+    const direct = vi.fn();
 
     expect(
       await bypass.run(key, undefined, guarded, direct, {
@@ -266,7 +266,7 @@ describe('OpenCircuitBypass (v6)', () => {
     const guarded = async (): Promise<string> => {
       throw new BrokenCircuitError();
     };
-    const direct = jest
+    const direct = vi
       .fn()
       .mockResolvedValueOnce('first')
       .mockResolvedValueOnce('second');
@@ -288,7 +288,7 @@ describe('OpenCircuitBypass (v6)', () => {
 
   it('does not reset the policy after a failed direct attempt', async () => {
     const bypass = new OpenCircuitBypass();
-    const policy = { reset: jest.fn() };
+    const policy = { reset: vi.fn() };
 
     await expect(
       bypass.run(

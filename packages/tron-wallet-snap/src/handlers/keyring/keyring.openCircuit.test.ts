@@ -125,7 +125,7 @@ function setup(): {
   });
 
   const snapClient = {
-    trackError: jest.fn(),
+    trackError: vi.fn(),
   } as unknown as SnapClient;
   const snapAssetsAdapter = new SnapAssetsAdapter({
     logger: mockLogger,
@@ -133,15 +133,15 @@ function setup(): {
       {} as UnencryptedStateValue,
     ),
     assetsRepository: {
-      saveMany: jest.fn(),
+      saveMany: vi.fn(),
     } as unknown as AssetsRepository,
     trongridApiClient,
     tronHttpClient,
     priceApiClient: {
-      getMultipleSpotPrices: jest.fn().mockResolvedValue({}),
+      getMultipleSpotPrices: vi.fn().mockResolvedValue({}),
     } as unknown as PriceApiClient,
     tokenApiClient: {
-      getTokensMetadata: jest.fn().mockResolvedValue({}),
+      getTokensMetadata: vi.fn().mockResolvedValue({}),
     } as unknown as TokenApiClient,
     snapClient,
   });
@@ -149,7 +149,7 @@ function setup(): {
     snapAdapter: snapAssetsAdapter,
     coreAdapter: {} as CoreAssetsAdapter,
     remoteFeatureFlagsProvider: {
-      getFeatureFlag: jest.fn(),
+      getFeatureFlag: vi.fn(),
     } as never,
   });
 
@@ -157,7 +157,7 @@ function setup(): {
     logger: mockLogger,
     snapClient,
     accountsService: {
-      findById: jest.fn().mockResolvedValue(account),
+      findById: vi.fn().mockResolvedValue(account),
     } as unknown as AccountsService,
     assetsService,
     transactionsService: {} as TransactionsService,
@@ -184,7 +184,7 @@ async function openCircuits({
   trongridApiClient: TrongridApiClient;
   tronHttpClient: TronHttpClient;
 }): Promise<void> {
-  jest
+  vi
     .spyOn(global, 'fetch')
     .mockImplementation(async () => new Response('', { status: 501 }));
   const reads = [
@@ -226,7 +226,7 @@ describe('KeyringHandler balance refresh while the fetch circuit is open (v6)', 
 
   afterEach(() => {
     global.fetch = originalFetch;
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     failureStreakGate.clear();
   });
 
@@ -235,7 +235,7 @@ describe('KeyringHandler balance refresh while the fetch circuit is open (v6)', 
     await openCircuits(clients);
 
     // Background reads are short-circuited without a request.
-    const fetchMock = jest
+    const fetchMock = vi
       .spyOn(global, 'fetch')
       .mockImplementation(healthyFetch);
     fetchMock.mockClear();
@@ -289,7 +289,7 @@ describe('KeyringHandler balance refresh while the fetch circuit is open (v6)', 
   it('makes the request when the circuit is open before the call (state pre-check)', async () => {
     const clients = setup();
     await openCircuits(clients);
-    const fetchMock = jest
+    const fetchMock = vi
       .spyOn(global, 'fetch')
       .mockImplementation(healthyFetch);
     fetchMock.mockClear();
@@ -312,7 +312,7 @@ describe('KeyringHandler balance refresh while the fetch circuit is open (v6)', 
   it('lets one direct attempt through per interval when it fails', async () => {
     const clients = setup();
     await openCircuits(clients);
-    const fetchMock = jest
+    const fetchMock = vi
       .spyOn(global, 'fetch')
       .mockImplementation(async () => {
         throw new TypeError('Failed to fetch');

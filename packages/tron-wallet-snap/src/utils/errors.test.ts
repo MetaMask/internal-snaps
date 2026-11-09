@@ -70,7 +70,7 @@ describe('errors', () => {
       mockSnapRequest.mockResolvedValue('id');
       failureStreakGate.clear();
       let now = 5_000_000;
-      const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
+      const dateSpy = vi.spyOn(Date, 'now').mockImplementation(() => now);
       const fail = async (): Promise<void> =>
         withCatchAndThrowSnapError(async () => {
           // What reaches the wrapper from a keyring call.

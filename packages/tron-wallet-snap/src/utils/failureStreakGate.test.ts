@@ -10,11 +10,11 @@ describe('FailureStreakGate', () => {
 
   beforeEach(() => {
     now = 1_000_000;
-    jest.spyOn(Date, 'now').mockImplementation(() => now);
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('reports the first failure of a streak, then a reminder per interval', () => {

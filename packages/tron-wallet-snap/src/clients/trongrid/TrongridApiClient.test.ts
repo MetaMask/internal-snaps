@@ -751,7 +751,7 @@ describe('TrongridApiClient', () => {
      * @param client - The client.
      */
     async function openCircuit(client: TrongridApiClient): Promise<void> {
-      jest
+      vi
         .spyOn(global, 'fetch')
         // eslint-disable-next-line no-restricted-globals
         .mockImplementation(async () => new Response('', { status: 501 }));
@@ -773,7 +773,7 @@ describe('TrongridApiClient', () => {
     it('lets an explicit request reach the network once while the circuit is open', async () => {
       await withTrongridApiClient(async ({ client }) => {
         await openCircuit(client);
-        const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+        const fetchMock = vi.spyOn(global, 'fetch').mockImplementation(
           async () =>
             // eslint-disable-next-line no-restricted-globals
             new Response(
@@ -826,7 +826,7 @@ describe('TrongridApiClient', () => {
 
     it('does not bypass the circuit for other failures', async () => {
       await withTrongridApiClient(async ({ client }) => {
-        const fetchMock = jest
+        const fetchMock = vi
           .spyOn(global, 'fetch')
           // eslint-disable-next-line no-restricted-globals
           .mockImplementation(async () => new Response('', { status: 404 }));

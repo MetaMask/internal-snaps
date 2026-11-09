@@ -127,7 +127,7 @@ describe('TronHttpClient', () => {
      * @param client - The client.
      */
     async function openCircuit(client: TronHttpClient): Promise<void> {
-      jest
+      vi
         .spyOn(global, 'fetch')
         .mockImplementation(
           async () => new globalThis.Response('', { status: 501 }),
@@ -147,7 +147,7 @@ describe('TronHttpClient', () => {
     it('lets an explicit request reach the network once while the circuit is open', async () => {
       const client = new TronHttpClient({ configProvider });
       await openCircuit(client);
-      const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(
+      const fetchMock = vi.spyOn(global, 'fetch').mockImplementation(
         async () =>
           new globalThis.Response(JSON.stringify({ reward: 7 }), {
             status: 200,

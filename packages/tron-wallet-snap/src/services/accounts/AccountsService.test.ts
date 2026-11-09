@@ -1216,8 +1216,8 @@ describe('AccountsService', () => {
 
           await accountsService.synchronize([shortCircuited, failing]);
 
-          expect(trackError).toHaveBeenCalledTimes(1);
-          const tracked = (trackError as jest.Mock).mock.calls[0][0] as Error;
+          expect(Errors.trackError).toHaveBeenCalledTimes(1);
+          const tracked = firstTrackedError(Errors.trackError as Mock);
           expect(tracked.message).toBe(
             'Failed to fetch assets (1 failed): ' +
               'sync-fail-id: Error: grpc unavailable',
