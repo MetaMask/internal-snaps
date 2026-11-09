@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Load locale catalogs from `@metamask/snap-networks-utils` instead of a local `locales/` directory, which is no longer published with the snap ([#575](https://github.com/MetaMask/internal-snaps/pull/575))
+
 ### Fixed
 
 - Align transaction security warning copy and scan-loading behavior with user preferences. ([#557](https://github.com/MetaMask/internal-snaps/pull/557))

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add the wallet snaps' locale catalogs under `locales/<snap>/`, exposed through a `./locales/*` package export, and add a `createI18n` utility for building translators with locale fallback and `{placeholder}` interpolation ([#575](https://github.com/MetaMask/internal-snaps/pull/575))
+
 ## [3.2.0]
 
 ### Added
