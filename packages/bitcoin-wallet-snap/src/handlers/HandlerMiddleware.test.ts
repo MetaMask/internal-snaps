@@ -138,7 +138,7 @@ describe('HandlerMiddleware', () => {
 
     it('does not track or log as an error the expected "not synchronized yet" state', async () => {
       const error = new BalanceNotSynchronizedError({ account: 'account-1' });
-      const mockFn = jest.fn().mockRejectedValue(error);
+      const mockFn = vi.fn().mockRejectedValue(error);
       mockTranslator.load.mockResolvedValue({
         'error.3000': { message: 'Connection error' },
       });
@@ -164,7 +164,7 @@ describe('HandlerMiddleware', () => {
 
       it('handleKeyringRequest turns the error into a plain Error with only the message', async () => {
         const keyring = {
-          getAccountBalances: jest
+          getAccountBalances: vi
             .fn()
             .mockRejectedValue(new BalanceNotSynchronizedError()),
         };
@@ -183,7 +183,7 @@ describe('HandlerMiddleware', () => {
 
       it('does not track the re-created "not synchronized yet" error (the onKeyringRequest path)', async () => {
         const keyring = {
-          getAccountBalances: jest
+          getAccountBalances: vi
             .fn()
             .mockRejectedValue(
               new BalanceNotSynchronizedError({ account: 'account-1' }),
@@ -206,7 +206,7 @@ describe('HandlerMiddleware', () => {
 
       it('still tracks other errors re-created by the SDK', async () => {
         const keyring = {
-          getAccountBalances: jest
+          getAccountBalances: vi
             .fn()
             .mockRejectedValue(
               new ExternalServiceError('Failed to synchronize account'),
