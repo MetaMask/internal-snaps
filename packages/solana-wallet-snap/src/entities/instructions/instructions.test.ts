@@ -3,12 +3,12 @@ import { address } from '@solana/kit';
 import type { Rpc, SolanaRpcApi } from '@solana/kit';
 
 import { MOCK_EXECUTION_SCENARIO_SEND_SPL_TOKEN } from '../../core/services/signer/mocks/scenarios/sendSplToken';
-import * as Errors from '../../core/utils/errors';
 import { EXPECTED_FAILED_SWAP_DATA } from '../../core/test/mocks/transactions-data/failed-swap';
 import { EXPECTED_SEND_SPL_TOKEN_AND_CREATE_TOKEN_ACCOUNT_DATA } from '../../core/test/mocks/transactions-data/send-spl-token-and-create-token-account';
 import { EXPECTED_SWAP_SOL_TO_OBRIC_DATA } from '../../core/test/mocks/transactions-data/swap-sol-to-obric';
 import { EXPECTED_SWAP_TRUMP_TO_JUP_DATA } from '../../core/test/mocks/transactions-data/swap-trump-to-jup';
 import { EXPECTED_SWAP_USDC_TO_COBIE_DATA } from '../../core/test/mocks/transactions-data/swap-usdc-to-cobie';
+import * as Errors from '../../core/utils/errors';
 import { trackError } from '../../core/utils/errors';
 import type { InstructionParseResult } from './instructions';
 import {
@@ -20,6 +20,7 @@ import {
 describe('toIInstruction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
   });
 
   it.each(['legacy', 0, 1] as const)(
@@ -155,6 +156,19 @@ describe('toIInstruction', () => {
         role: 0,
       })),
     );
+  });
+
+  it('rejects an instruction whose program index cannot be resolved', () => {
+    const transaction = EXPECTED_SEND_SPL_TOKEN_AND_CREATE_TOKEN_ACCOUNT_DATA;
+    const [instruction] = transaction.transaction.message.instructions;
+    assert(instruction);
+
+    expect(() =>
+      toIInstruction(
+        { ...instruction, programIdIndex: 9999 },
+        { ...transaction, meta: null },
+      ),
+    ).toThrow('Program address not found');
   });
 });
 

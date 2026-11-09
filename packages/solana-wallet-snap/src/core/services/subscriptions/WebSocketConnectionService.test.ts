@@ -507,13 +507,12 @@ describe('WebSocketConnectionService', () => {
           ? { code: -32603, message }
           : new Error(message);
 
-        jest.spyOn(mockState, 'getKey').mockResolvedValueOnce(existingEventId);
-        jest
-          .spyOn(snap, 'request')
+        vi.spyOn(mockState, 'getKey').mockResolvedValueOnce(existingEventId);
+        vi.spyOn(snap, 'request')
           .mockRejectedValueOnce(error)
           .mockResolvedValueOnce('new-event-id');
-        jest.spyOn(mockState, 'setKey').mockResolvedValue(undefined);
-        jest.spyOn(service, 'openConnection').mockResolvedValue(undefined);
+        vi.spyOn(mockState, 'setKey').mockResolvedValue(undefined);
+        vi.spyOn(service, 'openConnection').mockResolvedValue(undefined);
 
         // eslint-disable-next-line n/no-sync -- emitSync awaits asynchronous event handlers.
         await mockEventEmitter.emitSync(event);
@@ -570,6 +569,10 @@ describe('WebSocketConnectionService', () => {
           method: 'snap_cancelBackgroundEvent',
           params: { id: existingEventId },
         });
+        expect(mockLogger.log).not.toHaveBeenCalledWith(
+          '🫸 Cancelled background event to close connections',
+          existingEventId,
+        );
 
         expect(mockState.setKey).toHaveBeenCalledWith(
           'webSocketConnections.closeWebSocketConnectionsBackgroundEventId',
@@ -598,7 +601,15 @@ describe('WebSocketConnectionService', () => {
             request: { method: 'closeWebSocketConnections' },
           },
         });
-        expect(trackError).toHaveBeenCalledWith(error);
+        expect(trackError).not.toHaveBeenCalled();
+        expect(mockLogger.warn).not.toHaveBeenCalledWith(
+          'Failed to cancel background event',
+          error,
+        );
+        expect(mockLogger.log).not.toHaveBeenCalledWith(
+          '🫸 Cancelled background event to close connections',
+          existingEventId,
+        );
       });
     });
 

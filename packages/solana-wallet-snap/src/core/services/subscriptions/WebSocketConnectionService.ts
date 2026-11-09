@@ -3,7 +3,6 @@ import type {
   IStateManager,
   Logger,
 } from '@metamask/snap-networks-utils';
-import { getErrorMessage } from '@metamask/snaps-sdk';
 import type {
   WebSocketCloseEvent,
   WebSocketEvent,
@@ -16,14 +15,32 @@ import type {
 } from '../../../entities';
 import type { EventEmitter } from '../../../infrastructure';
 import type { Network } from '../../constants/solana';
-import { trackError } from '../../utils/errors';
 import { getClientStatus } from '../../utils/interface';
 import type { ConfigProvider } from '../config';
 import type { UnencryptedStateValue } from '../state/stateTypes';
 import type { WebSocketConnectionRepository } from './WebSocketConnectionRepository';
 
-const MISSING_BACKGROUND_EVENT_PATTERN =
-  /^A background event with the id of "[^"]+" does not exist\.$/u;
+/**
+ * Cancels a background event if its ID is present.
+ *
+ * @param id - The background event ID to cancel.
+ */
+async function cancelBackgroundEventIfExists(
+  id: string | null | undefined,
+): Promise<void> {
+  if (!id) {
+    return;
+  }
+
+  try {
+    await snap.request({
+      method: 'snap_cancelBackgroundEvent',
+      params: { id },
+    });
+  } catch {
+    // The event may have already executed or been cancelled.
+  }
+}
 
 /**
  * Manages WebSocket connections for different Solana networks, providing robust connection
@@ -419,51 +436,17 @@ export class WebSocketConnectionService {
 
   /**
    * Cancels the background event that will close connections if it exists.
-   * Errors are caught so that cancellation failure doesn't block other operations.
    */
   async #cancelCloseConnectionsBackgroundEvent(): Promise<void> {
-    try {
-      const eventId = await this.#state.getKey<string | null>(
-        `${this.#stateKey}.closeWebSocketConnectionsBackgroundEventId`,
-      );
+    const eventId = await this.#state.getKey<string | null>(
+      `${this.#stateKey}.closeWebSocketConnectionsBackgroundEventId`,
+    );
 
-      if (!eventId) {
-        return;
-      }
+    await cancelBackgroundEventIfExists(eventId);
 
-      await snap.request({
-        method: 'snap_cancelBackgroundEvent',
-        params: {
-          id: eventId,
-        },
-      });
-
-      this.#logger.log(
-        `🫸 Cancelled background event to close connections`,
-        eventId,
-      );
-    } catch (error) {
-      if (this.#shouldTrack(error)) {
-        await trackError(error);
-      }
-      this.#logger.warn(`Failed to cancel background event`, error);
-    } finally {
-      // Clear the state
-      await this.#state.setKey(
-        `${this.#stateKey}.closeWebSocketConnectionsBackgroundEventId`,
-        null,
-      );
-    }
-  }
-
-  /**
-   * Determines whether an error should be reported to Sentry.
-   *
-   * @param error - The error to evaluate.
-   * @returns Whether the error should be tracked.
-   */
-  #shouldTrack(error: unknown): boolean {
-    // The event may have already executed or been cancelled, so don't report that expected case to Sentry.
-    return !MISSING_BACKGROUND_EVENT_PATTERN.test(getErrorMessage(error));
+    await this.#state.setKey(
+      `${this.#stateKey}.closeWebSocketConnectionsBackgroundEventId`,
+      null,
+    );
   }
 }
