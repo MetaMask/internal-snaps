@@ -1,3 +1,4 @@
+import type { MockInstance } from 'vitest';
 import { Logger, LogLevel } from './Logger';
 
 const loggerMethodConfigurations = [
@@ -11,7 +12,7 @@ const loggerMethodConfigurations = [
 
 type MockConsole = Record<
   (typeof loggerMethodConfigurations)[number]['consoleMethod'],
-  jest.SpyInstance
+  MockInstance
 >;
 
 type SetupTestResult = {
@@ -20,16 +21,16 @@ type SetupTestResult = {
 };
 
 const setupTest = (): SetupTestResult => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 
   return {
     loggerMethods: loggerMethodConfigurations,
     mockConsole: {
-      debug: jest.spyOn(console, 'debug').mockImplementation(),
-      error: jest.spyOn(console, 'error').mockImplementation(),
-      info: jest.spyOn(console, 'info').mockImplementation(),
-      trace: jest.spyOn(console, 'trace').mockImplementation(),
-      warn: jest.spyOn(console, 'warn').mockImplementation(),
+      debug: vi.spyOn(console, 'debug').mockImplementation(() => undefined),
+      error: vi.spyOn(console, 'error').mockImplementation(() => undefined),
+      info: vi.spyOn(console, 'info').mockImplementation(() => undefined),
+      trace: vi.spyOn(console, 'trace').mockImplementation(() => undefined),
+      warn: vi.spyOn(console, 'warn').mockImplementation(() => undefined),
     },
   };
 };
@@ -112,7 +113,7 @@ describe('Logger', () => {
   });
 
   it('runs decorators through the configured output', () => {
-    const decorator = jest.fn((next: (...args: unknown[]) => void) => {
+    const decorator = vi.fn((next: (...args: unknown[]) => void) => {
       next('decoded error');
     });
     const { mockConsole } = setupTest();
@@ -134,7 +135,7 @@ describe('Logger', () => {
   });
 
   it('does not run decorators at the silent level', () => {
-    const decorator = jest.fn();
+    const decorator = vi.fn();
     const { mockConsole } = setupTest();
 
     const logger = new Logger({

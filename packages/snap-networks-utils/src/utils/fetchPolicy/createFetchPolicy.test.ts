@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import { CircuitState, ConstantBackoff } from '@metamask/base-data-service';
 import type { ServicePolicy } from '@metamask/base-data-service';
 
@@ -16,8 +17,8 @@ const httpError = (httpStatus: number, retryAfterMs?: number): Error =>
 
 const setup = (
   options: Partial<Parameters<typeof createFetchPolicy>[0]> = {},
-): { policy: ServicePolicy; logger: { warn: jest.Mock } } => {
-  const logger = { warn: jest.fn() };
+): { policy: ServicePolicy; logger: { warn: Mock } } => {
+  const logger = { warn: vi.fn() };
   const policy = createFetchPolicy({
     service: 'test_api',
     chainIdCaip: 'tron:728126428',
@@ -34,8 +35,8 @@ const setup = (
  * @param errors - The errors to throw on the first calls.
  * @returns The mocked service.
  */
-const failingThen = (...errors: unknown[]): jest.Mock<Promise<string>, []> => {
-  const service = jest.fn(async () => 'ok');
+const failingThen = (...errors: unknown[]): Mock<() => Promise<string>> => {
+  const service = vi.fn(async () => 'ok');
   for (const error of errors) {
     service.mockRejectedValueOnce(error);
   }
@@ -162,7 +163,7 @@ describe('createFetchPolicy', () => {
   it('gives up after 3 retries and logs it', async () => {
     const { policy, logger } = setup();
     const error = httpError(503);
-    const service = jest.fn().mockRejectedValue(error);
+    const service = vi.fn().mockRejectedValue(error);
 
     await expect(policy.execute(service)).rejects.toBe(error);
 
@@ -182,7 +183,7 @@ describe('createFetchPolicy', () => {
     const error = httpError(503);
 
     await expect(
-      policy.execute(jest.fn().mockRejectedValue(error)),
+      policy.execute(vi.fn().mockRejectedValue(error)),
     ).rejects.toBe(error);
 
     expect(logger.warn).toHaveBeenCalledWith('[test_api] Giving up:', error);
@@ -190,11 +191,11 @@ describe('createFetchPolicy', () => {
 
   describe('Retry-After', () => {
     beforeEach(() => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
 
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('waits for Retry-After when it is longer than the backoff', async () => {
@@ -202,9 +203,9 @@ describe('createFetchPolicy', () => {
       const service = failingThen(httpError(429, 1000));
 
       const result = policy.execute(service);
-      await jest.advanceTimersByTimeAsync(999);
+      await vi.advanceTimersByTimeAsync(999);
       expect(service).toHaveBeenCalledTimes(1);
-      await jest.advanceTimersByTimeAsync(1);
+      await vi.advanceTimersByTimeAsync(1);
 
       expect(await result).toBe('ok');
       expect(service).toHaveBeenCalledTimes(2);
@@ -215,9 +216,9 @@ describe('createFetchPolicy', () => {
       const service = failingThen(httpError(429, 100));
 
       const result = policy.execute(service);
-      await jest.advanceTimersByTimeAsync(499);
+      await vi.advanceTimersByTimeAsync(499);
       expect(service).toHaveBeenCalledTimes(1);
-      await jest.advanceTimersByTimeAsync(1);
+      await vi.advanceTimersByTimeAsync(1);
 
       expect(await result).toBe('ok');
     });
@@ -227,11 +228,11 @@ describe('createFetchPolicy', () => {
       const service = failingThen(httpError(429, 1000), httpError(429, 2000));
 
       const result = policy.execute(service);
-      await jest.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(1000);
       expect(service).toHaveBeenCalledTimes(2);
-      await jest.advanceTimersByTimeAsync(1999);
+      await vi.advanceTimersByTimeAsync(1999);
       expect(service).toHaveBeenCalledTimes(2);
-      await jest.advanceTimersByTimeAsync(1);
+      await vi.advanceTimersByTimeAsync(1);
 
       expect(await result).toBe('ok');
       expect(service).toHaveBeenCalledTimes(3);
@@ -240,13 +241,13 @@ describe('createFetchPolicy', () => {
     it('waits with exponential backoff by default', async () => {
       const policy = createFetchPolicy({
         service: 'test_api',
-        logger: { warn: jest.fn() },
+        logger: { warn: vi.fn() },
       });
       const service = failingThen(httpError(503));
 
       const result = policy.execute(service);
       expect(service).toHaveBeenCalledTimes(1);
-      await jest.advanceTimersByTimeAsync(30_000);
+      await vi.advanceTimersByTimeAsync(30_000);
 
       expect(await result).toBe('ok');
       expect(service).toHaveBeenCalledTimes(2);
@@ -280,7 +281,7 @@ describe('createFetchPolicy', () => {
         maxRetries: 0,
         maxConsecutiveFailures: 2,
       });
-      const service = jest.fn().mockRejectedValue(error);
+      const service = vi.fn().mockRejectedValue(error);
 
       await expect(policy.execute(service)).rejects.toBe(error);
       await expect(policy.execute(service)).rejects.toBe(error);
@@ -314,7 +315,7 @@ describe('createFetchPolicy', () => {
       ['non-error values', 'boom'],
     ])('stays closed on %s', async (_label, error) => {
       const { policy } = setup({ maxRetries: 0, maxConsecutiveFailures: 2 });
-      const service = jest.fn().mockRejectedValue(error);
+      const service = vi.fn().mockRejectedValue(error);
 
       for (let i = 0; i < 3; i++) {
         await expect(policy.execute(service)).rejects.toBe(error);
@@ -328,10 +329,10 @@ describe('createFetchPolicy', () => {
 
 describe('performance shim', () => {
   it('returns the current time', () => {
-    jest.useFakeTimers({ now: 1_000 });
+    vi.useFakeTimers({ now: 1_000 });
 
     expect(now()).toBe(1_000);
 
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 });

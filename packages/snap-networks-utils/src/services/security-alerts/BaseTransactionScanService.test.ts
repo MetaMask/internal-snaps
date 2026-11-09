@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import type { SecurityAlertsApiClient } from '../../clients/security-alerts-api/SecurityAlertsApiClient';
 import type { Logger } from '../../utils/logger/Logger';
 import type { AnalyticsService } from '../analytics/AnalyticsService';
@@ -55,20 +56,20 @@ describe('BaseTransactionScanService', () => {
     securityAlertsApiClient: SecurityAlertsApiClient;
     analyticsService: AnalyticsService;
     logger: Logger;
-    trackError: jest.Mock;
+    trackError: Mock;
   } {
     const securityAlertsApiClient = {
-      scanTransaction: jest.fn(),
+      scanTransaction: vi.fn(),
     } as unknown as SecurityAlertsApiClient;
     const analyticsService = {
-      trackSecurityScanCompleted: jest.fn(),
-      trackSecurityAlertDetected: jest.fn(),
+      trackSecurityScanCompleted: vi.fn(),
+      trackSecurityAlertDetected: vi.fn(),
     } as unknown as AnalyticsService;
     const logger = {
-      info: jest.fn(),
-      error: jest.fn(),
+      info: vi.fn(),
+      error: vi.fn(),
     } as unknown as Logger;
-    const trackError = jest.fn();
+    const trackError = vi.fn();
     const service = new FakeScanService({
       securityAlertsApiClient,
       analyticsService,

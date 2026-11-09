@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import type {
   OnAssetHistoricalPriceHandler,
   OnAssetsConversionHandler,
@@ -21,10 +22,10 @@ describe('wrapSnapHandlers', () => {
   } as Parameters<OnClientRequestHandler>[0];
 
   function setup(): {
-    wrapper: jest.Mock;
+    wrapper: Mock;
     withCatchAndThrowSnapError: WithCatchAndThrowSnapError;
   } {
-    const wrapper = jest.fn();
+    const wrapper = vi.fn();
     const withCatchAndThrowSnapError: WithCatchAndThrowSnapError = async (
       handler,
       logErrorOverride,
@@ -37,8 +38,8 @@ describe('wrapSnapHandlers', () => {
 
   it('wraps and delegates each given handler under the same key', async () => {
     const { wrapper, withCatchAndThrowSnapError } = setup();
-    const keyring = jest.fn().mockResolvedValue('keyring-result');
-    const clientRequest = jest.fn().mockResolvedValue('client-result');
+    const keyring = vi.fn().mockResolvedValue('keyring-result');
+    const clientRequest = vi.fn().mockResolvedValue('client-result');
 
     const handlers = wrapSnapHandlers(withCatchAndThrowSnapError, {
       onKeyringRequest: keyring,
@@ -73,13 +74,13 @@ describe('wrapSnapHandlers', () => {
 
   it('forwards a per-handler logError override', async () => {
     const { wrapper, withCatchAndThrowSnapError } = setup();
-    const keyringLogError = jest.fn();
+    const keyringLogError = vi.fn();
 
     const handlers = wrapSnapHandlers(
       withCatchAndThrowSnapError,
       {
-        onKeyringRequest: jest.fn().mockResolvedValue(null),
-        onClientRequest: jest.fn().mockResolvedValue(null),
+        onKeyringRequest: vi.fn().mockResolvedValue(null),
+        onClientRequest: vi.fn().mockResolvedValue(null),
       },
       { onKeyringRequest: keyringLogError },
     );
@@ -106,7 +107,7 @@ describe('wrapSnapHandlers', () => {
     };
 
     const { onClientRequest } = wrapSnapHandlers(withCatchAndThrowSnapError, {
-      onClientRequest: jest.fn().mockRejectedValue(error),
+      onClientRequest: vi.fn().mockRejectedValue(error),
     });
 
     await expect(onClientRequest(clientRequestArgs)).rejects.toThrow(

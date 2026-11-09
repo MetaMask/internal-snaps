@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import {
   ChainDisconnectedError,
   DisconnectedError,
@@ -24,7 +25,7 @@ import type { CreateWithCatchAndThrowSnapErrorOptions } from './errors';
 import { isSnapRpcError } from './snapRpcError';
 
 type SetupTestResult = {
-  trackError: jest.Mock;
+  trackError: Mock;
   withCatchAndThrowSnapError: ReturnType<
     typeof createWithCatchAndThrowSnapError
   >;
@@ -34,9 +35,9 @@ type SetupTestResult = {
 };
 
 const setupTest = (): SetupTestResult => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 
-  const trackError = jest.fn();
+  const trackError = vi.fn();
   const withCatchAndThrowSnapError = createWithCatchAndThrowSnapError({
     logError: mockLogger.error.bind(mockLogger),
     trackError,
@@ -118,7 +119,7 @@ describe('errors', () => {
   describe('createWithCatchAndThrowSnapError', () => {
     it('returns the result when the function succeeds', async () => {
       const { withCatchAndThrowSnapError } = setupTest();
-      const mockFn = jest.fn().mockResolvedValue('success');
+      const mockFn = vi.fn().mockResolvedValue('success');
 
       const result = await withCatchAndThrowSnapError(mockFn);
 
@@ -130,7 +131,7 @@ describe('errors', () => {
     it('tracks, logs, and re-throws errors as SnapError', async () => {
       const { trackError, withCatchAndThrowSnapError } = setupTest();
       const originalError = new Error('Test error');
-      const mockFn = jest.fn().mockRejectedValue(originalError);
+      const mockFn = vi.fn().mockRejectedValue(originalError);
 
       await expect(withCatchAndThrowSnapError(mockFn)).rejects.toThrow(
         SnapError,
@@ -143,7 +144,7 @@ describe('errors', () => {
     it('preserves Snap RPC errors without wrapping', async () => {
       const { trackError, withCatchAndThrowSnapError } = setupTest();
       const originalError = new UserRejectedRequestError();
-      const mockFn = jest.fn().mockRejectedValue(originalError);
+      const mockFn = vi.fn().mockRejectedValue(originalError);
 
       await expect(withCatchAndThrowSnapError(mockFn)).rejects.toThrow(
         UserRejectedRequestError,
@@ -154,7 +155,7 @@ describe('errors', () => {
 
     it('handles non-Error objects and converts them to SnapError', async () => {
       const { withCatchAndThrowSnapError } = setupTest();
-      const mockFn = jest.fn().mockRejectedValue('string error');
+      const mockFn = vi.fn().mockRejectedValue('string error');
 
       await expect(withCatchAndThrowSnapError(mockFn)).rejects.toThrow(
         SnapError,
@@ -165,7 +166,7 @@ describe('errors', () => {
 
     it('handles null errors', async () => {
       const { withCatchAndThrowSnapError } = setupTest();
-      const mockFn = jest.fn().mockRejectedValue(null);
+      const mockFn = vi.fn().mockRejectedValue(null);
 
       await expect(withCatchAndThrowSnapError(mockFn)).rejects.toThrow(
         SnapError,
@@ -177,7 +178,7 @@ describe('errors', () => {
     it('preserves the original error message in the SnapError', async () => {
       const { withCatchAndThrowSnapError } = setupTest();
       const originalError = new Error('Custom error message');
-      const mockFn = jest.fn().mockRejectedValue(originalError);
+      const mockFn = vi.fn().mockRejectedValue(originalError);
 
       await expect(withCatchAndThrowSnapError(mockFn)).rejects.toThrow(
         'Custom error message',
@@ -187,12 +188,12 @@ describe('errors', () => {
     it('uses a custom normalizeErrorFn when provided', async () => {
       const { trackError, createBoundWithCatchAndThrowSnapError } = setupTest();
       const customError = new MethodNotFoundError();
-      const normalizeErrorFn = jest.fn().mockReturnValue(customError);
+      const normalizeErrorFn = vi.fn().mockReturnValue(customError);
       const bound = createBoundWithCatchAndThrowSnapError({
         trackError,
         normalizeErrorFn,
       });
-      const mockFn = jest.fn().mockRejectedValue(new Error('Test error'));
+      const mockFn = vi.fn().mockRejectedValue(new Error('Test error'));
 
       await expect(bound(mockFn)).rejects.toThrow(MethodNotFoundError);
 
@@ -203,9 +204,9 @@ describe('errors', () => {
 
     it('uses a custom logError when provided', async () => {
       const { trackError, withCatchAndThrowSnapError } = setupTest();
-      const customLogError = jest.fn();
+      const customLogError = vi.fn();
       const originalError = new Error('Test error');
-      const mockFn = jest.fn().mockRejectedValue(originalError);
+      const mockFn = vi.fn().mockRejectedValue(originalError);
 
       await expect(
         withCatchAndThrowSnapError(mockFn, customLogError),

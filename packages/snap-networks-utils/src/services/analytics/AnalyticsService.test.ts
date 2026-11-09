@@ -9,9 +9,9 @@ import {
 import type { TrackEventCapableProvider } from './AnalyticsService';
 
 describe('AnalyticsService', () => {
-  const request = jest.fn();
+  const request = vi.fn();
   const provider = { request } as TrackEventCapableProvider;
-  const trackError = jest.fn();
+  const trackError = vi.fn();
   const analytics = new AnalyticsService({
     getSnapProvider: (): TrackEventCapableProvider => provider,
     logger: mockLogger,
@@ -19,7 +19,7 @@ describe('AnalyticsService', () => {
   });
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   it.each([

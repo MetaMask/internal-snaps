@@ -46,7 +46,7 @@ describe('executeWithFetchPolicy', () => {
   it('does not retry JSON parsing failures', async () => {
     const policy = makePolicy();
     const error = new SyntaxError('Invalid JSON');
-    const operation = jest.fn().mockRejectedValue(error);
+    const operation = vi.fn().mockRejectedValue(error);
 
     let caught: unknown;
     try {
@@ -62,7 +62,7 @@ describe('executeWithFetchPolicy', () => {
   it('does not retry explicit aborts', async () => {
     const policy = makePolicy();
     const error = new DOMException('Aborted', 'AbortError');
-    const operation = jest.fn().mockRejectedValue(error);
+    const operation = vi.fn().mockRejectedValue(error);
 
     let caught: unknown;
     try {
@@ -78,7 +78,7 @@ describe('executeWithFetchPolicy', () => {
   it('does not rewrap policy-shaped errors', async () => {
     const policy = makePolicy();
     const error = createFetchPolicyError('HTTP 429', { httpStatus: 429 });
-    const operation = jest.fn().mockRejectedValue(error);
+    const operation = vi.fn().mockRejectedValue(error);
 
     let caught: unknown;
     try {
@@ -97,7 +97,7 @@ describe('executeWithFetchPolicy', () => {
       FetchPolicyErrorName.Timeout,
     ]) {
       const error = createFetchPolicyError('Failed', { name });
-      const operation = jest.fn().mockRejectedValue(error);
+      const operation = vi.fn().mockRejectedValue(error);
 
       let caught: unknown;
       try {
@@ -113,7 +113,7 @@ describe('executeWithFetchPolicy', () => {
   it('maps unknown errors with the given mapper', async () => {
     const policy = makePolicy();
     const mapped = createFetchPolicyError('HTTP 507', { httpStatus: 507 });
-    const operation = jest.fn().mockRejectedValue(new Error('Unexpected'));
+    const operation = vi.fn().mockRejectedValue(new Error('Unexpected'));
 
     let caught: unknown;
     try {
@@ -128,7 +128,7 @@ describe('executeWithFetchPolicy', () => {
   it('maps unknown errors to network failures by default', async () => {
     const policy = makePolicy();
     const cause = new Error('socket closed');
-    const operation = jest.fn().mockRejectedValue(cause);
+    const operation = vi.fn().mockRejectedValue(cause);
 
     let caught: unknown;
     try {
@@ -144,7 +144,7 @@ describe('executeWithFetchPolicy', () => {
 
   it('maps non-error rejections to network failures by default', async () => {
     const policy = makePolicy();
-    const operation = jest.fn().mockRejectedValue('boom');
+    const operation = vi.fn().mockRejectedValue('boom');
 
     let caught: unknown;
     try {
@@ -160,7 +160,7 @@ describe('executeWithFetchPolicy', () => {
   it('rejects when the operation aborts the caller signal synchronously and remains pending', async () => {
     const controller = new AbortController();
     const callerReason = new Error('Synchronously aborted during operation');
-    const operation = jest.fn().mockImplementation(async () => {
+    const operation = vi.fn().mockImplementation(async () => {
       controller.abort(callerReason);
       return new Promise<string>(() => undefined);
     });
@@ -208,7 +208,7 @@ describe('fetchWithPolicy', () => {
   });
 
   it('returns the response body text', async () => {
-    const fetchMock = jest.fn().mockResolvedValue(okResponse());
+    const fetchMock = vi.fn().mockResolvedValue(okResponse());
 
     expect(
       await fetchWithPolicy(
@@ -221,7 +221,7 @@ describe('fetchWithPolicy', () => {
   });
 
   it('applies a default timeout signal', async () => {
-    const fetchMock = jest.fn().mockResolvedValue(okResponse());
+    const fetchMock = vi.fn().mockResolvedValue(okResponse());
 
     await fetchWithPolicy(
       makePolicy(),
@@ -230,12 +230,12 @@ describe('fetchWithPolicy', () => {
       fetchMock as unknown as typeof globalThis.fetch,
     );
 
-    const init = fetchMock.mock.calls[0][1];
+    const init = fetchMock.mock.calls[0]?.[1];
     expect(init?.signal).toBeDefined();
   });
 
   it('passes request options through', async () => {
-    const fetchMock = jest.fn().mockResolvedValue(okResponse());
+    const fetchMock = vi.fn().mockResolvedValue(okResponse());
 
     await fetchWithPolicy(
       makePolicy(),
@@ -244,14 +244,14 @@ describe('fetchWithPolicy', () => {
       fetchMock as unknown as typeof globalThis.fetch,
     );
 
-    const init = fetchMock.mock.calls[0][1];
+    const init = fetchMock.mock.calls[0]?.[1];
     expect(init?.method).toBe('POST');
     expect(init?.body).toBe('{"x":1}');
     expect(init?.signal).toBeDefined();
   });
 
   it('preserves a caller-provided signal', async () => {
-    const fetchMock = jest.fn().mockResolvedValue(okResponse());
+    const fetchMock = vi.fn().mockResolvedValue(okResponse());
     const controller = new AbortController();
 
     await fetchWithPolicy(
@@ -261,11 +261,11 @@ describe('fetchWithPolicy', () => {
       fetchMock as unknown as typeof globalThis.fetch,
     );
 
-    expect(fetchMock.mock.calls[0][1]?.signal).toBe(controller.signal);
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
   });
 
   it('defaults to globalThis.fetch', async () => {
-    const fetchStub = jest
+    const fetchStub = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(okResponse() as unknown as Response);
     try {
@@ -278,7 +278,7 @@ describe('fetchWithPolicy', () => {
   });
 
   it('throws a policy error with the status and Retry-After', async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValue(statusResponse(400, { 'Retry-After': '3' }));
 
@@ -298,7 +298,7 @@ describe('fetchWithPolicy', () => {
   });
 
   it('retries a non-2xx response and succeeds', async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(statusResponse(503))
       .mockResolvedValueOnce(okResponse());
@@ -315,7 +315,7 @@ describe('fetchWithPolicy', () => {
   });
 
   it('does not retry a 4xx response', async () => {
-    const fetchMock = jest.fn().mockResolvedValue(statusResponse(404));
+    const fetchMock = vi.fn().mockResolvedValue(statusResponse(404));
 
     let caught: unknown;
     try {
@@ -334,7 +334,7 @@ describe('fetchWithPolicy', () => {
   });
 
   it('retries a default per-attempt timeout and succeeds', async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockRejectedValueOnce(
         new DOMException('The operation timed out.', 'TimeoutError'),
@@ -358,7 +358,7 @@ describe('fetchWithPolicy', () => {
       'Caller timed out',
       FetchPolicyErrorName.Timeout,
     );
-    const fetchMock = jest.fn().mockImplementation(async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => {
       controller.abort(callerReason);
       throw callerReason;
     });
@@ -382,7 +382,7 @@ describe('fetchWithPolicy', () => {
   it('does not retry caller cancellation during body reading and restores the caller reason', async () => {
     const controller = new AbortController();
     const callerReason = new Error('Caller cancelled while reading body');
-    const fetchMock = jest.fn().mockResolvedValue({
+    const fetchMock = vi.fn().mockResolvedValue({
       ...okResponse(),
       text: async () => {
         controller.abort(callerReason);
@@ -418,10 +418,10 @@ describe('fetchWithPolicy', () => {
       const customSignal = {
         aborted: false,
         reason: undefined,
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
       } as unknown as AbortSignal & { aborted: boolean };
-      const fetchMock = jest.fn().mockImplementation(async () => {
+      const fetchMock = vi.fn().mockImplementation(async () => {
         customSignal.aborted = true;
         throw new Error('Request aborted without reason');
       });
@@ -451,11 +451,11 @@ describe('fetchWithPolicy', () => {
   });
 
   it('rejects promptly during retry backoff when the caller aborts without invoking fetch again', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     try {
       const controller = new AbortController();
       const callerReason = new Error('Caller aborted during backoff');
-      const fetchMock = jest
+      const fetchMock = vi
         .fn()
         .mockResolvedValue(statusResponse(429, { 'Retry-After': '30' }));
 
@@ -470,7 +470,7 @@ describe('fetchWithPolicy', () => {
         (error) => error,
       );
 
-      await jest.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining('[test] Retrying (attempt 1'),
@@ -480,21 +480,21 @@ describe('fetchWithPolicy', () => {
       controller.abort(callerReason);
       expect(await rejection).toBe(callerReason);
 
-      await jest.advanceTimersByTimeAsync(40_000);
+      await vi.advanceTimersByTimeAsync(40_000);
       expect(fetchMock).toHaveBeenCalledTimes(1);
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
   });
 
   it('falls back to an AbortError when a custom signal aborts during backoff without a reason', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     try {
       const controller = new AbortController();
       Object.defineProperty(controller.signal, 'reason', {
         value: undefined,
       });
-      const fetchMock = jest
+      const fetchMock = vi
         .fn()
         .mockResolvedValue(statusResponse(429, { 'Retry-After': '30' }));
 
@@ -509,7 +509,7 @@ describe('fetchWithPolicy', () => {
         (error) => error,
       );
 
-      await jest.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining('[test] Retrying (attempt 1'),
@@ -522,16 +522,16 @@ describe('fetchWithPolicy', () => {
         name: 'AbortError',
       });
 
-      await jest.advanceTimersByTimeAsync(40_000);
+      await vi.advanceTimersByTimeAsync(40_000);
       expect(fetchMock).toHaveBeenCalledTimes(1);
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
   });
 
   it('falls back to an AbortError when a custom signal is already aborted on entry without a reason', async () => {
     const customSignal = { aborted: true, reason: undefined } as AbortSignal;
-    const fetchMock = jest.fn();
+    const fetchMock = vi.fn();
 
     await expect(
       fetchWithPolicy(

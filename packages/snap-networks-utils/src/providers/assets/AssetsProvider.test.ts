@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import type {
   AccountId,
   Asset,
@@ -28,7 +29,7 @@ const ACCOUNT: InternalAccount = {
 
 type WithAssetsProviderCallback<ReturnValue> = (payload: {
   assetsProvider: AssetsProvider;
-  mockMessenger: jest.Mocked<AssetsProviderMessenger>;
+  mockMessenger: Mocked<AssetsProviderMessenger>;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -41,9 +42,9 @@ type WithAssetsProviderCallback<ReturnValue> = (payload: {
 async function withAssetsProvider<ReturnValue>(
   testFunction: WithAssetsProviderCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  const mockMessenger: jest.Mocked<AssetsProviderMessenger> = {
-    call: jest.fn(),
-  };
+  const mockMessenger = {
+    call: vi.fn(),
+  } as unknown as Mocked<AssetsProviderMessenger>;
 
   const assetsProvider = new AssetsProvider({
     messenger: mockMessenger,

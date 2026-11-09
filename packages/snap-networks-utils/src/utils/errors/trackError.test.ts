@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import { SnapError, UserRejectedRequestError } from '@metamask/snaps-sdk';
 
 import { mockLogger } from '../logger/__mocks__/Logger';
@@ -6,12 +7,12 @@ import { createSnapErrorHandling, createTrackError } from './trackError';
 import type { TrackErrorCapableProvider } from './trackError';
 
 const setupTrackErrorTest = (): {
-  request: jest.Mock;
+  request: Mock;
   trackError: TrackErrorFn;
 } => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 
-  const request = jest.fn();
+  const request = vi.fn();
   const getSnapProvider = (): TrackErrorCapableProvider => ({ request });
   const trackError = createTrackError({
     getSnapProvider,
@@ -64,8 +65,8 @@ describe('trackError', () => {
     });
 
     it('uses prepareError before serializing', async () => {
-      const request = jest.fn().mockResolvedValue('tracked-error-id');
-      const prepareError = jest.fn(
+      const request = vi.fn().mockResolvedValue('tracked-error-id');
+      const prepareError = vi.fn(
         (error: unknown): Error => new Error(`wrapped: ${String(error)}`),
       );
       const getSnapProvider = (): TrackErrorCapableProvider => ({ request });
@@ -89,7 +90,7 @@ describe('trackError', () => {
     });
 
     it('uses shouldTrack to skip tracking', async () => {
-      const request = jest.fn();
+      const request = vi.fn();
       const getSnapProvider = (): TrackErrorCapableProvider => ({ request });
       const trackError = createTrackError({
         getSnapProvider,
@@ -125,9 +126,9 @@ describe('trackError', () => {
     });
 
     it('resolves the snap provider on each call', async () => {
-      const firstRequest = jest.fn().mockResolvedValue('first-id');
-      const secondRequest = jest.fn().mockResolvedValue('second-id');
-      const getSnapProvider = jest
+      const firstRequest = vi.fn().mockResolvedValue('first-id');
+      const secondRequest = vi.fn().mockResolvedValue('second-id');
+      const getSnapProvider = vi
         .fn()
         .mockReturnValueOnce({ request: firstRequest })
         .mockReturnValueOnce({ request: secondRequest });
@@ -144,9 +145,9 @@ describe('trackError', () => {
 
   describe('createSnapErrorHandling', () => {
     it('wires trackError into withCatchAndThrowSnapError', async () => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
 
-      const request = jest.fn().mockResolvedValue('tracked-error-id');
+      const request = vi.fn().mockResolvedValue('tracked-error-id');
       const getSnapProvider = (): TrackErrorCapableProvider => ({ request });
       const { trackError, withCatchAndThrowSnapError } =
         createSnapErrorHandling({
@@ -155,7 +156,7 @@ describe('trackError', () => {
         });
 
       const originalError = new Error('Test error');
-      const mockFn = jest.fn().mockRejectedValue(originalError);
+      const mockFn = vi.fn().mockRejectedValue(originalError);
 
       await expect(withCatchAndThrowSnapError(mockFn)).rejects.toThrow(
         SnapError,
@@ -167,14 +168,14 @@ describe('trackError', () => {
     });
 
     it('forwards prepareError and shouldTrack to trackError', async () => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
 
-      const request = jest.fn().mockResolvedValue('tracked-error-id');
+      const request = vi.fn().mockResolvedValue('tracked-error-id');
       const getSnapProvider = (): TrackErrorCapableProvider => ({ request });
-      const prepareError = jest.fn(
+      const prepareError = vi.fn(
         (error: unknown): Error => new Error(`prepared: ${String(error)}`),
       );
-      const shouldTrack = jest.fn(
+      const shouldTrack = vi.fn(
         (error: unknown): boolean => error instanceof Error,
       );
       const { trackError } = createSnapErrorHandling({
@@ -195,11 +196,11 @@ describe('trackError', () => {
     });
 
     it('uses a custom normalizeErrorFn in withCatchAndThrowSnapError', async () => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
 
-      const request = jest.fn().mockResolvedValue('tracked-error-id');
+      const request = vi.fn().mockResolvedValue('tracked-error-id');
       const getSnapProvider = (): TrackErrorCapableProvider => ({ request });
-      const normalizeErrorFn = jest.fn(
+      const normalizeErrorFn = vi.fn(
         () => new UserRejectedRequestError('normalized'),
       );
       const { withCatchAndThrowSnapError } = createSnapErrorHandling({
@@ -221,11 +222,11 @@ describe('trackError', () => {
     });
 
     it('uses a custom logError override in withCatchAndThrowSnapError', async () => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
 
-      const request = jest.fn().mockResolvedValue('tracked-error-id');
+      const request = vi.fn().mockResolvedValue('tracked-error-id');
       const getSnapProvider = (): TrackErrorCapableProvider => ({ request });
-      const customLogError = jest.fn();
+      const customLogError = vi.fn();
       const { withCatchAndThrowSnapError } = createSnapErrorHandling({
         getSnapProvider,
         logError: mockLogger.error.bind(mockLogger),
