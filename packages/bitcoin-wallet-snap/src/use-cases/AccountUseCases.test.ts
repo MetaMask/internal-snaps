@@ -18,7 +18,7 @@ import {
 } from '@metamask/key-tree';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import { Signer } from 'bip322-js';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type {
   BitcoinAccount,
@@ -77,10 +77,11 @@ describe('AccountUseCases', () => {
    */
   const stubSentAmount = (account: BitcoinAccount, sentBtc = 1): void => {
     const sentAmount = mock<Amount>();
-    jest.spyOn(sentAmount, 'to_btc').mockReturnValue(sentBtc);
-    jest
-      .mocked(account.sentAndReceived)
-      .mockReturnValue([sentAmount, mock<Amount>()]);
+    sentAmount.to_btc.mockReturnValue(sentBtc);
+    vi.mocked(account.sentAndReceived).mockReturnValue([
+      sentAmount,
+      mock<Amount>(),
+    ]);
   };
 
   describe('get', () => {
@@ -431,12 +432,12 @@ describe('AccountUseCases', () => {
     const mockAccount = mock<BitcoinAccount>({
       id: 'some-id',
       network: 'bitcoin',
-      listTransactions: jest.fn(),
+      listTransactions: vi.fn(),
     });
 
     beforeEach(() => {
       const receivedAmount = mock<Amount>();
-      jest.spyOn(receivedAmount, 'to_btc').mockReturnValue(0);
+      receivedAmount.to_btc.mockReturnValue(0);
       mockAccount.listTransactions.mockReturnValue([]);
       mockAccount.sentAndReceived.mockReturnValue([
         receivedAmount,
@@ -802,7 +803,7 @@ describe('AccountUseCases', () => {
 
     beforeEach(() => {
       const receivedAmount = mock<Amount>();
-      jest.spyOn(receivedAmount, 'to_btc').mockReturnValue(0);
+      receivedAmount.to_btc.mockReturnValue(0);
       mockAccount.sentAndReceived.mockReturnValue([
         receivedAmount,
         receivedAmount,
@@ -934,7 +935,7 @@ describe('AccountUseCases', () => {
     });
 
     it('resolves the funding addresses of receives', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
       mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
 
       const result = await useCases.resolveTransactionSenders(mockAccount2, [
@@ -949,7 +950,7 @@ describe('AccountUseCases', () => {
     });
 
     it('does not query the indexer for sends', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0.5);
+      mockSentAmount.to_btc.mockReturnValue(0.5);
 
       const result = await useCases.resolveTransactionSenders(mockAccount2, [
         createTx('txid-send'),
@@ -960,7 +961,7 @@ describe('AccountUseCases', () => {
     });
 
     it('returns undefined when receives have no senders', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
       mockChain.getTransactionSenders.mockResolvedValue([]);
 
       const result = await useCases.resolveTransactionSenders(mockAccount2, [
@@ -971,7 +972,7 @@ describe('AccountUseCases', () => {
     });
 
     it('skips a failed lookup without failing the others', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
       mockChain.getTransactionSenders
         .mockRejectedValueOnce(new Error('indexer unavailable'))
         .mockResolvedValueOnce(['bc1qsender']);
@@ -989,7 +990,7 @@ describe('AccountUseCases', () => {
     });
 
     it('bounds concurrent indexer lookups', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
 
       let inFlight = 0;
       let peak = 0;
@@ -1014,7 +1015,7 @@ describe('AccountUseCases', () => {
     });
 
     it('shares the concurrency budget across accounts', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
 
       let inFlight = 0;
       let peak = 0;
@@ -1051,7 +1052,7 @@ describe('AccountUseCases', () => {
     });
 
     it('releases the concurrency slot when a lookup fails', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
       mockChain.getTransactionSenders.mockRejectedValue(
         new Error('indexer unavailable'),
       );
@@ -1076,7 +1077,7 @@ describe('AccountUseCases', () => {
     });
 
     it('caps the lookups at the given limit', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
       mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
 
       const txs = [createTx('txid-1'), createTx('txid-2'), createTx('txid-3')];
@@ -1105,7 +1106,7 @@ describe('AccountUseCases', () => {
     });
 
     it('resolves every receive when no limit is given', async () => {
-      jest.spyOn(mockSentAmount, 'to_btc').mockReturnValue(0);
+      mockSentAmount.to_btc.mockReturnValue(0);
       mockChain.getTransactionSenders.mockResolvedValue(['bc1qsender']);
 
       const txs = Array.from({ length: SENDER_RESOLUTION_LIMIT + 5 }, (_, i) =>
@@ -1172,8 +1173,8 @@ describe('AccountUseCases', () => {
     const mockTransaction = mock<Transaction>({
       // TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
 
-      compute_txid: jest.fn(),
-      clone: jest.fn(),
+      compute_txid: vi.fn(),
+      clone: vi.fn(),
     });
     const mockSignedPsbt = mock<Psbt>({
       toString: () => 'mockSignedPsbt',
@@ -1181,7 +1182,7 @@ describe('AccountUseCases', () => {
     const mockAccount = mock<BitcoinAccount>({
       network: 'bitcoin',
       addressType: 'p2wpkh',
-      sign: jest.fn(),
+      sign: vi.fn(),
       capabilities: [AccountCapability.SignPsbt],
     });
     const mockWalletTx = mock<WalletTx>();
@@ -1195,12 +1196,12 @@ describe('AccountUseCases', () => {
       },
     });
     const mockTxBuilder = mock<TransactionBuilder>({
-      addRecipientByScript: jest.fn(),
-      feeRate: jest.fn(),
-      drainToByScript: jest.fn(),
-      drainWallet: jest.fn(),
-      finish: jest.fn(),
-      unspendable: jest.fn(),
+      addRecipientByScript: vi.fn(),
+      feeRate: vi.fn(),
+      drainToByScript: vi.fn(),
+      drainWallet: vi.fn(),
+      finish: vi.fn(),
+      unspendable: vi.fn(),
     });
 
     beforeEach(() => {
@@ -1558,7 +1559,7 @@ describe('AccountUseCases', () => {
     const mockAccount = mock<BitcoinAccount>({
       id: 'account-id',
       network: 'bitcoin',
-      sign: jest.fn(),
+      sign: vi.fn(),
       isMine: () => false,
       capabilities: [AccountCapability.FillPsbt],
     });
@@ -1573,12 +1574,12 @@ describe('AccountUseCases', () => {
       },
     });
     const mockTxBuilder = mock<TransactionBuilder>({
-      addRecipientByScript: jest.fn(),
-      feeRate: jest.fn(),
-      drainToByScript: jest.fn(),
-      drainWallet: jest.fn(),
-      finish: jest.fn(),
-      unspendable: jest.fn(),
+      addRecipientByScript: vi.fn(),
+      feeRate: vi.fn(),
+      drainToByScript: vi.fn(),
+      drainWallet: vi.fn(),
+      finish: vi.fn(),
+      unspendable: vi.fn(),
     });
 
     beforeEach(() => {
@@ -2111,11 +2112,11 @@ describe('AccountUseCases', () => {
       },
     });
     const mockTxBuilder = mock<TransactionBuilder>({
-      addRecipientByScript: jest.fn(),
-      feeRate: jest.fn(),
-      drainToByScript: jest.fn(),
-      finish: jest.fn(),
-      unspendable: jest.fn(),
+      addRecipientByScript: vi.fn(),
+      feeRate: vi.fn(),
+      drainToByScript: vi.fn(),
+      finish: vi.fn(),
+      unspendable: vi.fn(),
     });
 
     beforeEach(() => {
@@ -2229,8 +2230,8 @@ describe('AccountUseCases', () => {
     const mockTransaction = mock<Transaction>({
       // TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
 
-      compute_txid: jest.fn(),
-      clone: jest.fn(),
+      compute_txid: vi.fn(),
+      clone: vi.fn(),
     });
     const mockSignedPsbt = mock<Psbt>({
       toString: () => 'mockSignedPsbt',
@@ -2238,7 +2239,7 @@ describe('AccountUseCases', () => {
     const mockAccount = mock<BitcoinAccount>({
       network: 'bitcoin',
       addressType: 'p2wpkh',
-      sign: jest.fn(),
+      sign: vi.fn(),
       capabilities: [AccountCapability.SendTransfer],
     });
     const mockWalletTx = mock<WalletTx>();
@@ -2252,13 +2253,13 @@ describe('AccountUseCases', () => {
       },
     });
     const mockTxBuilder = mock<TransactionBuilder>({
-      addRecipient: jest.fn(),
-      addRecipientByScript: jest.fn(),
-      feeRate: jest.fn(),
-      drainToByScript: jest.fn(),
-      drainWallet: jest.fn(),
-      finish: jest.fn(),
-      unspendable: jest.fn(),
+      addRecipient: vi.fn(),
+      addRecipientByScript: vi.fn(),
+      feeRate: vi.fn(),
+      drainToByScript: vi.fn(),
+      drainWallet: vi.fn(),
+      finish: vi.fn(),
+      unspendable: vi.fn(),
     });
 
     beforeEach(() => {
@@ -2398,8 +2399,8 @@ describe('AccountUseCases', () => {
     const mockTxid = mock<Txid>();
     const mockPsbt = mock<Psbt>();
     const mockTransaction = mock<Transaction>({
-      compute_txid: jest.fn(),
-      clone: jest.fn(),
+      compute_txid: vi.fn(),
+      clone: vi.fn(),
     });
     const mockWalletTx = mock<WalletTx>();
     const mockAccount = mock<BitcoinAccount>({
@@ -2647,8 +2648,7 @@ describe('AccountUseCases', () => {
     });
 
     it('signs messages with one private entropy fetch for accounts sharing a parent path', async () => {
-      jest
-        .spyOn(Signer, 'sign')
+      vi.spyOn(Signer, 'sign')
         .mockReturnValueOnce('mock-bip322-signature-0')
         .mockReturnValueOnce('mock-bip322-signature-1');
 
@@ -2684,8 +2684,8 @@ describe('AccountUseCases', () => {
 
     it('does not expose derivation error details in batch signing results', async () => {
       const sensitiveError = 'derived private key bytes: secret';
-      jest.spyOn(RealSlip10Node, 'fromJSON').mockResolvedValueOnce({
-        derive: jest.fn().mockRejectedValue(new Error(sensitiveError)),
+      vi.spyOn(RealSlip10Node, 'fromJSON').mockResolvedValueOnce({
+        derive: vi.fn().mockRejectedValue(new Error(sensitiveError)),
       } as never);
 
       const result = await useCases.signProofOfOwnershipMessages([

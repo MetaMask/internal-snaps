@@ -1,4 +1,6 @@
+import { assert } from '@metamask/utils';
 import { address as asAddress, lamports } from '@solana/kit';
+import type { Mocked } from 'vitest';
 
 import { KnownCaip19Id, Network, Networks } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../test/mocks/solana-keyring-accounts';
@@ -19,19 +21,16 @@ import { EXPECTED_SWAP_TRUMP_TO_JUP_DATA } from '../../test/mocks/transactions-d
 import { EXPECTED_SWAP_USDC_TO_COBIE_DATA } from '../../test/mocks/transactions-data/swap-usdc-to-cobie';
 import { EXPECTED_SWAP_USDC_TO_JUP_DATA } from '../../test/mocks/transactions-data/swap-usdc-to-jup';
 import type { SolanaTransaction } from '../../types/solana';
+import * as Errors from '../../utils/errors';
 import { trackError } from '../../utils/errors';
 import logger from '../../utils/logger';
 import type { AssetsService, TokenHelper } from '../assets';
 import { TransactionMapper } from './TransactionMapper';
 
-jest.mock('../../utils/errors', () => ({
-  trackError: jest.fn().mockResolvedValue('tracked-error-id'),
-}));
-
 type WithTransactionMapperCallback<ReturnValue> = (payload: {
   transactionMapper: TransactionMapper;
-  mockTokenHelper: jest.Mocked<Pick<TokenHelper, 'amountToUiAmountForMint'>>;
-  mockAssetsService: jest.Mocked<Pick<AssetsService, 'getAssetsMetadata'>>;
+  mockTokenHelper: Mocked<Pick<TokenHelper, 'amountToUiAmountForMint'>>;
+  mockAssetsService: Mocked<Pick<AssetsService, 'getAssetsMetadata'>>;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -43,16 +42,13 @@ type WithTransactionMapperCallback<ReturnValue> = (payload: {
 async function withTransactionMapper<ReturnValue>(
   testFunction: WithTransactionMapperCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  const mockTokenHelper: jest.Mocked<
-    Pick<TokenHelper, 'amountToUiAmountForMint'>
-  > = {
-    amountToUiAmountForMint: jest.fn().mockResolvedValue('1'),
-  };
+  const mockTokenHelper: Mocked<Pick<TokenHelper, 'amountToUiAmountForMint'>> =
+    {
+      amountToUiAmountForMint: vi.fn().mockResolvedValue('1'),
+    };
 
-  const mockAssetsService: jest.Mocked<
-    Pick<AssetsService, 'getAssetsMetadata'>
-  > = {
-    getAssetsMetadata: jest.fn().mockResolvedValue({}),
+  const mockAssetsService: Mocked<Pick<AssetsService, 'getAssetsMetadata'>> = {
+    getAssetsMetadata: vi.fn().mockResolvedValue({}),
   };
 
   const transactionMapper = new TransactionMapper(
@@ -75,14 +71,15 @@ describe('TransactionMapper', () => {
   const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
+    vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
 
     mockTokenHelper = {
-      amountToUiAmountForMint: jest.fn().mockResolvedValue('1'),
+      amountToUiAmountForMint: vi.fn().mockResolvedValue('1'),
     } as unknown as TokenHelper;
 
     mockAssetsService = {
-      getAssetsMetadata: jest.fn().mockResolvedValue({}),
+      getAssetsMetadata: vi.fn().mockResolvedValue({}),
     } as unknown as AssetsService;
 
     transactionMapper = new TransactionMapper(
@@ -93,6 +90,26 @@ describe('TransactionMapper', () => {
   });
 
   describe('mapRpcTransaction', () => {
+    it.each([
+      ['SOL to OBRIC', EXPECTED_SWAP_SOL_TO_OBRIC_DATA],
+      ['TRUMP to JUP', EXPECTED_SWAP_TRUMP_TO_JUP_DATA],
+      ['USDC to COBIE', EXPECTED_SWAP_USDC_TO_COBIE_DATA],
+    ])(
+      'maps a %s swap with lookup accounts without reporting parsing errors',
+      async (_, transaction) => {
+        const [feePayer] = transaction.transaction.message.accountKeys;
+        assert(feePayer);
+        const result = await transactionMapper.mapRpcTransaction(
+          transaction,
+          { ...mockAccount, address: feePayer },
+          Network.Mainnet,
+        );
+
+        expect(result).not.toBeNull();
+        expect(trackError).not.toHaveBeenCalled();
+      },
+    );
+
     it('maps native SOL transfers - as a sender', async () => {
       const result = await transactionMapper.mapRpcTransaction(
         EXPECTED_NATIVE_SOL_TRANSFER_DATA,
@@ -485,9 +502,9 @@ describe('TransactionMapper', () => {
     });
 
     it('maps SPL token transfers - as a sender', async () => {
-      jest
-        .spyOn(mockTokenHelper, 'amountToUiAmountForMint')
-        .mockResolvedValue('0.01');
+      vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint').mockResolvedValue(
+        '0.01',
+      );
 
       const result = await transactionMapper.mapRpcTransaction(
         EXPECTED_SEND_USDC_TRANSFER_DATA,
@@ -774,9 +791,9 @@ describe('TransactionMapper', () => {
     });
 
     it('maps SPL token transfers - as a receiver', async () => {
-      jest
-        .spyOn(mockTokenHelper, 'amountToUiAmountForMint')
-        .mockResolvedValue('0.01');
+      vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint').mockResolvedValue(
+        '0.01',
+      );
 
       const result = await transactionMapper.mapRpcTransaction(
         EXPECTED_SEND_USDC_TRANSFER_DATA,
@@ -890,9 +907,9 @@ describe('TransactionMapper', () => {
     });
 
     it('maps SPL token transfers - where sender has his token account created', async () => {
-      jest
-        .spyOn(mockTokenHelper, 'amountToUiAmountForMint')
-        .mockResolvedValue('0.01');
+      vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint').mockResolvedValue(
+        '0.01',
+      );
 
       const result = await transactionMapper.mapRpcTransaction(
         EXPECTED_SEND_SPL_TOKEN_AND_CREATE_TOKEN_ACCOUNT_DATA,
@@ -949,8 +966,7 @@ describe('TransactionMapper', () => {
     it.todo('maps SPL token transfers - failure');
 
     it('maps swaps - #1 USDC -> Cobie', async () => {
-      jest
-        .spyOn(mockTokenHelper, 'amountToUiAmountForMint')
+      vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint')
         .mockResolvedValueOnce('0.01')
         .mockResolvedValueOnce('12345') // any value, it's not used
         .mockResolvedValueOnce('2583.728601');
@@ -1040,8 +1056,7 @@ describe('TransactionMapper', () => {
     });
 
     it('maps swaps - #2 USDC -> JUP', async () => {
-      jest
-        .spyOn(mockTokenHelper, 'amountToUiAmountForMint')
+      vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint')
         .mockResolvedValueOnce('1.1')
         .mockResolvedValueOnce('2.143812');
 
@@ -1121,8 +1136,7 @@ describe('TransactionMapper', () => {
     });
 
     it('maps swaps - #3 A16Z -> USDT -> SOL', async () => {
-      jest
-        .spyOn(mockTokenHelper, 'amountToUiAmountForMint')
+      vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint')
         .mockResolvedValueOnce('1234') // any value, it's not used
         .mockResolvedValueOnce('1234') // any value, it's not used
         .mockResolvedValueOnce('1234') // any value, it's not used
@@ -1192,8 +1206,7 @@ describe('TransactionMapper', () => {
     });
 
     it('maps swaps - #4 TRUMP -> USDC -> WSOL -> JUP', async () => {
-      jest
-        .spyOn(mockTokenHelper, 'amountToUiAmountForMint')
+      vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint')
         .mockResolvedValueOnce('0.000437')
         .mockResolvedValueOnce('0.05')
         .mockResolvedValueOnce('1.265445')
@@ -1276,8 +1289,7 @@ describe('TransactionMapper', () => {
     });
 
     it('maps swaps - #5 SOL -> Sahur, uses swap balance to swap as well as create ATA', async () => {
-      jest
-        .spyOn(mockTokenHelper, 'amountToUiAmountForMint')
+      vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint')
         .mockResolvedValueOnce('4036.960523')
         .mockResolvedValueOnce('0.01')
         .mockResolvedValueOnce('4036.960523')
@@ -1350,8 +1362,7 @@ describe('TransactionMapper', () => {
     // we think it's a receive transaction but it's not, it's actually a Swap.
     // https://solscan.io/tx/2m8z8uPZyoZwQpissDbhSfW5XDTFmpc7cSFithc5e1w8iCwFcvVkxHeaVhgFSdgUPb5cebbKGjuu48JMLPjfEATr
     it.skip('maps swaps - #6 SOL -> USDC', async () => {
-      jest
-        .spyOn(mockTokenHelper, 'amountToUiAmountForMint')
+      vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint')
         .mockResolvedValueOnce('0.167225')
         .mockResolvedValueOnce('0.00099125')
         .mockResolvedValueOnce('0.167225');
@@ -1419,8 +1430,7 @@ describe('TransactionMapper', () => {
     });
 
     it.skip('maps swaps - #7 SOL -> OBRIC', async () => {
-      jest
-        .spyOn(mockTokenHelper, 'amountToUiAmountForMint')
+      vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint')
         .mockResolvedValueOnce('4')
         .mockResolvedValueOnce('0.00875')
         .mockResolvedValueOnce('0.005903984')
@@ -1718,9 +1728,9 @@ describe('TransactionMapper', () => {
     });
 
     it('parses transaction fees on SPL transfers', async () => {
-      jest
-        .spyOn(mockTokenHelper, 'amountToUiAmountForMint')
-        .mockResolvedValue('1');
+      vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint').mockResolvedValue(
+        '1',
+      );
 
       const result = await transactionMapper.mapRpcTransaction(
         EXPECTED_SEND_USDC_TRANSFER_DATA,
@@ -1742,9 +1752,9 @@ describe('TransactionMapper', () => {
     });
 
     it('parses transaction fees on swap transactions', async () => {
-      jest
-        .spyOn(mockTokenHelper, 'amountToUiAmountForMint')
-        .mockResolvedValue('1');
+      vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint').mockResolvedValue(
+        '1',
+      );
 
       const result = await transactionMapper.mapRpcTransaction(
         EXPECTED_SWAP_USDC_TO_COBIE_DATA,
@@ -1819,7 +1829,7 @@ describe('TransactionMapper', () => {
 
     describe('when assets metadata is not provided as argument', () => {
       it('maps transactions with assets metadata fetched from the assets service', async () => {
-        jest.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({
+        vi.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({
           [KnownCaip19Id.UsdcDevnet]: {
             fungible: true,
             iconUrl: '',

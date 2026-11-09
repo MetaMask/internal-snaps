@@ -9,6 +9,7 @@ import {
   xpriv_to_descriptor,
   xpub_to_descriptor,
 } from '@metamask/bitcoindevkit';
+import * as BitcoinDevKit from '@metamask/bitcoindevkit';
 import type { BIP32Node, BIP39Node, SLIP10Node } from '@metamask/key-tree';
 import {
   mnemonicPhraseToBytes,
@@ -20,7 +21,9 @@ import type {
 } from '@metamask/snap-networks-utils';
 import { State } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/snaps-sdk';
-import { mock } from 'jest-mock-extended';
+import * as Uuid from 'uuid';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type {
   AccountState,
@@ -33,29 +36,6 @@ import { BdkAccountAdapter } from '../infra';
 import { BdkAccountRepository } from './BdkAccountRepository';
 
 // TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
-
-jest.mock('@metamask/bitcoindevkit', () => {
-  return {
-    ChangeSet: {
-      from_json: jest.fn(),
-    },
-    Address: {
-      from_string: jest.fn(),
-    },
-    slip10_to_extended: jest.fn().mockReturnValue('mock-extended'),
-    xpub_to_descriptor: jest.fn(),
-    xpriv_to_descriptor: jest.fn(),
-  };
-});
-
-jest.mock('../infra/BdkAccountAdapter', () => ({
-  BdkAccountAdapter: {
-    load: jest.fn(),
-    create: jest.fn(),
-  },
-}));
-
-jest.mock('uuid', () => ({ v4: () => 'mock-uuid' }));
 
 type StateRequest = {
   method: 'snap_getState' | 'snap_setState';
@@ -80,7 +60,7 @@ function setupStateRepository(
   unencrypted: Partial<SnapState>;
   unencryptedState: State<Partial<SnapState>>;
 } {
-  const request = jest.fn(async ({ method, params }: StateRequest) => {
+  const request = vi.fn(async ({ method, params }: StateRequest) => {
     const storage = params.encrypted ? encrypted : unencrypted;
     if (method === 'snap_getState') {
       const value = params.key
@@ -162,34 +142,38 @@ describe('BdkAccountRepository', () => {
   const repo = new BdkAccountRepository(mockSnapClient, mockState, mockState);
 
   beforeEach(() => {
-    jest
-      .mocked(mockState.setKeyWith)
-      .mockImplementation(
-        async <TValue extends Serializable>(
-          key: string,
-          updater: (value: TValue | undefined) => TValue,
-        ) => {
-          await mockState.setKey(
-            key,
-            updater(await mockState.getKey<TValue>(key)),
-          );
-        },
-      );
-    (BdkAccountAdapter.load as jest.Mock).mockReturnValue(mockAccount);
-    (BdkAccountAdapter.create as jest.Mock).mockReturnValue(mockAccount);
-    (ChangeSet.from_json as jest.Mock).mockReturnValue(mockChangeSet);
+    vi.spyOn(BdkAccountAdapter, 'load');
+    vi.spyOn(BdkAccountAdapter, 'create');
+    vi.spyOn(ChangeSet, 'from_json');
+    vi.spyOn(Address, 'from_string');
+    vi.spyOn(BitcoinDevKit, 'slip10_to_extended').mockReturnValue(
+      'mock-extended' as never,
+    );
+    vi.spyOn(BitcoinDevKit, 'xpriv_to_descriptor');
+    vi.spyOn(BitcoinDevKit, 'xpub_to_descriptor');
+    vi.spyOn(Uuid, 'v4').mockReturnValue('mock-uuid' as never);
+    vi.mocked(mockState.setKeyWith).mockImplementation(
+      async <TValue extends Serializable>(
+        key: string,
+        updater: (value: TValue | undefined) => TValue,
+      ) => {
+        await mockState.setKey(
+          key,
+          updater(await mockState.getKey<TValue>(key)),
+        );
+      },
+    );
+    (BdkAccountAdapter.load as Mock).mockReturnValue(mockAccount);
+    (BdkAccountAdapter.create as Mock).mockReturnValue(mockAccount);
+    (ChangeSet.from_json as Mock).mockReturnValue(mockChangeSet);
     mockSnapClient.getPrivateEntropy.mockResolvedValue(mockSlip10Node);
     mockSnapClient.getPublicEntropy.mockResolvedValue(mockSlip10Node);
-    (xpriv_to_descriptor as jest.Mock).mockReturnValue(mockDescriptors);
-    (xpub_to_descriptor as jest.Mock).mockReturnValue(mockDescriptors);
-    jest.mocked(Address.from_string).mockReturnValue(mockAddress);
-    (mockAccount.takeStaged as jest.Mock) = jest
-      .fn()
-      .mockReturnValue(mockChangeSet);
-    (mockAccount.hasStaged as jest.Mock) = jest.fn().mockReturnValue(true);
-    (mockChangeSet.to_json as jest.Mock) = jest
-      .fn()
-      .mockReturnValue(mockWalletData);
+    (xpriv_to_descriptor as Mock).mockReturnValue(mockDescriptors);
+    (xpub_to_descriptor as Mock).mockReturnValue(mockDescriptors);
+    vi.mocked(Address.from_string).mockReturnValue(mockAddress);
+    (mockAccount.takeStaged as Mock) = vi.fn().mockReturnValue(mockChangeSet);
+    (mockAccount.hasStaged as Mock) = vi.fn().mockReturnValue(true);
+    (mockChangeSet.to_json as Mock) = vi.fn().mockReturnValue(mockWalletData);
   });
 
   describe('get', () => {
@@ -237,7 +221,7 @@ describe('BdkAccountRepository', () => {
       const mockAccount2 = { ...mockAccount, id: id2 };
 
       mockState.getKey.mockResolvedValue(state);
-      (BdkAccountAdapter.load as jest.Mock)
+      (BdkAccountAdapter.load as Mock)
         .mockReturnValueOnce(mockAccount1)
         .mockReturnValueOnce(mockAccount2);
 
@@ -261,7 +245,7 @@ describe('BdkAccountRepository', () => {
       const mockAccount2 = { ...mockAccount, id: id2 };
 
       mockState.getKey.mockResolvedValue(state);
-      (BdkAccountAdapter.load as jest.Mock)
+      (BdkAccountAdapter.load as Mock)
         .mockReturnValueOnce(mockAccount1)
         .mockReturnValueOnce(mockAccount2);
 
@@ -292,7 +276,7 @@ describe('BdkAccountRepository', () => {
       const mockAccount2 = { ...mockAccount, id: id2 };
 
       mockState.getKey.mockResolvedValue(state);
-      (BdkAccountAdapter.load as jest.Mock)
+      (BdkAccountAdapter.load as Mock)
         .mockReturnValueOnce(mockAccount2)
         .mockReturnValueOnce(mockAccount1);
 
@@ -311,7 +295,7 @@ describe('BdkAccountRepository', () => {
       const loadedAccount = { ...mockAccount, id };
 
       mockState.getKey.mockResolvedValue(state);
-      (BdkAccountAdapter.load as jest.Mock).mockReturnValueOnce(loadedAccount);
+      (BdkAccountAdapter.load as Mock).mockReturnValueOnce(loadedAccount);
 
       const result = await repo.getByIds([id.toUpperCase()]);
 
@@ -345,8 +329,8 @@ describe('BdkAccountRepository', () => {
         [id1]: accountState1,
         [id2]: accountState2,
       });
-      (BdkAccountAdapter.load as jest.Mock).mockClear();
-      (ChangeSet.from_json as jest.Mock).mockClear();
+      (BdkAccountAdapter.load as Mock).mockClear();
+      (ChangeSet.from_json as Mock).mockClear();
 
       const result = await repo.getByIds([id2, 'missing-id', id1]);
 
@@ -358,11 +342,11 @@ describe('BdkAccountRepository', () => {
       expect(result[1]?.id).toBe(id1);
       expect(result[1]?.publicAddress.toString()).toBe('bc1qaddress...');
       expect(result[1]?.publicDescriptor).toBe('cached-public-descriptor-1');
-      expect(jest.mocked(Address.from_string)).toHaveBeenCalledWith(
+      expect(vi.mocked(Address.from_string)).toHaveBeenCalledWith(
         'bc1qcached2...',
         'bitcoin',
       );
-      expect(jest.mocked(Address.from_string)).toHaveBeenCalledWith(
+      expect(vi.mocked(Address.from_string)).toHaveBeenCalledWith(
         'bc1qcached1...',
         'bitcoin',
       );
@@ -436,7 +420,7 @@ describe('BdkAccountRepository', () => {
           'some-id-1': accountState1,
           'some-id-2': accountState2,
         });
-      (BdkAccountAdapter.load as jest.Mock)
+      (BdkAccountAdapter.load as Mock)
         .mockReturnValueOnce(mockAccount2)
         .mockReturnValueOnce(mockAccount1);
 
@@ -469,8 +453,8 @@ describe('BdkAccountRepository', () => {
         .mockResolvedValueOnce({
           'some-id-1': accountStateWithMetadata,
         });
-      (BdkAccountAdapter.load as jest.Mock).mockClear();
-      (ChangeSet.from_json as jest.Mock).mockClear();
+      (BdkAccountAdapter.load as Mock).mockClear();
+      (ChangeSet.from_json as Mock).mockClear();
 
       const result = await repo.getByDerivationPaths([derivationPath1]);
       const account = result[0];
@@ -478,7 +462,7 @@ describe('BdkAccountRepository', () => {
       expect(account?.id).toBe('some-id-1');
       expect(account?.publicAddress.toString()).toBe('bc1qaddress...');
       expect(account?.publicDescriptor).toBe('cached-public-descriptor');
-      expect(jest.mocked(Address.from_string)).toHaveBeenCalledWith(
+      expect(vi.mocked(Address.from_string)).toHaveBeenCalledWith(
         'bc1qcached...',
         'bitcoin',
       );
@@ -498,7 +482,7 @@ describe('BdkAccountRepository', () => {
         .mockResolvedValueOnce({
           "m/84'/0'/1'": 'some-id-1',
         });
-      (BdkAccountAdapter.load as jest.Mock)
+      (BdkAccountAdapter.load as Mock)
         .mockReturnValueOnce(mockAccount1)
         .mockReturnValueOnce(mockAccount2);
 
@@ -518,7 +502,7 @@ describe('BdkAccountRepository', () => {
       mockState.getKey.mockResolvedValueOnce({}).mockResolvedValueOnce({
         'some-id-1': accountState1,
       });
-      (BdkAccountAdapter.load as jest.Mock).mockReturnValueOnce(mockAccount1);
+      (BdkAccountAdapter.load as Mock).mockReturnValueOnce(mockAccount1);
 
       const result = await repo.getByDerivationPaths([derivationPath1]);
 
@@ -630,7 +614,7 @@ describe('BdkAccountRepository', () => {
       // way `snap_getBip32Entropy` would resolve it.
       const expected = (await deriveFixtureNode(["84'", "0'", "1'"])).neuter();
 
-      const passedNode = (slip10_to_extended as jest.Mock).mock
+      const passedNode = (slip10_to_extended as Mock).mock
         .calls[0]?.[0] as RealSlip10Node;
       expect(passedNode.privateKey).toBeUndefined();
       expect(passedNode.publicKey).toStrictEqual(expected.publicKey);
@@ -651,7 +635,7 @@ describe('BdkAccountRepository', () => {
       await expect(
         repo.insert({
           ...mockAccount,
-          takeStaged: jest.fn().mockReturnValue(undefined),
+          takeStaged: vi.fn().mockReturnValue(undefined),
         }),
       ).rejects.toThrow(
         'Missing changeset data for account "some-id" for insertion.',
@@ -695,7 +679,7 @@ describe('BdkAccountRepository', () => {
           {
             ...mockAccount,
             id: 'missing-wallet',
-            takeStaged: jest.fn().mockReturnValue(undefined),
+            takeStaged: vi.fn().mockReturnValue(undefined),
           },
           mockAccount,
         ]),
@@ -710,20 +694,16 @@ describe('BdkAccountRepository', () => {
         id: 'some-id-1',
         derivationPath: ['m', "84'", "0'", "1'"],
       });
-      (accountWithWalletData.hasStaged as jest.Mock) = jest
-        .fn()
-        .mockReturnValue(true);
-      (accountWithWalletData.takeStaged as jest.Mock) = jest
+      (accountWithWalletData.hasStaged as Mock) = vi.fn().mockReturnValue(true);
+      (accountWithWalletData.takeStaged as Mock) = vi
         .fn()
         .mockReturnValue(mockChangeSet);
       const missingWalletAccount = mock<BitcoinAccount>({
         id: 'missing-wallet',
         derivationPath: ['m', "84'", "0'", "2'"],
       });
-      (missingWalletAccount.hasStaged as jest.Mock) = jest
-        .fn()
-        .mockReturnValue(false);
-      (missingWalletAccount.takeStaged as jest.Mock) = jest.fn();
+      (missingWalletAccount.hasStaged as Mock) = vi.fn().mockReturnValue(false);
+      (missingWalletAccount.takeStaged as Mock) = vi.fn();
 
       await expect(
         repo.insertMany([accountWithWalletData, missingWalletAccount]),
@@ -759,14 +739,10 @@ describe('BdkAccountRepository', () => {
       account2.addressType = 'p2wpkh';
       account2.publicAddress = mockAddress;
       account2.publicDescriptor = 'mock-public-descriptor-2';
-      (account1.takeStaged as jest.Mock) = jest
-        .fn()
-        .mockReturnValue(mockChangeSet);
-      (account1.hasStaged as jest.Mock) = jest.fn().mockReturnValue(true);
-      (account2.takeStaged as jest.Mock) = jest
-        .fn()
-        .mockReturnValue(mockChangeSet);
-      (account2.hasStaged as jest.Mock) = jest.fn().mockReturnValue(true);
+      (account1.takeStaged as Mock) = vi.fn().mockReturnValue(mockChangeSet);
+      (account1.hasStaged as Mock) = vi.fn().mockReturnValue(true);
+      (account2.takeStaged as Mock) = vi.fn().mockReturnValue(mockChangeSet);
+      (account2.hasStaged as Mock) = vi.fn().mockReturnValue(true);
       mockState.getKey
         .mockResolvedValueOnce({
           'existing-id': existingAccountState,
@@ -831,10 +807,8 @@ describe('BdkAccountRepository', () => {
         account.addressType = 'p2wpkh';
         account.publicAddress = mockAddress;
         account.publicDescriptor = 'mock-public-descriptor';
-        (account.takeStaged as jest.Mock) = jest
-          .fn()
-          .mockReturnValue(mockChangeSet);
-        (account.hasStaged as jest.Mock) = jest.fn().mockReturnValue(true);
+        (account.takeStaged as Mock) = vi.fn().mockReturnValue(mockChangeSet);
+        (account.hasStaged as Mock) = vi.fn().mockReturnValue(true);
         return account;
       };
       const account1 = makeInsertableAccount('some-id-1', [
@@ -882,7 +856,7 @@ describe('BdkAccountRepository', () => {
     it('does nothing if no wallet data', async () => {
       await repo.update({
         ...mockAccount,
-        takeStaged: jest.fn().mockReturnValue(undefined),
+        takeStaged: vi.fn().mockReturnValue(undefined),
       });
 
       expect(mockState.setKey).not.toHaveBeenCalled();
@@ -1017,11 +991,9 @@ describe('BdkAccountRepository', () => {
         },
         {},
       );
-      jest
-        .mocked(ChangeSet.from_json)
-        .mockImplementation((wallet) =>
-          makeChanges(JSON.parse(wallet) as string[]),
-        );
+      vi.mocked(ChangeSet.from_json).mockImplementation((wallet) =>
+        makeChanges(JSON.parse(wallet) as string[]),
+      );
 
       await Promise.all([
         repository.update(
@@ -1051,11 +1023,9 @@ describe('BdkAccountRepository', () => {
         },
         {},
       );
-      jest
-        .mocked(ChangeSet.from_json)
-        .mockImplementation((wallet) =>
-          makeChanges(JSON.parse(wallet) as string[]),
-        );
+      vi.mocked(ChangeSet.from_json).mockImplementation((wallet) =>
+        makeChanges(JSON.parse(wallet) as string[]),
+      );
 
       await Promise.all([
         repository.update(makeAccount('existing-id', 0, makeChanges(['new']))),

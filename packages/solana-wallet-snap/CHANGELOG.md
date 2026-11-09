@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Shows "Can't confirm" instead of "Free" when it can't rule out other costs, for example when the simulation fails
   - Simulates the transaction to find what other programs charge the user through the System and token programs, so it doesn't need to know each program
 
+### Fixed
+
+- Preserve accounts loaded from address lookup tables when decoding transaction instructions, preventing incomplete account lists and parsing errors during transaction history synchronization. ([#568](https://github.com/MetaMask/internal-snaps/pull/568))
+
 ## [7.3.0]
 
 ### Changed

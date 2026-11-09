@@ -1,6 +1,7 @@
 import { FeeType } from '@metamask/keyring-api';
 import { BigNumber } from 'bignumber.js';
 import { Types as TronwebTypes } from 'tronweb';
+import type { Mocked, Mock } from 'vitest';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TriggerConstantContractResponse } from '../../clients/tron-http';
@@ -106,7 +107,7 @@ const createLargeTransaction = (dataLength = 2000): Transaction => {
   };
 };
 
-type MockTrongridApiClient = jest.Mocked<
+type MockTrongridApiClient = Mocked<
   Pick<
     TrongridApiClient,
     | 'getChainParameters'
@@ -115,11 +116,11 @@ type MockTrongridApiClient = jest.Mocked<
   >
 >;
 
-type MockTronHttpClient = jest.Mocked<
+type MockTronHttpClient = Mocked<
   Pick<TronHttpClient, 'getContract' | 'getAccountResources'>
 > & {
-  triggerConstantContract: jest.Mock<
-    Promise<TriggerConstantContractMockResponse>
+  triggerConstantContract: Mock<
+    () => Promise<TriggerConstantContractMockResponse>
   >;
 };
 
@@ -127,7 +128,7 @@ type WithFeeCalculatorServiceCallback<ReturnValue> = (payload: {
   feeCalculatorService: FeeCalculatorService;
   trongridApiClient: MockTrongridApiClient;
   tronHttpClient: MockTronHttpClient;
-  snapClient: jest.Mocked<Pick<SnapClient, 'trackError'>>;
+  snapClient: Mocked<Pick<SnapClient, 'trackError'>>;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -144,26 +145,26 @@ async function withFeeCalculatorService<ReturnValue>(
   testFunction: WithFeeCalculatorServiceCallback<ReturnValue>,
 ): Promise<ReturnValue> {
   const mockTrongridApiClient: MockTrongridApiClient = {
-    getChainParameters: jest.fn().mockResolvedValue([
+    getChainParameters: vi.fn().mockResolvedValue([
       { key: 'getTransactionFee', value: 1000 },
       { key: 'getEnergyFee', value: 100 },
       { key: 'getCreateAccountFee', value: 100_000 },
       { key: 'getCreateNewAccountFeeInSystemContract', value: 1_000_000 },
     ]),
-    getAccountInfoByAddress: jest.fn(),
-    peekCachedChainParameters: jest.fn().mockResolvedValue(undefined),
+    getAccountInfoByAddress: vi.fn(),
+    peekCachedChainParameters: vi.fn().mockResolvedValue(undefined),
   };
 
   const mockTronHttpClient: MockTronHttpClient = {
-    triggerConstantContract: jest.fn(),
-    getContract: jest.fn().mockResolvedValue(null),
-    getAccountResources: jest
+    triggerConstantContract: vi.fn(),
+    getContract: vi.fn().mockResolvedValue(null),
+    getAccountResources: vi
       .fn()
       .mockRejectedValue(new Error('Account not found')),
   };
 
-  const mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>> = {
-    trackError: jest.fn(),
+  const mockSnapClient: Mocked<Pick<SnapClient, 'trackError'>> = {
+    trackError: vi.fn(),
   };
 
   const feeCalculatorService = new FeeCalculatorService({
@@ -182,6 +183,155 @@ async function withFeeCalculatorService<ReturnValue>(
 }
 
 describe('FeeCalculatorService', () => {
+  describe('getAccountActivationFee', () => {
+    const senderAddress = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
+
+    it('assumes an unknown destination is inactive and burns the default activation cost', async () => {
+      await withFeeCalculatorService(
+        async ({ feeCalculatorService, trongridApiClient }) => {
+          trongridApiClient.getChainParameters.mockResolvedValue([]);
+
+          const fee = await feeCalculatorService.getAccountActivationFee({
+            scope: Network.Mainnet,
+            toAddress: undefined,
+            senderAddress,
+          });
+
+          // Default: getCreateNewAccountFeeInSystemContract (1 TRX)
+          // + getCreateAccountFee Bandwidth shortfall (0.1 TRX)
+          expect(fee.trxFee.toString()).toBe('1.1');
+          expect(fee.bandwidthNeeded.toString()).toBe('0');
+          expect(
+            trongridApiClient.getAccountInfoByAddress,
+          ).not.toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('uses staked Bandwidth for the account-creation quota when it is enough', async () => {
+      await withFeeCalculatorService(
+        async ({ feeCalculatorService, tronHttpClient }) => {
+          tronHttpClient.getAccountResources.mockResolvedValue({
+            NetLimit: 100,
+            NetUsed: 0,
+            freeNetLimit: 600,
+            freeNetUsed: 0,
+          });
+
+          const fee = await feeCalculatorService.getAccountActivationFee({
+            scope: Network.Mainnet,
+            toAddress: undefined,
+            senderAddress,
+          });
+
+          expect(fee.trxFee.toString()).toBe('1');
+          expect(fee.bandwidthNeeded.toString()).toBe('100');
+        },
+      );
+    });
+
+    it('uses the live chain parameters', async () => {
+      await withFeeCalculatorService(
+        async ({ feeCalculatorService, trongridApiClient }) => {
+          trongridApiClient.getChainParameters.mockResolvedValue([
+            {
+              key: 'getCreateNewAccountFeeInSystemContract',
+              value: 2_000_000,
+            },
+            { key: 'getCreateAccountFee', value: 200_000 },
+          ]);
+
+          const fee = await feeCalculatorService.getAccountActivationFee({
+            scope: Network.Mainnet,
+            toAddress: undefined,
+            senderAddress,
+          });
+
+          expect(fee.trxFee.toString()).toBe('2.2');
+        },
+      );
+    });
+
+    it('returns no activation cost when the destination is already activated', async () => {
+      await withFeeCalculatorService(
+        async ({ feeCalculatorService, trongridApiClient, tronHttpClient }) => {
+          trongridApiClient.getAccountInfoByAddress.mockResolvedValue({
+            address: 'TExistingActiveAddress123456789012',
+            balance: 1000000,
+          } as TronAccount);
+
+          const fee = await feeCalculatorService.getAccountActivationFee({
+            scope: Network.Mainnet,
+            toAddress: 'TExistingActiveAddress123456789012',
+            senderAddress,
+          });
+
+          expect(fee.trxFee.toString()).toBe('0');
+          expect(fee.bandwidthNeeded.toString()).toBe('0');
+          expect(tronHttpClient.getAccountResources).not.toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('charges activation when the destination is not activated', async () => {
+      await withFeeCalculatorService(
+        async ({ feeCalculatorService, trongridApiClient }) => {
+          trongridApiClient.getAccountInfoByAddress.mockRejectedValue(
+            new TrongridAccountNotFoundError(),
+          );
+
+          const fee = await feeCalculatorService.getAccountActivationFee({
+            scope: Network.Mainnet,
+            toAddress: 'TNewAddress123456789012345678901234',
+            senderAddress,
+          });
+
+          expect(fee.trxFee.toString()).toBe('1.1');
+        },
+      );
+    });
+
+    it('throws when the activation lookup fails for a reason other than not-found', async () => {
+      await withFeeCalculatorService(
+        async ({ feeCalculatorService, trongridApiClient, snapClient }) => {
+          const error = new Error('network error');
+          trongridApiClient.getAccountInfoByAddress.mockRejectedValue(error);
+
+          await expect(
+            feeCalculatorService.getAccountActivationFee({
+              scope: Network.Mainnet,
+              toAddress: 'TExistingAddress12345678901234567',
+              senderAddress,
+            }),
+          ).rejects.toThrow(FeeUnavailableError);
+
+          expect(snapClient.trackError).toHaveBeenCalledWith(error);
+        },
+      );
+    });
+
+    it('throws when neither live nor cached chain parameters are available', async () => {
+      await withFeeCalculatorService(
+        async ({ feeCalculatorService, trongridApiClient }) => {
+          trongridApiClient.getChainParameters.mockRejectedValue(
+            new Error('network error'),
+          );
+          trongridApiClient.peekCachedChainParameters.mockResolvedValue(
+            undefined,
+          );
+
+          await expect(
+            feeCalculatorService.getAccountActivationFee({
+              scope: Network.Mainnet,
+              toAddress: undefined,
+              senderAddress,
+            }),
+          ).rejects.toThrow(FeeUnavailableError);
+        },
+      );
+    });
+  });
+
   describe('computeFee', () => {
     const expectedMainnetBandwidthFee = {
       type: FeeType.Base,
@@ -977,7 +1127,7 @@ describe('FeeCalculatorService', () => {
         );
       });
 
-      it('tracks unexpected errors when account activation check fails', async () => {
+      it('fails and tracks unexpected errors when the account activation check fails', async () => {
         await withFeeCalculatorService(
           async ({
             feeCalculatorService,
@@ -990,14 +1140,55 @@ describe('FeeCalculatorService', () => {
             trongridApiClient.getAccountInfoByAddress.mockRejectedValue(error);
             mockStakedBandwidth(tronHttpClient, 1000);
 
-            await feeCalculatorService.computeFee({
+            await expect(
+              feeCalculatorService.computeFee({
+                scope: Network.Mainnet,
+                transaction: getTransactionExample('native'),
+                availableEnergy: ZERO,
+                availableBandwidth: BigNumber(1000000),
+              }),
+            ).rejects.toThrow(FeeUnavailableError);
+
+            expect(snapClient.trackError).toHaveBeenCalledWith(error);
+          },
+        );
+      });
+
+      it('does not check activation when skipAccountActivation is set', async () => {
+        await withFeeCalculatorService(
+          async ({ feeCalculatorService, trongridApiClient }) => {
+            const result = await feeCalculatorService.computeFee({
               scope: Network.Mainnet,
               transaction: getTransactionExample('native'),
               availableEnergy: ZERO,
               availableBandwidth: BigNumber(1000000),
+              skipAccountActivation: true,
             });
 
-            expect(snapClient.trackError).toHaveBeenCalledWith(error);
+            // No activation fee is added and no recipient lookup happens.
+            expect(
+              trongridApiClient.getAccountInfoByAddress,
+            ).not.toHaveBeenCalled();
+            expect(result).toStrictEqual([
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'TRX',
+                  type: 'tron:728126428/slip44:195',
+                  amount: '0',
+                  fungible: true,
+                },
+              },
+              {
+                type: FeeType.Base,
+                asset: {
+                  unit: 'BANDWIDTH',
+                  type: 'tron:728126428/slip44:bandwidth',
+                  amount: '266',
+                  fungible: true,
+                },
+              },
+            ]);
           },
         );
       });

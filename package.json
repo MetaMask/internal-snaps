@@ -1,6 +1,6 @@
 {
   "name": "@metamask/internal-snaps-monorepo",
-  "version": "22.0.0",
+  "version": "23.0.0",
   "private": true,
   "description": "Monorepo for first-party snaps",
   "repository": {
@@ -19,7 +19,7 @@
     "changelog:validate": "yarn workspaces foreach --all --no-private --parallel --interlaced --verbose run changelog:validate",
     "create-release-branch": "create-release-branch --formatter oxfmt",
     "create-package": "tsx scripts/create-package",
-    "lint": "yarn lint:tsc && yarn lint:eslint && echo && yarn lint:misc --check && yarn constraints && yarn lint:dependencies && yarn readme-content:check",
+    "lint": "yarn lint:tsc && yarn lint:eslint && echo && yarn lint:misc --check && yarn constraints && yarn lint:dependencies && yarn readme-content:check && yarn changelog:validate",
     "lint:dependencies": "depcheck && yarn dedupe --check",
     "lint:dependencies:fix": "depcheck && yarn dedupe",
     "lint:eslint": "yarn eslint",
@@ -34,7 +34,7 @@
     "test:clean": "yarn workspaces foreach --all --parallel --verbose run test:clean && yarn test",
     "test:packages": "yarn test:verbose --silent --collectCoverage=false --reporters=jest-silent-reporter",
     "test:scripts": "NODE_OPTIONS=--experimental-vm-modules yarn jest --config ./jest.config.scripts.js --silent",
-    "test:verbose": "yarn workspaces foreach --all --exclude @metamask/stellar-wallet-snap --parallel --verbose run test:verbose",
+    "test:verbose": "yarn workspaces foreach --all --exclude @metamask/stellar-wallet-snap --exclude @metamask/tron-wallet-snap --exclude @metamask/solana-wallet-snap --exclude @metamask/bitcoin-wallet-snap --parallel --verbose run test:verbose",
     "workspaces:list-versions": "./scripts/list-workspace-versions.sh"
   },
   "devDependencies": {

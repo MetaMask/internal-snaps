@@ -10,6 +10,7 @@ import {
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
 } from '@solana/kit';
+import type { Mock } from 'vitest';
 
 import { Network } from '../../../core/constants/solana';
 import { createFeePaymentChainReader } from './createFeePaymentChainReader';
@@ -22,12 +23,12 @@ const missingAccount = '61DFfeTKM7trxYcPQCM78bJ794ddZprZpAwAnLiwTpYH';
 
 const buildRpc = (): {
   rpc: Rpc<SolanaRpcApi>;
-  getMultipleAccounts: jest.Mock;
-  getMinimumBalanceForRentExemption: jest.Mock;
-  simulateTransaction: jest.Mock;
+  getMultipleAccounts: Mock;
+  getMinimumBalanceForRentExemption: Mock;
+  simulateTransaction: Mock;
 } => {
-  const getMultipleAccounts = jest.fn().mockReturnValue({
-    send: jest.fn().mockResolvedValue({
+  const getMultipleAccounts = vi.fn().mockReturnValue({
+    send: vi.fn().mockResolvedValue({
       value: [
         {
           data: {
@@ -45,10 +46,10 @@ const buildRpc = (): {
       ],
     }),
   });
-  const getMinimumBalanceForRentExemption = jest.fn().mockReturnValue({
-    send: jest.fn().mockResolvedValue(2_039_280n),
+  const getMinimumBalanceForRentExemption = vi.fn().mockReturnValue({
+    send: vi.fn().mockResolvedValue(2_039_280n),
   });
-  const simulateTransaction = jest.fn();
+  const simulateTransaction = vi.fn();
 
   return {
     rpc: {
@@ -65,7 +66,7 @@ const buildRpc = (): {
 describe('createFeePaymentChainReader', () => {
   it('reads token account owners, mints and decimals', async () => {
     const { rpc, getMultipleAccounts } = buildRpc();
-    const reader = createFeePaymentChainReader(rpc, Network.Mainnet, jest.fn());
+    const reader = createFeePaymentChainReader(rpc, Network.Mainnet, vi.fn());
 
     const accounts = await reader.getAccounts([
       tokenAccount,
@@ -86,14 +87,14 @@ describe('createFeePaymentChainReader', () => {
 
   it('reads the rent-exempt minimum for an account size', async () => {
     const { rpc, getMinimumBalanceForRentExemption } = buildRpc();
-    const reader = createFeePaymentChainReader(rpc, Network.Mainnet, jest.fn());
+    const reader = createFeePaymentChainReader(rpc, Network.Mainnet, vi.fn());
 
     expect(await reader.getRentExemptMinimum(165)).toBe(2_039_280n);
     expect(getMinimumBalanceForRentExemption).toHaveBeenCalledWith(165n);
   });
 
   it('reads the token symbol from the asset metadata', async () => {
-    const getAssetsMetadata = jest.fn().mockResolvedValue({
+    const getAssetsMetadata = vi.fn().mockResolvedValue({
       [`${Network.Mainnet}/token:${usdcMint}`]: { symbol: 'USDC' },
     });
     const reader = createFeePaymentChainReader(
@@ -109,7 +110,7 @@ describe('createFeePaymentChainReader', () => {
     const reader = createFeePaymentChainReader(
       buildRpc().rpc,
       Network.Mainnet,
-      jest.fn().mockRejectedValue(new Error('Token API down')),
+      vi.fn().mockRejectedValue(new Error('Token API down')),
     );
 
     expect(await reader.getTokenSymbol(usdcMint)).toBeNull();
@@ -142,7 +143,7 @@ describe('createFeePaymentChainReader', () => {
     it('returns the invoked instructions without verifying signatures', async () => {
       const { rpc, simulateTransaction } = buildRpc();
       simulateTransaction.mockReturnValue({
-        send: jest.fn().mockResolvedValue({
+        send: vi.fn().mockResolvedValue({
           value: {
             // eslint-disable-next-line id-denylist -- RPC response field
             err: null,
@@ -153,11 +154,7 @@ describe('createFeePaymentChainReader', () => {
           },
         }),
       });
-      const reader = createFeePaymentChainReader(
-        rpc,
-        Network.Mainnet,
-        jest.fn(),
-      );
+      const reader = createFeePaymentChainReader(rpc, Network.Mainnet, vi.fn());
 
       expect(await reader.simulateInnerInstructions(transaction)).toStrictEqual(
         [createAccount, createAccount],
@@ -173,16 +170,12 @@ describe('createFeePaymentChainReader', () => {
     it('returns null when the simulated transaction fails', async () => {
       const { rpc, simulateTransaction } = buildRpc();
       simulateTransaction.mockReturnValue({
-        send: jest.fn().mockResolvedValue({
+        send: vi.fn().mockResolvedValue({
           // eslint-disable-next-line id-denylist -- RPC response field
           value: { err: 'InsufficientFundsForFee', innerInstructions: [] },
         }),
       });
-      const reader = createFeePaymentChainReader(
-        rpc,
-        Network.Mainnet,
-        jest.fn(),
-      );
+      const reader = createFeePaymentChainReader(rpc, Network.Mainnet, vi.fn());
 
       expect(await reader.simulateInnerInstructions(transaction)).toBeNull();
     });
@@ -190,13 +183,9 @@ describe('createFeePaymentChainReader', () => {
     it('returns null when the simulation request fails', async () => {
       const { rpc, simulateTransaction } = buildRpc();
       simulateTransaction.mockReturnValue({
-        send: jest.fn().mockRejectedValue(new Error('RPC down')),
+        send: vi.fn().mockRejectedValue(new Error('RPC down')),
       });
-      const reader = createFeePaymentChainReader(
-        rpc,
-        Network.Mainnet,
-        jest.fn(),
-      );
+      const reader = createFeePaymentChainReader(rpc, Network.Mainnet, vi.fn());
 
       expect(await reader.simulateInnerInstructions(transaction)).toBeNull();
     });

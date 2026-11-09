@@ -5,6 +5,7 @@ import {
   estimateResourceLimitsFactory,
   SolanaError,
 } from '@solana/kit';
+import * as SolanaKit from '@solana/kit';
 
 import { Network } from '../constants/solana';
 import { createMockConnection } from '../services/__mocks__/mockConnection';
@@ -21,17 +22,13 @@ import {
   setTransactionMessageLifetimeUsingBlockhashIfMissing,
 } from './transaction-messages';
 
-jest.mock('@solana/kit', () => ({
-  ...jest.requireActual('@solana/kit'),
-  estimateResourceLimitsFactory: jest
-    .fn()
-    .mockReturnValue(jest.fn().mockResolvedValue({ computeUnitLimit: 500 })), // 500 compute units
-}));
-
 describe('transaction-messages', () => {
   let rpc: Rpc<SimulateTransactionApi>;
 
   beforeEach(() => {
+    vi.spyOn(SolanaKit, 'estimateResourceLimitsFactory').mockReturnValue(
+      vi.fn().mockResolvedValue({ computeUnitLimit: 500 }) as never,
+    );
     const mockConnection = createMockConnection();
     rpc = mockConnection.getRpc(Network.Testnet);
   });
@@ -428,8 +425,8 @@ describe('transaction-messages', () => {
     });
 
     it('returns the units consumed from the error if the transaction simulation failed', async () => {
-      jest.mocked(estimateResourceLimitsFactory).mockReturnValue(
-        jest.fn().mockRejectedValue(
+      vi.mocked(estimateResourceLimitsFactory).mockReturnValue(
+        vi.fn().mockRejectedValue(
           // This code is the specific error code for failed transaction simulation when estimating the compute unit limit.
           // It ensures that the error includes the units consumed.
           new SolanaError(5663019, {
@@ -450,8 +447,8 @@ describe('transaction-messages', () => {
     });
 
     it('returns the original transaction message if simulation fails without units consumed', async () => {
-      jest.mocked(estimateResourceLimitsFactory).mockReturnValue(
-        jest.fn().mockRejectedValue(
+      vi.mocked(estimateResourceLimitsFactory).mockReturnValue(
+        vi.fn().mockRejectedValue(
           new SolanaError(5663019, {
             unitsConsumed: null,
           } as never),
@@ -467,8 +464,8 @@ describe('transaction-messages', () => {
     });
 
     it('returns the original transaction message if the compute unit limit cannot be estimated', async () => {
-      jest.mocked(estimateResourceLimitsFactory).mockReturnValue(
-        jest.fn().mockRejectedValue(
+      vi.mocked(estimateResourceLimitsFactory).mockReturnValue(
+        vi.fn().mockRejectedValue(
           // Some other error code not related to compute unit limit estimation. The error doesn't contain the units consumed.
           new SolanaError(8190003),
         ),

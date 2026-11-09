@@ -5,25 +5,16 @@ import {
   TransactionType,
 } from '@metamask/keyring-api';
 import { getJsonError } from '@metamask/snaps-sdk';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { BitcoinAccount, Logger } from '../entities';
 import { TrackingSnapEvent } from '../entities';
 import logger from '../utils/logger';
 import { SnapClientAdapter } from './SnapClientAdapter';
 
-jest.mock('@metamask/bitcoindevkit', () => ({}));
-
-jest.mock('../utils/logger', () => ({
-  __esModule: true,
-  default: {
-    error: jest.fn(),
-  },
-}));
-
 const setupTest = () => {
   const mockLogger = mock<Logger>();
-  const mockRequest = jest.fn();
+  const mockRequest = vi.fn();
   const snapClient = new SnapClientAdapter(mockLogger);
 
   Object.defineProperty(globalThis, 'snap', {
@@ -36,13 +27,13 @@ const setupTest = () => {
     snapClient,
     mockLogger,
     mockRequest,
-    mockTrackingLogger: jest.mocked(logger),
+    mockTrackingLogger: vi.mocked(logger),
   };
 };
 
 describe('SnapClientAdapter', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('emitTrackingEvent', () => {
@@ -194,7 +185,7 @@ describe('SnapClientAdapter', () => {
         TransactionType.Send,
       );
 
-      const { properties } = mockRequest.mock.calls[0][0].params.event;
+      const { properties } = mockRequest.mock.calls[0]?.[0]?.params.event ?? {};
       expect(properties).not.toHaveProperty('transaction_status');
     });
 
@@ -531,7 +522,7 @@ describe('SnapClientAdapter', () => {
         id: 'small-balance',
         network: 'bitcoin',
         balance: {
-          trusted_spendable: { to_sat: jest.fn().mockReturnValue(satoshis) },
+          trusted_spendable: { to_sat: vi.fn().mockReturnValue(satoshis) },
         },
         listUnspent: () => [],
       });
@@ -578,7 +569,7 @@ describe('SnapClientAdapter', () => {
         addressType: 'p2wpkh',
       });
       const receivedAmount = mock<Amount>();
-      jest.spyOn(receivedAmount, 'to_btc').mockReturnValue(0);
+      receivedAmount.to_btc.mockReturnValue(0);
       account.sentAndReceived.mockReturnValue([receivedAmount, mock<Amount>()]);
       account.isMine.mockReturnValue(true);
       return account;

@@ -5,11 +5,12 @@ import {
 } from '@metamask/assets-controller';
 import type { KeyringAccount } from '@metamask/keyring-api';
 import { KeyringEvent } from '@metamask/keyring-api';
-import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import {
   AssetsProvider,
   RemoteFeatureFlagsProvider,
 } from '@metamask/snap-networks-utils';
+import type { Mocked, Mock } from 'vitest';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SpotPrices } from '../../clients/price-api/types';
@@ -26,6 +27,7 @@ import { mockLogger } from '../../utils/mockLogger';
 import { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
 import type { AssetsRepository } from './AssetsRepository';
+import { AssetsService } from './AssetsService';
 import { AssetFetchError } from './errors';
 import type { NativeCaipAssetType, TokenCaipAssetType } from './types';
 
@@ -33,28 +35,21 @@ import type { NativeCaipAssetType, TokenCaipAssetType } from './types';
  * Subset of State methods.
  */
 type MockState = {
-  getKey: jest.Mock;
-  setKey: jest.Mock;
-  setKeyWith: jest.Mock;
+  getKey: Mock;
+  setKey: Mock;
+  setKeyWith: Mock;
 };
 
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: jest.fn(),
-}));
-
 (global as any).snap = {};
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { AssetsService } = require('./AssetsService');
 
 const TRON_FLAG_KEY = SNAPS_ASSETS_MIGRATION_FLAG_KEYS.tron;
 
 function createMessengerCallMock(
   getState: () => unknown,
-  getAccountAssetByID: jest.Mock,
-  getAccountAssetsByIDs: jest.Mock = jest.fn().mockResolvedValue({}),
-  getAccountAssetsByScope: jest.Mock = jest.fn().mockResolvedValue({}),
-  getAssets: jest.Mock = jest.fn().mockResolvedValue({}),
+  getAccountAssetByID: Mock,
+  getAccountAssetsByIDs: Mock = vi.fn().mockResolvedValue({}),
+  getAccountAssetsByScope: Mock = vi.fn().mockResolvedValue({}),
+  getAssets: Mock = vi.fn().mockResolvedValue({}),
 ): CoreMessengerCaller['call'] {
   return async (actionType, ...args) => {
     switch (actionType) {
@@ -184,7 +179,7 @@ function findAsset(
 
 type WithAssetsServiceCallback<ReturnValue> = (payload: {
   assetsService: InstanceType<typeof AssetsService>;
-  mockAssetsRepository: jest.Mocked<
+  mockAssetsRepository: Mocked<
     Pick<
       AssetsRepository,
       | 'saveMany'
@@ -194,22 +189,20 @@ type WithAssetsServiceCallback<ReturnValue> = (payload: {
     >
   >;
   mockState: MockState;
-  mockTrongridApiClient: jest.Mocked<
+  mockTrongridApiClient: Mocked<
     Pick<
       TrongridApiClient,
       'getAccountInfoByAddress' | 'getTrc20BalancesByAddress'
     >
   >;
-  mockTronHttpClient: jest.Mocked<
+  mockTronHttpClient: Mocked<
     Pick<TronHttpClient, 'getAccountResources' | 'getReward'>
   >;
-  mockPriceApiClient: jest.Mocked<
-    Pick<PriceApiClient, 'getMultipleSpotPrices'>
-  >;
-  mockTokenApiClient: jest.Mocked<Pick<TokenApiClient, 'getTokensMetadata'>>;
-  mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>>;
-  mockCoreMessenger: jest.Mocked<CoreMessengerCaller>;
-  mockGetAssets: jest.Mock;
+  mockPriceApiClient: Mocked<Pick<PriceApiClient, 'getMultipleSpotPrices'>>;
+  mockTokenApiClient: Mocked<Pick<TokenApiClient, 'getTokensMetadata'>>;
+  mockSnapClient: Mocked<Pick<SnapClient, 'trackError'>>;
+  mockCoreMessenger: Mocked<CoreMessengerCaller>;
+  mockGetAssets: Mock;
   setMigrationStage: (stage: SnapsAssetsMigrationStage) => void;
 }) => Promise<ReturnValue> | ReturnValue;
 
@@ -224,7 +217,7 @@ type WithAssetsServiceCallback<ReturnValue> = (payload: {
 async function withAssetsService<ReturnValue>(
   testFunction: WithAssetsServiceCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  const mockAssetsRepository: jest.Mocked<
+  const mockAssetsRepository: Mocked<
     Pick<
       AssetsRepository,
       | 'getByAccountId'
@@ -233,58 +226,57 @@ async function withAssetsService<ReturnValue>(
       | 'saveMany'
     >
   > = {
-    saveMany: jest.fn().mockResolvedValue(undefined),
-    getByAccountId: jest.fn().mockResolvedValue([]),
-    getByAccountIdAndAssetType: jest.fn().mockResolvedValue(null),
-    getByAccountIdAndAssetTypes: jest.fn().mockResolvedValue([]),
+    saveMany: vi.fn().mockResolvedValue(undefined),
+    getByAccountId: vi.fn().mockResolvedValue([]),
+    getByAccountIdAndAssetType: vi.fn().mockResolvedValue(null),
+    getByAccountIdAndAssetTypes: vi.fn().mockResolvedValue([]),
   };
 
   const mockState: MockState = {
-    getKey: jest.fn().mockResolvedValue({}),
-    setKey: jest.fn().mockResolvedValue(undefined),
-    setKeyWith: jest.fn().mockResolvedValue(undefined),
+    getKey: vi.fn().mockResolvedValue({}),
+    setKey: vi.fn().mockResolvedValue(undefined),
+    setKeyWith: vi.fn().mockResolvedValue(undefined),
   };
 
-  const mockTrongridApiClient: jest.Mocked<
+  const mockTrongridApiClient: Mocked<
     Pick<
       TrongridApiClient,
       'getAccountInfoByAddress' | 'getTrc20BalancesByAddress'
     >
   > = {
-    getAccountInfoByAddress: jest.fn(),
-    getTrc20BalancesByAddress: jest.fn(),
+    getAccountInfoByAddress: vi.fn(),
+    getTrc20BalancesByAddress: vi.fn(),
   };
 
-  const mockTronHttpClient: jest.Mocked<
+  const mockTronHttpClient: Mocked<
     Pick<TronHttpClient, 'getAccountResources' | 'getReward'>
   > = {
-    getAccountResources: jest.fn(),
-    getReward: jest.fn().mockResolvedValue(0),
+    getAccountResources: vi.fn(),
+    getReward: vi.fn().mockResolvedValue(0),
   };
 
-  const mockPriceApiClient: jest.Mocked<
+  const mockPriceApiClient: Mocked<
     Pick<PriceApiClient, 'getMultipleSpotPrices'>
   > = {
-    getMultipleSpotPrices: jest.fn().mockResolvedValue({}),
+    getMultipleSpotPrices: vi.fn().mockResolvedValue({}),
   };
 
-  const mockTokenApiClient: jest.Mocked<
-    Pick<TokenApiClient, 'getTokensMetadata'>
-  > = {
-    getTokensMetadata: jest.fn().mockResolvedValue({}),
+  const mockTokenApiClient: Mocked<Pick<TokenApiClient, 'getTokensMetadata'>> =
+    {
+      getTokensMetadata: vi.fn().mockResolvedValue({}),
+    };
+
+  const mockSnapClient: Mocked<Pick<SnapClient, 'trackError'>> = {
+    trackError: vi.fn().mockResolvedValue(undefined),
   };
 
-  const mockSnapClient: jest.Mocked<Pick<SnapClient, 'trackError'>> = {
-    trackError: jest.fn().mockResolvedValue(undefined),
-  };
-
-  const mockGetAccountAssetByID = jest.fn();
-  const mockGetAccountAssetsByIDs = jest.fn().mockResolvedValue({});
-  const mockGetAccountAssetsByScope = jest.fn().mockResolvedValue({});
-  const mockGetAssets = jest.fn().mockResolvedValue({});
+  const mockGetAccountAssetByID = vi.fn();
+  const mockGetAccountAssetsByIDs = vi.fn().mockResolvedValue({});
+  const mockGetAccountAssetsByScope = vi.fn().mockResolvedValue({});
+  const mockGetAssets = vi.fn().mockResolvedValue({});
   let migrationStage = SnapsAssetsMigrationStage.Off;
-  const mockCoreMessenger: jest.Mocked<CoreMessengerCaller> = {
-    call: jest.fn().mockImplementation(
+  const mockCoreMessenger: Mocked<CoreMessengerCaller> = {
+    call: vi.fn().mockImplementation(
       createMessengerCallMock(
         () => ({
           remoteFeatureFlags: {
@@ -352,8 +344,14 @@ async function withAssetsService<ReturnValue>(
 }
 
 describe('AssetsService', () => {
+  beforeEach(() => {
+    vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
+      undefined,
+    );
+  });
+
   describe('fetchAccountAssets', () => {
-    it('fetches live assets from the chain for all the account scopes', async () => {
+    it('fetches live assets only for the active account scopes', async () => {
       await withAssetsService(
         async ({
           assetsService,
@@ -363,42 +361,30 @@ describe('AssetsService', () => {
           mockTronHttpClient.getAccountResources.mockResolvedValue(
             emptyAccountResources,
           );
-          mockTrongridApiClient.getAccountInfoByAddress
-            .mockResolvedValueOnce(
-              createMockTronAccount({
-                address: mockAccount.address,
-                balance: 1_000_000,
-              }),
-            )
-            .mockResolvedValueOnce(
-              createMockTronAccount({
-                address: mockAccount.address,
-                balance: 2_000_000,
-              }),
-            );
+          mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+            createMockTronAccount({
+              address: mockAccount.address,
+              balance: 1_000_000,
+            }),
+          );
 
           const account: KeyringAccount = {
             ...mockAccount,
-            scopes: [Network.Mainnet, Network.Shasta],
+            scopes: [Network.Mainnet, Network.Nile, Network.Shasta],
           };
 
           const assets = await assetsService.fetchAccountAssets(account);
 
           expect(
             mockTrongridApiClient.getAccountInfoByAddress,
-          ).toHaveBeenCalledTimes(2);
+          ).toHaveBeenCalledTimes(1);
           expect(
             mockTrongridApiClient.getAccountInfoByAddress,
           ).toHaveBeenNthCalledWith(1, Network.Mainnet, mockAccount.address);
-          expect(
-            mockTrongridApiClient.getAccountInfoByAddress,
-          ).toHaveBeenNthCalledWith(2, Network.Shasta, mockAccount.address);
           expect(findAsset(assets, KnownCaip19Id.TrxMainnet)?.rawAmount).toBe(
             '1000000',
           );
-          expect(findAsset(assets, KnownCaip19Id.TrxShasta)?.rawAmount).toBe(
-            '2000000',
-          );
+          expect(findAsset(assets, KnownCaip19Id.TrxShasta)).toBeUndefined();
         },
       );
     });
@@ -505,7 +491,7 @@ describe('AssetsService', () => {
           await assetsService.saveManyAndEmit(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
             {
@@ -557,7 +543,7 @@ describe('AssetsService', () => {
 
         await assetsService.saveManyAndEmit(assets);
 
-        expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+        expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
           expect.anything(),
           KeyringEvent.AccountAssetListUpdated,
           {
@@ -633,7 +619,7 @@ describe('AssetsService', () => {
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
             finalSavedAssets,
           );
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
             {
@@ -646,7 +632,7 @@ describe('AssetsService', () => {
             },
           );
 
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountBalancesUpdated,
             {
@@ -709,7 +695,7 @@ describe('AssetsService', () => {
           await assetsService.saveManyAndEmit(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
             {
@@ -769,7 +755,7 @@ describe('AssetsService', () => {
           await assetsService.saveManyAndEmit(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
             {
@@ -819,7 +805,7 @@ describe('AssetsService', () => {
           await assetsService.saveManyAndEmit(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
             expect.anything(),
             KeyringEvent.AccountAssetListUpdated,
             {
@@ -896,7 +882,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -972,7 +958,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1051,7 +1037,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1171,7 +1157,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1248,7 +1234,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1326,7 +1312,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1342,7 +1328,7 @@ describe('AssetsService', () => {
               },
             );
 
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountBalancesUpdated,
               {
@@ -1422,7 +1408,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1438,7 +1424,7 @@ describe('AssetsService', () => {
               },
             );
 
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountBalancesUpdated,
               {
@@ -1521,7 +1507,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1598,7 +1584,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1675,7 +1661,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1772,7 +1758,7 @@ describe('AssetsService', () => {
             expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(
               updatedAssets,
             );
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountAssetListUpdated,
               {
@@ -1789,7 +1775,7 @@ describe('AssetsService', () => {
               },
             );
 
-            expect(emitSnapKeyringEvent).toHaveBeenCalledWith(
+            expect(KeyringSnapSdk.emitSnapKeyringEvent).toHaveBeenCalledWith(
               expect.anything(),
               KeyringEvent.AccountBalancesUpdated,
               {
@@ -1839,7 +1825,7 @@ describe('AssetsService', () => {
           await assetsService.saveMany(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).not.toHaveBeenCalled();
         },
       );
     });
@@ -1888,7 +1874,7 @@ describe('AssetsService', () => {
               uiAmount: '0',
             },
           ]);
-          expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).not.toHaveBeenCalled();
         },
       );
     });
@@ -1916,7 +1902,7 @@ describe('AssetsService', () => {
           await assetsService.saveMany(assets);
 
           expect(mockAssetsRepository.saveMany).toHaveBeenCalledWith(assets);
-          expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
+          expect(KeyringSnapSdk.emitSnapKeyringEvent).not.toHaveBeenCalled();
         },
       );
     });
@@ -1939,7 +1925,7 @@ describe('AssetsService', () => {
                 },
               },
             }),
-            jest.fn().mockResolvedValue(
+            vi.fn().mockResolvedValue(
               buildControllerAsset(fungibleAssetId, '2', {
                 symbol: 'TRX',
                 name: 'TRON',
@@ -1976,8 +1962,8 @@ describe('AssetsService', () => {
                 },
               },
             }),
-            jest.fn(),
-            jest.fn().mockImplementation(async () => {
+            vi.fn(),
+            vi.fn().mockImplementation(async () => {
               return {
                 [trx as Caip19AssetId]: buildControllerAsset(trx, '1', {
                   symbol: 'TRX',
@@ -2023,9 +2009,9 @@ describe('AssetsService', () => {
                   },
                 },
               }),
-              jest.fn(),
-              jest.fn(),
-              jest.fn().mockResolvedValue({
+              vi.fn(),
+              vi.fn(),
+              vi.fn().mockResolvedValue({
                 [fungibleAssetId as Caip19AssetId]: buildControllerAsset(
                   fungibleAssetId,
                   '2',
@@ -2196,10 +2182,10 @@ describe('AssetsService', () => {
                   [TRON_FLAG_KEY]: { stage: activeMigrationStage },
                 },
               }),
-              jest.fn(),
-              jest.fn(),
-              jest.fn(),
-              jest.fn().mockResolvedValue({
+              vi.fn(),
+              vi.fn(),
+              vi.fn(),
+              vi.fn().mockResolvedValue({
                 'test-account-id': {
                   [trx]: buildControllerAsset(trx, '1', {
                     symbol: 'TRX',

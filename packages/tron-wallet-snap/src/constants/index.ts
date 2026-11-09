@@ -59,6 +59,12 @@ export const Network = {
   Shasta: 'tron:2494104990',
 } as const;
 
+export const ActiveNetwork: Record<Network, boolean> = {
+  [Network.Mainnet]: true,
+  [Network.Nile]: false,
+  [Network.Shasta]: false,
+};
+
 export type Network = (typeof Network)[keyof typeof Network];
 
 const NETWORK_SCOPES: readonly string[] = Object.values(Network);
@@ -72,6 +78,13 @@ export const assertSupportedNetwork = (scope: string): Network => {
   }
 
   return scope;
+};
+
+export const isActiveNetwork = (scope: string): scope is Network => {
+  if (!isSupportedNetwork(scope)) {
+    return false;
+  }
+  return ActiveNetwork[scope];
 };
 
 export const KnownCaip19Id = {

@@ -20,8 +20,12 @@ import {
   BtcMethod,
   BtcScope,
 } from '@metamask/keyring-api';
-import { mock } from 'jest-mock-extended';
 import { assert } from 'superstruct';
+import * as Superstruct from 'superstruct';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import { encode } from 'wif';
+import * as Wif from 'wif';
 
 import snapManifest from '../../snap.manifest.json';
 import type { BitcoinAccount, Logger, SnapClient } from '../entities';
@@ -31,31 +35,7 @@ import { Caip19Asset } from './caip';
 import { KeyringHandler } from './KeyringHandler';
 import type { KeyringRequestHandler } from './KeyringRequestHandler';
 
-jest.mock('superstruct', () => ({
-  ...jest.requireActual('superstruct'),
-  assert: jest.fn(),
-}));
-
-jest.mock('wif', () => ({
-  encode: jest.fn(() => 'K1WIFprivateKeyMockValue'),
-}));
-
-// TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
 /* eslint-disable @typescript-eslint/naming-convention */
-jest.mock('@metamask/bitcoindevkit', () => {
-  return {
-    Address: {
-      from_script: jest.fn(),
-    },
-    Amount: {
-      from_sat: (sats: bigint) => ({
-        to_btc: () => Number(sats) / 100_000_000,
-        to_sat: () => sats,
-      }),
-    },
-  };
-});
-
 /**
  * Narrows `T | undefined` after `expect(value).toBeDefined()` for use in tests.
  *
@@ -102,8 +82,14 @@ describe('KeyringHandler', () => {
     mockLogger,
   );
 
+  // Captured before `vi.spyOn` replaces the live binding.
+  const realWifEncode = Wif.encode;
+
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
+    vi.spyOn(Superstruct, 'assert').mockImplementation(() => undefined);
+    vi.spyOn(Address, 'from_script');
+    vi.spyOn(Wif, 'encode').mockReturnValue('K1WIFprivateKeyMockValue');
   });
 
   describe('createAccounts', () => {
@@ -423,7 +409,7 @@ describe('KeyringHandler', () => {
           groupIndex: 0,
           entropySource,
         }),
-      ).rejects.toThrow(error);
+      ).rejects.toThrow(error.message);
     });
 
     describe('bip44:discover', () => {
@@ -440,7 +426,7 @@ describe('KeyringHandler', () => {
             AccountCapability.SignPsbt,
             AccountCapability.ComputeFee,
           ],
-          listTransactions: jest.fn().mockReturnValue(hasTxs ? [{}] : []),
+          listTransactions: vi.fn().mockReturnValue(hasTxs ? [{}] : []),
         });
 
       it.each([0, 5])(
@@ -649,8 +635,7 @@ describe('KeyringHandler', () => {
       mockSnapClient.getPrivateEntropy.mockResolvedValue({
         privateKey: fakePrivateKey,
       } as never);
-      const { encode } = jest.requireMock<{ encode: jest.Mock }>('wif');
-      encode.mockReturnValue(fakeWif);
+      vi.mocked(encode).mockReturnValue(fakeWif);
     });
 
     it('exports account as WIF (base58) private key by default', async () => {
@@ -697,8 +682,7 @@ describe('KeyringHandler', () => {
     });
 
     it('wraps wif encoding errors in SnapError without leaking private key', async () => {
-      const { encode } = jest.requireMock<{ encode: jest.Mock }>('wif');
-      encode.mockImplementation(() => {
+      vi.mocked(encode).mockImplementation(() => {
         throw new Error('encoding failed: privatekey=SENSITIVE');
       });
 
@@ -721,16 +705,7 @@ describe('KeyringHandler', () => {
     });
 
     it('produces a valid WIF-encoded private key using the real encoder', async () => {
-      const { encode: realEncode } = jest.requireActual<{
-        encode: (wif: {
-          version: number;
-          privateKey: Uint8Array;
-          compressed: boolean;
-        }) => string;
-      }>('wif');
-      jest
-        .requireMock<{ encode: jest.Mock }>('wif')
-        .encode.mockImplementation(realEncode);
+      vi.mocked(encode).mockImplementation(realWifEncode);
 
       // Known 32-byte secp256k1 private key (from Bitcoin wiki WIF test vector)
       const privateKeyHex =
@@ -739,7 +714,7 @@ describe('KeyringHandler', () => {
         privateKey: `0x${privateKeyHex}`,
       } as never);
 
-      const expectedWif = realEncode({
+      const expectedWif = realWifEncode({
         version: 0x80, // mainnet — matches mockAccount.network === 'bitcoin'
         privateKey: Buffer.from(privateKeyHex, 'hex'),
         compressed: true,
@@ -1001,7 +976,7 @@ describe('KeyringHandler', () => {
       mockAccount.sentAndReceived.mockReturnValue([mockAmount, mockAmount]);
       mockAccount.listTransactions.mockReturnValue([mockWalletTx]);
       mockAccounts.resolveTransactionSenders.mockResolvedValue(new Map());
-      (Address.from_script as jest.Mock).mockReturnValue(mockAddress);
+      (Address.from_script as Mock).mockReturnValue(mockAddress);
     });
 
     it('lists transactions successfully: send', async () => {
@@ -1164,9 +1139,10 @@ describe('KeyringHandler', () => {
         },
       };
 
-      jest
-        .spyOn(handler, 'getAccounts')
-        .mockResolvedValueOnce([mockKeyringAccount1, mockKeyringAccount2]);
+      vi.spyOn(handler, 'getAccounts').mockResolvedValueOnce([
+        mockKeyringAccount1,
+        mockKeyringAccount2,
+      ]);
 
       const result = await handler.resolveAccountAddress(
         BtcScope.Regtest,
@@ -1190,9 +1166,10 @@ describe('KeyringHandler', () => {
         },
       };
 
-      jest
-        .spyOn(handler, 'getAccounts')
-        .mockResolvedValue([mockKeyringAccount1, mockKeyringAccount2]);
+      vi.spyOn(handler, 'getAccounts').mockResolvedValue([
+        mockKeyringAccount1,
+        mockKeyringAccount2,
+      ]);
 
       const result = await handler.resolveAccountAddress(
         BtcScope.Regtest,
@@ -1219,9 +1196,9 @@ describe('KeyringHandler', () => {
         scopes: [BtcScope.Mainnet],
       });
 
-      jest
-        .spyOn(handler, 'getAccounts')
-        .mockResolvedValue([accountWithDifferentScope]);
+      vi.spyOn(handler, 'getAccounts').mockResolvedValue([
+        accountWithDifferentScope,
+      ]);
 
       const result = await handler.resolveAccountAddress(
         BtcScope.Regtest,
@@ -1243,7 +1220,7 @@ describe('KeyringHandler', () => {
       };
       const error = new Error('Invalid scope');
 
-      jest.mocked(assert).mockImplementationOnce(() => {
+      vi.mocked(assert).mockImplementationOnce(() => {
         throw error;
       });
 
@@ -1264,13 +1241,13 @@ describe('KeyringHandler', () => {
         params: {},
       };
 
-      jest
-        .spyOn(handler, 'getAccounts')
-        .mockResolvedValue([mockKeyringAccount1, mockKeyringAccount2]);
+      vi.spyOn(handler, 'getAccounts').mockResolvedValue([
+        mockKeyringAccount1,
+        mockKeyringAccount2,
+      ]);
 
       // First assert (scope) passes, second assert (request struct) throws
-      jest
-        .mocked(assert)
+      vi.mocked(assert)
         .mockImplementationOnce(() => undefined)
         .mockImplementationOnce(() => {
           throw new Error('Invalid request');

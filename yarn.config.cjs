@@ -201,11 +201,16 @@ module.exports = defineConfig({
           '../../scripts/since-latest-release.sh',
         );
 
-        // Stellar unit tests run on Vitest. `@metamask/snaps-jest` stays on Jest
-        // for the other snaps; that preset cannot execute under Vitest.
-        // Coverage floors are raised by `coverage.thresholds.autoUpdate` during
-        // a local `yarn test` only.
-        if (workspace.ident === '@metamask/stellar-wallet-snap') {
+        // Bitcoin, Stellar, Tron, and Solana unit tests run on Vitest.
+        // `@metamask/snaps-jest` stays on Jest for Bitcoin integration tests
+        // (`test:integration`) and for the Solana files that install the built
+        // snap. That preset cannot execute under Vitest.
+        if (
+          workspace.ident === '@metamask/bitcoin-wallet-snap' ||
+          workspace.ident === '@metamask/stellar-wallet-snap' ||
+          workspace.ident === '@metamask/tron-wallet-snap' ||
+          workspace.ident === '@metamask/solana-wallet-snap'
+        ) {
           expectWorkspaceFieldRegex(
             workspace,
             'scripts.test',

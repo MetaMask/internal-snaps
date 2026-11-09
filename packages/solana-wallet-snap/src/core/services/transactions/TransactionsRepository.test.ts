@@ -49,7 +49,7 @@ describe('TransactionsRepository', () => {
   );
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockState = new InMemoryState(cloneDeep(DEFAULT_UNENCRYPTED_STATE));
     repository = new TransactionsRepository(mockState);
   });
@@ -79,7 +79,7 @@ describe('TransactionsRepository', () => {
 
   describe('save', () => {
     it('saves a transaction to the state', async () => {
-      const stateUpdateSpy = jest.spyOn(mockState, 'update');
+      const stateUpdateSpy = vi.spyOn(mockState, 'update');
 
       await repository.save(mockTransaction00);
 
@@ -99,7 +99,7 @@ describe('TransactionsRepository', () => {
     it('saves transactions to the state when there are no existing transactions', async () => {
       // Initially the state has no transactions
 
-      const stateUpdateSpy = jest.spyOn(mockState, 'update');
+      const stateUpdateSpy = vi.spyOn(mockState, 'update');
 
       await repository.saveMany([
         mockTransaction00,
@@ -128,7 +128,7 @@ describe('TransactionsRepository', () => {
         },
       };
       await mockState.update(() => mockStateValue);
-      const stateUpdateSpy = jest.spyOn(mockState, 'update');
+      const stateUpdateSpy = vi.spyOn(mockState, 'update');
 
       await repository.saveMany([mockTransaction01, mockTransaction10]);
 
@@ -152,7 +152,7 @@ describe('TransactionsRepository', () => {
         },
       };
       await mockState.update(() => mockStateValue);
-      const stateUpdateSpy = jest.spyOn(mockState, 'update');
+      const stateUpdateSpy = vi.spyOn(mockState, 'update');
 
       const mockTransaction00Overridden = {
         ...mockTransaction00,

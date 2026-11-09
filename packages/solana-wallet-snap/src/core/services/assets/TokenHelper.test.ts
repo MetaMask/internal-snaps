@@ -27,9 +27,9 @@ describe('TokenHelper', () => {
     const mockMintAccountNoMultiplier = createMockMintAccount();
 
     beforeEach(() => {
-      jest
-        .spyOn(mockConnection, 'fetchMint')
-        .mockResolvedValue(mockMintAccountNoMultiplier);
+      vi.spyOn(mockConnection, 'fetchMint').mockResolvedValue(
+        mockMintAccountNoMultiplier,
+      );
     });
 
     it('returns the uiAmount in lamports', async () => {
@@ -56,12 +56,12 @@ describe('TokenHelper', () => {
 
   describe('when the mint has a multiplier', () => {
     beforeEach(() => {
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date('2022-01-01T00:00:00.000Z'));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2022-01-01T00:00:00.000Z'));
     });
 
     afterEach(() => {
-      jest.restoreAllMocks();
+      vi.restoreAllMocks();
     });
 
     describe('when the extension is ScaledUiAmountConfig', () => {
@@ -82,9 +82,9 @@ describe('TokenHelper', () => {
             value: [extension],
           };
 
-          jest
-            .spyOn(mockConnection, 'fetchMint')
-            .mockResolvedValue(mockMintAccount);
+          vi.spyOn(mockConnection, 'fetchMint').mockResolvedValue(
+            mockMintAccount,
+          );
 
           const amount = await tokenHelper.uiAmountToAmountForMint(
             mockMint,
@@ -112,9 +112,9 @@ describe('TokenHelper', () => {
             value: [extension],
           };
 
-          jest
-            .spyOn(mockConnection, 'fetchMint')
-            .mockResolvedValue(mockMintAccount);
+          vi.spyOn(mockConnection, 'fetchMint').mockResolvedValue(
+            mockMintAccount,
+          );
 
           const amount = await tokenHelper.uiAmountToAmountForMint(
             mockMint,
@@ -154,9 +154,9 @@ describe('TokenHelper', () => {
           value: [extension],
         };
 
-        jest
-          .spyOn(mockConnection, 'fetchMint')
-          .mockResolvedValue(mockMintAccount);
+        vi.spyOn(mockConnection, 'fetchMint').mockResolvedValue(
+          mockMintAccount,
+        );
 
         const amount = await tokenHelper.uiAmountToAmountForMint(
           mockMint,

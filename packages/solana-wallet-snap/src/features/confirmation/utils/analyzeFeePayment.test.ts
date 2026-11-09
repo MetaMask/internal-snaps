@@ -102,16 +102,16 @@ const buildReader = (
   accounts: Record<string, AccountSnapshot> = {},
   innerInstructions: SimulatedInstruction[] | null = null,
 ): FeePaymentChainReader => ({
-  getAccounts: jest.fn(async (addresses: string[]) =>
+  getAccounts: vi.fn(async (addresses: string[]) =>
     Object.fromEntries(
       addresses.map((account) => [account, accounts[account] ?? null]),
     ),
   ),
-  getRentExemptMinimum: jest.fn(async (space: number) =>
+  getRentExemptMinimum: vi.fn(async (space: number) =>
     space === 165 ? ATA_RENT_LAMPORTS : ATA_2022_RENT_LAMPORTS,
   ),
-  getTokenSymbol: jest.fn(async () => 'USDC'),
-  simulateInnerInstructions: jest.fn(async () => innerInstructions),
+  getTokenSymbol: vi.fn(async () => 'USDC'),
+  simulateInnerInstructions: vi.fn(async () => innerInstructions),
 });
 
 const analyze = async (
