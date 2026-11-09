@@ -23,13 +23,13 @@ const createStateClient = (
   const state: Record<string, unknown> = clone(initial);
   const stateManager = mock<IStateManager<Partial<SnapState>>>();
   stateManager.getKey.mockImplementation(async (key: string) =>
-    Object.hasOwn(state, key)
-      ? (clone(state[key]) as never)
-      : undefined,
+    Object.hasOwn(state, key) ? (clone(state[key]) as never) : undefined,
   );
-  stateManager.setKey.mockImplementation(async (key: string, value: unknown) => {
-    state[key] = clone(value);
-  });
+  stateManager.setKey.mockImplementation(
+    async (key: string, value: unknown) => {
+      state[key] = clone(value);
+    },
+  );
   return { stateManager, state };
 };
 
@@ -166,9 +166,9 @@ describe('FullScanQueue', () => {
       queue.markFailed('a', 'second'),
     ]);
 
-    expect((state.fullScanRetryV1 as { a: { attempts: number } }).a.attempts).toBe(
-      2,
-    );
+    expect(
+      (state.fullScanRetryV1 as { a: { attempts: number } }).a.attempts,
+    ).toBe(2);
   });
 
   it('prunes retry entries for deleted accounts in due()', async () => {

@@ -3463,7 +3463,9 @@ describe('AccountUseCases', () => {
       expect(discovered.revealNextAddress).toHaveBeenCalled();
       // No second full scan: not scheduled, not queued.
       expect(mockChain.fullScan).toHaveBeenCalledTimes(1);
-      expect(eventsOf(mockSnapClient, CronMethod.FullScanAccount)).toHaveLength(0);
+      expect(eventsOf(mockSnapClient, CronMethod.FullScanAccount)).toHaveLength(
+        0,
+      );
       expect(await testUseCases.isInitialFullScanPending('d1')).toBe(false);
       expect(await testUseCases.isBalanceUnknown(discovered)).toBe(false);
     });
@@ -3494,7 +3496,9 @@ describe('AccountUseCases', () => {
           ({ derivationPath }) => derivationPath[3],
         ),
       ).toStrictEqual(["2'", "3'", "4'"]);
-      expect(eventsOf(mockSnapClient, CronMethod.FullScanAccount)).toHaveLength(0);
+      expect(eventsOf(mockSnapClient, CronMethod.FullScanAccount)).toHaveLength(
+        0,
+      );
       expect(
         eventsOf(mockSnapClient, CronMethod.SyncSelectedAccounts),
       ).toStrictEqual([
@@ -3558,7 +3562,9 @@ describe('AccountUseCases', () => {
       expect(
         eventsOf(mockSnapClient, CronMethod.SyncSelectedAccounts),
       ).toHaveLength(0);
-      expect(eventsOf(mockSnapClient, CronMethod.FullScanAccount)).toStrictEqual([
+      expect(
+        eventsOf(mockSnapClient, CronMethod.FullScanAccount),
+      ).toStrictEqual([
         {
           duration: 'PT1S',
           method: CronMethod.FullScanAccount,
@@ -3576,7 +3582,9 @@ describe('AccountUseCases', () => {
       await testUseCases.createMany([request(1)]);
 
       expect(mockRepository.createMany).not.toHaveBeenCalled();
-      expect(eventsOf(mockSnapClient, CronMethod.FullScanAccount)).toStrictEqual([
+      expect(
+        eventsOf(mockSnapClient, CronMethod.FullScanAccount),
+      ).toStrictEqual([
         {
           duration: 'PT1S',
           method: CronMethod.FullScanAccount,
@@ -3603,7 +3611,9 @@ describe('AccountUseCases', () => {
       expect(
         eventsOf(mockSnapClient, CronMethod.SyncSelectedAccounts),
       ).toHaveLength(0);
-      expect(eventsOf(mockSnapClient, CronMethod.FullScanAccount)).toHaveLength(2);
+      expect(eventsOf(mockSnapClient, CronMethod.FullScanAccount)).toHaveLength(
+        2,
+      );
     });
   });
 });

@@ -127,10 +127,7 @@ export class FullScanQueue {
   ): Promise<void> {
     await this.#state.setKey(FULL_SCAN_QUEUE_KEY, { pending });
     if (retry) {
-      await this.#state.setKey(
-        FULL_SCAN_RETRY_KEY,
-        retry as unknown as Json,
-      );
+      await this.#state.setKey(FULL_SCAN_RETRY_KEY, retry as unknown as Json);
     }
   }
 
@@ -158,10 +155,7 @@ export class FullScanQueue {
       } else {
         // The queue doesn't exist yet: `due()` will initialize it with every
         // live account, these included.
-        await this.#state.setKey(
-          FULL_SCAN_RETRY_KEY,
-          retry as unknown as Json,
-        );
+        await this.#state.setKey(FULL_SCAN_RETRY_KEY, retry as unknown as Json);
       }
     });
   }
