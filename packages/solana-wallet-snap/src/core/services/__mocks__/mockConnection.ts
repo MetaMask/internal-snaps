@@ -9,29 +9,27 @@ import {
 } from './mockSolanaRpcResponses';
 
 const createMockGetBalance = () =>
-  jest.fn().mockReturnValue({
-    send: jest
-      .fn()
-      .mockReturnValue(MOCK_SOLANA_RPC_GET_BALANCE_AS_SDK_RESPONSE),
+  vi.fn().mockReturnValue({
+    send: vi.fn().mockReturnValue(MOCK_SOLANA_RPC_GET_BALANCE_AS_SDK_RESPONSE),
   });
 
 const createMockGetLatestBlockhash = () =>
-  jest.fn().mockReturnValue({
-    send: jest
+  vi.fn().mockReturnValue({
+    send: vi
       .fn()
       .mockReturnValue(MOCK_SOLANA_RPC_GET_LATEST_BLOCKHASH_AS_SDK_RESPONSE),
   });
 
 const createMockSendTransaction = () =>
-  jest.fn().mockReturnValue({
-    send: jest
+  vi.fn().mockReturnValue({
+    send: vi
       .fn()
       .mockReturnValue(MOCK_SOLANA_RPC_SEND_TRANSACTION_RESPONSE.result),
   });
 
 const createMockGetSignaturesForAddress = () =>
-  jest.fn().mockReturnValue({
-    send: jest.fn().mockReturnValue([
+  vi.fn().mockReturnValue({
+    send: vi.fn().mockReturnValue([
       {
         signature:
           '3B7H4E2ih3Tcas6um1izEBZagVfLoxSUfZSKkSNSu7mh4nAy7ZafaEgKhH4d1NBY2MMRWgyPX2LcMbKYwphR8dRq',
@@ -76,8 +74,8 @@ const createMockGetSignaturesForAddress = () =>
   });
 
 const createMockGetTransaction = () =>
-  jest.fn().mockReturnValue({
-    send: jest.fn().mockImplementation(({ signature }) => {
+  vi.fn().mockReturnValue({
+    send: vi.fn().mockImplementation(({ signature }) => {
       if (
         signature ===
         '3B7H4E2ih3Tcas6um1izEBZagVfLoxSUfZSKkSNSu7mh4nAy7ZafaEgKhH4d1NBY2MMRWgyPX2LcMbKYwphR8dRq'
@@ -90,8 +88,8 @@ const createMockGetTransaction = () =>
   });
 
 const createMockGetTokenAccountsByOwner = () =>
-  jest.fn().mockReturnValue({
-    send: jest
+  vi.fn().mockReturnValue({
+    send: vi
       .fn()
       .mockReturnValue(
         MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_AS_SDK_RESPONSE,
@@ -99,13 +97,13 @@ const createMockGetTokenAccountsByOwner = () =>
   });
 
 const createMockGetMultipleAccounts = () =>
-  jest.fn().mockReturnValue({
-    send: jest.fn().mockResolvedValue({ value: [] }),
+  vi.fn().mockReturnValue({
+    send: vi.fn().mockResolvedValue({ value: [] }),
   });
 
 const createMockSimulateTransaction = () =>
-  jest.fn().mockReturnValue({
-    send: jest.fn().mockResolvedValue({
+  vi.fn().mockReturnValue({
+    send: vi.fn().mockResolvedValue({
       value: {
         // eslint-disable-next-line id-denylist
         err: null,
@@ -126,7 +124,7 @@ const createMockSimulateTransaction = () =>
   });
 
 const createMockGetRpc = () =>
-  jest.fn().mockReturnValue({
+  vi.fn().mockReturnValue({
     getBalance: createMockGetBalance(),
     getTokenAccountsByOwner: createMockGetTokenAccountsByOwner(),
     getLatestBlockhash: createMockGetLatestBlockhash(),
@@ -140,8 +138,8 @@ const createMockGetRpc = () =>
 export const createMockConnection = (): SolanaConnection =>
   ({
     getRpc: createMockGetRpc(),
-    fetchMint: jest.fn().mockResolvedValue(MOCK_MINT_ACCOUNT),
-    getLatestBlockhash: jest
+    fetchMint: vi.fn().mockResolvedValue(MOCK_MINT_ACCOUNT),
+    getLatestBlockhash: vi
       .fn()
       .mockResolvedValue(
         MOCK_SOLANA_RPC_GET_LATEST_BLOCKHASH_AS_SDK_RESPONSE.value,

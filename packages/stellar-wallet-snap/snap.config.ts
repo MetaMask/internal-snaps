@@ -1,8 +1,9 @@
-/* eslint-disable no-restricted-globals -- Snap configuration executes in Node.js. */
+/* eslint-disable import-x/no-nodejs-modules, no-restricted-globals -- Snap configuration executes in Node.js. */
 import type { SnapConfig } from '@metamask/snaps-cli';
 import { merge } from '@metamask/snaps-cli';
 import { config as dotenv } from 'dotenv';
 import { resolve } from 'path';
+import { ProvidePlugin } from 'webpack';
 
 dotenv();
 
@@ -45,6 +46,8 @@ const config: SnapConfig = {
       process.env.STELLAR_SIMULATE_TRANSACTION_TTL_MILLISECONDS ?? '',
     STELLAR_SEP41_ASSET_BALANCE_TTL_MILLISECONDS:
       process.env.STELLAR_SEP41_ASSET_BALANCE_TTL_MILLISECONDS ?? '',
+    STELLAR_KEYRING_LIVE_ACCOUNT_TTL_MILLISECONDS:
+      process.env.STELLAR_KEYRING_LIVE_ACCOUNT_TTL_MILLISECONDS ?? '',
     STELLAR_ASSET_METADATA_TTL_MILLISECONDS:
       process.env.STELLAR_ASSET_METADATA_TTL_MILLISECONDS ?? '',
     STELLAR_BASE_FEE_MULTIPLIER: process.env.STELLAR_BASE_FEE_MULTIPLIER ?? '',
@@ -63,6 +66,11 @@ const config: SnapConfig = {
   },
   customizeWebpackConfig: (webpackConfig) =>
     merge(webpackConfig, {
+      plugins: [
+        new ProvidePlugin({
+          performance: '@metamask/snap-networks-utils/performance-shim',
+        }),
+      ],
       resolve: {
         alias: {
           eventsource: resolve(__dirname, 'src/shims/eventsource.ts'),

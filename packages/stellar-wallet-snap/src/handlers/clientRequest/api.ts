@@ -242,7 +242,7 @@ const OnAmountInputParamsWireStruct = object({
     KnownCaip19Slip44IdStruct,
   ]),
   value: nonempty(string()),
-  to: optional(StellarAddressStruct),
+  toAddress: optional(StellarAddressStruct),
 });
 
 const OnAmountInputParamsStruct = assign(

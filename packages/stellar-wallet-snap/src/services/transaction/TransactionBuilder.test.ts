@@ -49,14 +49,14 @@ describe('TransactionBuilder', () => {
   });
 
   const getAccountSpies = () => ({
-    incrementSequenceNumberSpy: jest.spyOn(
+    incrementSequenceNumberSpy: vi.spyOn(
       Account.prototype,
       'incrementSequenceNumber',
     ),
   });
 
   const getTransactionBuilderSpies = () => ({
-    buildSpy: jest.spyOn(StellarSdkTransactionBuilder.prototype, 'build'),
+    buildSpy: vi.spyOn(StellarSdkTransactionBuilder.prototype, 'build'),
   });
 
   describe('changeTrust', () => {

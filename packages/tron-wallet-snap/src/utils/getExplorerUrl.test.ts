@@ -1,24 +1,25 @@
 import { Network } from '../constants';
+import { configProvider } from '../services/config/ConfigProvider';
 import { getExplorerUrl } from './getExplorerUrl';
 
-jest.mock('../services/config/ConfigProvider', () => ({
-  configProvider: {
-    config: {
-      explorerApi: {
-        baseUrls: {
-          'tron:728126428': 'https://tronscan.org',
-          'tron:3448148188': 'https://nile.tronscan.org',
-          'tron:2494104990': '',
-        },
-      },
-    },
-  },
-}));
+const explorerBaseUrls = {
+  [Network.Mainnet]: 'https://tronscan.org',
+  [Network.Nile]: 'https://nile.tronscan.org',
+  [Network.Shasta]: '',
+};
 
 describe('getExplorerUrl', () => {
   const mockAddress = 'TJRabPrwbZy45savqYt9XgVjvjQvQnQqQq';
   const mockTx =
     '4RPWUVqAqW6jHbVuZH5qJuvoJM6EeX9m9Q6PC1RkcYBW3J4zY9LuZPZqNiYNXGm5qL6GJgCB7JqhXqV8vkKxnAHd';
+  const realConfig = configProvider.config;
+
+  beforeEach(() => {
+    vi.spyOn(configProvider, 'config', 'get').mockReturnValue({
+      ...realConfig,
+      explorerApi: { baseUrls: explorerBaseUrls },
+    });
+  });
 
   it('generates an address URL for the given scope', () => {
     const url = getExplorerUrl(Network.Mainnet, 'address', mockAddress);

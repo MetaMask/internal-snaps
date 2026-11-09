@@ -1,4 +1,5 @@
 import { SynchronizationError } from '@metamask/snap-networks-utils';
+import type { Mocked, Mock } from 'vitest';
 
 import {
   MOCK_ASSET_ENTITY_0,
@@ -8,6 +9,7 @@ import {
   MOCK_SOLANA_KEYRING_ACCOUNT_0,
   MOCK_SOLANA_KEYRING_ACCOUNT_1,
 } from '../../test/mocks/solana-keyring-accounts';
+import * as Errors from '../../utils/errors';
 import { trackError } from '../../utils/errors';
 import { mockLogger } from '../__mocks__/logger';
 import type { AssetsService } from '../assets/AssetsService';
@@ -15,34 +17,33 @@ import type { TransactionsService } from '../transactions';
 import type { AccountsService } from './AccountsService';
 import { AccountsSynchronizer } from './AccountsSynchronizer';
 
-jest.mock('../../utils/errors');
-
 describe('AccountsSynchronizer', () => {
   let synchronizer: AccountsSynchronizer;
-  let mockAccountsService: jest.Mocked<Pick<AccountsService, 'getAll'>>;
-  let mockAssetsService: jest.Mocked<
+  let mockAccountsService: Mocked<Pick<AccountsService, 'getAll'>>;
+  let mockAssetsService: Mocked<
     Pick<AssetsService, 'fetchAccountAssets' | 'saveMany'>
   >;
-  let mockTransactionsService: jest.Mocked<
+  let mockTransactionsService: Mocked<
     Pick<TransactionsService, 'fetchAssetsTransactions' | 'saveMany'>
   >;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (trackError as jest.Mock).mockResolvedValue('tracked-error-id');
+    vi.clearAllMocks();
+    vi.spyOn(Errors, 'trackError').mockResolvedValue(undefined);
+    (trackError as Mock).mockResolvedValue('tracked-error-id');
 
     mockAccountsService = {
-      getAll: jest.fn().mockResolvedValue([MOCK_SOLANA_KEYRING_ACCOUNT_0]),
+      getAll: vi.fn().mockResolvedValue([MOCK_SOLANA_KEYRING_ACCOUNT_0]),
     };
 
     mockAssetsService = {
-      fetchAccountAssets: jest.fn().mockResolvedValue([]),
-      saveMany: jest.fn().mockResolvedValue(undefined),
+      fetchAccountAssets: vi.fn().mockResolvedValue([]),
+      saveMany: vi.fn().mockResolvedValue(undefined),
     };
 
     mockTransactionsService = {
-      fetchAssetsTransactions: jest.fn().mockResolvedValue([]),
-      saveMany: jest.fn().mockResolvedValue(undefined),
+      fetchAssetsTransactions: vi.fn().mockResolvedValue([]),
+      saveMany: vi.fn().mockResolvedValue(undefined),
     };
 
     synchronizer = new AccountsSynchronizer(
@@ -148,7 +149,7 @@ describe('AccountsSynchronizer', () => {
       await synchronizer.synchronize(accounts);
 
       expect(trackError).toHaveBeenCalledTimes(1);
-      const error = (trackError as jest.Mock).mock.calls[0][0] as Error;
+      const error = (trackError as Mock).mock.calls[0]?.[0] as Error;
       expect(error).toBeInstanceOf(SynchronizationError);
       expect(error.message).toBe(
         'Account synchronization failures (1 failed): ' +
@@ -226,9 +227,7 @@ describe('AccountsSynchronizer', () => {
     it('does not throw when reporting failures fails', async () => {
       const fetchError = new Error('fetch failed');
       mockAssetsService.fetchAccountAssets.mockRejectedValueOnce(fetchError);
-      (trackError as jest.Mock).mockRejectedValueOnce(
-        new Error('tracking down'),
-      );
+      (trackError as Mock).mockRejectedValueOnce(new Error('tracking down'));
 
       await synchronizer.synchronize([MOCK_SOLANA_KEYRING_ACCOUNT_0]);
       expect(mockLogger.warn).toHaveBeenCalled();

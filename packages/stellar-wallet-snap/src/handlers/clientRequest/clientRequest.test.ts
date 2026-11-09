@@ -4,7 +4,7 @@ import { ClientRequestMethod } from './api';
 import { ClientRequestHandler } from './clientRequest';
 
 describe('ClientRequestHandler', () => {
-  const mockHandle = jest.fn();
+  const mockHandle = vi.fn();
 
   function setup(): ClientRequestHandler {
     mockHandle.mockReset();

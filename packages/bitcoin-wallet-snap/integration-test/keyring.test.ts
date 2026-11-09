@@ -1,3 +1,4 @@
+import { beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
 import type { KeyringAccount } from '@metamask/keyring-api';
 import { BtcAccountType, BtcScope } from '@metamask/keyring-api';
 import type { Snap } from '@metamask/snaps-jest';

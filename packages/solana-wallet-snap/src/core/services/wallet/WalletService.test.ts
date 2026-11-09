@@ -1,6 +1,8 @@
 import { SolMethod, TransactionType } from '@metamask/keyring-api';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
+import type { Mock } from 'vitest';
 
 import { Network } from '../../constants/solana';
 import {
@@ -17,7 +19,9 @@ import {
   getBip32EntropyMock,
   getSolanaCoinTypeNodeMock,
 } from '../../test/mocks/utils/getBip32Entropy';
+import * as Errors from '../../utils/errors';
 import { trackError } from '../../utils/errors';
+import * as Bip32Entropy from '../../utils/getBip32Entropy';
 import logger from '../../utils/logger';
 import { createMockConnection } from '../__mocks__/mockConnection';
 import type { SolanaConnection } from '../connection';
@@ -36,19 +40,6 @@ import {
 import type { SolanaWalletRequest } from './structs';
 import { WalletService } from './WalletService';
 
-jest.mock('../../utils/getBip32Entropy', () => ({
-  getBip32Entropy: getBip32EntropyMock,
-  getSolanaCoinTypeNode: getSolanaCoinTypeNodeMock,
-}));
-
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: jest.fn(),
-}));
-
-jest.mock('../../utils/errors', () => ({
-  trackError: jest.fn().mockResolvedValue('tracked-error-id'),
-}));
-
 describe('WalletService', () => {
   let mockConnection: SolanaConnection;
   let mockSigner: Signer;
@@ -61,18 +52,28 @@ describe('WalletService', () => {
   const origin = 'https://metamask.io';
 
   beforeEach(() => {
+    vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
+      undefined,
+    );
+    vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
+    vi.spyOn(Bip32Entropy, 'getBip32Entropy').mockImplementation((params) =>
+      getBip32EntropyMock(params as never),
+    );
+    vi.spyOn(Bip32Entropy, 'getSolanaCoinTypeNode').mockImplementation(
+      (entropySource) => getSolanaCoinTypeNodeMock(entropySource),
+    );
     mockConnection = createMockConnection();
 
     mockSigner = {
-      partiallySignBase64String: jest.fn(),
+      partiallySignBase64String: vi.fn(),
     } as unknown as Signer;
 
     mockSignatureMonitor = {
-      monitor: jest.fn(),
+      monitor: vi.fn(),
     } as unknown as SignatureMonitor;
 
     // Mock the monitor method to capture the onCommitmentReached callback
-    (mockSignatureMonitor.monitor as jest.Mock).mockImplementation(
+    (mockSignatureMonitor.monitor as Mock).mockImplementation(
       async (params) => {
         onCommitmentReachedCallback = params.onCommitmentReached;
         return Promise.resolve();
@@ -80,11 +81,11 @@ describe('WalletService', () => {
     );
 
     mockAnalyticsService = {
-      trackTransactionSubmitted: jest.fn(),
+      trackTransactionSubmitted: vi.fn(),
     } as unknown as AnalyticsService;
 
     mockTransactionsService = {
-      save: jest.fn(),
+      save: vi.fn(),
     } as unknown as TransactionsService;
 
     service = new WalletService(
@@ -97,7 +98,7 @@ describe('WalletService', () => {
     );
 
     (globalThis as any).snap = {
-      request: jest.fn(),
+      request: vi.fn(),
     };
 
     getBip32EntropyMock.mockClear();
@@ -237,14 +238,14 @@ describe('WalletService', () => {
       } = scenario;
 
       beforeEach(() => {
-        jest
-          .spyOn(mockSigner, 'partiallySignBase64String')
-          .mockResolvedValue(signedTransaction);
+        vi.spyOn(mockSigner, 'partiallySignBase64String').mockResolvedValue(
+          signedTransaction,
+        );
 
-        jest.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
           ...mockConnection.getRpc(scope),
-          getMultipleAccounts: jest.fn().mockReturnValue({
-            send: jest
+          getMultipleAccounts: vi.fn().mockReturnValue({
+            send: vi
               .fn()
               .mockResolvedValue(getMultipleAccountsResponse?.result),
           }),
@@ -641,16 +642,16 @@ describe('WalletService', () => {
             'https://metamask.io',
           );
 
-          const saveCallOrder = (mockTransactionsService.save as jest.Mock).mock
+          const saveCallOrder = (mockTransactionsService.save as Mock).mock
             .invocationCallOrder[0] as number;
-          const monitorCallOrder = (mockSignatureMonitor.monitor as jest.Mock)
-            .mock.invocationCallOrder[0] as number;
+          const monitorCallOrder = (mockSignatureMonitor.monitor as Mock).mock
+            .invocationCallOrder[0] as number;
 
           expect(saveCallOrder).toBeLessThan(monitorCallOrder);
         });
 
         it('does not fail when saving the pending transaction fails', async () => {
-          (mockTransactionsService.save as jest.Mock).mockRejectedValue(
+          (mockTransactionsService.save as Mock).mockRejectedValue(
             new Error('Failed to persist pending transaction'),
           );
 
@@ -819,7 +820,7 @@ describe('WalletService', () => {
       const coinTypeNode = await getSolanaCoinTypeNodeMock(
         account.entropySource,
       );
-      const deriveMock = jest.fn(coinTypeNode.derive.bind(coinTypeNode));
+      const deriveMock = vi.fn(coinTypeNode.derive.bind(coinTypeNode));
 
       getSolanaCoinTypeNodeMock.mockClear();
       getSolanaCoinTypeNodeMock.mockResolvedValueOnce({
@@ -847,7 +848,7 @@ describe('WalletService', () => {
     it('does not expose derivation error details in batch signing results', async () => {
       const sensitiveError = 'derived private key bytes: secret';
       getSolanaCoinTypeNodeMock.mockResolvedValueOnce({
-        derive: jest.fn().mockRejectedValue(new Error(sensitiveError)),
+        derive: vi.fn().mockRejectedValue(new Error(sensitiveError)),
       } as never);
 
       const result = await service.signMessages([

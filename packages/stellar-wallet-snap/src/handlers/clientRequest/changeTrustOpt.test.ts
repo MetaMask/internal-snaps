@@ -1,5 +1,6 @@
 import { TransactionType } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
+import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { Networks } from '@stellar/stellar-sdk';
@@ -48,6 +49,7 @@ import {
 } from '../../ui/confirmation/api';
 import { ConfirmationUXController } from '../../ui/confirmation/controller';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
+import * as AccountActivationPrompt from '../../ui/confirmation/views/AccountActivationPrompt/render';
 import { logger } from '../../utils/logger';
 import { AccountResolver } from '../accountResolver';
 import { TrackTransactionHandler } from '../cronjob/trackTransaction';
@@ -55,21 +57,20 @@ import { ClientRequestMethod, ChangeTrustOptAction } from './api';
 import type { ChangeTrustOptJsonRpcRequest } from './api';
 import { ChangeTrustOptHandler } from './changeTrustOpt';
 
-jest.mock('../../utils/logger');
-jest.mock('@metamask/keyring-snap-sdk', () => ({
-  emitSnapKeyringEvent: jest.fn(),
-}));
-jest.mock('../../ui/confirmation/views/AccountActivationPrompt/render', () => ({
-  render: jest.fn().mockResolvedValue(undefined),
-}));
-
 describe('ChangeTrustOptHandler', () => {
   beforeEach(() => {
-    jest.mocked(emitSnapKeyringEvent).mockReset();
-    jest.mocked(emitSnapKeyringEvent).mockResolvedValue(undefined);
-    jest
-      .spyOn(TrackTransactionHandler, 'scheduleBackgroundEvent')
-      .mockResolvedValue(undefined);
+    vi.spyOn(AccountActivationPrompt, 'render').mockResolvedValue(
+      undefined as never,
+    );
+    vi.spyOn(KeyringSnapSdk, 'emitSnapKeyringEvent').mockResolvedValue(
+      undefined,
+    );
+    vi.mocked(emitSnapKeyringEvent).mockReset();
+    vi.mocked(emitSnapKeyringEvent).mockResolvedValue(undefined);
+    vi.spyOn(
+      TrackTransactionHandler,
+      'scheduleBackgroundEvent',
+    ).mockResolvedValue(undefined);
   });
 
   const accountId = '11111111-1111-4111-8111-111111111111';
@@ -134,38 +135,38 @@ describe('ChangeTrustOptHandler', () => {
       onChainAccountService,
       walletService,
     });
-    const resolveAccountSpy = jest
+    const resolveAccountSpy = vi
       .spyOn(AccountService.prototype, 'resolveAccount')
       .mockResolvedValue({ account });
-    const resolveOnChainAccountSpy = jest
+    const resolveOnChainAccountSpy = vi
       .spyOn(OnChainAccountService.prototype, 'resolveOnChainAccount')
       .mockResolvedValue(onChainAccount);
-    const resolveWalletSpy = jest
+    const resolveWalletSpy = vi
       .spyOn(WalletService.prototype, 'resolveWallet')
       .mockResolvedValue(wallet);
 
-    const signTransactionSpy = jest.spyOn(wallet, 'signTransaction');
+    const signTransactionSpy = vi.spyOn(wallet, 'signTransaction');
 
     const {
       transactionService,
       transactionRepositorySaveSpy,
       transactionRepositorySaveManySpy,
     } = createMockTransactionService();
-    const getBaseFeeSpy = jest
+    const getBaseFeeSpy = vi
       .spyOn(NetworkService.prototype, 'getBaseFee')
       .mockResolvedValue(new BigNumber(100));
-    const networkSendSpy = jest
+    const networkSendSpy = vi
       .spyOn(NetworkService.prototype, 'send')
       .mockResolvedValue(transactionHash);
-    const createValidatedChangeTrustTransaction = jest.spyOn(
+    const createValidatedChangeTrustTransaction = vi.spyOn(
       TransactionService.prototype,
       'createValidatedChangeTrustTransaction',
     );
-    const sendTransaction = jest.spyOn(
+    const sendTransaction = vi.spyOn(
       TransactionService.prototype,
       'sendTransaction',
     );
-    const savePendingKeyringTransaction = jest.spyOn(
+    const savePendingKeyringTransaction = vi.spyOn(
       TransactionService.prototype,
       'savePendingKeyringTransactionSafe',
     );
@@ -175,19 +176,19 @@ describe('ChangeTrustOptHandler', () => {
       symbol: string;
       assetId: string;
     } as StellarAssetMetadata;
-    const resolve = jest
+    const resolve = vi
       .spyOn(AssetMetadataService.prototype, 'resolve')
       .mockResolvedValue(assetMetadata);
 
-    const renderConfirmationDialog = jest
+    const renderConfirmationDialog = vi
       .spyOn(ConfirmationUXController.prototype, 'renderConfirmationDialog')
       .mockResolvedValue(true);
     const confirmationUIController = new ConfirmationUXController();
 
-    const trackTransactionAddedSpy = jest.fn().mockResolvedValue(undefined);
-    const trackTransactionRejectedSpy = jest.fn().mockResolvedValue(undefined);
-    const trackTransactionApprovedSpy = jest.fn().mockResolvedValue(undefined);
-    const trackTransactionSubmittedSpy = jest.fn().mockResolvedValue(undefined);
+    const trackTransactionAddedSpy = vi.fn().mockResolvedValue(undefined);
+    const trackTransactionRejectedSpy = vi.fn().mockResolvedValue(undefined);
+    const trackTransactionApprovedSpy = vi.fn().mockResolvedValue(undefined);
+    const trackTransactionSubmittedSpy = vi.fn().mockResolvedValue(undefined);
 
     const handler = new ChangeTrustOptHandler({
       logger,

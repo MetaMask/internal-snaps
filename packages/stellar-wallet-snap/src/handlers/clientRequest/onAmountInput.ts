@@ -64,7 +64,7 @@ export class OnAmountInputHandler extends BaseClientRequestHandler<
    * repeated amount checks stay responsive.
    *
    * @param resolved - Keyring account, persisted on-chain snapshot, and wallet.
-   * @param request - JSON-RPC request with `assetId` and `value` (positive amount string). Optional `to` is ignored; destination validation happens in `confirmSend` (`scope` is derived from `assetId`).
+   * @param request - JSON-RPC request with `assetId` and `value` (positive amount string). Optional `toAddress` is ignored; destination validation happens in `confirmSend` (`scope` is derived from `assetId`).
    * @returns Validation result with `valid` and optional error codes.
    */
   protected async execute(

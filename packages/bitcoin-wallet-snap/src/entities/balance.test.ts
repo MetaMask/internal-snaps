@@ -4,7 +4,7 @@ import type {
   WalletTx,
   Transaction,
 } from '@metamask/bitcoindevkit';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { BitcoinAccount } from './account';
 import { computeDisplayBalanceSats } from './balance';

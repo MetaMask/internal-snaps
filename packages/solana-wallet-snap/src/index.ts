@@ -1,4 +1,3 @@
-import { KeyringRpcMethod } from '@metamask/keyring-api';
 import { handleKeyringRequest } from '@metamask/keyring-snap-sdk/v2';
 import {
   noopAssetHandlers,
@@ -6,7 +5,6 @@ import {
   wrapSnapHandlers,
 } from '@metamask/snap-networks-utils';
 import { MethodNotFoundError } from '@metamask/snaps-sdk';
-import type { Json } from '@metamask/snaps-sdk';
 import { assert, enums } from '@metamask/superstruct';
 import BigNumber from 'bignumber.js';
 
@@ -96,16 +94,6 @@ export const {
     logger.log('[🔑 onKeyringRequest]', request.method, request);
 
     validateOrigin(origin, request.method, originPermissions);
-
-    // This is a temporal fix to prevent the swap/bridge functionality breaking
-    // TODO: Remove this once changes in bridge-status-controller are in place
-    if (
-      request.method === KeyringRpcMethod.SubmitRequest &&
-      request.params &&
-      !('origin' in request.params)
-    ) {
-      (request.params as Record<string, Json>).origin = 'https://metamask.io';
-    }
 
     const result = await handleKeyringRequest(keyring, request);
 

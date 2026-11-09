@@ -21,6 +21,7 @@ import {
 import { canAccountTxidBeMalleated, networkToCurrencyUnit } from '../entities';
 import type { BitcoinAccount } from '../entities';
 import { mapToTransactionType } from '../entities/transaction';
+import { formatBtcAmount } from '../utils/format-btc';
 import type { Caip19Asset } from './caip';
 import { addressTypeToCaip, networkToCaip19, networkToScope } from './caip';
 
@@ -87,7 +88,7 @@ export function mapToKeyringAccount(account: BitcoinAccount): KeyringAccount {
 
 const mapToAmount = (amount: Amount, network: Network): TransactionAmount => {
   return {
-    amount: amount.to_btc().toString(),
+    amount: formatBtcAmount(amount.to_sat()),
     fungible: true,
     unit: networkToCurrencyUnit[network],
     type: networkToCaip19[network],
