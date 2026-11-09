@@ -9,10 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.4.1]
 
-### Uncategorized
-
-- chore(tron): vitest ([#562](https://github.com/MetaMask/internal-snaps/pull/562))
-
 ### Fixed
 
 - Exclude testnet scopes from `AssetsService.fetchAccountAssetsByIDs` and `SnapAssetsAdapter.fetchAssetsAndBalancesForAccount` when fetching balances ([#576](https://github.com/MetaMask/internal-snaps/pull/576))
