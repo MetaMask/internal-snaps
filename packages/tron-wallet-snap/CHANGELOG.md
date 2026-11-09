@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Exclude testnet scopes from `AssetsService.fetchAccountAssetsByIDs` and `SnapAssetsAdapter.fetchAssetsAndBalancesForAccount` when fetching balances ([#576](https://github.com/MetaMask/internal-snaps/pull/576))
+  - Testnet calls were causing failures that prevented balance updates, causing stale balances to be displayed.
+
 ## [4.4.0]
 
 ### Added
