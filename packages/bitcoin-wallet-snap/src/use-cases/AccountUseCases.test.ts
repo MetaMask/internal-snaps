@@ -3226,11 +3226,16 @@ describe('AccountUseCases', () => {
       ): number[] =>
         snapClient.scheduleBackgroundEvent.mock.calls
           .filter(([event]) => event.method === CronMethod.FullScanAccount)
-          .map(([event]) => Number(/^PT(\d+)S$/u.exec(event.duration ?? '')?.[1]));
+          .map(([event]) =>
+            Number(/^PT(\d+)S$/u.exec(event.duration ?? '')?.[1]),
+          );
 
       it('requests the full scan within seconds when the first successful sync comes 25 s after a failed scan (A-v6 22:49:13)', async () => {
         const { useCases: testUseCases, snapClient } = buildUseCases();
-        const account = await createNeverSyncedAccount(testUseCases, snapClient);
+        const account = await createNeverSyncedAccount(
+          testUseCases,
+          snapClient,
+        );
         mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
         mockChain.sync.mockRejectedValue(new Error('Failed to fetch'));
 
@@ -3305,7 +3310,10 @@ describe('AccountUseCases', () => {
 
       it('defers, rather than drops, a recovery that arrives right after a failed scan', async () => {
         const { useCases: testUseCases, snapClient } = buildUseCases();
-        const account = await createNeverSyncedAccount(testUseCases, snapClient);
+        const account = await createNeverSyncedAccount(
+          testUseCases,
+          snapClient,
+        );
         mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
         mockChain.sync.mockRejectedValueOnce(new Error('Failed to fetch'));
         for (let i = 0; i < 3; i++) {
@@ -3336,7 +3344,10 @@ describe('AccountUseCases', () => {
 
       it('keeps the on-demand backoff for successful syncs that are not a recovery', async () => {
         const { useCases: testUseCases, snapClient } = buildUseCases();
-        const account = await createNeverSyncedAccount(testUseCases, snapClient);
+        const account = await createNeverSyncedAccount(
+          testUseCases,
+          snapClient,
+        );
         mockChain.fullScan.mockRejectedValue(new Error('Failed to fetch'));
         for (let i = 0; i < 3; i++) {
           await expect(testUseCases.fullScan(account)).rejects.toThrow(
@@ -3472,7 +3483,12 @@ describe('AccountUseCases', () => {
       const fresh = ['a2', 'a3', 'a4'].map((id) =>
         buildAccount(id, { synchronized: false }),
       );
-      mockRepository.getByDerivationPaths.mockResolvedValue([null, null, null, null]);
+      mockRepository.getByDerivationPaths.mockResolvedValue([
+        null,
+        null,
+        null,
+        null,
+      ]);
       mockRepository.createMany.mockResolvedValue(fresh);
       mockRepository.insertMany.mockResolvedValue([discovered, ...fresh]);
 
