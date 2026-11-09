@@ -137,10 +137,10 @@ export default defineConfig({
           process.env.CI || process.env.npm_lifecycle_event !== 'test'
             ? false
             : (value: number) => Math.floor(value * 100) / 100,
-        branches: 77.72,
-        functions: 87.29,
-        lines: 88.33,
-        statements: 88.29,
+        branches: 78.04,
+        functions: 87.88,
+        lines: 88.58,
+        statements: 88.54,
       },
     },
   },

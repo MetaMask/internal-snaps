@@ -58,7 +58,10 @@ import {
   SignTransactionResponseStruct,
 } from './api';
 import type { IKeyringRequestHandler } from './base';
-import { ExportAccountException } from './exceptions';
+import {
+  AccountBalanceUnavailableException,
+  ExportAccountException,
+} from './exceptions';
 import { KeyringHandler } from './keyring';
 
 describe('KeyringHandler', () => {
@@ -673,7 +676,7 @@ describe('KeyringHandler', () => {
       nowSpy.mockRestore();
     });
 
-    it('returns zero native balance when the account is not activated on-chain', async () => {
+    it('reports balance unavailable when the account is not activated on-chain and not confirmed unfunded', async () => {
       const slipId = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
       const { resolveAccountSpy } = getAccountServiceSpies();
       resolveAccountSpy.mockResolvedValue({ account: mockAccount });
@@ -685,26 +688,18 @@ describe('KeyringHandler', () => {
             KnownCaip2ChainId.Mainnet,
           ),
         );
+      vi.spyOn(
+        OnChainAccountService.prototype,
+        'isConfirmedUnfunded',
+      ).mockResolvedValue(false);
 
       await keyringHandler.getAccountAssets(mockAccountId);
       resolveOnChainAccountSpy.mockClear();
 
-      const result = await keyringHandler.getAccountBalances(mockAccountId, [
-        slipId,
-      ]);
-
+      await expect(
+        keyringHandler.getAccountBalances(mockAccountId, [slipId]),
+      ).rejects.toThrow(AccountBalanceUnavailableException);
       expect(resolveOnChainAccountSpy).not.toHaveBeenCalled();
-      expect(result).toStrictEqual({
-        [slipId]: {
-          unit: 'XLM',
-          amount: '0',
-          metadata: {
-            spendableBalance: '0',
-            minimumReserveBalance: '0',
-            decimal: 7,
-          },
-        },
-      });
     });
 
     it('loads Horizon when a previous asset read failed and was not cached', async () => {
