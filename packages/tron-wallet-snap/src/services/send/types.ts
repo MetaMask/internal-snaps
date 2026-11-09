@@ -1,4 +1,5 @@
 import type { FeeType } from '@metamask/keyring-api';
+import type { BigNumber } from 'bignumber.js';
 
 import type { SendErrorCodes } from '../../handlers/clientRequest/types';
 import type {
@@ -35,6 +36,11 @@ export type ActivationTransfer = {
 export type ActivationAssessment = {
   isActivatingAccount: boolean;
   ownerAddress: string | undefined;
+};
+
+export type AccountActivationFee = {
+  trxFee: BigNumber;
+  bandwidthNeeded: BigNumber;
 };
 
 export type SendValidationErrorCode =
