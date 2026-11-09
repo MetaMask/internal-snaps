@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Retry the first full account scan with backoff, make balance Retry trigger a real scan, and avoid duplicate onboarding scans ([#521](https://github.com/MetaMask/internal-snaps/pull/521))
+
 ## [3.3.0]
 
 ### Changed

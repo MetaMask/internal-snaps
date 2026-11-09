@@ -17,7 +17,7 @@ import type {
   SyncResult,
 } from '../entities';
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
-import { CronHandler, CronMethod } from './CronHandler';
+import { CronHandler, CronMethod, MAX_FULL_SCANS_PER_RUN } from './CronHandler';
 
 describe('CronHandler', () => {
   const mockSendFlowUseCases = mock<SendFlowUseCases>();
@@ -46,6 +46,9 @@ describe('CronHandler', () => {
       platformVersion: '1.0.0',
     });
     mockState.getKey.mockResolvedValue({ pending: [] });
+    mockAccountUseCases.listDueFullScans.mockResolvedValue([]);
+    mockAccountUseCases.isBalanceUnknown.mockResolvedValue(false);
+    mockAccountUseCases.isFullScanInFlight.mockReturnValue(false);
   });
 
   describe('synchronizeAccounts', () => {
@@ -280,6 +283,120 @@ describe('CronHandler', () => {
       expect(error.message).toBe(
         'synchronizeAccounts: Account synchronization failures (1 failed): account-2: Unknown error',
       );
+    });
+
+    describe('queued full scans (first scan)', () => {
+      const buildTx = (txid: string): WalletTx =>
+        mock<WalletTx>({
+          txid: mock<WalletTx['txid']>({ toString: () => txid }),
+        });
+
+      beforeEach(() => {
+        (getSelectedAccounts as Mock).mockResolvedValue([
+          'account-1',
+          'account-2',
+        ]);
+        mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+        mockAccountUseCases.synchronize.mockResolvedValue({
+          account: mockAccount1,
+          transactionsToNotify: [],
+        });
+        mockAccountUseCases.fullScan.mockResolvedValue({
+          account: mockAccount1,
+          transactionsToNotify: [],
+        });
+        mockAccount1.listTransactions.mockReturnValue([]);
+        mockAccount2.listTransactions.mockReturnValue([]);
+        mockState.getKey.mockResolvedValue({ pending: [] });
+      });
+
+      it('asks for at most MAX_FULL_SCANS_PER_RUN due accounts and does nothing when none is due', async () => {
+        mockAccountUseCases.listDueFullScans.mockResolvedValue([]);
+
+        await handler.route(request);
+
+        expect(mockAccountUseCases.listDueFullScans).toHaveBeenCalledWith(
+          mockAccounts,
+          MAX_FULL_SCANS_PER_RUN,
+        );
+        expect(mockAccountUseCases.fullScan).not.toHaveBeenCalled();
+        expect(mockSnapClient.emitTrackingError).not.toHaveBeenCalled();
+        expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(2);
+      });
+
+      it('full-scans every due account, emits balances and missed transactions', async () => {
+        mockAccountUseCases.listDueFullScans.mockResolvedValue([
+          mockAccount1,
+          mockAccount2,
+        ]);
+        const txBefore = buildTx('txid-existing');
+        const txMissed = buildTx('txid-missed');
+        mockAccount1.listTransactions
+          .mockReturnValueOnce([txBefore])
+          .mockReturnValueOnce([txBefore, txMissed]);
+        mockAccountUseCases.fullScan.mockImplementation(async (account) => ({
+          account,
+          transactionsToNotify: [],
+        }));
+
+        await handler.route(request);
+
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount1);
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount2);
+        expect(
+          mockSnapClient.emitAccountBalancesUpdatedEvent,
+        ).toHaveBeenCalledWith([mockAccount1, mockAccount2]);
+        expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledTimes(1);
+        expect(mockSnapClient.emitTrackingEvent).toHaveBeenCalledWith(
+          expect.anything(),
+          mockAccount1,
+          txMissed,
+          'cron',
+          expect.anything(),
+        );
+        expect(mockSnapClient.emitTrackingError).not.toHaveBeenCalled();
+      });
+
+      it('does not let a failing account block the next one (no head-of-line blocking)', async () => {
+        mockAccountUseCases.listDueFullScans.mockResolvedValue([
+          mockAccount1,
+          mockAccount2,
+        ]);
+        const scanError = new Error('Failed to perform initial full scan');
+        mockAccountUseCases.fullScan.mockImplementation(async (account) => {
+          if (account === mockAccount1) {
+            throw scanError;
+          }
+          return { account, transactionsToNotify: [] };
+        });
+
+        await handler.route(request);
+
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount2);
+        expect(
+          mockSnapClient.emitAccountBalancesUpdatedEvent,
+        ).toHaveBeenCalledWith([mockAccount2]);
+        expect(mockSnapClient.emitTrackingError).toHaveBeenCalledTimes(1);
+        const [error] = mockSnapClient.emitTrackingError.mock.calls[0] as [
+          Error,
+        ];
+        expect(error.message).toBe('Account full scan failed');
+        expect(error.cause).toBe(scanError);
+        expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(2);
+      });
+
+      it('reports a failure of the queue itself and still runs the regular sync', async () => {
+        mockAccountUseCases.listDueFullScans.mockRejectedValue(
+          new Error('state unavailable'),
+        );
+
+        await handler.route(request);
+
+        expect(mockSnapClient.emitTrackingError).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Account full scan failed' }),
+        );
+        expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(2);
+      });
     });
 
     describe('repair rescan', () => {
@@ -625,14 +742,15 @@ describe('CronHandler', () => {
         expect(mockAccountUseCases.fullScan).not.toHaveBeenCalled();
       });
 
-      it('does nothing when nothing is pending, short-circuiting before list()', async () => {
+      it('does nothing when nothing is pending, short-circuiting repair before list()', async () => {
         mockState.getKey.mockResolvedValue({ pending: [] });
 
         await handler.route(request);
 
         expect(mockAccountUseCases.fullScan).not.toHaveBeenCalled();
         expect(mockState.setKey).not.toHaveBeenCalled();
-        expect(mockAccountUseCases.list).toHaveBeenCalledTimes(1);
+        // Once for selected-account sync and once for queued full scans.
+        expect(mockAccountUseCases.list).toHaveBeenCalledTimes(2);
       });
 
       it('reports a repair failure without shortening the pending list', async () => {
@@ -964,7 +1082,7 @@ describe('CronHandler', () => {
         handler.synchronizeAccounts(),
       ]);
 
-      expect(mockAccountUseCases.list).toHaveBeenCalledTimes(1);
+      expect(mockAccountUseCases.list).toHaveBeenCalledTimes(2);
     });
 
     it('runs synchronizeAccounts again once the previous run has finished', async () => {
@@ -974,7 +1092,7 @@ describe('CronHandler', () => {
       await handler.synchronizeAccounts();
       await handler.synchronizeAccounts();
 
-      expect(mockAccountUseCases.list).toHaveBeenCalledTimes(2);
+      expect(mockAccountUseCases.list).toHaveBeenCalledTimes(4);
     });
 
     it('reports failures once for coalesced synchronizeAccounts callers', async () => {
@@ -1034,6 +1152,10 @@ describe('CronHandler', () => {
       method: CronMethod.FullScanAccount,
       params: { accountId: 'account-1' },
     } as unknown as JsonRpcRequest;
+
+    beforeEach(() => {
+      mockAccountUseCases.isBalanceUnknown.mockResolvedValue(true);
+    });
 
     it('throws if invalid params', async () => {
       await expect(

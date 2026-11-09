@@ -16,6 +16,7 @@ import {
   TrackingSnapEvent,
 } from '../entities';
 import type {
+  BitcoinAccount,
   Logger,
   RescanState,
   SnapClient,
@@ -44,6 +45,11 @@ export const SyncSelectedAccountsRequest = object({
 export const FullScanAccountRequest = object({
   accountId: string(),
 });
+
+/**
+ * Maximum number of queued full scans run per sync run.
+ */
+export const MAX_FULL_SCANS_PER_RUN = 2;
 
 const RescanStateStruct: Describe<RescanState> = object({
   pending: array(string()),
@@ -170,9 +176,22 @@ export class CronHandler {
         accounts.map(({ id }) => id),
       );
 
-      // Publish normal balance and activity updates before the slower repair scan.
+      // Publish normal balance and activity updates before slower full/repair scans.
       try {
-        // Normal synchronization may have taken long enough for the client to lock.
+        const { active, locked } = await this.#snapClient.getClientStatus();
+        if (!active || locked) {
+          return;
+        }
+
+        const allAccounts = await this.#accountsUseCases.list();
+        await this.#runDueFullScans(allAccounts);
+      } catch (error) {
+        await this.#snapClient.emitTrackingError(
+          new Error('Account full scan failed', { cause: error }),
+        );
+      }
+
+      try {
         const { active, locked } = await this.#snapClient.getClientStatus();
         if (!active || locked) {
           return;
@@ -278,8 +297,70 @@ export class CronHandler {
 
   async fullScanAccount(accountId: string): Promise<void> {
     const account = await this.#accountsUseCases.get(accountId);
+    // On-demand scans (new account, balance request, network recovery) can
+    // be requested more than once; skip the ones whose purpose was already
+    // fulfilled by another scan in the meantime.
+    if (
+      !this.#accountsUseCases.isFullScanInFlight(accountId) &&
+      !(await this.#accountsUseCases.isBalanceUnknown(account))
+    ) {
+      this.#logger.debug('Full scan no longer needed: %s', accountId);
+      return;
+    }
     const result = await this.#accountsUseCases.fullScan(account);
     await this.#emitSyncEvents([result]);
+  }
+
+  /**
+   * Runs queued full scans that are due: the first full scan of new accounts
+   * and of accounts that never synchronized.
+   *
+   * @param accounts - All live accounts.
+   *
+   * Up to {@link MAX_FULL_SCANS_PER_RUN} accounts are scanned concurrently per
+   * sync run. A failed scan moves the account to the tail of the queue and
+   * backs it off exponentially (see `FullScanQueue`), so a single failing
+   * account can no longer block every account queued behind it.
+   */
+  async #runDueFullScans(accounts: BitcoinAccount[]): Promise<void> {
+    const due = await this.#accountsUseCases.listDueFullScans(
+      accounts,
+      MAX_FULL_SCANS_PER_RUN,
+    );
+    if (due.length === 0) {
+      return;
+    }
+
+    const results = await Promise.allSettled(
+      due.map(async (account) => {
+        const before = new Set(
+          account.listTransactions().map((tx) => tx.txid.toString()),
+        );
+        const result = await this.#accountsUseCases.fullScan(account);
+
+        for (const tx of account.listTransactions()) {
+          if (!before.has(tx.txid.toString())) {
+            await this.#snapClient.emitTrackingEvent(
+              TrackingSnapEvent.MissedTransactionsDiscovered,
+              account,
+              tx,
+              'cron',
+              mapToTransactionType(account, tx.tx),
+            );
+          }
+        }
+        return result;
+      }),
+    );
+
+    await this.#finishSync(results);
+
+    const firstFailure = results.find(
+      (result): result is PromiseRejectedResult => result.status === 'rejected',
+    );
+    if (firstFailure) {
+      throw firstFailure.reason;
+    }
   }
 
   /**
