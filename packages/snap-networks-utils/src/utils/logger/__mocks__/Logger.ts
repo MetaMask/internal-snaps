@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type { Mocked } from 'vitest';
 
 import type { Logger } from '../Logger';
