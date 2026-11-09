@@ -373,6 +373,7 @@ describe('createFetchPolicy observability', () => {
   });
 
   afterEach(() => {
+    jest.useRealTimers();
     jest.restoreAllMocks();
   });
 
@@ -490,10 +491,82 @@ describe('createFetchPolicy observability', () => {
     expect(tracked).not.toBe(error);
     expect(tracked.name).toBe('FetchPolicyGiveUpError');
     expect(tracked.message).toBe(
-      '[stellar_horizon stellar:pubnet] Gave up after retries: non_successful_http_status (Error, HTTP 503)',
+      '[stellar_horizon stellar:pubnet] Gave up after retries: non_successful_http_status (HTTP 503)',
     );
     expect(tracked.cause).toBeUndefined();
     expect(tracked.stack).not.toContain('horizon.example');
+  });
+
+  it('does not report the original error name', async () => {
+    const { policy, trackError } = setupObserved();
+    const error = createFetchPolicyError('boom', {
+      name: 'https://horizon.example?key=secret',
+      httpStatus: 503,
+    });
+
+    await expect(
+      policy.execute(jest.fn().mockRejectedValue(error)),
+    ).rejects.toBe(error);
+
+    expect(trackError.mock.calls[0][0].message).not.toContain('secret');
+  });
+
+  it('reports a network failure without a status', async () => {
+    const { policy, trackError } = setupObserved();
+    const error = createFetchPolicyError('boom', {
+      name: FetchPolicyErrorName.Network,
+    });
+
+    await expect(
+      policy.execute(jest.fn().mockRejectedValue(error)),
+    ).rejects.toBe(error);
+
+    expect(trackError.mock.calls[0][0].message).toBe(
+      '[stellar_horizon stellar:pubnet] Gave up after retries: connection_failed',
+    );
+  });
+
+  it('keeps the original error when trackError throws synchronously', async () => {
+    const { policy, logger, trackError } = setupObserved();
+    const trackingError = new Error('tracking failed');
+    trackError.mockImplementation(() => {
+      throw trackingError;
+    });
+    const error = httpError(503);
+
+    await expect(
+      policy.execute(jest.fn().mockRejectedValue(error)),
+    ).rejects.toBe(error);
+    await new Promise(setImmediate);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      '[stellar_horizon stellar:pubnet] Failed to report give-up:',
+      trackingError,
+    );
+  });
+
+  it('keeps a slow success when analytics throws synchronously', async () => {
+    jest.useFakeTimers();
+    const { policy, logger, analytics } = setupObserved();
+    const trackingError = new Error('tracking failed');
+    analytics.trackServiceDegraded.mockImplementation(() => {
+      throw trackingError;
+    });
+
+    const result = policy.execute(
+      async () =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve('ok'), 6000);
+        }),
+    );
+    await jest.advanceTimersByTimeAsync(6000);
+
+    expect(await result).toBe('ok');
+    expect(logger.warn).toHaveBeenCalledWith(
+      '[stellar_horizon stellar:pubnet] Failed to track service event:',
+      trackingError,
+    );
+    jest.useRealTimers();
   });
 
   it('logs a failure to report the error', async () => {
@@ -584,10 +657,11 @@ describe('createFetchPolicy observability', () => {
     expect(analytics.trackServiceUnavailable).toHaveBeenCalledTimes(1);
   });
 
-  it('tracks unavailable without a status when the circuit is isolated', () => {
+  it('tracks unavailable without a status when the circuit is isolated', async () => {
     const { policy, analytics } = setupObserved({ chainIdCaip: undefined });
 
     policy.circuitBreakerPolicy.isolate();
+    await new Promise(setImmediate);
 
     expect(analytics.trackServiceUnavailable).toHaveBeenCalledWith({
       service: 'stellar_horizon',

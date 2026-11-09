@@ -210,6 +210,20 @@ const rateLimited = <Args extends unknown[]>(
   };
 };
 
+/**
+ * Runs a reporting call outside the policy's event listeners, so neither a
+ * synchronous throw nor a rejection can change the outcome of the call.
+ *
+ * @param report - The reporting call.
+ * @param onFailure - Called with the error if the reporting call fails.
+ */
+const runIsolated = (
+  report: () => Promise<unknown>,
+  onFailure: (error: unknown) => void,
+): void => {
+  Promise.resolve().then(report).catch(onFailure);
+};
+
 type Backoff = NonNullable<CreateServicePolicyOptions['backoff']>;
 
 /**
@@ -270,7 +284,7 @@ export type CreateFetchPolicyOptions = Omit<
   logger: Pick<Logger, 'warn'>;
   /**
    * Reports each call that fails after its retries, once, with an error
-   * carrying only the service, chain, retry reason, error name and status.
+   * carrying only the service, chain, retry reason and status.
    */
   trackError?: TrackErrorFn;
 } & (
@@ -430,16 +444,17 @@ export const createFetchPolicy = ({
       return;
     }
     reportedErrors.add(error);
-    const { name, httpStatus } = error;
-    const details = [name, httpStatus && `HTTP ${httpStatus}`]
-      .filter(Boolean)
-      .join(', ');
+    // The original name isn't sent: mapped errors can keep an upstream one.
+    const status =
+      error.httpStatus === undefined ? '' : ` (HTTP ${error.httpStatus})`;
     const tracked = new Error(
-      `${prefix} Gave up after retries: ${retryReasonOf(error)} (${details})`,
+      `${prefix} Gave up after retries: ${retryReasonOf(error)}${status}`,
     );
     tracked.name = 'FetchPolicyGiveUpError';
-    trackError(tracked).catch((trackingError: unknown) =>
-      logger.warn(`${prefix} Failed to report give-up:`, trackingError),
+    runIsolated(
+      async () => trackError(tracked),
+      (trackingError) =>
+        logger.warn(`${prefix} Failed to report give-up:`, trackingError),
     );
   });
   policy.onBreak((reason) => {
@@ -468,32 +483,36 @@ export const createFetchPolicy = ({
     policy.onDegraded(
       rateLimited((data) => {
         const { duration } = data as { duration?: number };
-        analytics
-          .trackServiceDegraded(
-            duration === undefined
-              ? {
-                  ...eventProperties,
-                  type: 'retries_exhausted',
-                  retryReason: retryReasonOf(errorOf(data)),
-                  ...httpStatusOf(errorOf(data)),
-                }
-              : {
-                  ...eventProperties,
-                  type: 'slow_success',
-                  durationMs: Math.round(duration),
-                },
-          )
-          .catch(logTrackingFailure);
+        runIsolated(
+          async () =>
+            analytics.trackServiceDegraded(
+              duration === undefined
+                ? {
+                    ...eventProperties,
+                    type: 'retries_exhausted',
+                    retryReason: retryReasonOf(errorOf(data)),
+                    ...httpStatusOf(errorOf(data)),
+                  }
+                : {
+                    ...eventProperties,
+                    type: 'slow_success',
+                    durationMs: Math.round(duration),
+                  },
+            ),
+          logTrackingFailure,
+        );
       }),
     );
     policy.onBreak(
       rateLimited((reason) => {
-        analytics
-          .trackServiceUnavailable({
-            ...eventProperties,
-            ...httpStatusOf(errorOf(reason)),
-          })
-          .catch(logTrackingFailure);
+        runIsolated(
+          async () =>
+            analytics.trackServiceUnavailable({
+              ...eventProperties,
+              ...httpStatusOf(errorOf(reason)),
+            }),
+          logTrackingFailure,
+        );
       }),
     );
   }
