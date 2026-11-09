@@ -215,13 +215,7 @@ const config = createConfig([
     },
   },
   {
-    files: [
-      'packages/bitcoin-wallet-snap/src/**/*.test.ts',
-      'packages/bitcoin-wallet-snap/src/**/*.test.tsx',
-      'packages/bitcoin-wallet-snap/src/**/__mocks__/**/*.ts',
-      'packages/bitcoin-wallet-snap/vitest.setup.ts',
-      'packages/bitcoin-wallet-snap/integration-test/**/*.ts',
-    ],
+    files: ['packages/bitcoin-wallet-snap/integration-test/**/*.ts'],
     rules: {
       // Integration tests import these from `@jest/globals` while the package
       // tsconfig also declares Jest and Vitest globals. Unit tests use Vitest

@@ -15,6 +15,7 @@ import { RpcHandler } from './RpcHandler';
 import { RpcMethod, SendErrorCodes } from './validation';
 
 const mockPsbt = mock<Psbt>();
+
 // TODO: enable when this is merged: https://github.com/rustwasm/wasm-bindgen/issues/1818
 /* eslint-disable @typescript-eslint/naming-convention */
 describe('RpcHandler', () => {
