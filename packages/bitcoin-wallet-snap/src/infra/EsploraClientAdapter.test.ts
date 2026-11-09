@@ -463,7 +463,7 @@ describe('EsploraClientAdapter', () => {
   });
 
   describe('extendDiscoveryScan (v5: complete a discovery-gap scan without refetching it)', () => {
-    const mockFetch = jest.fn();
+    const mockFetch = vi.fn();
 
     beforeEach(() => {
       global.fetch = mockFetch;
@@ -489,13 +489,13 @@ describe('EsploraClientAdapter', () => {
       account: BitcoinAccount,
       indexes: Record<Keychain, { used?: number; revealed?: number }>,
     ): void => {
-      jest
-        .mocked(account.lastUsedIndex)
-        .mockImplementation((keychain) => indexes[keychain].used);
-      jest
-        .mocked(account.lastRevealedIndex)
-        .mockImplementation((keychain) => indexes[keychain].revealed);
-      jest.mocked(account.peekKeychainAddress).mockImplementation(
+      vi.mocked(account.lastUsedIndex).mockImplementation(
+        (keychain) => indexes[keychain].used,
+      );
+      vi.mocked(account.lastRevealedIndex).mockImplementation(
+        (keychain) => indexes[keychain].revealed,
+      );
+      vi.mocked(account.peekKeychainAddress).mockImplementation(
         (keychain, index) =>
           ({
             address: {
@@ -507,9 +507,9 @@ describe('EsploraClientAdapter', () => {
     };
 
     const checkedIndexes = (account: BitcoinAccount): [Keychain, number][] =>
-      jest
-        .mocked(account.peekKeychainAddress)
-        .mock.calls.map(([keychain, index]) => [keychain, index]);
+      vi.mocked(account.peekKeychainAddress).mock.calls.map(
+        ([keychain, index]) => [keychain, index],
+      );
 
     const range = (
       keychain: Keychain,
@@ -611,7 +611,7 @@ describe('EsploraClientAdapter', () => {
 
     it('falls back to the standard-gap full scan when the addresses cannot be derived', async () => {
       const { adapter, mockEsploraClient, account } = setupTest();
-      jest.mocked(account.lastUsedIndex).mockImplementation(() => {
+      vi.mocked(account.lastUsedIndex).mockImplementation(() => {
         throw new Error('unsupported');
       });
 
