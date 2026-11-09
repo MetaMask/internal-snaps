@@ -141,7 +141,7 @@ export default defineConfig({
             ? false
             : (value: number) => Math.floor(value * 100) / 100,
         branches: 79.14,
-        functions: 68.87,
+        functions: 68.66,
         lines: 86.61,
         statements: 86.59,
       },

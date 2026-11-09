@@ -129,7 +129,10 @@ export function isBalanceNotSynchronizedError(error: unknown): boolean {
     if (typeof current !== 'object') {
       return false;
     }
-    const { message, cause } = current as { message?: unknown; cause?: unknown };
+    const { message, cause } = current as {
+      message?: unknown;
+      cause?: unknown;
+    };
     if (
       typeof message === 'string' &&
       message.includes(BALANCE_NOT_SYNCHRONIZED_MESSAGE)
