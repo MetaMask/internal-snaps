@@ -609,7 +609,7 @@ describe('TransactionScanService', () => {
         validation: { status: 'Success', result_type: 'Benign' },
       });
       vi.mocked(
-        // eslint-disable-next-line vi/unbound-method
+        // eslint-disable-next-line jest/unbound-method
         mockSecurityAlertsApiClient.scanTransaction,
       ).mockRejectedValueOnce(error);
 
@@ -1001,9 +1001,9 @@ describe('TransactionScanService', () => {
       });
 
     beforeEach(() => {
-      // eslint-disable-next-line vi/unbound-method
+      // eslint-disable-next-line jest/unbound-method
       vi.mocked(mockAnalyticsService.trackSecurityScanCompleted).mockClear();
-      // eslint-disable-next-line vi/unbound-method
+      // eslint-disable-next-line jest/unbound-method
       vi.mocked(mockAnalyticsService.trackSecurityAlertDetected).mockClear();
     });
 
@@ -1197,7 +1197,7 @@ describe('TransactionScanService', () => {
           validation: { status: 'Success', result_type: 'Benign' },
         });
       vi.mocked(
-        // eslint-disable-next-line vi/unbound-method
+        // eslint-disable-next-line jest/unbound-method
         mockSecurityAlertsApiClient.scanTransaction,
       ).mockRejectedValueOnce(error);
 
