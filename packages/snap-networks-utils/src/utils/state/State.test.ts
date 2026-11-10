@@ -1,4 +1,4 @@
-/* eslint-disable jest/prefer-strict-equal */
+/* eslint-disable vitest/prefer-strict-equal */
 import { BigNumber } from 'bignumber.js';
 
 import { State } from './State';
@@ -568,4 +568,4 @@ describe('State', () => {
     });
   });
 });
-/* eslint-enable jest/prefer-strict-equal */
+/* eslint-enable vitest/prefer-strict-equal */

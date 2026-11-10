@@ -1,7 +1,8 @@
 import base, { createConfig } from '@metamask/eslint-config';
-import jest from '@metamask/eslint-config-jest';
 import nodejs from '@metamask/eslint-config-nodejs';
 import typescript from '@metamask/eslint-config-typescript';
+import vitest from '@metamask/eslint-config-vitest';
+import jest from 'eslint-plugin-jest';
 
 const NODE_LTS_VERSION = 24;
 
@@ -172,29 +173,23 @@ const config = createConfig([
   },
   {
     files: [
-      'packages/stellar-wallet-snap/**/*.test.ts',
-      'packages/stellar-wallet-snap/**/*.test.tsx',
-      'packages/stellar-wallet-snap/**/__mocks__/**/*.ts',
-      'packages/stellar-wallet-snap/**/*.fixtures.ts',
-      'packages/tron-wallet-snap/**/*.test.ts',
-      'packages/tron-wallet-snap/**/*.test.tsx',
-      'packages/tron-wallet-snap/**/__mocks__/**/*.ts',
-      'packages/tron-wallet-snap/src/utils/mockLogger.ts',
-      'packages/solana-wallet-snap/**/*.test.ts',
-      'packages/solana-wallet-snap/**/*.test.tsx',
-      'packages/solana-wallet-snap/**/__mocks__/**/*.ts',
+      '**/*.test.{js,ts,tsx}',
+      '**/tests/**/*.{js,ts,tsx}',
+      '**/__mocks__/**/*.{js,ts,tsx}',
+      '**/*.fixtures.ts',
     ],
-  },
-  {
-    files: ['**/*.test.{js,ts,tsx}', '**/tests/**/*.{js,ts,tsx}'],
-    extends: [jest],
+    extends: [vitest],
     rules: {
+      // Same swap `@metamask/eslint-config-jest` made. The Vitest rule allows
+      // `expect(...)` and `vi.mocked(...)`; the TypeScript rule does not.
+      '@typescript-eslint/unbound-method': 'off',
+      'vitest/unbound-method': 'error',
       // TODO: Upgrade these from warning to error in shared config
-      'jest/expect-expect': 'error',
-      'jest/no-alias-methods': 'error',
-      'jest/no-commented-out-tests': 'error',
-      'jest/no-disabled-tests': 'error',
-      'jest/no-mocks-import': 'off',
+      'vitest/expect-expect': 'error',
+      'vitest/no-alias-methods': 'error',
+      'vitest/no-commented-out-tests': 'error',
+      'vitest/no-disabled-tests': 'error',
+      'vitest/no-mocks-import': 'off',
     },
     settings: {
       node: {
@@ -203,27 +198,12 @@ const config = createConfig([
     },
   },
   {
-    files: [
-      'packages/bitcoin-wallet-snap/src/**/*.test.ts',
-      'packages/bitcoin-wallet-snap/src/**/*.test.tsx',
-      'packages/bitcoin-wallet-snap/src/**/__mocks__/**/*.ts',
-      'packages/bitcoin-wallet-snap/vitest.setup.ts',
-    ],
-    rules: {
-      // `jest/unbound-method` allows `jest.mocked`, not `vi.mocked`.
-      'jest/unbound-method': 'off',
-    },
-  },
-  {
-    files: ['scripts/**/*.test.ts'],
-    rules: {
-      // `jest/unbound-method` allows `jest.mocked`, not `vi.mocked`.
-      'jest/unbound-method': 'off',
-    },
-  },
-  {
     files: ['packages/bitcoin-wallet-snap/integration-test/**/*.ts'],
+    plugins: {
+      jest,
+    },
     rules: {
+      'jest/no-disabled-tests': 'error',
       // Integration tests import these from `@jest/globals` while the package
       // tsconfig also declares Jest and Vitest globals. Unit tests use Vitest
       // globals without importing them.
@@ -245,15 +225,15 @@ const config = createConfig([
     },
   },
   {
-    // These files are test helpers, not tests. We still use the Jest ESLint
+    // These files are test helpers, not tests. We still use the vitest ESLint
     // config here to ensure that ESLint expects a test-like environment, but
     // various rules meant just to apply to tests have been disabled.
     files: ['**/tests/**/*.{js,ts}'],
     ignores: ['**/*.test.{js,ts}'],
     rules: {
-      'jest/no-export': 'off',
-      'jest/require-top-level-describe': 'off',
-      'jest/no-if': 'off',
+      'vitest/no-export': 'off',
+      'vitest/require-top-level-describe': 'off',
+      'vitest/no-if': 'off',
     },
   },
   {
