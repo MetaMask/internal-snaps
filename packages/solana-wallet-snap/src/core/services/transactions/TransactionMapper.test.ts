@@ -1,3 +1,4 @@
+import { assert } from '@metamask/utils';
 import { address as asAddress, lamports } from '@solana/kit';
 import type { Mocked } from 'vitest';
 
@@ -89,6 +90,26 @@ describe('TransactionMapper', () => {
   });
 
   describe('mapRpcTransaction', () => {
+    it.each([
+      ['SOL to OBRIC', EXPECTED_SWAP_SOL_TO_OBRIC_DATA],
+      ['TRUMP to JUP', EXPECTED_SWAP_TRUMP_TO_JUP_DATA],
+      ['USDC to COBIE', EXPECTED_SWAP_USDC_TO_COBIE_DATA],
+    ])(
+      'maps a %s swap with lookup accounts without reporting parsing errors',
+      async (_, transaction) => {
+        const [feePayer] = transaction.transaction.message.accountKeys;
+        assert(feePayer);
+        const result = await transactionMapper.mapRpcTransaction(
+          transaction,
+          { ...mockAccount, address: feePayer },
+          Network.Mainnet,
+        );
+
+        expect(result).not.toBeNull();
+        expect(trackError).not.toHaveBeenCalled();
+      },
+    );
+
     it('maps native SOL transfers - as a sender', async () => {
       const result = await transactionMapper.mapRpcTransaction(
         EXPECTED_NATIVE_SOL_TRANSFER_DATA,

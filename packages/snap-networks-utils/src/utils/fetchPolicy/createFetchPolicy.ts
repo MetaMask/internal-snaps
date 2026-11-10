@@ -1,4 +1,5 @@
 import {
+  BrokenCircuitError,
   createServicePolicy,
   ExponentialBackoff,
   handleWhen,
@@ -8,6 +9,8 @@ import type {
   ServicePolicy,
 } from '@metamask/base-data-service';
 
+import type { AnalyticsService } from '../../services/analytics/AnalyticsService';
+import type { TrackErrorFn } from '../errors';
 import type { Logger } from '../logger/Logger';
 
 /**
@@ -46,6 +49,39 @@ export const FetchPolicyErrorName = {
 export const MAX_RETRY_AFTER_MS = 30_000;
 
 const DEFAULT_CIRCUIT_BREAK_DURATION_MS = 30_000;
+
+const ANALYTICS_EVENT_INTERVAL_MS = 60_000;
+
+/**
+ * The upstream services allowed in the "Snap Service Degraded" and "Snap
+ * Service Unavailable" events. Must match the `service` enum of the Segment
+ * schema, which rejects any other value.
+ */
+export type FetchPolicyService =
+  | 'solana_rpc'
+  | 'stellar_horizon'
+  | 'stellar_rpc'
+  | 'esplora'
+  | 'trongrid'
+  | 'tronweb_provider'
+  | 'tronweb_broadcast'
+  | 'price_api'
+  | 'token_api'
+  | 'nft_api'
+  | 'security_alerts_api';
+
+/**
+ * Why the last attempt of a call that used up its retries failed.
+ */
+export type FetchPolicyRetryReason =
+  | 'connection_failed'
+  | 'timed_out'
+  | 'non_successful_http_status';
+
+/**
+ * The errors the policy has already reported with `trackError`.
+ */
+const reportedErrors = new WeakSet<Error>();
 
 const RETRYABLE_HTTP_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
@@ -113,6 +149,81 @@ const isServiceFailure = (error: unknown): boolean =>
   isTransientError(error) ||
   ((error as FetchPolicyError | undefined)?.httpStatus ?? 0) >= 500;
 
+/**
+ * Whether an error was already reported by a fetch policy, so a caller that
+ * catches it shouldn't report it again. That is an error a policy reported
+ * with `trackError` after its retries, or an open-circuit rejection, which the
+ * "Snap Service Unavailable" event covers. Errors wrapped with `cause` are
+ * recognised too.
+ *
+ * @param error - The caught error.
+ * @returns `true` if the error is already reported.
+ */
+export const isReportedFetchPolicyError = (error: unknown): boolean => {
+  let current = error;
+  // Bounded, in case of a `cause` cycle.
+  for (let depth = 0; current instanceof Error && depth < 10; depth++) {
+    if (current instanceof BrokenCircuitError || reportedErrors.has(current)) {
+      return true;
+    }
+    current = current.cause;
+  }
+  return false;
+};
+
+/**
+ * Gets why a retried error failed. Only transient errors are retried, so an
+ * error that is neither a network failure nor a timeout has an HTTP status.
+ *
+ * @param error - The error of the last attempt.
+ * @returns The retry reason.
+ */
+const retryReasonOf = (error: unknown): FetchPolicyRetryReason => {
+  const name = (error as Error | undefined)?.name;
+  if (name === FetchPolicyErrorName.Network) {
+    return 'connection_failed';
+  }
+  if (name === FetchPolicyErrorName.Timeout) {
+    return 'timed_out';
+  }
+  return 'non_successful_http_status';
+};
+
+/**
+ * Wraps a function so it runs at most once per {@link ANALYTICS_EVENT_INTERVAL_MS}.
+ * Later calls within the interval are dropped.
+ *
+ * @param fn - The function to wrap.
+ * @returns The rate-limited function.
+ */
+const rateLimited = <Args extends unknown[]>(
+  fn: (...args: Args) => void,
+): ((...args: Args) => void) => {
+  let lastCalledAt = -Infinity;
+  return (...args) => {
+    const now = Date.now();
+    if (now - lastCalledAt < ANALYTICS_EVENT_INTERVAL_MS) {
+      return;
+    }
+    lastCalledAt = now;
+    fn(...args);
+  };
+};
+
+/**
+ * Runs a reporting call outside the policy's event listeners, so neither a
+ * synchronous throw nor a rejection can change the outcome of the call.
+ *
+ * @param report - The reporting call.
+ * @param onFailure - Called with the error if the reporting call fails.
+ */
+const runIsolated = (
+  report: () => Promise<unknown>,
+  onFailure: (error: unknown) => void,
+): void => {
+  Promise.resolve().then(report).catch(onFailure);
+};
+
 type Backoff = NonNullable<CreateServicePolicyOptions['backoff']>;
 
 /**
@@ -151,16 +262,18 @@ const withRetryAfter = (inner: Backoff): Backoff => ({
   },
 });
 
+/**
+ * The analytics events a fetch policy sends.
+ */
+export type FetchPolicyAnalytics = Pick<
+  AnalyticsService,
+  'trackServiceDegraded' | 'trackServiceUnavailable'
+>;
+
 export type CreateFetchPolicyOptions = Omit<
   CreateServicePolicyOptions,
   'retryFilterPolicy' | 'isServiceFailure'
 > & {
-  /**
-   * The upstream service the policy protects, e.g. `price_api`. Create one
-   * policy per service, so one failing service doesn't open the circuit for
-   * the others.
-   */
-  service: string;
   /**
    * The CAIP-2 chain ID the service is called for, if any.
    */
@@ -169,7 +282,34 @@ export type CreateFetchPolicyOptions = Omit<
    * Where retries, circuit breaks and give-ups are logged.
    */
   logger: Pick<Logger, 'warn'>;
-};
+  /**
+   * Reports each call that fails after its retries, once, with an error
+   * carrying only the service, chain, retry reason and status.
+   */
+  trackError?: TrackErrorFn;
+} & (
+    | {
+        /**
+         * The upstream service the policy protects, e.g. `price_api`. Create
+         * one policy per service, so one failing service doesn't open the
+         * circuit for the others.
+         */
+        service: string;
+        analytics?: undefined;
+      }
+    | {
+        /**
+         * The upstream service the policy protects. With `analytics`, it must
+         * be one of the services the Segment schema allows.
+         */
+        service: FetchPolicyService;
+        /**
+         * Sends "Snap Service Degraded" and "Snap Service Unavailable", each at
+         * most once a minute.
+         */
+        analytics?: FetchPolicyAnalytics;
+      }
+  );
 
 /**
  * Creates a retry and circuit-breaker policy for calls to one upstream
@@ -217,6 +357,13 @@ export type CreateFetchPolicyOptions = Omit<
  * {@link BrokenCircuitError} without calling the service. Its `name` is
  * `Error`, so check for it with `instanceof`.
  *
+ * With `analytics`, the policy sends "Snap Service Degraded" when a call is
+ * slower than 5 seconds or uses up its retries, and "Snap Service Unavailable"
+ * when the circuit opens, each at most once a minute. With `trackError`, it
+ * reports each call that uses up its retries. Callers should skip reporting
+ * errors for which {@link isReportedFetchPolicyError} returns `true`. Neither
+ * ever carries the URL, request or original error message.
+ *
  * The underlying library times calls with `performance.now()`, which snaps
  * don't have. Add `webpack` as a dev dependency, on the same major version as
  * `@metamask/snaps-cli`, and provide the shim in `snap.config.ts`:
@@ -244,6 +391,8 @@ export type CreateFetchPolicyOptions = Omit<
  * @param options.service - The upstream service name.
  * @param options.chainIdCaip - The CAIP-2 chain ID, if any.
  * @param options.logger - The logger.
+ * @param options.analytics - Sends the service events, if given.
+ * @param options.trackError - Reports calls that use up their retries, if given.
  * @param options.backoff - The base backoff. Defaults to exponential backoff.
  * @returns The policy. Wrap each call with `policy.execute()`.
  */
@@ -251,6 +400,8 @@ export const createFetchPolicy = ({
   service,
   chainIdCaip,
   logger,
+  analytics,
+  trackError,
   backoff = new ExponentialBackoff(),
   ...options
 }: CreateFetchPolicyOptions): ServicePolicy => {
@@ -285,9 +436,27 @@ export const createFetchPolicy = ({
       errorOf(reason),
     ),
   );
-  policy.retryPolicy.onGiveUp((reason) =>
-    logger.warn(`${prefix} Giving up:`, errorOf(reason)),
-  );
+  policy.retryPolicy.onGiveUp((reason) => {
+    // Only transient errors are retried, and those are always `Error`s.
+    const error = errorOf(reason) as FetchPolicyError;
+    logger.warn(`${prefix} Giving up:`, error);
+    if (!trackError) {
+      return;
+    }
+    reportedErrors.add(error);
+    // The original name isn't sent: mapped errors can keep an upstream one.
+    const status =
+      error.httpStatus === undefined ? '' : ` (HTTP ${error.httpStatus})`;
+    const tracked = new Error(
+      `${prefix} Gave up after retries: ${retryReasonOf(error)}${status}`,
+    );
+    tracked.name = 'FetchPolicyGiveUpError';
+    runIsolated(
+      async () => trackError(tracked),
+      (trackingError) =>
+        logger.warn(`${prefix} Failed to report give-up:`, trackingError),
+    );
+  });
   policy.onBreak((reason) => {
     const message = `${prefix} Circuit opened for ${policy.circuitBreakDuration} ms`;
     const error = errorOf(reason);
@@ -297,6 +466,56 @@ export const createFetchPolicy = ({
       logger.warn(`${message}:`, error);
     }
   });
+
+  if (analytics) {
+    const eventProperties = {
+      service,
+      ...(chainIdCaip === undefined ? {} : { chainIdCaip }),
+    };
+    const httpStatusOf = (error: unknown): { httpStatus?: number } => {
+      const httpStatus = (error as FetchPolicyError | undefined)?.httpStatus;
+      return httpStatus === undefined ? {} : { httpStatus };
+    };
+
+    const logTrackingFailure = (trackingError: unknown): void =>
+      logger.warn(`${prefix} Failed to track service event:`, trackingError);
+
+    policy.onDegraded(
+      rateLimited((data) => {
+        const { duration } = data as { duration?: number };
+        runIsolated(
+          async () =>
+            analytics.trackServiceDegraded(
+              duration === undefined
+                ? {
+                    ...eventProperties,
+                    type: 'retries_exhausted',
+                    retryReason: retryReasonOf(errorOf(data)),
+                    ...httpStatusOf(errorOf(data)),
+                  }
+                : {
+                    ...eventProperties,
+                    type: 'slow_success',
+                    durationMs: Math.round(duration),
+                  },
+            ),
+          logTrackingFailure,
+        );
+      }),
+    );
+    policy.onBreak(
+      rateLimited((reason) => {
+        runIsolated(
+          async () =>
+            analytics.trackServiceUnavailable({
+              ...eventProperties,
+              ...httpStatusOf(errorOf(reason)),
+            }),
+          logTrackingFailure,
+        );
+      }),
+    );
+  }
 
   return policy;
 };

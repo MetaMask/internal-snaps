@@ -7,7 +7,7 @@ import {
 import type { KeyringAccount } from '@metamask/keyring-api';
 import type { RemoteFeatureFlagsProvider } from '@metamask/snap-networks-utils';
 
-import { Networks } from '../../constants';
+import { isActiveNetwork, Networks } from '../../constants';
 import type { Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { extractScopesFromAssetIds } from '../../utils/caip';
@@ -171,11 +171,12 @@ export class AssetsService {
       return this.#coreAdapter.fetchAccountAssetsByIDs(account, assetIds);
     }
 
-    const scopes = extractScopesFromAssetIds(assetIds);
+    const activeScopes =
+      extractScopesFromAssetIds(assetIds).filter(isActiveNetwork);
 
     const freshAssets = (
       await Promise.all(
-        scopes.map((scope) =>
+        activeScopes.map((scope) =>
           this.#snapAdapter.fetchAssetsAndBalancesForAccount(scope, account),
         ),
       )

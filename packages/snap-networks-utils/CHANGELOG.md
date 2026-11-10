@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add optional `analytics` and `trackError` options to `createFetchPolicy`, to send the "Snap Service Degraded" and "Snap Service Unavailable" events and report calls that use up their retries ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
+- Add `isReportedFetchPolicyError`, so callers can skip errors a policy already reported ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
+- Add `trackServiceDegraded` and `trackServiceUnavailable` to `AnalyticsService` ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
+
 ## [3.2.0]
 
 ### Added

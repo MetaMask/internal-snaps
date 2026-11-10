@@ -22,6 +22,7 @@ import {
   FEE_LIMIT,
   Network,
   Networks,
+  NULL_ADDRESS,
   TRACK_TX_INTERVAL,
   ZERO,
 } from '../../constants';
@@ -509,7 +510,8 @@ export class ClientRequestHandler {
       /**
        * Check if we have enough of the asset we want to send...
        */
-      const { chainId: scope } = parseTronCaipAssetType(assetId);
+      const { chainId: scope, assetNamespace } =
+        parseTronCaipAssetType(assetId);
 
       const [asset, nativeTokenAsset, bandwidthAsset, energyAsset] =
         await this.#assetsService.getAccountAssetsByIDs(accountId, [
@@ -538,19 +540,20 @@ export class ClientRequestHandler {
         };
       }
 
-      if (!toAddress) {
-        return {
-          valid: true,
-          errors: [],
-        };
-      }
-
       /**
-       * Estimate the fees
+       * Estimate the fees. When the destination is unknown, build against the
+       * zero address so the transfer fee can be quoted. The sender's own
+       * address cannot be used because Tron rejects self-transfers. The probe
+       * is only a quote vehicle, so activation is skipped here and reserved
+       * separately below.
        */
+      const nativeTokenId = Networks[scope].nativeToken.id;
+      const isNativeToken = assetId === nativeTokenId;
+      const destination =
+        toAddress === '' ? NULL_ADDRESS : (toAddress ?? NULL_ADDRESS);
       const sendTransaction = await this.#sendService.buildTransaction({
         fromAccountId: accountId,
-        toAddress,
+        toAddress: destination,
         asset,
         amount: valueBN,
         feeLimit: FEE_LIMIT,
@@ -561,24 +564,43 @@ export class ClientRequestHandler {
         availableEnergy: energyBalance,
         availableBandwidth: bandwidthBalance,
         feeLimit: FEE_LIMIT,
+        skipAccountActivation: !toAddress,
       });
 
       /**
        * The fee calculation already takes into account the energy and bandwidth consumption,
        * so we only need to make sure we have enough TRX to cover overages.
        */
-      const nativeTokenId = Networks[scope].nativeToken.id;
-      const trxFee = new BigNumber(
+      const baseTrxFee = new BigNumber(
         fees.find((fee) => fee.asset.type === nativeTokenId)?.asset.amount ??
           '0',
       );
 
       /**
+       * An unknown destination is assumed inactive, so add its activation
+       * cost: the 1 TRX burn plus the 0.1 TRX Bandwidth shortfall when the
+       * sender's staked Bandwidth cannot cover the account creation. Only
+       * native TRX and TRC-10 transfers activate recipients; TRC-20 sends do
+       * not.
+       */
+      const activationTrxFee =
+        !toAddress && (isNativeToken || assetNamespace === 'trc10')
+          ? (
+              await this.#feeCalculatorService.getAccountActivationFee({
+                scope,
+                toAddress: undefined,
+                senderAddress: account.address,
+              })
+            ).trxFee
+          : ZERO;
+
+      /**
        * Don't forget that we can also be sending TRX so we must add the fees to the amount that will be
        * sent.
        */
-      const totalTrxToSpend =
-        assetId === nativeTokenId ? valueBN.plus(trxFee) : trxFee;
+      const totalTrxToSpend = (isNativeToken ? valueBN : ZERO)
+        .plus(baseTrxFee)
+        .plus(activationTrxFee);
 
       if (totalTrxToSpend.isGreaterThan(nativeTokenBalance)) {
         return {

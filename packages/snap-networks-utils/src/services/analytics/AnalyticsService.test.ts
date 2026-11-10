@@ -265,6 +265,96 @@ describe('AnalyticsService', () => {
     });
   });
 
+  it('tracks a slow service as Snap Service Degraded', async () => {
+    await analytics.trackServiceDegraded({
+      service: 'stellar_horizon',
+      chainIdCaip: 'stellar:pubnet',
+      type: 'slow_success',
+      durationMs: 6000,
+    });
+
+    expect(request).toHaveBeenCalledWith({
+      method: 'snap_trackEvent',
+      params: {
+        event: {
+          event: 'Snap Service Degraded',
+          properties: {
+            message: 'Snap service degraded',
+            service: 'stellar_horizon',
+            chain_id_caip: 'stellar:pubnet',
+            type: 'slow_success',
+            duration_ms: 6000,
+          },
+        },
+      },
+    });
+  });
+
+  it('tracks a service that used up its retries as Snap Service Degraded', async () => {
+    await analytics.trackServiceDegraded({
+      service: 'price_api',
+      type: 'retries_exhausted',
+      retryReason: 'non_successful_http_status',
+      httpStatus: 503,
+    });
+
+    expect(request).toHaveBeenCalledWith({
+      method: 'snap_trackEvent',
+      params: {
+        event: {
+          event: 'Snap Service Degraded',
+          properties: {
+            message: 'Snap service degraded',
+            service: 'price_api',
+            type: 'retries_exhausted',
+            retry_reason: 'non_successful_http_status',
+            http_status: 503,
+          },
+        },
+      },
+    });
+  });
+
+  it('tracks Snap Service Unavailable', async () => {
+    await analytics.trackServiceUnavailable({
+      service: 'solana_rpc',
+      chainIdCaip: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+      httpStatus: 503,
+    });
+
+    expect(request).toHaveBeenCalledWith({
+      method: 'snap_trackEvent',
+      params: {
+        event: {
+          event: 'Snap Service Unavailable',
+          properties: {
+            message: 'Snap service unavailable',
+            service: 'solana_rpc',
+            chain_id_caip: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+            http_status: 503,
+          },
+        },
+      },
+    });
+  });
+
+  it('tracks Snap Service Unavailable without the optional properties', async () => {
+    await analytics.trackServiceUnavailable({ service: 'token_api' });
+
+    expect(request).toHaveBeenCalledWith({
+      method: 'snap_trackEvent',
+      params: {
+        event: {
+          event: 'Snap Service Unavailable',
+          properties: {
+            message: 'Snap service unavailable',
+            service: 'token_api',
+          },
+        },
+      },
+    });
+  });
+
   it('reports and logs tracking failures without throwing', async () => {
     const error = new Error('Tracking failed');
     request.mockRejectedValueOnce(error);
