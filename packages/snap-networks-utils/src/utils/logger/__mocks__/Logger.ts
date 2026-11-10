@@ -1,14 +1,17 @@
+import { vi } from 'vitest';
+import type { Mocked } from 'vitest';
+
 import type { Logger } from '../Logger';
 
 export const mockLogger = {
-  log: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn(),
-  trace: jest.fn(),
+  log: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  trace: vi.fn(),
   withPrefix: (prefix: string): Logger => createPrefixedLogger([prefix]),
-} as unknown as jest.Mocked<Logger>;
+} as unknown as Mocked<Logger>;
 
 function createPrefixedLogger(prefixes: string[]): Logger {
   return new Proxy(mockLogger, {

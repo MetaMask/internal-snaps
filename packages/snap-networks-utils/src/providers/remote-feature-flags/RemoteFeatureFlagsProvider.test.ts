@@ -1,4 +1,5 @@
 import type { RemoteFeatureFlagControllerState } from '@metamask/remote-feature-flag-controller';
+import type { Mocked } from 'vitest';
 
 import type { RemoteFeatureFlagsProviderMessenger } from './RemoteFeatureFlagsProvider';
 import { RemoteFeatureFlagsProvider } from './RemoteFeatureFlagsProvider';
@@ -16,7 +17,7 @@ const DEFAULT_STATE: RemoteFeatureFlagControllerState = {
 
 type WithRemoteFeatureFlagsProviderCallback<ReturnValue> = (payload: {
   remoteFeatureFlagsProvider: RemoteFeatureFlagsProvider;
-  mockMessenger: jest.Mocked<RemoteFeatureFlagsProviderMessenger>;
+  mockMessenger: Mocked<RemoteFeatureFlagsProviderMessenger>;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -29,8 +30,8 @@ type WithRemoteFeatureFlagsProviderCallback<ReturnValue> = (payload: {
 async function withRemoteFeatureFlagsProvider<ReturnValue>(
   testFunction: WithRemoteFeatureFlagsProviderCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  const mockMessenger: jest.Mocked<RemoteFeatureFlagsProviderMessenger> = {
-    call: jest.fn().mockResolvedValue(DEFAULT_STATE),
+  const mockMessenger: Mocked<RemoteFeatureFlagsProviderMessenger> = {
+    call: vi.fn().mockResolvedValue(DEFAULT_STATE),
   };
 
   const remoteFeatureFlagsProvider = new RemoteFeatureFlagsProvider({

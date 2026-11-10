@@ -12,7 +12,7 @@ describe('InFlightCoalescer', () => {
   it('shares one in-flight run between concurrent callers with the same key', async () => {
     const coalescer = new InFlightCoalescer();
     let resolveRun: (value: string) => void = () => undefined;
-    const fn = jest.fn(
+    const fn = vi.fn(
       async () =>
         new Promise<string>((resolve) => {
           resolveRun = resolve;
@@ -32,7 +32,7 @@ describe('InFlightCoalescer', () => {
   it('shares one in-flight run with a same-key reentrant caller', async () => {
     const coalescer = new InFlightCoalescer();
     let reentrant: Promise<string> | undefined;
-    const fn = jest.fn(async () => {
+    const fn = vi.fn(async () => {
       reentrant = coalescer.run('key', async () => 'duplicate');
       return 'shared';
     });
@@ -46,7 +46,7 @@ describe('InFlightCoalescer', () => {
 
   it('runs again once the previous run for the key has settled', async () => {
     const coalescer = new InFlightCoalescer();
-    const fn = jest.fn(async () => 'value');
+    const fn = vi.fn(async () => 'value');
 
     await coalescer.run('key', fn);
     await coalescer.run('key', fn);
@@ -56,8 +56,8 @@ describe('InFlightCoalescer', () => {
 
   it('runs concurrent callers with different keys independently', async () => {
     const coalescer = new InFlightCoalescer();
-    const fnA = jest.fn(async () => 'a');
-    const fnB = jest.fn(async () => 'b');
+    const fnA = vi.fn(async () => 'a');
+    const fnB = vi.fn(async () => 'b');
 
     const [resultA, resultB] = await Promise.all([
       coalescer.run('a', fnA),
@@ -73,7 +73,7 @@ describe('InFlightCoalescer', () => {
   it('propagates rejections to coalesced callers and clears the entry', async () => {
     const coalescer = new InFlightCoalescer();
     let rejectRun: (error: Error) => void = () => undefined;
-    const failing = jest.fn(
+    const failing = vi.fn(
       async () =>
         new Promise<string>((_resolve, reject) => {
           rejectRun = reject;

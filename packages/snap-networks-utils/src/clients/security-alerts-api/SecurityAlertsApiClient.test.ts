@@ -1,4 +1,5 @@
 import { ConstantBackoff } from '@metamask/base-data-service';
+import type { Mock, MockedFunction } from 'vitest';
 
 import { HttpError } from '../../utils/errors';
 import { createFetchPolicy } from '../../utils/fetchPolicy/createFetchPolicy';
@@ -10,14 +11,14 @@ import {
 const SCAN_URL = 'https://security-alerts.example/tron/transaction/scan';
 
 describe('SecurityAlertsApiClient', () => {
-  const fetchMock = jest.fn() as jest.MockedFunction<typeof globalThis.fetch>;
+  const fetchMock = vi.fn() as MockedFunction<typeof globalThis.fetch>;
 
   const responseWith = (overrides: Partial<Response> = {}): Response =>
     ({
       ok: true,
       status: 200,
       statusText: '',
-      json: jest.fn().mockResolvedValue({ verdict: 'Benign' }),
+      json: vi.fn().mockResolvedValue({ verdict: 'Benign' }),
       ...overrides,
     }) as unknown as Response;
 
@@ -43,10 +44,10 @@ describe('SecurityAlertsApiClient', () => {
     });
 
   const createPolicy = (): {
-    logger: { warn: jest.Mock };
+    logger: { warn: Mock };
     policy: ReturnType<typeof createFetchPolicy>;
   } => {
-    const logger = { warn: jest.fn() };
+    const logger = { warn: vi.fn() };
     return {
       logger,
       policy: createFetchPolicy({
@@ -67,7 +68,7 @@ describe('SecurityAlertsApiClient', () => {
   };
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   it('rejects an invalid scan URL', () => {
@@ -96,7 +97,7 @@ describe('SecurityAlertsApiClient', () => {
   });
 
   it('defaults to the global fetch when none is provided', async () => {
-    const globalFetchSpy = jest
+    const globalFetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(responseWith());
     await new SecurityAlertsApiClient({ scanUrl: SCAN_URL }).scanTransaction({
@@ -185,7 +186,7 @@ describe('SecurityAlertsApiClient', () => {
     fetchMock
       .mockResolvedValueOnce(
         responseWith({
-          json: jest
+          json: vi
             .fn()
             .mockRejectedValue(new SyntaxError('Unexpected end of JSON input')),
         }),
@@ -259,7 +260,7 @@ describe('SecurityAlertsApiClient', () => {
   it('throws an HttpError with the parse error as cause when the response body is not valid JSON', async () => {
     fetchMock.mockResolvedValue(
       responseWith({
-        json: jest
+        json: vi
           .fn()
           .mockRejectedValue(new SyntaxError('Unexpected end of JSON input')),
       }),
