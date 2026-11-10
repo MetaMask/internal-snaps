@@ -228,7 +228,7 @@
     "@typescript-eslint/no-explicit-any": {
       "count": 4
     },
-    "jest/no-disabled-tests": {
+    "vitest/no-disabled-tests": {
       "count": 2
     }
   },
@@ -245,6 +245,11 @@
       "count": 2
     },
     "import-x/no-named-as-default": {
+      "count": 1
+    }
+  },
+  "packages/solana-wallet-snap/src/core/services/assets/adapters/SnapAssetsAdapter.test.ts": {
+    "vitest/no-conditional-in-test": {
       "count": 1
     }
   },
@@ -425,7 +430,7 @@
     }
   },
   "packages/solana-wallet-snap/src/core/services/transactions/TransactionMapper.test.ts": {
-    "jest/no-disabled-tests": {
+    "vitest/no-disabled-tests": {
       "count": 2
     }
   },
@@ -458,6 +463,11 @@
       "count": 1
     },
     "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "packages/solana-wallet-snap/src/core/services/transactions/utils/isSpam.test.ts": {
+    "vitest/no-conditional-in-test": {
       "count": 2
     }
   },
@@ -697,6 +707,11 @@
       "count": 3
     }
   },
+  "packages/solana-wallet-snap/src/entities/instructions/instructions.test.ts": {
+    "vitest/no-conditional-in-test": {
+      "count": 1
+    }
+  },
   "packages/solana-wallet-snap/src/entities/instructions/instructions.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 2
@@ -756,7 +771,7 @@
     "@typescript-eslint/no-explicit-any": {
       "count": 1
     },
-    "jest/unbound-method": {
+    "vitest/unbound-method": {
       "count": 1
     }
   },
@@ -779,7 +794,7 @@
     "@typescript-eslint/no-explicit-any": {
       "count": 1
     },
-    "jest/unbound-method": {
+    "vitest/unbound-method": {
       "count": 1
     }
   },
@@ -805,13 +820,13 @@
     "@typescript-eslint/no-explicit-any": {
       "count": 9
     },
-    "jest/no-disabled-tests": {
+    "vitest/no-disabled-tests": {
       "count": 1
     },
-    "jest/no-restricted-matchers": {
+    "vitest/no-restricted-matchers": {
       "count": 1
     },
-    "jest/unbound-method": {
+    "vitest/unbound-method": {
       "count": 4
     }
   },
@@ -827,7 +842,7 @@
     "@typescript-eslint/no-explicit-any": {
       "count": 1
     },
-    "jest/unbound-method": {
+    "vitest/unbound-method": {
       "count": 2
     }
   },
@@ -974,6 +989,11 @@
       "count": 1
     }
   },
+  "packages/stellar-wallet-snap/src/handlers/keyring/keyring.test.ts": {
+    "vitest/no-conditional-in-test": {
+      "count": 2
+    }
+  },
   "packages/stellar-wallet-snap/src/handlers/keyring/signMessage.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 1
@@ -1004,7 +1024,7 @@
     "@typescript-eslint/explicit-function-return-type": {
       "count": 1
     },
-    "jest/unbound-method": {
+    "vitest/unbound-method": {
       "count": 2
     }
   },
@@ -1042,6 +1062,9 @@
   "packages/stellar-wallet-snap/src/services/on-chain-account/OnChainAccountService.test.ts": {
     "@typescript-eslint/explicit-function-return-type": {
       "count": 1
+    },
+    "vitest/no-conditional-in-test": {
+      "count": 1
     }
   },
   "packages/stellar-wallet-snap/src/services/on-chain-account/OnChainAccountSynchronizeService.test.ts": {
@@ -1053,6 +1076,9 @@
     },
     "jsdoc/require-returns": {
       "count": 2
+    },
+    "vitest/no-conditional-in-test": {
+      "count": 1
     }
   },
   "packages/stellar-wallet-snap/src/services/on-chain-account/__mocks__/onChainAccount.fixtures.ts": {

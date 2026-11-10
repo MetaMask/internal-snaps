@@ -42,9 +42,9 @@
     "@lavamoat/preinstall-always-fail": "^2.1.0",
     "@metamask/create-release-branch": "^4.2.2",
     "@metamask/eslint-config": "^15.0.1",
-    "@metamask/eslint-config-jest": "^15.0.1",
     "@metamask/eslint-config-nodejs": "^15.0.1",
     "@metamask/eslint-config-typescript": "^15.0.1",
+    "@metamask/eslint-config-vitest": "^15.0.1",
     "@metamask/utils": "^11.11.0",
     "@types/lodash": "^4.17.15",
     "@types/node": "^24",
@@ -52,6 +52,7 @@
     "@typescript-eslint/eslint-plugin": "^8.48.0",
     "@typescript-eslint/parser": "^8.48.0",
     "@vitest/coverage-istanbul": "^5.0.5",
+    "@vitest/eslint-plugin": "^1.1.4",
     "@yarnpkg/types": "^4.0.0",
     "depcheck": "^1.4.7",
     "eslint": "^9.39.1",
@@ -106,7 +107,6 @@
       "@lavamoat/preinstall-always-fail": false,
       "simple-git-hooks": false,
       "tsx>esbuild": false,
-      "jest>@jest/core>jest-resolve>unrs-resolver": false,
       "eslint-plugin-jest>jest>@jest/core>jest-resolve>unrs-resolver": false
     }
   }

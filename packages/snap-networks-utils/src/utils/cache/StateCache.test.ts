@@ -1,4 +1,4 @@
-/* eslint-disable jest/prefer-strict-equal */
+/* eslint-disable vitest/prefer-strict-equal */
 
 import { Logger, LogLevel } from '../logger/Logger';
 import { InMemoryState } from '../state/InMemoryState';
