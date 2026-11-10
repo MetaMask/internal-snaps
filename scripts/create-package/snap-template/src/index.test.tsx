@@ -5,17 +5,17 @@ import { onRpcRequest } from '.';
 
 const request = vi.fn();
 
-beforeEach(() => {
-  vi.stubGlobal('snap', { request });
-});
-
 describe('onRpcRequest', () => {
+  beforeEach(() => {
+    vi.stubGlobal('snap', { request });
+  });
+
   it('asks for confirmation on hello', async () => {
     request.mockResolvedValue(true);
     const origin = 'https://example.com';
 
-    await expect(
-      onRpcRequest({
+    expect(
+      await onRpcRequest({
         origin,
         request: {
           jsonrpc: '2.0',
@@ -23,7 +23,7 @@ describe('onRpcRequest', () => {
           method: 'hello',
         } as JsonRpcRequest,
       }),
-    ).resolves.toBe(true);
+    ).toBe(true);
 
     expect(request).toHaveBeenCalledWith({
       method: 'snap_dialog',
