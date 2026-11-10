@@ -15,7 +15,7 @@ fi
 
 cleanup() {
   echo "Stopping Docker services..."
-  "${COMPOSE[@]}" -f integration-test/docker-compose.yml down
+  "${COMPOSE[@]}" -f integration-test/docker-compose.yml down --timeout 0
 }
 trap cleanup EXIT
 
@@ -34,7 +34,17 @@ echo "Docker services started successfully."
 "${COMPOSE[@]}" -f integration-test/docker-compose.yml ps
 
 echo "Waiting for Esplora to be ready..."
-sleep 5
+for _ in $(seq 1 60); do
+  if curl --silent --fail http://localhost:8094/regtest/api/blocks/tip/height > /dev/null; then
+    break
+  fi
+  sleep 0.5
+done
+
+if ! curl --silent --fail http://localhost:8094/regtest/api/blocks/tip/height > /dev/null; then
+  echo "Error: Esplora did not become ready" >&2
+  exit 1
+fi
 
 # Transfer funds to test address
 docker exec esplora bash /init-esplora.sh

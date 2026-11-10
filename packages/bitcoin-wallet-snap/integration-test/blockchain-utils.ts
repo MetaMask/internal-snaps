@@ -7,6 +7,10 @@ import process from 'process';
 /**
  * Minimal utility for Bitcoin regtest operations in integration tests
  */
+const POLL_INTERVAL_MS = 50;
+
+const POLL_MAX_RETRIES = 200;
+
 export class BlockchainTestUtils {
   readonly #containerName: string;
 
@@ -15,6 +19,8 @@ export class BlockchainTestUtils {
   readonly #esploraPort: number;
 
   readonly #esploraBaseUrl: string;
+
+  #minerAddress: string | undefined;
 
   constructor(options?: {
     containerName?: string;
@@ -61,7 +67,7 @@ export class BlockchainTestUtils {
    */
   async #waitForEsploraHeight(
     targetHeight: number,
-    maxRetries = 20,
+    maxRetries = POLL_MAX_RETRIES,
   ): Promise<void> {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
@@ -77,7 +83,7 @@ export class BlockchainTestUtils {
       } catch {
         // Esplora not ready yet
       }
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
     }
     throw new Error(
       `Esplora did not reach height ${targetHeight} after ${maxRetries} attempts`,
@@ -90,7 +96,10 @@ export class BlockchainTestUtils {
    * @param txid - The transaction ID to wait for
    * @param maxRetries - Maximum number of polling attempts
    */
-  async #waitForEsploraTx(txid: string, maxRetries = 20): Promise<void> {
+  async #waitForEsploraTx(
+    txid: string,
+    maxRetries = POLL_MAX_RETRIES,
+  ): Promise<void> {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const response = await fetch(`${this.#esploraBaseUrl}/tx/${txid}`);
@@ -100,7 +109,7 @@ export class BlockchainTestUtils {
       } catch {
         // Not ready yet
       }
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
     }
     throw new Error(
       `Esplora did not index transaction ${txid} after ${maxRetries} attempts`,
@@ -112,14 +121,22 @@ export class BlockchainTestUtils {
    *
    * @param address - The Bitcoin address to send to
    * @param amount - The amount of BTC to send
+   * @param waitForIndexer - Whether to wait for Esplora to index the transaction. Skip when
+   * `mineBlocks` follows, since that already waits for the indexed height.
    * @returns The transaction ID
    */
-  async sendToAddress(address: string, amount: number): Promise<string> {
+  async sendToAddress(
+    address: string,
+    amount: number,
+    waitForIndexer = true,
+  ): Promise<string> {
     const txid = this.#execCli(
       `-rpcwallet=default sendtoaddress "${address}" ${amount}`,
     );
 
-    await this.#waitForEsploraTx(txid);
+    if (waitForIndexer) {
+      await this.#waitForEsploraTx(txid);
+    }
     return txid;
   }
 
@@ -129,12 +146,10 @@ export class BlockchainTestUtils {
    * @param count - The number of blocks to mine
    */
   async mineBlocks(count: number): Promise<void> {
-    const currentHeight = parseInt(this.#execCli('getblockcount'), 10);
-    const targetHeight = currentHeight + count;
+    this.#minerAddress ??= this.#execCli('getnewaddress');
+    this.#execCli(`generatetoaddress ${count} ${this.#minerAddress}`);
 
-    const minerAddress = this.#execCli('getnewaddress');
-    this.#execCli(`generatetoaddress ${count} ${minerAddress}`);
-
+    const targetHeight = parseInt(this.#execCli('getblockcount'), 10);
     await this.#waitForEsploraHeight(targetHeight);
   }
 
