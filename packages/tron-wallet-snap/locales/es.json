@@ -80,10 +80,10 @@
       "message": "Registra tu cuenta como candidato a Super Representante y quema permanentemente 9999 TRX."
     },
     "confirmation.simulationTitleAPIError": {
-      "message": "Debido a un error, no pudimos verificar alertas de seguridad."
+      "message": "Security check unavailable"
     },
     "confirmation.simulationMessageAPIError": {
-      "message": "Solo continúe si confía en cada dirección involucrada."
+      "message": "We couldn't complete this safety check. Continue only if you trust the site and addresses involved."
     },
     "confirmation.simulationErrorTitle": {
       "message": "Esta transacción se revirtió durante la simulación."

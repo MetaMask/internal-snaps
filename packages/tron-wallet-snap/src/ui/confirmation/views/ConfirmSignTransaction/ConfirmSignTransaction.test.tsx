@@ -290,8 +290,7 @@ describe('ConfirmSignTransaction', () => {
 
   describe('security alert banner', () => {
     const SCAN_IN_PROGRESS_TITLE = 'Checking for security issues';
-    const SCAN_FAILED_TITLE =
-      "Because of an error, we couldn't check for security alerts.";
+    const SCAN_FAILED_TITLE = 'Security check unavailable';
     const MALICIOUS_TITLE = 'This is a deceptive request';
 
     const render = (
@@ -316,13 +315,13 @@ describe('ConfirmSignTransaction', () => {
       },
     );
 
-    it('renders the scan-failed danger banner when the scan request fails', () => {
+    it('renders the scan-failed info banner when the scan request fails', () => {
       const { texts, serialized } = render(
         buildContext({ scanFetchStatus: FetchStatus.Error, scan: null }),
       );
 
       expect(texts).toContain(SCAN_FAILED_TITLE);
-      expect(serialized).toContain('"severity":"danger"');
+      expect(serialized).toContain('"severity":"info"');
     });
 
     it('renders malicious validations as a danger banner', () => {
