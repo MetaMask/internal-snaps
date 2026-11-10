@@ -215,6 +215,13 @@ const config = createConfig([
     },
   },
   {
+    files: ['scripts/**/*.test.ts'],
+    rules: {
+      // `jest/unbound-method` allows `jest.mocked`, not `vi.mocked`.
+      'jest/unbound-method': 'off',
+    },
+  },
+  {
     files: ['packages/bitcoin-wallet-snap/integration-test/**/*.ts'],
     rules: {
       // Integration tests import these from `@jest/globals` while the package
