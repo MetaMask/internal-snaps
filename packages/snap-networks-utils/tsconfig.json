@@ -1,7 +1,6 @@
 {
   "extends": "../../tsconfig.packages.json",
   "compilerOptions": {
-    "baseUrl": "./",
     "jsx": "react-jsx",
     "jsxImportSource": "@metamask/snaps-sdk",
     "types": ["node", "vitest/globals"]

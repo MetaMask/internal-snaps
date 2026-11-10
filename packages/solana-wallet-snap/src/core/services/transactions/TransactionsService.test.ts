@@ -4,8 +4,8 @@ import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import { address as asAddress } from '@solana/kit';
-import type { NativeAsset, TokenAsset } from 'src/entities';
 
+import type { NativeAsset, TokenAsset } from '../../../entities';
 import { KnownCaip19Id, Network } from '../../constants/solana';
 import {
   MOCK_SOLANA_KEYRING_ACCOUNT_0,

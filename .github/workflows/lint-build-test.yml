@@ -116,7 +116,7 @@ jobs:
         node-version: [26.x]
         script:
           - lint:tsc
-          - lint:eslint
+          - lint:oxlint
           - lint:misc:check
           - constraints
           - lint:dependencies
