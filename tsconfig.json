@@ -9,11 +9,24 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@metamask/snaps-sdk",
     "lib": ["ES2023"],
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "noEmit": true,
     "noErrorTruncation": true,
     "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["node", "vitest/globals"]
   },
   "files": [],
-  "include": ["./docs", "./tests", "./scripts"]
+  "include": [
+    "./docs",
+    "./tests",
+    "./scripts",
+    "./vitest.config.packages.ts",
+    "./vitest.config.scripts.ts"
+  ],
+  "exclude": [
+    "./scripts/create-package/snap-template/**",
+    "./scripts/create-package/library-template/**"
+  ]
 }

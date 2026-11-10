@@ -14,7 +14,6 @@ ignores:
   - 'eslint-interactive'
   - 'rimraf'
   - 'simple-git-hooks'
-  - 'ts-jest'
   - 'vitest'
   - '@vitest/coverage-istanbul'
   - 'vite'
@@ -25,15 +24,11 @@ ignores:
   - '@typescript-eslint/*'
   - 'eslint-config-*'
   - 'eslint-plugin-*'
-  - 'jest-silent-reporter'
-  - 'jest-transform-stub'
   - 'prettier-plugin-packagejson'
   - 'typescript-eslint'
-  # Jest environment referenced in `jest.config.scripts.js`
+  # Jest environments pulled in by Bitcoin integration tests
   - 'jest-environment-node'
   - 'jest-environment-jsdom'
-  # Provides Jest 29 matcher types required by `@metamask/snaps-jest`.
-  - 'expect'
   # Ignore dependencies imported implicitly by tools
   - 'eslint-import-resolver-typescript'
   # Ignore dependencies which plug into the NPM lifecycle

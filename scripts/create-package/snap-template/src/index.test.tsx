@@ -1,52 +1,64 @@
-import type { SnapConfirmationInterface } from '@metamask/snaps-jest';
-import { installSnap } from '@metamask/snaps-jest';
-import { Box, Text as SnapText, Bold } from '@metamask/snaps-sdk/jsx';
+import type { JsonRpcRequest } from '@metamask/snaps-sdk';
+import { Bold, Box, Text as SnapText } from '@metamask/snaps-sdk/jsx';
+
+import { onRpcRequest } from '.';
+
+const request = vi.fn();
+
+beforeEach(() => {
+  vi.stubGlobal('snap', { request });
+});
 
 describe('onRpcRequest', () => {
-  describe('hello', () => {
-    it('shows a confirmation dialog', async () => {
-      const snap = await installSnap();
+  it('asks for confirmation on hello', async () => {
+    request.mockResolvedValue(true);
+    const origin = 'https://example.com';
 
-      const origin = 'Jest';
-      const response = snap.request({
-        method: 'hello',
+    await expect(
+      onRpcRequest({
         origin,
-      });
+        request: {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'hello',
+        } as JsonRpcRequest,
+      }),
+    ).resolves.toBe(true);
 
-      const ui = (await response.getInterface()) as SnapConfirmationInterface;
-      expect(ui.type).toBe('confirmation');
-      expect(ui).toRender(
-        <Box>
-          <SnapText>
-            Hello, <Bold>{origin}</Bold>!
-          </SnapText>
-          <SnapText>
-            This custom confirmation is just for display purposes.
-          </SnapText>
-          <SnapText>
-            But you can edit the snap source code to make it do something, if
-            you want to!
-          </SnapText>
-        </Box>,
-      );
-
-      await ui.ok();
-
-      expect(await response).toRespondWith(true);
+    expect(request).toHaveBeenCalledWith({
+      method: 'snap_dialog',
+      params: {
+        type: 'confirmation',
+        content: (
+          <Box>
+            <SnapText>
+              Hello, <Bold>{origin}</Bold>!
+            </SnapText>
+            <SnapText>
+              This custom confirmation is just for display purposes.
+            </SnapText>
+            <SnapText>
+              But you can edit the snap source code to make it do something, if
+              you want to!
+            </SnapText>
+          </Box>
+        ),
+      },
     });
   });
 
-  it('throws an error if the requested method does not exist', async () => {
-    const snap = await installSnap();
+  it('throws if the requested method does not exist', async () => {
+    await expect(
+      onRpcRequest({
+        origin: 'https://example.com',
+        request: {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'foo',
+        } as JsonRpcRequest,
+      }),
+    ).rejects.toThrow('Method not found.');
 
-    const response = await snap.request({
-      method: 'foo',
-    });
-
-    expect(response).toRespondWithError({
-      code: -32603,
-      message: 'Method not found.',
-      stack: expect.any(String),
-    });
+    expect(request).not.toHaveBeenCalled();
   });
 });
