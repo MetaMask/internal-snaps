@@ -982,7 +982,6 @@ describe('CronHandler', () => {
       const mockSnapClient = {
         ...buildMockSnapClient(null),
       };
-      // eslint-disable-next-line jest/unbound-method
       vi.mocked(mockAnalyticsService.trackTransactionFinalized).mockClear();
       const mockAccountsService: MockAccountsService = {
         findByIds: vi.fn(),

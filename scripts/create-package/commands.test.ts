@@ -5,18 +5,23 @@ import { createPackageHandler } from './commands';
 import { PackageTypes } from './constants';
 import * as utils from './utils';
 
-jest.mock('./utils', () => ({
-  finalizeAndWriteData: jest.fn(),
-  readMonorepoFiles: jest.fn(),
+vi.mock('./utils', () => ({
+  finalizeAndWriteData: vi.fn(),
+  readMonorepoFiles: vi.fn(),
 }));
 
 // January 2 to avoid time zone issues.
-jest.useFakeTimers().setSystemTime(new Date('2023-01-02'));
+vi.useFakeTimers();
+vi.setSystemTime(new Date('2023-01-02'));
 
 describe('create-package/commands', () => {
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
   describe('createPackageHandler', () => {
     it('should create the expected library package', async () => {
-      (utils.readMonorepoFiles as jest.Mock).mockResolvedValue({
+      vi.mocked(utils.readMonorepoFiles).mockResolvedValue({
         nodeVersions: '>=18.0.0',
       });
 
@@ -47,7 +52,7 @@ describe('create-package/commands', () => {
     });
 
     it('should create the expected snap package', async () => {
-      (utils.readMonorepoFiles as jest.Mock).mockResolvedValue({
+      vi.mocked(utils.readMonorepoFiles).mockResolvedValue({
         nodeVersions: '>=18.0.0',
       });
 

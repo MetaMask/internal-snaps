@@ -1,13 +1,12 @@
 import cli from './cli';
 import { commands } from './commands';
 
-jest.mock('./cli');
+vi.mock('./cli');
 
 describe('create-package/index', () => {
   let originalProcess: typeof globalThis.process;
   beforeEach(() => {
     originalProcess = globalThis.process;
-    // TODO: Replace with `jest.replaceProperty` after Jest v29 update.
     globalThis.process = { ...globalThis.process };
   });
 
@@ -16,13 +15,14 @@ describe('create-package/index', () => {
   });
 
   it('executes the CLI application', async () => {
-    const mock = cli as jest.MockedFunction<typeof cli>;
+    const mock = vi.mocked(cli);
     mock.mockRejectedValue('foo');
 
-    jest.spyOn(console, 'error').mockImplementation();
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    // eslint-disable-next-line @typescript-eslint/no-require-imports, n/global-require, import-x/no-unassigned-import
-    require('.');
+    // Node16 resolution requires the `.js` specifier for this dynamic import.
+    // eslint-disable-next-line import-x/no-useless-path-segments
+    await import('./index.js');
     await new Promise((resolve) => setImmediate(resolve));
 
     expect(cli).toHaveBeenCalledTimes(1);

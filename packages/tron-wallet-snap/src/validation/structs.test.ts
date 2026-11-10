@@ -1,4 +1,4 @@
-/* eslint-disable jest/require-to-throw-message */
+/* eslint-disable vitest/require-to-throw-message */
 import { assert, is } from '@metamask/superstruct';
 
 import { Base58Struct, Base64Struct } from './structs';
