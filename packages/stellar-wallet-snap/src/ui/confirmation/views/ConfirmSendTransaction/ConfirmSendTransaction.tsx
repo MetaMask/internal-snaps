@@ -61,6 +61,7 @@ export const ConfirmSendTransaction = ({
   transactionsFetchStatus = FetchStatus.Initial,
   errorMessage,
   memo: contextMemo,
+  memoEditable = true,
   supportsMemo = true,
 }: ConfirmSendTransactionProps): ComponentOrElement => {
   const t = i18n(locale);
@@ -171,14 +172,16 @@ export const ConfirmSendTransaction = ({
               </SnapText>
               <Box direction="horizontal" alignment="end">
                 <SnapText>{memo ?? t('confirmation.memo.none')}</SnapText>
-                <Button
-                  name={MemoEditFormNames.Open}
-                  disabled={shouldDisableMemoEdit}
-                >
-                  {memo
-                    ? t('confirmation.memo.update')
-                    : t('confirmation.memo.add')}
-                </Button>
+                {memoEditable ? (
+                  <Button
+                    name={MemoEditFormNames.Open}
+                    disabled={shouldDisableMemoEdit}
+                  >
+                    {memo
+                      ? t('confirmation.memo.update')
+                      : t('confirmation.memo.add')}
+                  </Button>
+                ) : null}
               </Box>
             </Box>
           </Section>
