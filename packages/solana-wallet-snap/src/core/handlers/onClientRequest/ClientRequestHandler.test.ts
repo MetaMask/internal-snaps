@@ -525,6 +525,32 @@ describe('ClientRequestHandler', () => {
       expect(result).toStrictEqual(response);
     });
 
+    it('accepts an optional toAddress', async () => {
+      const requestWithToAddress: JsonRpcRequest = {
+        ...request,
+        params: {
+          value: '10',
+          accountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+          assetId: KnownCaip19Id.UsdcMainnet,
+          toAddress: MOCK_SOLANA_KEYRING_ACCOUNT_1.address,
+        },
+      };
+
+      const response = {
+        valid: true,
+        errors: [],
+      };
+
+      vi.spyOn(sendService, 'onAmountInput').mockResolvedValue(response);
+
+      const result = await handler.handle(requestWithToAddress);
+
+      expect(sendService.onAmountInput).toHaveBeenCalledWith(
+        requestWithToAddress,
+      );
+      expect(result).toStrictEqual(response);
+    });
+
     it('throws an error if value is not provided', async () => {
       const emptyValueRequest: JsonRpcRequest = {
         ...request,
