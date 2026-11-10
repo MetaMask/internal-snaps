@@ -223,7 +223,12 @@ describe('ConfirmSendHandler', () => {
     overrides: Partial<
       Pick<
         ConfirmSendJsonRpcRequest['params'],
-        'fromAccountId' | 'toAddress' | 'assetId' | 'amount'
+        | 'fromAccountId'
+        | 'toAddress'
+        | 'assetId'
+        | 'amount'
+        | 'memo'
+        | 'memoType'
       >
     > = {},
   ) {
@@ -808,6 +813,91 @@ describe('ConfirmSendHandler', () => {
         memo: 'deposit-ref',
       }),
     );
+  });
+
+  it.each([
+    { memo: 'deposit-ref', memoType: 'MEMO_TEXT' as const },
+    { memo: '123456789', memoType: 'MEMO_ID' as const },
+  ])(
+    'forwards client memo %j into the draft and post-confirm rebuild',
+    async ({ memo, memoType }) => {
+      const {
+        handler,
+        onChainAccount,
+        createDraftSendTransactionForConfirm,
+        createValidatedSendTransaction,
+      } = setup();
+
+      await handler.handle(baseRequest({ memo, memoType }));
+
+      expect(createDraftSendTransactionForConfirm).toHaveBeenCalledWith(
+        expect.objectContaining({ onChainAccount, memo, memoType }),
+      );
+      expect(createValidatedSendTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ memo, memoType }),
+      );
+    },
+  );
+
+  it('prefers the client memo over the dialog memo', async () => {
+    const {
+      handler,
+      createValidatedSendTransaction,
+      renderConfirmationDialog,
+    } = setup();
+    renderConfirmationDialog.mockResolvedValueOnce({
+      confirmed: true,
+      memo: 'dialog-ref',
+    });
+
+    await handler.handle(
+      baseRequest({ memo: 'provider-ref', memoType: 'MEMO_TEXT' }),
+    );
+
+    expect(createValidatedSendTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memo: 'provider-ref',
+        memoType: 'MEMO_TEXT',
+      }),
+    );
+  });
+
+  it('seeds the client memo into the confirmation as read-only', async () => {
+    const { handler, renderConfirmationDialog } = setup();
+
+    await handler.handle(
+      baseRequest({ memo: '  provider-ref  ', memoType: 'MEMO_TEXT' }),
+    );
+
+    expect(renderConfirmationDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        renderContext: expect.objectContaining({
+          memo: 'provider-ref',
+          memoEditable: false,
+        }),
+      }),
+    );
+  });
+
+  it('rejects a client memo that does not satisfy a memo-required destination', async () => {
+    const {
+      handler,
+      transaction,
+      createDraftSendTransactionForConfirm,
+      createValidatedSendTransaction,
+      renderConfirmationDialog,
+    } = setup();
+    createDraftSendTransactionForConfirm.mockResolvedValueOnce({
+      transaction,
+      requiresMemoRecovery: true,
+    });
+
+    await expect(
+      handler.handle(baseRequest({ memo: '   ', memoType: 'MEMO_TEXT' })),
+    ).rejects.toThrow(RequiresMemoException);
+
+    expect(renderConfirmationDialog).not.toHaveBeenCalled();
+    expect(createValidatedSendTransaction).not.toHaveBeenCalled();
   });
 
   it('throws without a second confirmation when refresh fails after approval', async () => {

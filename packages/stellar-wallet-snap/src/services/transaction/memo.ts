@@ -1,5 +1,6 @@
 import { Memo } from '@stellar/stellar-sdk';
 
+import { StellarMemoType } from '../../api';
 import { InvalidMemoException } from './exceptions';
 
 const STELLAR_TEXT_MEMO_MAX_BYTES = 28;
@@ -31,18 +32,23 @@ export function isMemoText(value: string): boolean {
 }
 
 /**
- * Builds a Stellar SDK {@link Memo} from a string value.
+ * Builds a Stellar SDK {@link Memo} from a string value and optional type.
  *
- * All-digit uint64 values → {@link Memo.id}; otherwise {@link Memo.text}.
+ * An explicit `type` wins, so numeric text stays text. Otherwise all-digit
+ * uint64 values → {@link Memo.id} and everything else → {@link Memo.text}.
  * Empty / whitespace-only values are treated as absent.
  *
  * Used on the transaction build path (TransactionBuilder), not only UI.
  *
- * @param value - Raw memo from confirmation UI or interface context.
+ * @param value - Raw memo from the client request, confirmation UI, or interface context.
+ * @param type - Optional explicit memo type. When omitted, the type is inferred.
  * @returns SDK memo, or `null` when the value is missing, non-string, or whitespace-only.
- * @throws {InvalidMemoException} When the value is neither a valid memo id nor text memo.
+ * @throws {InvalidMemoException} When the value is invalid for the resolved type.
  */
-export function resolveStellarMemo(value: unknown): Memo | null {
+export function resolveStellarMemo(
+  value: unknown,
+  type?: StellarMemoType | null,
+): Memo | null {
   if (typeof value !== 'string') {
     return null;
   }
@@ -53,15 +59,23 @@ export function resolveStellarMemo(value: unknown): Memo | null {
   }
 
   try {
-    if (isMemoId(trimmed)) {
-      return Memo.id(trimmed);
-    }
+    const resolvedType =
+      type ?? (isMemoId(trimmed) ? StellarMemoType.Id : StellarMemoType.Text);
 
-    if (isMemoText(trimmed)) {
-      return Memo.text(trimmed);
+    switch (resolvedType) {
+      case StellarMemoType.Id:
+        if (!isMemoId(trimmed)) {
+          throw new Error('Invalid memo');
+        }
+        return Memo.id(trimmed);
+      case StellarMemoType.Text:
+        if (!isMemoText(trimmed)) {
+          throw new Error('Invalid memo');
+        }
+        return Memo.text(trimmed);
+      default:
+        throw new Error('Invalid memo');
     }
-
-    throw new Error('Invalid memo');
   } catch {
     throw new InvalidMemoException();
   }

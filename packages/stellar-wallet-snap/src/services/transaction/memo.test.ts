@@ -72,4 +72,28 @@ describe('resolveStellarMemo', () => {
     expect(() => resolveStellarMemo('123')).toThrow(InvalidMemoException);
     idSpy.mockRestore();
   });
+
+  it('uses MEMO_ID when the explicit type is MEMO_ID', () => {
+    expect(resolveStellarMemo(' 123 ', 'MEMO_ID')).toStrictEqual(
+      Memo.id('123'),
+    );
+  });
+
+  it('keeps numeric values as text when the explicit type is MEMO_TEXT', () => {
+    expect(resolveStellarMemo('123', 'MEMO_TEXT')).toStrictEqual(
+      Memo.text('123'),
+    );
+  });
+
+  it('throws InvalidMemoException when MEMO_ID has a non-numeric value', () => {
+    expect(() => resolveStellarMemo('deposit-ref', 'MEMO_ID')).toThrow(
+      InvalidMemoException,
+    );
+  });
+
+  it('throws InvalidMemoException when MEMO_TEXT exceeds 28 UTF-8 bytes', () => {
+    expect(() => resolveStellarMemo('é'.repeat(15), 'MEMO_TEXT')).toThrow(
+      InvalidMemoException,
+    );
+  });
 });

@@ -802,6 +802,50 @@ describe('ConfirmSendJsonRpcRequestStruct', () => {
   });
 
   it.each([
+    { memo: 'deposit-ref', memoType: 'MEMO_TEXT' as const },
+    { memo: '123456', memoType: 'MEMO_ID' as const },
+    { memo: 'deposit-ref' },
+    { memoType: 'MEMO_ID' as const },
+  ])('accepts optional memo and memoType %j', ({ memo, memoType }) => {
+    const result = create(
+      {
+        ...baseWireRequest,
+        params: {
+          ...baseWireRequest.params,
+          memo,
+          memoType,
+        },
+      },
+      ConfirmSendJsonRpcRequestStruct,
+    );
+
+    expect(result.params.memo).toBe(memo);
+    expect(result.params.memoType).toBe(memoType);
+  });
+
+  it.each([
+    {
+      ...baseWireRequest,
+      params: {
+        ...baseWireRequest.params,
+        memo: 'a'.repeat(65),
+      },
+    },
+    {
+      ...baseWireRequest,
+      params: {
+        ...baseWireRequest.params,
+        memo: 'deposit-ref',
+        memoType: 'text',
+      },
+    },
+  ])('rejects confirmSend when the memo is invalid', (request) => {
+    expect(() => assert(request, ConfirmSendJsonRpcRequestStruct)).toThrow(
+      StructError,
+    );
+  });
+
+  it.each([
     {
       ...baseWireRequest,
       method: ClientRequestMethod.OnAmountInput,

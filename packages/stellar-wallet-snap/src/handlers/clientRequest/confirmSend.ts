@@ -10,13 +10,16 @@ import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import { ensureError, isObject } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 
-import type { KnownCaip2ChainId } from '../../api';
+import type { KnownCaip2ChainId, StellarMemoType } from '../../api';
 import type { StellarKeyringAccount } from '../../services/account';
 import type {
   AssetMetadataService,
   StellarAssetMetadata,
 } from '../../services/asset-metadata';
-import { KeyringTransactionType } from '../../services/transaction';
+import {
+  KeyringTransactionType,
+  RequiresMemoException,
+} from '../../services/transaction';
 import type {
   Transaction,
   TransactionService,
@@ -126,7 +129,8 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
   ): Promise<ConfirmSendJsonRpcResponse> {
     try {
       const { onChainAccount, account: stellarKeyringAccount } = resolved;
-      const { amount, toAddress, assetId, scope } = request.params;
+      const { amount, toAddress, assetId, scope, memo, memoType } =
+        request.params;
       const assetMetadata = await this.#assetMetadataService.resolve(assetId);
       const { decimals, symbol } = assetMetadata.units[0];
 
@@ -152,6 +156,8 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
             assetId,
             amount: amountInSmallestUnit,
             destination: toAddress,
+            memo,
+            memoType,
           }));
       } catch (error: unknown) {
         await this.#displayDialogWithErrorMessage({
@@ -163,6 +169,12 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         });
         // The error confirmation only supports dismiss, so abort as a user rejection.
         throw ensureError(new UserRejectedRequestError());
+      }
+
+      // A client-supplied memo must satisfy a memo-required destination. Do not
+      // fall back to interactive memo recovery in the client-driven send flow.
+      if (memo !== undefined && requiresMemoRecovery) {
+        throw new RequiresMemoException(toAddress);
       }
 
       const trackingProperties: TransactionEventProperties = {
@@ -195,6 +207,9 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
 
       await this.#analyticsService.trackTransactionApproved(trackingProperties);
 
+      // The client memo wins; the dialog memo is only a fallback when the
+      // client did not supply one.
+      const hasClientMemo = memo !== undefined && memo.trim() !== '';
       const {
         wallet: refreshedWallet,
         onChainAccount: refreshedOnChainAccount,
@@ -203,7 +218,8 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         request,
         confirmedTransaction: transaction,
         amount: amountInSmallestUnit,
-        memo: dialogResult.memo ?? undefined,
+        memo: hasClientMemo ? memo : dialogResult.memo,
+        memoType: hasClientMemo ? memoType : undefined,
       });
 
       refreshedWallet.signTransaction(refreshedTransaction);
@@ -264,12 +280,13 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     confirmedTransaction: Transaction;
     amount: BigNumber;
     memo?: string;
+    memoType?: StellarMemoType;
   }): Promise<{
     wallet: ResolvedActivatedAccount['wallet'];
     onChainAccount: ResolvedActivatedAccount['onChainAccount'];
     transaction: Transaction;
   }> {
-    const { request, confirmedTransaction, amount, memo } = params;
+    const { request, confirmedTransaction, amount, memo, memoType } = params;
     const { assetId, toAddress, scope } = request.params;
     // Resolve again after the user confirms so sequence, balances, and fees are fresh before signing.
     // sendTransaction still handles txBadSeq races that happen after this refresh.
@@ -283,6 +300,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         amount,
         destination: toAddress,
         memo,
+        memoType,
       });
 
     // Allow a small fee drift vs the open-time draft (see
@@ -317,7 +335,8 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
       transaction,
       initialValidationError,
     } = params;
-    const { toAddress, amount, assetId } = request.params;
+    const { toAddress, amount, assetId, memo } = request.params;
+    const clientMemo = memo?.trim();
     const xdr = transaction.getRaw().toXdr();
     // The send asset and amount are known from the request, so the estimated
     // changes are just a single outgoing row — no local simulation needed.
@@ -334,6 +353,9 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
           account,
           toAddress,
           supportsMemo: !isSep41Id(assetId),
+          // Show the client-supplied memo as read-only: it is the value that
+          // gets signed, so the dialog must not offer an override.
+          ...(clientMemo ? { memo: clientMemo, memoEditable: false } : {}),
           ...(initialValidationError
             ? {
                 // Recoverable RequiresMemo: show the banner, but do not start a
