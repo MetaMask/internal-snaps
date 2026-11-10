@@ -351,7 +351,7 @@ describe('AssetsService', () => {
   });
 
   describe('fetchAccountAssets', () => {
-    it('fetches live assets from the chain for all the account scopes', async () => {
+    it('fetches live assets only for the active account scopes', async () => {
       await withAssetsService(
         async ({
           assetsService,
@@ -361,42 +361,30 @@ describe('AssetsService', () => {
           mockTronHttpClient.getAccountResources.mockResolvedValue(
             emptyAccountResources,
           );
-          mockTrongridApiClient.getAccountInfoByAddress
-            .mockResolvedValueOnce(
-              createMockTronAccount({
-                address: mockAccount.address,
-                balance: 1_000_000,
-              }),
-            )
-            .mockResolvedValueOnce(
-              createMockTronAccount({
-                address: mockAccount.address,
-                balance: 2_000_000,
-              }),
-            );
+          mockTrongridApiClient.getAccountInfoByAddress.mockResolvedValue(
+            createMockTronAccount({
+              address: mockAccount.address,
+              balance: 1_000_000,
+            }),
+          );
 
           const account: KeyringAccount = {
             ...mockAccount,
-            scopes: [Network.Mainnet, Network.Shasta],
+            scopes: [Network.Mainnet, Network.Nile, Network.Shasta],
           };
 
           const assets = await assetsService.fetchAccountAssets(account);
 
           expect(
             mockTrongridApiClient.getAccountInfoByAddress,
-          ).toHaveBeenCalledTimes(2);
+          ).toHaveBeenCalledTimes(1);
           expect(
             mockTrongridApiClient.getAccountInfoByAddress,
           ).toHaveBeenNthCalledWith(1, Network.Mainnet, mockAccount.address);
-          expect(
-            mockTrongridApiClient.getAccountInfoByAddress,
-          ).toHaveBeenNthCalledWith(2, Network.Shasta, mockAccount.address);
           expect(findAsset(assets, KnownCaip19Id.TrxMainnet)?.rawAmount).toBe(
             '1000000',
           );
-          expect(findAsset(assets, KnownCaip19Id.TrxShasta)?.rawAmount).toBe(
-            '2000000',
-          );
+          expect(findAsset(assets, KnownCaip19Id.TrxShasta)).toBeUndefined();
         },
       );
     });

@@ -2,6 +2,10 @@ import type { TransactionType } from '@metamask/keyring-api';
 import type { Json } from '@metamask/snaps-sdk';
 
 import type { TrackErrorFn } from '../../utils/errors';
+import type {
+  FetchPolicyRetryReason,
+  FetchPolicyService,
+} from '../../utils/fetchPolicy/createFetchPolicy';
 import type { Logger } from '../../utils/logger/Logger';
 
 export const TransactionEventType = {
@@ -87,6 +91,19 @@ export type WebSocketConnectionClosedEventProperties = {
   code: number;
   reason: string | null;
 };
+
+export type ServiceUnavailableEventProperties = {
+  service: FetchPolicyService;
+  chainIdCaip?: string;
+  httpStatus?: number;
+};
+
+export type ServiceDegradedEventProperties =
+  ServiceUnavailableEventProperties & {
+    type: 'slow_success' | 'retries_exhausted';
+    retryReason?: FetchPolicyRetryReason;
+    durationMs?: number;
+  };
 
 /**
  * Tracks common network Snap analytics events.
@@ -335,6 +352,60 @@ export class AnalyticsService<
       origin,
       code,
       reason,
+    });
+  }
+
+  /**
+   * Track a "Snap Service Degraded" event when an upstream service call is
+   * slow or uses up its retries.
+   *
+   * @param properties - Event properties.
+   * @param properties.service - The upstream service.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID, if any.
+   * @param properties.type - Whether the call was slow or used up its retries.
+   * @param properties.retryReason - Why the last attempt failed, if it did.
+   * @param properties.durationMs - How long a slow call took.
+   * @param properties.httpStatus - The HTTP status of the last attempt, if any.
+   */
+  async trackServiceDegraded({
+    service,
+    chainIdCaip,
+    type,
+    retryReason,
+    durationMs,
+    httpStatus,
+  }: ServiceDegradedEventProperties): Promise<void> {
+    await this.trackEvent('Snap Service Degraded', {
+      message: 'Snap service degraded',
+      service,
+      ...(chainIdCaip === undefined ? {} : { chain_id_caip: chainIdCaip }),
+      type,
+      ...(retryReason === undefined ? {} : { retry_reason: retryReason }),
+      ...(durationMs === undefined ? {} : { duration_ms: durationMs }),
+      ...(httpStatus === undefined ? {} : { http_status: httpStatus }),
+    });
+  }
+
+  /**
+   * Track a "Snap Service Unavailable" event when the circuit breaker of an
+   * upstream service opens.
+   *
+   * @param properties - Event properties.
+   * @param properties.service - The upstream service.
+   * @param properties.chainIdCaip - The CAIP-2 chain ID, if any.
+   * @param properties.httpStatus - The HTTP status of the failure that opened
+   * the circuit, if any.
+   */
+  async trackServiceUnavailable({
+    service,
+    chainIdCaip,
+    httpStatus,
+  }: ServiceUnavailableEventProperties): Promise<void> {
+    await this.trackEvent('Snap Service Unavailable', {
+      message: 'Snap service unavailable',
+      service,
+      ...(chainIdCaip === undefined ? {} : { chain_id_caip: chainIdCaip }),
+      ...(httpStatus === undefined ? {} : { http_status: httpStatus }),
     });
   }
 
