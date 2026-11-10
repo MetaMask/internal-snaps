@@ -1,7 +1,6 @@
 {
   "extends": "../../tsconfig.packages.libs.build.json",
   "compilerOptions": {
-    "baseUrl": "./",
     "jsx": "react-jsx",
     "jsxImportSource": "@metamask/snaps-sdk",
     "outDir": "./dist",

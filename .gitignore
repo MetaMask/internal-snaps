@@ -7,8 +7,8 @@ package-lock.json
 # tarball from `yarn pack`
 *.tgz
 
-# eslint cache
-.eslintcache
+# oxlint cache
+.oxlintcache
 
 .DS_STORE
 

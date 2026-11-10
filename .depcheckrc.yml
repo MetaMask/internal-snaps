@@ -11,7 +11,6 @@ ignores:
   - '@metamask/auto-changelog'
   - '@metamask/create-release-branch'
   - 'depcheck'
-  - 'eslint-interactive'
   - 'rimraf'
   - 'simple-git-hooks'
   - 'vitest'
@@ -21,15 +20,12 @@ ignores:
   - 'typedoc'
   - 'typescript'
   # Ignore plugins for tools
-  - '@typescript-eslint/*'
-  - 'eslint-config-*'
-  - 'eslint-plugin-*'
-  - 'prettier-plugin-packagejson'
-  - 'typescript-eslint'
+  - '@metamask/oxlint-config*'
+  - 'eslint-plugin-n'
+  - 'oxlint'
+  - 'oxlint-tsgolint'
   # Jest environments pulled in by Bitcoin integration tests
   - 'jest-environment-node'
   - 'jest-environment-jsdom'
-  # Ignore dependencies imported implicitly by tools
-  - 'eslint-import-resolver-typescript'
   # Ignore dependencies which plug into the NPM lifecycle
   - '@lavamoat/preinstall-always-fail'

@@ -18,7 +18,7 @@
      * `vitest.config.packages.ts`.
      */
     "paths": {
-      "@metamask/*": ["../*/src"]
+      "@metamask/*": ["${configDir}/../*/src"]
     },
     "skipLibCheck": true,
     "types": ["node", "vitest/globals"]
