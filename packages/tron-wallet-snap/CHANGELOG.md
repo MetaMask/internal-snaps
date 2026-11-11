@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for TRX and TRC-20 assets. The maximum leaves enough TRX for the network fees and account activation (native sends) or the transfer fee (TRC-20), and the destination is conservatively assumed unactivated when omitted ([#555](https://github.com/MetaMask/internal-snaps/pull/555))
+
 ### Changed
 
 - `onAmountInput` now estimates send fees when `toAddress` is not provided ([#554](https://github.com/MetaMask/internal-snaps/pull/554))

@@ -45,7 +45,7 @@ import {
   throwOnTransientBroadcastFailure,
 } from '../../utils/broadcast';
 import { parseTronCaipAssetType } from '../../utils/caip';
-import { trxToSun } from '../../utils/conversion';
+import { sunToTrx, trxToSun } from '../../utils/conversion';
 import { resolveTransactionType } from '../../utils/transactionType';
 import {
   assertTransactionSignerConsistency,
@@ -59,6 +59,7 @@ import {
   ComputeFeeRequestStruct,
   ComputeFeeResponseStruct,
   ComputeStakeFeeRequestStruct,
+  GetMaxSendableAmountRequestStruct,
   OnAddressInputRequestStruct,
   OnAmountInputRequestStruct,
   OnConfirmSendRequestStruct,
@@ -281,6 +282,8 @@ export class ClientRequestHandler {
         return this.#handleConfirmSend(request);
       case ClientRequestMethod.ComputeFee:
         return this.#handleComputeFee(request);
+      case ClientRequestMethod.GetMaxSendableAmount:
+        return this.#handleGetMaxSendableAmount(request);
       case ClientRequestMethod.ComputeStakeFee:
         return this.#handleComputeStakeFee(request);
       /**
@@ -942,6 +945,159 @@ export class ClientRequestHandler {
     assert(result, ComputeFeeResponseStruct);
 
     return result;
+  }
+
+  /**
+   * Computes the maximum amount that can be sent for the given asset.
+   *
+   * It uses the same balance source, fee limit, and fee/reserve helpers as
+   * `onAmountInput`. For native TRX the maximum leaves enough TRX for the
+   * network fees and, when the destination is unknown, the account activation
+   * reserve. For TRC-10 and TRC-20 the account must hold enough TRX for the
+   * transfer fee, plus the activation reserve for TRC-10 when the destination
+   * is unknown.
+   *
+   * @param request - The JSON-RPC request containing the method and parameters.
+   * @returns The maximum sendable amount, or 0 when no amount can pass.
+   * @throws {InvalidParamsError} If the params are invalid.
+   */
+  async #handleGetMaxSendableAmount(request: JsonRpcRequest): Promise<Json> {
+    assertOrThrow(
+      request,
+      GetMaxSendableAmountRequestStruct,
+      new InvalidParamsError(),
+    );
+
+    const { accountId, assetId, toAddress } = request.params;
+
+    const account = await this.#accountsService.findByIdOrThrow(accountId);
+
+    const { chainId: scope, assetNamespace } = parseTronCaipAssetType(assetId);
+
+    const [asset, nativeTokenAsset, bandwidthAsset, energyAsset] =
+      await this.#assetsService.getAccountAssetsByIDs(accountId, [
+        assetId,
+        Networks[scope].nativeToken.id,
+        Networks[scope].bandwidth.id,
+        Networks[scope].energy.id,
+      ]);
+
+    if (!asset) {
+      return { amount: '0' };
+    }
+
+    const nativeTokenId = Networks[scope].nativeToken.id;
+    const isNativeToken = asset.assetType === nativeTokenId;
+
+    const assetBalance = new BigNumber(asset.uiAmount);
+    const nativeTokenBalance = nativeTokenAsset
+      ? new BigNumber(nativeTokenAsset.uiAmount)
+      : ZERO;
+    const availableEnergy = energyAsset
+      ? new BigNumber(energyAsset.rawAmount)
+      : ZERO;
+    const availableBandwidth = bandwidthAsset
+      ? new BigNumber(bandwidthAsset.rawAmount)
+      : ZERO;
+
+    const sentBalance = isNativeToken ? nativeTokenBalance : assetBalance;
+    if (sentBalance.isLessThanOrEqualTo(ZERO)) {
+      return { amount: '0' };
+    }
+
+    /**
+     * The destination is unknown: reserve the account activation cost on top
+     * of the quoted fees, so the maximum covers the worst case. Only native
+     * TRX and TRC-10 transfers activate recipients; TRC-20 does not.
+     */
+    const activationTrxFee =
+      !toAddress && (isNativeToken || assetNamespace === 'trc10')
+        ? (
+            await this.#feeCalculatorService.getAccountActivationFee({
+              scope,
+              toAddress,
+              senderAddress: account.address,
+            })
+          ).trxFee
+        : ZERO;
+
+    /**
+     * Quote the TRX fee for sending `amount`. An unknown destination is probed
+     * with the zero address because Tron rejects self-transfers; its activation
+     * reserve is quoted separately above, so it is skipped here.
+     *
+     * @param amount - The amount to quote, in UI units.
+     * @returns The TRX fee, including the activation reserve for native sends.
+     */
+    const quoteTrxFee = async (amount: BigNumber): Promise<BigNumber> => {
+      const transaction = await this.#sendService.buildTransaction({
+        fromAccountId: account.id,
+        toAddress: toAddress ?? NULL_ADDRESS,
+        asset,
+        amount,
+        feeLimit: FEE_LIMIT,
+      });
+
+      const quotedFees = await this.#feeCalculatorService.computeFee({
+        scope,
+        transaction,
+        availableEnergy,
+        availableBandwidth,
+        feeLimit: FEE_LIMIT,
+        skipAccountActivation: !toAddress,
+      });
+
+      return new BigNumber(
+        quotedFees.find((fee) => fee.asset.type === nativeTokenId)?.asset
+          .amount ?? '0',
+      ).plus(activationTrxFee);
+    };
+
+    if (isNativeToken) {
+      const balanceInSun = new BigNumber(trxToSun(nativeTokenBalance));
+
+      /**
+       * The transaction size, and therefore the bandwidth fee, changes only
+       * when the encoded amount crosses a protobuf varint boundary (every
+       * seven bits). Probe the amount ranges from the balance down: the first
+       * range whose fee still leaves the sender above its lower bound holds
+       * the maximum.
+       */
+      for (
+        let bucket = Math.ceil(balanceInSun.toString(2).length / 7);
+        bucket >= 1;
+        bucket -= 1
+      ) {
+        const bucketMax = new BigNumber(2).pow(bucket * 7).minus(1);
+        const bucketMin =
+          bucket === 1
+            ? new BigNumber(1)
+            : new BigNumber(2).pow((bucket - 1) * 7);
+        const probeInSun = BigNumber.min(balanceInSun, bucketMax);
+        const feeInSun = new BigNumber(
+          trxToSun(await quoteTrxFee(sunToTrx(probeInSun))),
+        );
+        const maxInSun = balanceInSun.minus(feeInSun);
+
+        if (maxInSun.isGreaterThanOrEqualTo(bucketMin)) {
+          return {
+            amount: sunToTrx(BigNumber.min(maxInSun, bucketMax))
+              .decimalPlaces(asset.decimals, BigNumber.ROUND_DOWN)
+              .toFixed(),
+          };
+        }
+      }
+
+      return { amount: '0' };
+    }
+
+    const trxFee = await quoteTrxFee(assetBalance);
+
+    if (trxFee.isGreaterThan(nativeTokenBalance)) {
+      return { amount: '0' };
+    }
+
+    return { amount: new BigNumber(asset.uiAmount).toFixed() };
   }
 
   /**
