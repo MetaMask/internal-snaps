@@ -34,6 +34,7 @@ export const RpcMethod = {
   VerifyMessage: 'verifyMessage',
   OnAddressInput: 'onAddressInput',
   OnAmountInput: 'onAmountInput',
+  GetMaxSendableAmount: 'getMaxSendableAmount',
   ConfirmSend: 'confirmSend',
   SignRewardsMessage: 'signRewardsMessage',
   SignProofOfOwnership: 'signProofOfOwnership',
@@ -69,6 +70,12 @@ export const OnAddressInputRequestStruct = object({
 
 export const OnAmountInputRequestStruct = object({
   value: NonEmptyStringStruct,
+  accountId: UuidStruct,
+  assetId: CaipAssetTypeStruct,
+  toAddress: optional(NonEmptyStringStruct),
+});
+
+export const GetMaxSendableAmountRequestStruct = object({
   accountId: UuidStruct,
   assetId: CaipAssetTypeStruct,
   toAddress: optional(NonEmptyStringStruct),
@@ -350,6 +357,10 @@ export const PositiveNumberStringStruct = pattern(
   string(),
   /^(?!0\d)(\d+(\.\d+)?)$/u,
 );
+
+export const GetMaxSendableAmountResponseStruct = object({
+  amount: PositiveNumberStringStruct,
+});
 
 /**
  * Parses a base64-encoded rewards message in the format 'rewards,{address},{timestamp}'

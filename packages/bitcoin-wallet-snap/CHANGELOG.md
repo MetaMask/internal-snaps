@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for BTC: the spendable balance minus the network fee, or `0` when no amount can pass ([#587](https://github.com/MetaMask/internal-snaps/pull/587))
+
 ### Changed
 
 - `onAmountInput` now estimates the send fee and rejects amounts that cannot cover it, including when `toAddress` is omitted ([#586](https://github.com/MetaMask/internal-snaps/pull/586))
