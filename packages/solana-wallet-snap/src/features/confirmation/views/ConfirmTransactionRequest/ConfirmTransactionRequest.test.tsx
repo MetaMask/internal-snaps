@@ -208,7 +208,7 @@ describe('ConfirmTransactionRequest', () => {
     it('renders the paying account when another wallet account pays', () => {
       const serialized = renderWithFeePayment({
         feePayer: sponsor,
-        paidBy: 'ownAccount',
+        paidBy: 'anotherWalletAccount',
         userCost: null,
         userCosts: [],
         mayCostMore: false,

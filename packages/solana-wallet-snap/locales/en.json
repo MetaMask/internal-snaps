@@ -209,7 +209,7 @@
       "message": "Free"
     },
     "confirmation.youPay.free.tooltip": {
-      "message": "The sponsor pays the network fee, and this transaction doesn't charge you any fee or rent. Any transfers are listed in the estimated changes."
+      "message": "The sponsor pays the network fee and this transaction doesn't charge you any fee or rent. Any transfers are listed in the estimated changes."
     },
     "confirmation.youPay.notFree": {
       "message": "Not free"
@@ -224,7 +224,7 @@
       "message": "MetaMask can't confirm this transaction won't charge you more than shown."
     },
     "confirmation.youPay.uncheckedPrograms": {
-      "message": "It couldn't simulate the transaction, and can't check these programs: {programs}."
+      "message": "MetaMask couldn't simulate the transaction and can't check these programs: {programs}."
     },
     "confirmation.rent": {
       "message": "Account rent"

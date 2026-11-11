@@ -25,8 +25,9 @@ import { parseOrigin } from '../../../../core/utils/parseOrigin';
 import { tokenToFiat } from '../../../../core/utils/tokenToFiat';
 import type { FeePayment } from '../../utils/analyzeFeePayment';
 
-const truncateAddress = (address: string): string =>
-  `${address.slice(0, 5)}...${address.slice(-5)}`;
+function truncateAddress(address: string): string {
+  return `${address.slice(0, 5)}...${address.slice(-5)}`;
+}
 
 /**
  * How each verdict of {@link FeePayment.userCost} is shown. The tooltip of
@@ -228,7 +229,7 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
       </Box>
       {feePayment &&
       (feePayment.paidBy === 'sponsor' ||
-        feePayment.paidBy === 'ownAccount') ? (
+        feePayment.paidBy === 'anotherWalletAccount') ? (
         <Box alignment="space-between" direction="horizontal">
           <Box alignment="space-between" direction="horizontal" center>
             <Text fontWeight="medium" color="alternative">

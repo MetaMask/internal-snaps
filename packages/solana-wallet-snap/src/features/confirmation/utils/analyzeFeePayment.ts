@@ -44,10 +44,10 @@ export type FeePayment = {
   /**
    * Who pays the network fee:
    * - `account`: the account confirming the transaction.
-   * - `ownAccount`: another account of this wallet.
+   * - `anotherWalletAccount`: another account of this wallet.
    * - `sponsor`: an account that does not belong to this wallet.
    */
-  paidBy: 'account' | 'ownAccount' | 'sponsor';
+  paidBy: 'account' | 'anotherWalletAccount' | 'sponsor';
   /**
    * What the transaction costs the user when it is sponsored:
    * - `free`: nothing. The sponsor pays the network fee and no instruction charges the user.
@@ -661,7 +661,7 @@ export const analyzeFeePayment = async ({
   if (ownAddresses.includes(feePayer)) {
     return {
       feePayer,
-      paidBy: 'ownAccount',
+      paidBy: 'anotherWalletAccount',
       userCost: null,
       userCosts: [],
       mayCostMore: false,

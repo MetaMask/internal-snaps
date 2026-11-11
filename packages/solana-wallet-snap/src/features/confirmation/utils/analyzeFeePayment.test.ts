@@ -194,7 +194,7 @@ describe('analyzeFeePayment', () => {
       await analyze(otherOwnAccount, [transferSol(recipient, 1000n)]),
     ).toStrictEqual({
       feePayer: otherOwnAccount,
-      paidBy: 'ownAccount',
+      paidBy: 'anotherWalletAccount',
       userCost: null,
       userCosts: [],
       mayCostMore: false,

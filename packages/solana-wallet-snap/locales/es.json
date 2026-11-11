@@ -206,7 +206,7 @@
       "message": "MetaMask no puede confirmar que esta transacción no te cobre más de lo que se muestra."
     },
     "confirmation.youPay.uncheckedPrograms": {
-      "message": "No pudo simular la transacción y no puede revisar estos programas: {programs}."
+      "message": "MetaMask no pudo simular la transacción y no puede revisar estos programas: {programs}."
     },
     "confirmation.rent": {
       "message": "Renta de cuentas"
