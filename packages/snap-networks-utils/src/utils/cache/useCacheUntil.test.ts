@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest';
+
 import type { Serializable } from '../serialization/types';
 import type { ICache } from './types';
 import { useCacheUntil } from './useCacheUntil';
@@ -5,7 +7,7 @@ import type { CacheUntilOptions, ResultWithExpiry } from './useCacheUntil';
 
 describe('useCacheUntil', () => {
   // Spy to check if the original function was executed or not
-  let actualExecutionSpy: jest.Mock;
+  let actualExecutionSpy: Mock;
 
   // Mock cache
   let cache: ICache<Serializable>;
@@ -25,19 +27,19 @@ describe('useCacheUntil', () => {
   const mockNow = 1700000000000; // Fixed timestamp for testing
 
   beforeEach(() => {
-    jest.useFakeTimers();
-    jest.setSystemTime(mockNow);
+    vi.useFakeTimers();
+    vi.setSystemTime(mockNow);
 
     // Reset mocks for each test
-    actualExecutionSpy = jest.fn().mockResolvedValue({
+    actualExecutionSpy = vi.fn().mockResolvedValue({
       result: 'test',
       expiresAt: mockNow + 60000, // Expires in 60 seconds
     });
 
     // Create a mock cache
     cache = {
-      get: jest.fn().mockResolvedValue(undefined),
-      set: jest.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockResolvedValue(undefined),
+      set: vi.fn().mockResolvedValue(undefined),
     } as unknown as ICache<Serializable>;
 
     // Define common cache options
@@ -65,13 +67,13 @@ describe('useCacheUntil', () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   describe('when the data is not cached', () => {
     it('caches the result with TTL calculated from expiresAt', async () => {
       // No cached data
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
+      vi.spyOn(cache, 'get').mockResolvedValue(undefined);
 
       const result = await cachedTestFunction();
 
@@ -98,12 +100,12 @@ describe('useCacheUntil', () => {
   describe('when the data is cached and not expired', () => {
     it('returns the cached result without calling the function', async () => {
       // First call to populate the cache and expiry map
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
+      vi.spyOn(cache, 'get').mockResolvedValue(undefined);
       await cachedTestFunction();
 
       // Reset mocks
       actualExecutionSpy.mockClear();
-      jest.spyOn(cache, 'get').mockResolvedValue('cached-test');
+      vi.spyOn(cache, 'get').mockResolvedValue('cached-test');
 
       // Second call within expiry period
       const result = await cachedTestFunction();
@@ -116,7 +118,7 @@ describe('useCacheUntil', () => {
     it('hydrates a still-valid entry from the cache after the wrapper is recreated', async () => {
       // Simulate a previous run: an entry is persisted in the cache, but the
       // wrapper (and its in-memory expiry map) has just been recreated.
-      jest.spyOn(cache, 'get').mockResolvedValue('persisted-test');
+      vi.spyOn(cache, 'get').mockResolvedValue('persisted-test');
 
       const result = await cachedTestFunction();
 
@@ -126,7 +128,7 @@ describe('useCacheUntil', () => {
     });
 
     it('skips the cache and refreshes the result if refreshCache is enabled', async () => {
-      jest.spyOn(cache, 'get').mockResolvedValue('cached-test');
+      vi.spyOn(cache, 'get').mockResolvedValue('cached-test');
 
       const refreshCachedFunction = useCacheUntil(testFunction, cache, {
         ...cacheOptions,
@@ -145,11 +147,11 @@ describe('useCacheUntil', () => {
   describe('when the data is cached but expired', () => {
     it('fetches fresh data after expiry time has passed', async () => {
       // First call to populate the cache
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
+      vi.spyOn(cache, 'get').mockResolvedValue(undefined);
       await cachedTestFunction();
 
       // Advance time past the expiry
-      jest.setSystemTime(mockNow + 70000); // 70 seconds later
+      vi.setSystemTime(mockNow + 70000); // 70 seconds later
 
       // Reset mocks for second call
       actualExecutionSpy.mockClear();
@@ -167,7 +169,7 @@ describe('useCacheUntil', () => {
 
   describe('cache key generation', () => {
     it('generates cache key with function name and arguments', async () => {
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
+      vi.spyOn(cache, 'get').mockResolvedValue(undefined);
       actualExecutionSpy.mockResolvedValue({
         result: 'test with args',
         expiresAt: mockNow + 60000,
@@ -183,7 +185,7 @@ describe('useCacheUntil', () => {
     });
 
     it('uses a custom key generator if provided', async () => {
-      const customKeyGenerator = jest.fn().mockReturnValue('custom-key');
+      const customKeyGenerator = vi.fn().mockReturnValue('custom-key');
 
       const customCachedFunction = useCacheUntil(testFunction, cache, {
         ...cacheOptions,
@@ -208,12 +210,12 @@ describe('useCacheUntil', () => {
 
     it('handles cache get errors gracefully', async () => {
       // First call to populate expiry map
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
+      vi.spyOn(cache, 'get').mockResolvedValue(undefined);
       await cachedTestFunction();
 
       // Reset for second call
       actualExecutionSpy.mockClear();
-      jest.spyOn(cache, 'get').mockRejectedValueOnce(new Error('Cache error'));
+      vi.spyOn(cache, 'get').mockRejectedValueOnce(new Error('Cache error'));
       actualExecutionSpy.mockResolvedValue({
         result: 'test',
         expiresAt: mockNow + 60000,
@@ -226,10 +228,10 @@ describe('useCacheUntil', () => {
     });
 
     it('handles cache set errors gracefully', async () => {
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
-      jest
-        .spyOn(cache, 'set')
-        .mockRejectedValueOnce(new Error('Cache set error'));
+      vi.spyOn(cache, 'get').mockResolvedValue(undefined);
+      vi.spyOn(cache, 'set').mockRejectedValueOnce(
+        new Error('Cache set error'),
+      );
 
       const result = await cachedTestFunction();
 
@@ -239,15 +241,15 @@ describe('useCacheUntil', () => {
 
     it('logs cache errors using the provided logger', async () => {
       const errorLogger = {
-        error: jest.fn(),
+        error: vi.fn(),
       };
 
-      jest
-        .spyOn(cache, 'get')
-        .mockRejectedValueOnce(new Error('Cache get error'));
-      jest
-        .spyOn(cache, 'set')
-        .mockRejectedValueOnce(new Error('Cache set error'));
+      vi.spyOn(cache, 'get').mockRejectedValueOnce(
+        new Error('Cache get error'),
+      );
+      vi.spyOn(cache, 'set').mockRejectedValueOnce(
+        new Error('Cache set error'),
+      );
 
       const loggedCachedFunction = useCacheUntil(testFunction, cache, {
         ...cacheOptions,
@@ -308,7 +310,7 @@ describe('useCacheUntil', () => {
 
       // Reset and set cache to return false
       actualExecutionSpy.mockClear();
-      jest.spyOn(cache, 'get').mockResolvedValue(false);
+      vi.spyOn(cache, 'get').mockResolvedValue(false);
 
       const result: unknown = await cachedTestFunction();
 
@@ -322,7 +324,7 @@ describe('useCacheUntil', () => {
 
       // Reset for second call with undefined cache
       actualExecutionSpy.mockClear();
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
+      vi.spyOn(cache, 'get').mockResolvedValue(undefined);
       actualExecutionSpy.mockResolvedValue({
         result: 'fresh',
         expiresAt: mockNow + 60000,
@@ -354,17 +356,18 @@ describe('useCacheUntil', () => {
       );
 
       // Advance time to just before maintenance
-      jest.setSystemTime(maintenanceTime - 1000);
+      vi.setSystemTime(maintenanceTime - 1000);
       actualExecutionSpy.mockClear();
-      jest
-        .spyOn(cache, 'get')
-        .mockResolvedValue({ energyFee: 420, transactionFee: 1000 });
+      vi.spyOn(cache, 'get').mockResolvedValue({
+        energyFee: 420,
+        transactionFee: 1000,
+      });
 
       await cachedTestFunction();
       expect(actualExecutionSpy).not.toHaveBeenCalled(); // Still using cache
 
       // Advance time past maintenance
-      jest.setSystemTime(maintenanceTime + 1000);
+      vi.setSystemTime(maintenanceTime + 1000);
       actualExecutionSpy.mockResolvedValue({
         result: { energyFee: 500, transactionFee: 1200 }, // New values
         expiresAt: maintenanceTime + 6 * 60 * 60 * 1000, // Next maintenance

@@ -2,7 +2,7 @@ import cli from './cli';
 import { commands, commandMap } from './commands';
 import * as utils from './utils';
 
-jest.mock('./utils');
+vi.mock('./utils');
 
 /**
  * Returns a mock `process.argv` array with the provided arguments. Includes
@@ -45,35 +45,27 @@ function getParsedArgv(
 }
 
 describe('create-package/cli', () => {
+  // yargs keeps the `process.exit` it captured at import. Vitest installs that
+  // function before this file loads, and a failure calls it with `1`.
   beforeEach(() => {
-    // yargs calls process.exit() with 1 on failure and sometimes 0 on success.
-    // We have to intercept it.
-    jest
-      .spyOn(process, 'exit')
-      .mockImplementation((code?: number | string | null) => {
-        if (code === 1) {
-          throw new Error('exit: 1');
-        } else {
-          return undefined as never;
-        }
-      });
-
     // We actually check these.
-    jest.spyOn(console, 'error');
-    jest.spyOn(console, 'log');
+    vi.spyOn(console, 'error');
+    vi.spyOn(console, 'log');
   });
 
   afterEach(() => {
-    delete process.exitCode;
+    process.exitCode = undefined;
   });
 
   it('should error if a string option contains only whitespace', async () => {
     const defaultCommand = commandMap.$0;
-    jest.spyOn(defaultCommand, 'handler').mockImplementation();
+    vi.spyOn(defaultCommand, 'handler').mockImplementation(() =>
+      Promise.resolve(),
+    );
 
     await expect(
       cli(getMockArgv('--name', '  ', '--type', 'snap'), commands),
-    ).rejects.toThrow('exit: 1');
+    ).rejects.toThrow('process.exit unexpectedly called with "1"');
 
     expect(console.error).toHaveBeenCalledWith(
       'The argument "name" was processed to an empty string. Please provide a value with non-whitespace characters.',
@@ -83,12 +75,12 @@ describe('create-package/cli', () => {
   describe('command: $0', () => {
     it('should call the command handler with the correct arguments', async () => {
       const defaultCommand = commandMap.$0;
-      jest.spyOn(defaultCommand, 'handler');
+      vi.spyOn(defaultCommand, 'handler');
 
-      jest.spyOn(utils, 'readMonorepoFiles').mockResolvedValue({
+      vi.spyOn(utils, 'readMonorepoFiles').mockResolvedValue({
         nodeVersions: '>=18.0.0',
       });
-      jest.spyOn(utils, 'finalizeAndWriteData').mockResolvedValue();
+      vi.spyOn(utils, 'finalizeAndWriteData').mockResolvedValue();
 
       expect(
         await cli(
@@ -105,12 +97,12 @@ describe('create-package/cli', () => {
 
     it('should handle names already prefixed with "@metamask/"', async () => {
       const defaultCommand = commandMap.$0;
-      jest.spyOn(defaultCommand, 'handler');
+      vi.spyOn(defaultCommand, 'handler');
 
-      jest.spyOn(utils, 'readMonorepoFiles').mockResolvedValue({
+      vi.spyOn(utils, 'readMonorepoFiles').mockResolvedValue({
         nodeVersions: '>=18.0.0',
       });
-      jest.spyOn(utils, 'finalizeAndWriteData').mockResolvedValue();
+      vi.spyOn(utils, 'finalizeAndWriteData').mockResolvedValue();
 
       expect(
         await cli(
@@ -134,7 +126,9 @@ describe('create-package/cli', () => {
 
     it('should normalize the "lib" shorthand to "library"', async () => {
       const defaultCommand = commandMap.$0;
-      jest.spyOn(defaultCommand, 'handler').mockImplementation();
+      vi.spyOn(defaultCommand, 'handler').mockImplementation(() =>
+        Promise.resolve(),
+      );
 
       expect(
         await cli(
@@ -151,7 +145,9 @@ describe('create-package/cli', () => {
 
     it('should create a new package', async () => {
       const defaultCommand = commandMap.$0;
-      jest.spyOn(defaultCommand, 'handler').mockImplementation();
+      vi.spyOn(defaultCommand, 'handler').mockImplementation(() =>
+        Promise.resolve(),
+      );
 
       expect(
         await cli(
@@ -175,11 +171,13 @@ describe('create-package/cli', () => {
 
     it('should error if the package name is missing', async () => {
       const defaultCommand = commandMap.$0;
-      jest.spyOn(defaultCommand, 'handler').mockImplementation();
+      vi.spyOn(defaultCommand, 'handler').mockImplementation(() =>
+        Promise.resolve(),
+      );
 
       await expect(
         cli(getMockArgv('--description', 'bar', '--type', 'snap'), commands),
-      ).rejects.toThrow('exit: 1');
+      ).rejects.toThrow('process.exit unexpectedly called with "1"');
 
       expect(console.error).toHaveBeenCalledWith(
         'Missing required argument: "name"',
@@ -188,11 +186,13 @@ describe('create-package/cli', () => {
 
     it('should error if the package description is missing', async () => {
       const defaultCommand = commandMap.$0;
-      jest.spyOn(defaultCommand, 'handler').mockImplementation();
+      vi.spyOn(defaultCommand, 'handler').mockImplementation(() =>
+        Promise.resolve(),
+      );
 
       await expect(
         cli(getMockArgv('--name', 'foo', '--type', 'snap'), commands),
-      ).rejects.toThrow('exit: 1');
+      ).rejects.toThrow('process.exit unexpectedly called with "1"');
 
       expect(console.error).toHaveBeenCalledWith(
         'Missing required argument: "description"',
@@ -201,7 +201,9 @@ describe('create-package/cli', () => {
 
     it('should default the package type to "snap"', async () => {
       const defaultCommand = commandMap.$0;
-      jest.spyOn(defaultCommand, 'handler').mockImplementation();
+      vi.spyOn(defaultCommand, 'handler').mockImplementation(() =>
+        Promise.resolve(),
+      );
 
       expect(
         await cli(
@@ -218,14 +220,16 @@ describe('create-package/cli', () => {
 
     it('should error if the package type is invalid', async () => {
       const defaultCommand = commandMap.$0;
-      jest.spyOn(defaultCommand, 'handler').mockImplementation();
+      vi.spyOn(defaultCommand, 'handler').mockImplementation(() =>
+        Promise.resolve(),
+      );
 
       await expect(
         cli(
           getMockArgv('--name', 'foo', '--description', 'bar', '--type', 'foo'),
           commands,
         ),
-      ).rejects.toThrow('exit: 1');
+      ).rejects.toThrow('process.exit unexpectedly called with "1"');
 
       expect(console.error).toHaveBeenCalledWith(
         'Invalid package type: "foo". Valid types are: "snap", "library", "lib".',

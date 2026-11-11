@@ -15,7 +15,8 @@ import { Caip19Asset } from '../src/handlers/caip';
 import { BlockchainTestUtils } from './blockchain-utils';
 import { MNEMONIC, ORIGIN, TEST_ADDRESS_REGTEST } from './constants';
 
-const ACCOUNT_INDEX = 1;
+// Avoid indices used by the other suites; all suites share the same regtest chain.
+const ACCOUNT_INDEX = 4;
 
 describe('OnClientRequestHandler', () => {
   let account: KeyringAccount;
@@ -74,7 +75,7 @@ describe('OnClientRequestHandler', () => {
       createdAccountId = account.id;
     }
 
-    await blockchain.sendToAddress(account.address, 10);
+    await blockchain.sendToAddress(account.address, 10, false);
     await blockchain.mineBlocks(6);
     await snap.onCronjob({ method: 'synchronizeAccounts' });
   });

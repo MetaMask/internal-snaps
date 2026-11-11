@@ -11,10 +11,8 @@ ignores:
   - '@metamask/auto-changelog'
   - '@metamask/create-release-branch'
   - 'depcheck'
-  - 'eslint-interactive'
   - 'rimraf'
   - 'simple-git-hooks'
-  - 'ts-jest'
   - 'vitest'
   - '@vitest/coverage-istanbul'
   - 'vite'
@@ -22,19 +20,12 @@ ignores:
   - 'typedoc'
   - 'typescript'
   # Ignore plugins for tools
-  - '@typescript-eslint/*'
-  - 'eslint-config-*'
-  - 'eslint-plugin-*'
-  - 'jest-silent-reporter'
-  - 'jest-transform-stub'
-  - 'prettier-plugin-packagejson'
-  - 'typescript-eslint'
-  # Jest environment referenced in `jest.config.scripts.js`
+  - '@metamask/oxlint-config*'
+  - 'eslint-plugin-n'
+  - 'oxlint'
+  - 'oxlint-tsgolint'
+  # Jest environments pulled in by Bitcoin integration tests
   - 'jest-environment-node'
   - 'jest-environment-jsdom'
-  # Provides Jest 29 matcher types required by `@metamask/snaps-jest`.
-  - 'expect'
-  # Ignore dependencies imported implicitly by tools
-  - 'eslint-import-resolver-typescript'
   # Ignore dependencies which plug into the NPM lifecycle
   - '@lavamoat/preinstall-always-fail'

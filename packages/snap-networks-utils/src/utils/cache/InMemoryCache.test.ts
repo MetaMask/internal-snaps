@@ -26,9 +26,7 @@ describe('InMemoryCache', () => {
 
     it('returns undefined and removes the entry if it is expired', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = jest
-        .spyOn(Date, 'now')
-        .mockReturnValueOnce(JAN_1_2024);
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValueOnce(JAN_1_2024);
 
       await cache.set('key', 'value', 1000);
       mockDateNow.mockReturnValue(JAN_1_2024 + 1001);
@@ -43,7 +41,7 @@ describe('InMemoryCache', () => {
   describe('set', () => {
     it('stores the value with the default ttl if none is provided', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = jest.spyOn(Date, 'now').mockReturnValue(JAN_1_2024);
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValue(JAN_1_2024);
 
       await cache.set('key', 'value');
 
@@ -55,9 +53,7 @@ describe('InMemoryCache', () => {
 
     it('stores the value with the provided ttl', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = jest
-        .spyOn(Date, 'now')
-        .mockReturnValueOnce(JAN_1_2024);
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValueOnce(JAN_1_2024);
 
       await cache.set('key', 'value', 1000);
 
@@ -83,7 +79,7 @@ describe('InMemoryCache', () => {
 
     it('supports a ttl of 0', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = jest.spyOn(Date, 'now').mockReturnValue(JAN_1_2024);
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValue(JAN_1_2024);
 
       await cache.set('key', 'value', 0);
 
@@ -138,7 +134,7 @@ describe('InMemoryCache', () => {
     it('returns false if the mdelete result does not include the key', async () => {
       const cache = new InMemoryCache(logger);
       await cache.set('key', 'value');
-      jest.spyOn(cache, 'mdelete').mockResolvedValue({});
+      vi.spyOn(cache, 'mdelete').mockResolvedValue({});
 
       expect(await cache.delete('key')).toBe(false);
     });
@@ -174,9 +170,7 @@ describe('InMemoryCache', () => {
 
     it('returns false and removes the entry if it is expired', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = jest
-        .spyOn(Date, 'now')
-        .mockReturnValueOnce(JAN_1_2024);
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValueOnce(JAN_1_2024);
 
       await cache.set('key', 'value', 1000);
       mockDateNow.mockReturnValue(JAN_1_2024 + 1001);
@@ -199,7 +193,7 @@ describe('InMemoryCache', () => {
 
     it('removes expired entries before returning the keys', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = jest
+      const mockDateNow = vi
         .spyOn(Date, 'now')
         .mockReturnValueOnce(JAN_1_2024)
         .mockReturnValueOnce(JAN_1_2024);
@@ -232,7 +226,7 @@ describe('InMemoryCache', () => {
 
     it('removes expired entries before returning the size', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = jest
+      const mockDateNow = vi
         .spyOn(Date, 'now')
         .mockReturnValueOnce(JAN_1_2024)
         .mockReturnValueOnce(JAN_1_2024);
@@ -271,9 +265,7 @@ describe('InMemoryCache', () => {
 
     it('returns undefined and removes the entry if it is expired', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = jest
-        .spyOn(Date, 'now')
-        .mockReturnValueOnce(JAN_1_2024);
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValueOnce(JAN_1_2024);
 
       await cache.set('key', 'value', 1000);
       mockDateNow.mockReturnValue(JAN_1_2024 + 1001);
@@ -309,9 +301,7 @@ describe('InMemoryCache', () => {
 
     it('removes expired entries before reading', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = jest
-        .spyOn(Date, 'now')
-        .mockReturnValueOnce(JAN_1_2024);
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValueOnce(JAN_1_2024);
 
       await cache.set('key', 'value', 1000);
       mockDateNow.mockReturnValue(JAN_1_2024 + 1001);
@@ -334,7 +324,7 @@ describe('InMemoryCache', () => {
 
     it('defers to set if there is only one entry', async () => {
       const cache = new InMemoryCache(logger);
-      const setSpy = jest.spyOn(cache, 'set');
+      const setSpy = vi.spyOn(cache, 'set');
 
       await cache.mset([{ key: 'key', value: 'value', ttlMilliseconds: 1000 }]);
 
@@ -344,7 +334,7 @@ describe('InMemoryCache', () => {
 
     it('defers to set with an undefined ttl if there is only one entry without ttl', async () => {
       const cache = new InMemoryCache(logger);
-      const setSpy = jest.spyOn(cache, 'set');
+      const setSpy = vi.spyOn(cache, 'set');
 
       await cache.mset([{ key: 'key', value: 'value' }]);
 
@@ -391,7 +381,7 @@ describe('InMemoryCache', () => {
 
     it('stores entries with the provided ttl', async () => {
       const cache = new InMemoryCache(logger);
-      const mockDateNow = jest.spyOn(Date, 'now').mockReturnValue(JAN_1_2024);
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValue(JAN_1_2024);
 
       await cache.mset([
         { key: 'key', value: 'value', ttlMilliseconds: 1000 },

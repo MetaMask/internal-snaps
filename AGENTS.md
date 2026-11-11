@@ -9,7 +9,7 @@ This document provides guidance for AI agents working within this repo.
 - **Yarn 4** for managing the monorepo
 - **TypeScript 5** for writing type-safe code
 - **Jest** for writing tests
-- **ESLint 9** and **Prettier** for linting and formatting code
+- **Oxlint** and **Oxfmt** for linting and formatting code
 - **Babel** for compiling ESM code so that Jest can run it
 - **`@metamask/auto-changelog`** for writing and validating changelogs
 - **`@metamask/create-release-branch`**, **`MetaMask/action-publish-release`**, and **`MetaMask/action-npm-publish`** for creating and publishing releases
@@ -47,7 +47,7 @@ The monorepo uses a hierarchical configuration approach for different tools. For
 #### TypeScript
 
 - `tsconfig.base.json` defines shared compiler defaults for all other config files.
-- `tsconfig.json` defines TypeScript settings for repository scripts and editor features.
+- `tsconfig.json` defines TypeScript settings for repository scripts and editor features. It overrides `module` to `preserve` so the shared Vitest configs can stay `.ts` and import `vitest`.
 - `tsconfig.packages.json` defines shared TypeScript settings for all packages.
 - Packages are either Snaps or non-Snaps:
   - `tsconfig.packages.snaps.json` defines shared TypeScript settings for all Snap packages.
@@ -61,18 +61,23 @@ The monorepo uses a hierarchical configuration approach for different tools. For
 
 #### Jest
 
-- `jest.config.packages.js` defines shared Jest settings for all directories in `packages/`.
-- `jest.config.scripts.js` defines shared Jest settings for all directories in `scripts/`.
-- `packages/**/jest.config.js` (and `scripts/create-package/library-template/jest.config.js`) customizes Jest settings for each package.
+- `packages/bitcoin-wallet-snap/jest.integration.config.mjs` configures the Bitcoin integration suite. It uses `@metamask/snaps-jest`.
 
-#### ESLint
+#### Vitest
 
-- `eslint.config.mjs` configures ESLint for the entire monorepo.
-- `eslint-suppressions.json` isn't a config file per se, but defines ESLint errors that are being ignored (temporarily).
+- `vitest.config.scripts.ts` runs the `scripts/` unit tests.
+- `vitest.config.packages.ts` defines shared Vitest settings. A package config merges it with `mergeConfig` and adds only that package's inline dependencies, setup file, and coverage thresholds.
+- `packages/**/vitest.config.ts` is the package config Vitest loads. Bitcoin, Solana, Stellar, Tron, and `@metamask/snap-networks-utils` use the shared config.
 
-#### Prettier
+#### Oxlint
 
-- `.prettierrc.js` configures Prettier for the entire repo.
+- `oxlint.config.ts` configures Oxlint for the entire monorepo.
+- `scripts/oxlint-rules.mjs` is a local Oxlint JS plugin for rules that Oxlint does not implement natively (for example, the enum ban and `no-restricted-syntax` selectors).
+- `oxlint-suppressions.json` isn't a config file per se, but defines Oxlint errors that are being ignored (temporarily).
+
+#### Oxfmt
+
+- `.oxfmtrc.json` configures Oxfmt for the entire repo.
 
 #### TypeDoc
 
@@ -123,7 +128,7 @@ For more on these commands, see:
 ### Running tests
 
 - Run `yarn workspace <package-name> run test` to run all tests for a package.
-- Run `yarn workspace <package-name> run jest --no-coverage <file>` to run a specific Jest test file. Bitcoin, Solana, Stellar, and Tron unit tests run on Vitest: `yarn workspace <package-name> exec vitest run <file>`. Bitcoin integration tests stay on Jest via `yarn workspace @metamask/bitcoin-wallet-snap run test:integration`.
+- Run `yarn test:scripts` for the `scripts/` unit tests. Run `yarn workspace <package-name> exec vitest run <file>` for a package unit test. Bitcoin integration tests stay on Jest via `yarn workspace @metamask/bitcoin-wallet-snap run test:integration`.
 - Prefer the above two commands, but if you must, run `yarn test` to run tests for all packages in the monorepo.
 
 ### Linting and formatting
@@ -228,8 +233,8 @@ This repo is a Yarn 4 monorepo of MetaMask Snaps. The products live in `packages
 
 Standard commands are documented above (see "Running tests", "Linting and formatting", "Building packages"). Non-obvious caveats for running things here:
 
-- **Build before testing.** Snap-install tests that use `@metamask/snaps-jest` expect the built bundle. CI always runs `yarn workspace <pkg> build` before `yarn workspace <pkg> run test`. If tests behave unexpectedly, run `yarn build` (or the per-package build) first. Bitcoin, Stellar, Tron, and Solana unit tests run on Vitest and do not use `@metamask/snaps-jest`. Bitcoin integration tests still do: `yarn workspace @metamask/bitcoin-wallet-snap run test:integration`.
-- **`yarn lint` deletes `dist/`.** `lint:eslint` runs `build:only-clean` (`rimraf -g 'packages/*/dist'`) before linting. After running `yarn lint`, re-run `yarn build` before serving a snap or running snap tests.
+- **Build before testing.** Snap-install tests that use `@metamask/snaps-jest` expect the built bundle. CI always runs `yarn workspace <pkg> build` before `yarn workspace <pkg> run test`. If tests behave unexpectedly, run `yarn build` (or the per-package build) first. Bitcoin, Stellar, Tron, Solana, and `@metamask/snap-networks-utils` unit tests run on Vitest and do not use `@metamask/snaps-jest`. Bitcoin integration tests still do: `yarn workspace @metamask/bitcoin-wallet-snap run test:integration`.
+- **`yarn lint:oxlint` does not build or delete `dist/`.** It only runs Oxlint over the source tree, so it is safe to run between builds.
 - **Running a snap:** `yarn workspace <pkg> run serve` serves the pre-built bundle at `http://localhost:8080` (`/snap.manifest.json` and `/dist/bundle.js`); `yarn workspace <pkg> run start` (`mm-snap watch`) rebuilds on change. Both snaps use port 8080, so only run one at a time.
-- **No headless end-to-end.** Fully exercising a snap normally requires the MetaMask extension in a browser, which isn't available headless. Bitcoin, Stellar, Tron, and Solana unit tests mock the snap provider under Vitest. Bitcoin integration tests still install the snap with `@metamask/snaps-jest` (`jest.integration.config.mjs`); Jest stays installed for that suite. Solana's four `installSnap` files (`src/index.test.ts` and the three confirmation `render.test.tsx` files) use Vitest syntax but are excluded from the test run, because `@metamask/snaps-jest` cannot execute under Vitest. Tron's `jest.integration.config.mjs` remains for snaps-jest integration tests.
+- **No headless end-to-end.** Fully exercising a snap normally requires the MetaMask extension in a browser, which isn't available headless. Bitcoin, Stellar, Tron, and Solana unit tests mock the snap provider under Vitest. Bitcoin integration tests still install the snap with `@metamask/snaps-jest` (`jest.integration.config.mjs`); Jest stays installed for that suite. Solana's four `installSnap` files (`src/index.test.ts` and the three confirmation `render.test.tsx` files) use Vitest syntax but are excluded from the test run, because `@metamask/snaps-jest` cannot execute under Vitest.
 - **`.env` is optional** for `bitcoin-wallet-snap`; `snap.config.ts` reads it via dotenv but all values have sane defaults (see `.env.example`), so the snap builds and serves without one.

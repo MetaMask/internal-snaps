@@ -162,11 +162,8 @@ async function withConfirmationHandler<ReturnValue>(
     trackError: vi.fn().mockResolvedValue(undefined),
   };
 
-  // eslint-disable-next-line jest/unbound-method
   vi.mocked(mockAnalyticsService.trackTransactionAdded).mockClear();
-  // eslint-disable-next-line jest/unbound-method
   vi.mocked(mockAnalyticsService.trackTransactionApproved).mockClear();
-  // eslint-disable-next-line jest/unbound-method
   vi.mocked(mockAnalyticsService.trackTransactionRejected).mockClear();
 
   const mockState: MockState = {

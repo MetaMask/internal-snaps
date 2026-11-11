@@ -5,6 +5,7 @@ import type {
 } from '@metamask/assets-controller';
 import type { InternalAccount } from '@metamask/keyring-internal-api';
 import type { CaipChainId } from '@metamask/utils';
+import type { Mocked } from 'vitest';
 
 import type { AssetsProviderMessenger } from './AssetsProvider';
 import { AssetsProvider } from './AssetsProvider';
@@ -28,7 +29,7 @@ const ACCOUNT: InternalAccount = {
 
 type WithAssetsProviderCallback<ReturnValue> = (payload: {
   assetsProvider: AssetsProvider;
-  mockMessenger: jest.Mocked<AssetsProviderMessenger>;
+  mockMessenger: Mocked<AssetsProviderMessenger>;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -41,9 +42,9 @@ type WithAssetsProviderCallback<ReturnValue> = (payload: {
 async function withAssetsProvider<ReturnValue>(
   testFunction: WithAssetsProviderCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  const mockMessenger: jest.Mocked<AssetsProviderMessenger> = {
-    call: jest.fn(),
-  };
+  const mockMessenger = {
+    call: vi.fn(),
+  } as unknown as Mocked<AssetsProviderMessenger>;
 
   const assetsProvider = new AssetsProvider({
     messenger: mockMessenger,

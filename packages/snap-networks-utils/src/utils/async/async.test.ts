@@ -33,7 +33,7 @@ describe('batchesAll', () => {
   });
 
   it('rejects when any mapper rejects', async () => {
-    const mapper = jest
+    const mapper = vi
       .fn()
       .mockResolvedValueOnce(10)
       .mockRejectedValueOnce(new Error('boom'))
@@ -186,7 +186,7 @@ describe('batchesAllSettledWithChunks', () => {
   });
 
   it('records rejected chunk without failing other chunks', async () => {
-    const mapper = jest
+    const mapper = vi
       .fn()
       .mockRejectedValueOnce(new Error('chunk0 fail'))
       .mockResolvedValueOnce(7);
@@ -229,7 +229,7 @@ describe('batchesAllWithChunks', () => {
   });
 
   it('rejects when any chunk mapper rejects', async () => {
-    const mapper = jest
+    const mapper = vi
       .fn()
       .mockRejectedValueOnce(new Error('chunk0 fail'))
       .mockResolvedValueOnce(7);

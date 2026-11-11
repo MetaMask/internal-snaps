@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest';
+
 import type { Serializable } from '../serialization/types';
 import type { ICache } from './types';
 import { useCache } from './useCache';
@@ -5,7 +7,7 @@ import type { CacheOptions } from './useCache';
 
 describe('useCache', () => {
   // Spy to check if the original function was executed or not
-  let actualExecutionSpy: jest.Mock;
+  let actualExecutionSpy: Mock;
 
   // Mock cache
   let cache: ICache<Serializable>;
@@ -34,12 +36,12 @@ describe('useCache', () => {
 
   beforeEach(() => {
     // Reset mocks for each test
-    actualExecutionSpy = jest.fn().mockResolvedValue('test');
+    actualExecutionSpy = vi.fn().mockResolvedValue('test');
 
     // Create a mock cache
     cache = {
-      get: jest.fn().mockResolvedValue(undefined),
-      set: jest.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockResolvedValue(undefined),
+      set: vi.fn().mockResolvedValue(undefined),
     } as unknown as ICache<Serializable>;
 
     // Define common cache options
@@ -83,7 +85,7 @@ describe('useCache', () => {
   describe('when the data is not cached', () => {
     it('should cache the result of a function', async () => {
       // No cached data
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
+      vi.spyOn(cache, 'get').mockResolvedValue(undefined);
 
       const result = await cachedTestFunction();
 
@@ -97,7 +99,7 @@ describe('useCache', () => {
   describe('when the data is cached', () => {
     it('should return the cached result', async () => {
       // Init the cache with some data
-      jest.spyOn(cache, 'get').mockResolvedValue('test');
+      vi.spyOn(cache, 'get').mockResolvedValue('test');
 
       const result = await cachedTestFunction();
 
@@ -108,7 +110,7 @@ describe('useCache', () => {
     });
 
     it('should skip the cache and refresh the result if refreshCache is enabled', async () => {
-      jest.spyOn(cache, 'get').mockResolvedValue('cached-test');
+      vi.spyOn(cache, 'get').mockResolvedValue('cached-test');
 
       const refreshCachedFunction = useCache(testFunction, cache, {
         ...cacheOptions,
@@ -134,7 +136,7 @@ describe('useCache', () => {
     });
 
     it('should handle cache get errors gracefully', async () => {
-      jest.spyOn(cache, 'get').mockRejectedValueOnce(new Error('Cache error'));
+      vi.spyOn(cache, 'get').mockRejectedValueOnce(new Error('Cache error'));
       actualExecutionSpy.mockResolvedValueOnce('test');
 
       const result = await cachedTestFunction();
@@ -145,10 +147,10 @@ describe('useCache', () => {
     });
 
     it('should handle cache set errors gracefully', async () => {
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
-      jest
-        .spyOn(cache, 'set')
-        .mockRejectedValueOnce(new Error('Cache set error'));
+      vi.spyOn(cache, 'get').mockResolvedValue(undefined);
+      vi.spyOn(cache, 'set').mockRejectedValueOnce(
+        new Error('Cache set error'),
+      );
       actualExecutionSpy.mockResolvedValueOnce('test');
 
       const result = await cachedTestFunction();
@@ -159,15 +161,15 @@ describe('useCache', () => {
 
     it('should log cache errors using the provided logger', async () => {
       const errorLogger = {
-        error: jest.fn(),
+        error: vi.fn(),
       };
 
-      jest
-        .spyOn(cache, 'get')
-        .mockRejectedValueOnce(new Error('Cache get error'));
-      jest
-        .spyOn(cache, 'set')
-        .mockRejectedValueOnce(new Error('Cache set error'));
+      vi.spyOn(cache, 'get').mockRejectedValueOnce(
+        new Error('Cache get error'),
+      );
+      vi.spyOn(cache, 'set').mockRejectedValueOnce(
+        new Error('Cache set error'),
+      );
       actualExecutionSpy.mockResolvedValueOnce('test');
 
       const loggedCachedFunction = useCache(testFunction, cache, {
@@ -184,8 +186,8 @@ describe('useCache', () => {
 
   describe('different argument types', () => {
     it('should handle primitive arguments correctly', async () => {
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
-      jest.spyOn(cache, 'set').mockResolvedValueOnce(undefined);
+      vi.spyOn(cache, 'get').mockResolvedValue(undefined);
+      vi.spyOn(cache, 'set').mockResolvedValueOnce(undefined);
       actualExecutionSpy.mockResolvedValueOnce('test with args');
 
       const result = await cachedTestFunctionWithArgs('hello', 42);
@@ -196,8 +198,8 @@ describe('useCache', () => {
     });
 
     it('should handle complex object arguments correctly', async () => {
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
-      jest.spyOn(cache, 'set').mockResolvedValueOnce(undefined);
+      vi.spyOn(cache, 'get').mockResolvedValue(undefined);
+      vi.spyOn(cache, 'set').mockResolvedValueOnce(undefined);
       const testObj = { name: 'John', age: 30 };
       actualExecutionSpy.mockResolvedValueOnce('test with complex args');
 
@@ -213,7 +215,7 @@ describe('useCache', () => {
 
   describe('custom generateCacheKey', () => {
     it('should use a custom key generator if provided', async () => {
-      const customKeyGenerator = jest.fn().mockReturnValue('custom-key');
+      const customKeyGenerator = vi.fn().mockReturnValue('custom-key');
 
       const customCachedFunction = useCache(testFunction, cache, {
         ...cacheOptions,
@@ -260,26 +262,26 @@ describe('useCache', () => {
   describe('falsy but valid cache values', () => {
     it('should handle falsy but valid cache values (false, 0, empty string)', async () => {
       // Test with false
-      jest.spyOn(cache, 'get').mockResolvedValue(false);
+      vi.spyOn(cache, 'get').mockResolvedValue(false);
       let result: unknown = await cachedTestFunction();
       expect(result).toBe(false);
       expect(actualExecutionSpy).not.toHaveBeenCalled();
 
       // Test with 0
-      jest.spyOn(cache, 'get').mockResolvedValue(0);
+      vi.spyOn(cache, 'get').mockResolvedValue(0);
       result = await cachedTestFunction();
       expect(result).toBe(0);
       expect(actualExecutionSpy).not.toHaveBeenCalled();
 
       // Test with empty string
-      jest.spyOn(cache, 'get').mockResolvedValue('');
+      vi.spyOn(cache, 'get').mockResolvedValue('');
       result = await cachedTestFunction();
       expect(result).toBe('');
       expect(actualExecutionSpy).not.toHaveBeenCalled();
     });
 
     it('should execute the function when cache returns undefined', async () => {
-      jest.spyOn(cache, 'get').mockResolvedValue(undefined);
+      vi.spyOn(cache, 'get').mockResolvedValue(undefined);
       actualExecutionSpy.mockResolvedValueOnce('test');
 
       const result = await cachedTestFunction();

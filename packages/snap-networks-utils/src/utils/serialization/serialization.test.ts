@@ -104,7 +104,7 @@ describe('serialize', () => {
   });
 });
 
-/* eslint-disable jest/prefer-strict-equal */
+/* eslint-disable vitest/prefer-strict-equal */
 describe('deserialize', () => {
   it('deserializes primitive values', () => {
     expect(deserialize('test')).toBe('test');
@@ -194,4 +194,4 @@ describe('deserialize', () => {
     expect(result).toStrictEqual(new Uint8Array([1, 2, 3]));
   });
 });
-/* eslint-enable jest/prefer-strict-equal */
+/* eslint-enable vitest/prefer-strict-equal */

@@ -1,10 +1,10 @@
-/* eslint-disable jest/prefer-strict-equal */
+/* eslint-disable vitest/prefer-strict-equal */
 import { BigNumber } from 'bignumber.js';
 
 import { State } from './State';
 
 const snap = {
-  request: jest.fn(),
+  request: vi.fn(),
 };
 
 (globalThis as typeof globalThis & { snap: typeof snap }).snap = snap;
@@ -82,7 +82,7 @@ describe('State', () => {
       defaultState: DEFAULT_STATE,
     });
 
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -267,7 +267,7 @@ describe('State', () => {
     it('passes undefined to the updater when the key does not exist', async () => {
       snap.request.mockResolvedValueOnce(null);
 
-      const updater = jest.fn().mockReturnValue({ bob: 20 });
+      const updater = vi.fn().mockReturnValue({ bob: 20 });
 
       await state.setKeyWith('scores', updater);
 
@@ -568,4 +568,4 @@ describe('State', () => {
     });
   });
 });
-/* eslint-enable jest/prefer-strict-equal */
+/* eslint-enable vitest/prefer-strict-equal */

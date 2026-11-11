@@ -14,14 +14,14 @@
      * Resolve local `@metamask/*` imports to source so editors and TypeScript checks use the
      * uncompiled monorepo packages.
      *
-     * NOTE: This must be synchronized with the `moduleNameMapper` option in
-     * `jest.config.packages.js`.
+     * NOTE: This must be synchronized with `workspaceSourcePlugin` in
+     * `vitest.config.packages.ts`.
      */
     "paths": {
-      "@metamask/*": ["../*/src"]
+      "@metamask/*": ["${configDir}/../*/src"]
     },
     "skipLibCheck": true,
-    "types": ["jest"]
+    "types": ["node", "vitest/globals"]
   },
   /**
    * Keep build and test-coverage artifacts out of every package's check program.

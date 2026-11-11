@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `onAmountInput` now accepts an optional `toAddress` parameter for the shared client request shape; the conservative SOL/SPL fee and rent estimation does not use it ([#589](https://github.com/MetaMask/internal-snaps/pull/589)).
 - Show who pays the network fee on transaction confirmations, and whether a sponsored transaction is free for the user ([#595](https://github.com/MetaMask/internal-snaps/pull/595))
   - When another account pays the fee, the confirmation shows the sponsor and a "You pay" row: "Free" only when no instruction charges the user, otherwise the account rent and payments to the sponsor the user covers
   - Shows "Can't confirm" instead of "Free" when it can't rule out other costs, for example when the simulation fails

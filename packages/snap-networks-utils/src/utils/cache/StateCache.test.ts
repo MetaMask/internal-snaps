@@ -1,4 +1,4 @@
-/* eslint-disable jest/prefer-strict-equal */
+/* eslint-disable vitest/prefer-strict-equal */
 
 import { Logger, LogLevel } from '../logger/Logger';
 import { InMemoryState } from '../state/InMemoryState';
@@ -184,7 +184,7 @@ describe('StateCache', () => {
         __cache__default: {},
       });
       const cache = createStateCache(stateWithCache);
-      jest.spyOn(Date, 'now').mockReturnValueOnce(1704067200000); // January 1, 2024
+      vi.spyOn(Date, 'now').mockReturnValueOnce(1704067200000); // January 1, 2024
 
       await cache.set('someKey', 'someValue', 1000);
       const stateValue = await stateWithCache.get();
@@ -204,9 +204,7 @@ describe('StateCache', () => {
         __cache__default: {},
       });
       const cache = createStateCache(stateWithCache);
-      const mockDateNow = jest
-        .spyOn(Date, 'now')
-        .mockReturnValue(1704067200000); // January 1, 2024
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValue(1704067200000); // January 1, 2024
 
       await cache.set('someKey', 'someValue', 0);
       const stateValue = await stateWithCache.get();
@@ -313,7 +311,7 @@ describe('StateCache', () => {
         },
       });
       const cache = createStateCache(stateWithCache);
-      jest.spyOn(cache, 'mdelete').mockResolvedValue({});
+      vi.spyOn(cache, 'mdelete').mockResolvedValue({});
 
       expect(await cache.delete('someKey')).toBe(false);
     });
@@ -561,9 +559,7 @@ describe('StateCache', () => {
       const cache = createStateCache(stateWithCache);
 
       // Mock Date.now to return a time after the expiration
-      const mockDateNow = jest
-        .spyOn(Date, 'now')
-        .mockReturnValue(1704067200001); // January 1, 2024 + 1 millisecond
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValue(1704067200001); // January 1, 2024 + 1 millisecond
 
       const result = await cache.mget(['someKey']);
 
@@ -614,9 +610,7 @@ describe('StateCache', () => {
       const cache = createStateCache(stateWithCache);
 
       // Mock Date.now to return a time after the expiration
-      const mockDateNow = jest
-        .spyOn(Date, 'now')
-        .mockReturnValue(1704067200001); // January 1, 2024 + 1 millisecond
+      const mockDateNow = vi.spyOn(Date, 'now').mockReturnValue(1704067200001); // January 1, 2024 + 1 millisecond
 
       await cache.mget(['someKey']);
       const stateValue = await stateWithCache.get();
@@ -753,7 +747,7 @@ describe('StateCache', () => {
     it('no-ops if no entries are provided', async () => {
       const stateWithCache = new InMemoryState({});
       const cache = createStateCache(stateWithCache);
-      const updateSpy = jest.spyOn(stateWithCache, 'update');
+      const updateSpy = vi.spyOn(stateWithCache, 'update');
 
       await cache.mset([]);
 
@@ -763,7 +757,7 @@ describe('StateCache', () => {
     it('defers to set if there is only one entry', async () => {
       const stateWithCache = new InMemoryState({});
       const cache = createStateCache(stateWithCache);
-      const setSpy = jest.spyOn(cache, 'set');
+      const setSpy = vi.spyOn(cache, 'set');
 
       const singleEntry = {
         key: 'someKey',

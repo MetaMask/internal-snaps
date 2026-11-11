@@ -1,7 +1,4 @@
 {
   "extends": "../../tsconfig.packages.snaps.json",
-  "compilerOptions": {
-    "baseUrl": "./"
-  },
   "include": ["**/*.ts", "**/*.tsx", "**/*.json"]
 }
