@@ -550,22 +550,23 @@ const resolveUserCosts = async (
   ];
   const accounts = lookups.length > 0 ? await reader.getAccounts(lookups) : {};
 
-  for (const {
-    ata,
-    idempotent,
-    tokenProgram,
-  } of sponsorship.rentPaidTokenAccounts) {
-    // An idempotent creation of an account that already exists does nothing.
-    if (idempotent && accounts[ata]) {
-      continue;
-    }
-    const rentExemptMinimum = await reader.getRentExemptMinimum(
-      tokenProgram === TOKEN_2022_PROGRAM_ADDRESS
-        ? TOKEN_2022_ASSOCIATED_TOKEN_ACCOUNT_SPACE
-        : TOKEN_ACCOUNT_SPACE,
-    );
-    sponsorship.rentLamports += rentExemptMinimum;
-  }
+  // An idempotent creation of an account that already exists does nothing.
+  const rentAccountsToCreate = sponsorship.rentPaidTokenAccounts.filter(
+    ({ ata, idempotent }) => !(idempotent && accounts[ata]),
+  );
+  const rentExemptMinimums = await Promise.all(
+    rentAccountsToCreate.map(({ tokenProgram }) =>
+      reader.getRentExemptMinimum(
+        tokenProgram === TOKEN_2022_PROGRAM_ADDRESS
+          ? TOKEN_2022_ASSOCIATED_TOKEN_ACCOUNT_SPACE
+          : TOKEN_ACCOUNT_SPACE,
+      ),
+    ),
+  );
+  sponsorship.rentLamports += rentExemptMinimums.reduce<bigint>(
+    (total, rentExemptMinimum) => total + rentExemptMinimum,
+    0n,
+  );
 
   const tokenCharges = new Map<string, { amount: bigint; decimals: number }>();
   for (const tokenTransfer of sponsorship.tokenTransfers) {
@@ -606,15 +607,16 @@ const resolveUserCosts = async (
       lamports: sponsorship.solToSponsorLamports.toString(),
     });
   }
-  for (const [mint, { amount, decimals }] of tokenCharges) {
-    userCosts.push({
-      type: 'tokenToSponsor',
+  const tokenCosts = await Promise.all(
+    [...tokenCharges].map(async ([mint, { amount, decimals }]) => ({
+      type: 'tokenToSponsor' as const,
       mint,
       amount: amount.toString(),
       decimals,
       symbol: await reader.getTokenSymbol(mint),
-    });
-  }
+    })),
+  );
+  userCosts.push(...tokenCosts);
   return userCosts;
 };
 

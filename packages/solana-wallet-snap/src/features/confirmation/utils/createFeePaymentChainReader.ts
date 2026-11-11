@@ -59,7 +59,10 @@ export const createFeePaymentChainReader = (
 ): FeePaymentChainReader => ({
   async getAccounts(addresses): Promise<Record<string, AccountSnapshot>> {
     const { value } = await rpc
-      .getMultipleAccounts(addresses.map(address), { encoding: 'jsonParsed' })
+      .getMultipleAccounts(
+        addresses.map((account) => address(account)),
+        { encoding: 'jsonParsed' },
+      )
       .send();
 
     return Object.fromEntries(
