@@ -103,6 +103,7 @@ describe('AssetsRepository', () => {
 
         return undefined;
       },
+      getKeys: async () => Promise.resolve({}),
       setKey: async () => undefined,
       setKeyWith: async () => undefined,
       update: async (updater) => {

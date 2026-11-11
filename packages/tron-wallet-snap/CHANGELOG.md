@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Previously, `onAmountInput` returned true for all cases when `toAddress` was not provided
   - Native TRX and TRC-10 transfers now add a pessimistic account activation fee on top of the estimated transfer fee; TRC-20 transfers only estimate the transfer fee
   - Fee estimation now fails instead of treating an account whose on-chain lookup failed as inactive
+- Bump `@metamask/snaps-sdk` from `^12.0.1` to `^12.1.0` ([#356](https://github.com/MetaMask/internal-snaps/pull/356))
 
 ## [4.4.1]
 
