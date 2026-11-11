@@ -162,6 +162,56 @@ describe('ConfirmSignTransaction', () => {
     return collectTexts(tree);
   };
 
+  it('shows the blocking local balance error and malicious security alert, but only one transaction error', () => {
+    const texts = renderTexts(
+      buildContext({
+        isInsufficientBalance: true,
+        scan: buildScanResult({
+          validation: { type: 'Malicious', reason: null },
+          error: otherError,
+        }),
+      }),
+    );
+    expect(texts).toContain('Insufficient funds');
+    expect(texts).toContain('This is a deceptive request');
+    expect(texts.indexOf('Insufficient funds')).toBeLessThan(
+      texts.indexOf('This is a deceptive request'),
+    );
+    expect(texts).not.toContain(SIMULATION_ERROR_TITLE);
+  });
+
+  it('shows the security alert before a non-blocking simulation error', () => {
+    const texts = renderTexts(
+      buildContext({
+        scan: buildScanResult({
+          validation: { type: 'Malicious', reason: null },
+          error: otherError,
+        }),
+      }),
+    );
+    expect(texts).toContain(SIMULATION_ERROR_TITLE);
+    expect(texts.indexOf('This is a deceptive request')).toBeGreaterThanOrEqual(
+      0,
+    );
+    expect(texts.indexOf('This is a deceptive request')).toBeLessThan(
+      texts.indexOf(SIMULATION_ERROR_TITLE),
+    );
+  });
+
+  it('hides provider simulation errors when simulation is disabled while keeping security alerts', () => {
+    const texts = renderTexts(
+      buildContext({
+        preferences: { ...mockPreferences, simulateOnChainActions: false },
+        scan: buildScanResult({
+          validation: { type: 'Malicious', reason: null },
+          error: otherError,
+        }),
+      }),
+    );
+    expect(texts).toContain('This is a deceptive request');
+    expect(texts).not.toContain(SIMULATION_ERROR_TITLE);
+  });
+
   it('disables the confirm button during the initial scan load', () => {
     expect(
       isConfirmDisabled(buildContext({ scanFetchStatus: FetchStatus.Loading })),
@@ -375,7 +425,7 @@ describe('ConfirmSignTransaction', () => {
       },
     );
 
-    it('renders scan errors before validation findings', () => {
+    it('renders both security validation and simulation errors', () => {
       const { texts } = render(
         buildContext({
           scan: buildScanResult({
@@ -386,7 +436,7 @@ describe('ConfirmSignTransaction', () => {
       );
 
       expect(texts).toContain(SIMULATION_ERROR_TITLE);
-      expect(texts).not.toContain(MALICIOUS_TITLE);
+      expect(texts).toContain(MALICIOUS_TITLE);
     });
 
     it.each([FetchStatus.Fetched, FetchStatus.Fetching])(

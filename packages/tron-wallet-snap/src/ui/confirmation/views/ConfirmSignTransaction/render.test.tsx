@@ -650,10 +650,21 @@ describe('ConfirmSignTransaction render', () => {
 
   it('surfaces an expired scan result when the TAPOS check detects expiry', async () => {
     await withSnapContext(
-      async ({ mockSnapClient, mockTransactionExpirationRefresherService }) => {
+      async ({
+        mockSnapClient,
+        mockTransactionExpirationRefresherService,
+        mockTransactionScanService,
+      }) => {
         mockTransactionExpirationRefresherService.isTransactionExpired.mockResolvedValue(
           true,
         );
+        mockTransactionScanService.scanTransaction.mockResolvedValue({
+          status: 'SUCCESS',
+          simulationStatus: SimulationStatus.Completed,
+          estimatedChanges: { assets: [] },
+          validation: { type: 'Malicious', reason: null },
+          error: null,
+        });
 
         const request: TronWalletKeyringRequest = {
           id: '00000000-0000-4000-8000-000000000008',
@@ -678,7 +689,7 @@ describe('ConfirmSignTransaction render', () => {
 
         await render(request, mockAccount, mockRawData as any);
 
-        // The benign security scan is overridden by the locally-detected expiry.
+        // The expiry replaces the simulation result, preserving the verdict.
         const finalUpdateCall =
           mockSnapClient.updateInterface.mock.calls.at(-1);
         const finalContext = finalUpdateCall?.[2] as {
@@ -689,6 +700,7 @@ describe('ConfirmSignTransaction render', () => {
           SimulationStatus.Failed,
         );
         expect(finalContext.scan?.error?.type).toBe('TransactionTaposExpired');
+        expect(finalContext.scan?.validation.type).toBe('Malicious');
       },
     );
   });

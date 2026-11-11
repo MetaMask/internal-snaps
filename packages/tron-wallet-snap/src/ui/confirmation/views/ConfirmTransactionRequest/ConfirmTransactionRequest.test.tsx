@@ -87,6 +87,40 @@ describe('ConfirmTransactionRequest', () => {
     expect(result).toBeDefined();
   });
 
+  it('shows a blocking local error before the malicious security alert', () => {
+    const context: ConfirmTransactionRequestContext = {
+      ...baseContext,
+      scan: {
+        ...mockScanResult,
+        validation: { type: 'Malicious', reason: null },
+        error: { type: TRANSACTION_TAPOS_EXPIRED, code: null, message: null },
+      },
+    };
+    const serialized = JSON.stringify(ConfirmTransactionRequest({ context }));
+    expect(serialized).toContain('confirmation.simulationErrorTitle');
+    expect(serialized).toContain('confirmation.validationErrorTitle');
+    expect(
+      serialized.indexOf('confirmation.simulationErrorTitle'),
+    ).toBeLessThan(serialized.indexOf('confirmation.validationErrorTitle'));
+  });
+
+  it('shows a security alert alongside a non-blocking provider simulation error', () => {
+    const context: ConfirmTransactionRequestContext = {
+      ...baseContext,
+      scan: {
+        ...mockScanResult,
+        validation: { type: 'Warning', reason: null },
+        error: { type: 'Revert', code: null, message: null },
+      },
+    };
+    const serialized = JSON.stringify(ConfirmTransactionRequest({ context }));
+    expect(serialized).toContain('confirmation.validationWarningTitle');
+    expect(serialized).toContain('confirmation.simulationErrorTitle');
+    expect(
+      serialized.indexOf('confirmation.validationWarningTitle'),
+    ).toBeLessThan(serialized.indexOf('confirmation.simulationErrorTitle'));
+  });
+
   it('renders when useSecurityAlerts is true and scan data exists', () => {
     const result = ConfirmTransactionRequest({ context: baseContext });
     expect(result).toBeDefined();
