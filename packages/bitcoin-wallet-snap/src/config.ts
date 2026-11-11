@@ -50,6 +50,7 @@ export const ConfigStruct = object({
   targetBlocksConfirmation: number(),
   fallbackFeeRate: number(),
   ratesRefreshInterval: string(),
+  feeRateCacheTtlMilliseconds: number(),
   priceApi: object({
     url: defaultedUrlStruct('https://price.api.cx.metamask.io'),
   }),
@@ -88,6 +89,7 @@ export const ENVIRONMENT = {
   targetBlocksConfirmation: 1,
   fallbackFeeRate: 5.0,
   ratesRefreshInterval: 'PT20S',
+  feeRateCacheTtlMilliseconds: 60_000,
   priceApi: {
     url: process.env.PRICE_API_URL,
   },

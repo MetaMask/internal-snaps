@@ -2,7 +2,11 @@ import { Address, Amount, Psbt } from '@metamask/bitcoindevkit';
 import type { Network, Transaction } from '@metamask/bitcoindevkit';
 import { TransactionType } from '@metamask/keyring-api';
 import { getCurrentUnixTimestamp } from '@metamask/keyring-snap-sdk';
-import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  InMemoryCache,
+  useCache,
+} from '@metamask/snap-networks-utils';
 import type { InputChangeEvent } from '@metamask/snaps-sdk';
 
 import type {
@@ -58,6 +62,8 @@ export class SendFlowUseCases {
 
   readonly #ratesRefreshInterval: string;
 
+  readonly #getFeeRate: (network: Network) => Promise<number>;
+
   constructor(
     logger: Logger,
     snapClient: SnapClient,
@@ -69,6 +75,7 @@ export class SendFlowUseCases {
     targetBlocksConfirmation: number,
     fallbackFeeRate: number,
     ratesRefreshInterval: string,
+    feeRateCacheTtlMilliseconds: number,
   ) {
     this.#logger = logger;
     this.#snapClient = snapClient;
@@ -80,6 +87,14 @@ export class SendFlowUseCases {
     this.#targetBlocksConfirmation = targetBlocksConfirmation;
     this.#fallbackFeeRate = fallbackFeeRate;
     this.#ratesRefreshInterval = ratesRefreshInterval;
+    this.#getFeeRate = useCache(
+      this.#resolveFeeRate.bind(this),
+      new InMemoryCache(logger),
+      {
+        ttlMilliseconds: feeRateCacheTtlMilliseconds,
+        functionName: 'SendFlowUseCases:#getFeeRate',
+      },
+    );
   }
 
   async confirmSendFlow(
@@ -88,28 +103,14 @@ export class SendFlowUseCases {
     toAddress: string,
   ): Promise<Transaction> {
     const amountInSats = Amount.from_btc(Number(amount)).to_sat();
-    const templatePsbt = account.buildTx();
     const { locale, currency: fiatCurrency } =
       await this.#snapClient.getPreferences();
 
-    const feeEstimates = await this.#chainClient.getFeeEstimates(
-      account.network,
+    const { psbt, feeRate: currentFeeRate } = await this.#buildSendPsbt(
+      account,
+      amountInSats,
+      toAddress,
     );
-
-    const currentFeeRate = resolveFeeRate(
-      feeEstimates.get(this.#targetBlocksConfirmation),
-      this.#fallbackFeeRate,
-    );
-
-    templatePsbt.feeRate(currentFeeRate);
-
-    if (amountInSats === account.balance.trusted_spendable.to_sat()) {
-      templatePsbt.drainWallet().drainTo(toAddress);
-    } else {
-      templatePsbt.addRecipient(amountInSats.toString(), toAddress);
-    }
-
-    const psbt = templatePsbt.finish();
     const currency = networkToCurrencyUnit[account.network];
 
     let isMine = false;
@@ -182,6 +183,63 @@ export class SendFlowUseCases {
 
     const parsedPsbt = parsePsbt(signedPsbt);
     return account.extractTransaction(parsedPsbt);
+  }
+
+  /**
+   * Builds a PSBT to probe whether the amount plus fee can be funded.
+   *
+   * @param account - The account sending the funds.
+   * @param amount - The amount to send, in BTC units.
+   * @param toAddress - The destination, when it is already known.
+   * @returns The built probe PSBT.
+   * @throws When the transaction cannot be funded.
+   */
+  async buildProbePsbt(
+    account: BitcoinAccount,
+    amount: string,
+    toAddress?: string,
+  ): Promise<Psbt> {
+    const amountInSats = Amount.from_btc(Number(amount)).to_sat();
+
+    // The destination is unknown, but fee estimation still needs a valid output script.
+    const recipient = toAddress ?? account.publicAddress.toString();
+
+    const { psbt } = await this.#buildSendPsbt(
+      account,
+      amountInSats,
+      recipient,
+    );
+    return psbt;
+  }
+
+  async #buildSendPsbt(
+    account: BitcoinAccount,
+    amountInSats: bigint,
+    recipient: string,
+  ): Promise<{ psbt: Psbt; feeRate: number }> {
+    const feeRate = await this.#getFeeRate(account.network);
+    const frozenUTXOs = await this.#accountRepository.getFrozenUTXOs(
+      account.id,
+    );
+
+    const builder = account.buildTx().feeRate(feeRate).unspendable(frozenUTXOs);
+
+    if (amountInSats === account.balance.trusted_spendable.to_sat()) {
+      builder.drainWallet().drainTo(recipient);
+    } else {
+      builder.addRecipient(amountInSats.toString(), recipient);
+    }
+
+    return { psbt: builder.finish(), feeRate };
+  }
+
+  async #resolveFeeRate(network: Network): Promise<number> {
+    const feeEstimates = await this.#chainClient.getFeeEstimates(network);
+
+    return resolveFeeRate(
+      feeEstimates.get(this.#targetBlocksConfirmation),
+      this.#fallbackFeeRate,
+    );
   }
 
   async display(accountId: string): Promise<Psbt | undefined> {
@@ -569,12 +627,7 @@ export class SendFlowUseCases {
     const { locale, currency } = await this.#snapClient.getPreferences();
 
     try {
-      const feeEstimates = await this.#chainClient.getFeeEstimates(network);
-
-      updatedContext.feeRate = resolveFeeRate(
-        feeEstimates.get(this.#targetBlocksConfirmation),
-        this.#fallbackFeeRate,
-      );
+      updatedContext.feeRate = await this.#getFeeRate(network);
 
       updatedContext.exchangeRate = await this.#getExchangeRate(
         network,

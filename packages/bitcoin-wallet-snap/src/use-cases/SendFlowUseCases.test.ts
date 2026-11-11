@@ -44,7 +44,8 @@ describe('SendFlowUseCases', () => {
   const mockRatesClient = mock<AssetRatesClient>();
   const targetBlocksConfirmation = 3;
   const fallbackFeeRate = 5.0;
-  const ratesRefreshInterval = 'PT30S';
+  const ratesRefreshInterval = 'PT1M';
+  const feeRateCacheTtlMilliseconds = 60_000;
   const explorerUrl = 'http://myeplorer.com';
   const mockAccount = mock<BitcoinAccount>({
     network: 'bitcoin',
@@ -64,20 +65,22 @@ describe('SendFlowUseCases', () => {
     toString: vi.fn(),
   });
 
-  const useCases = new SendFlowUseCases(
-    mockLogger,
-    mockSnapClient,
-    mockAccountRepository,
-    mockAccountUseCases,
-    mockSendFlowRepository,
-    mockChain,
-    mockRatesClient,
-    targetBlocksConfirmation,
-    fallbackFeeRate,
-    ratesRefreshInterval,
-  );
+  let useCases: SendFlowUseCases;
 
   beforeEach(() => {
+    useCases = new SendFlowUseCases(
+      mockLogger,
+      mockSnapClient,
+      mockAccountRepository,
+      mockAccountUseCases,
+      mockSendFlowRepository,
+      mockChain,
+      mockRatesClient,
+      targetBlocksConfirmation,
+      fallbackFeeRate,
+      ratesRefreshInterval,
+      feeRateCacheTtlMilliseconds,
+    );
     vi.spyOn(Address, 'from_string');
     vi.spyOn(Amount, 'from_btc');
     vi.spyOn(Amount, 'from_sat');
@@ -125,9 +128,142 @@ describe('SendFlowUseCases', () => {
       expect(mockSnapClient.displayInterface).toHaveBeenCalledWith(
         'interface-id',
       );
-      expect(mockChain.getFeeEstimates).toHaveBeenCalled();
+      await vi.waitFor(() =>
+        expect(mockChain.getFeeEstimates).toHaveBeenCalled(),
+      );
       expect(Psbt.from_string).toHaveBeenCalledWith('psbtBase64');
       expect(result).toStrictEqual(mockPsbt);
+    });
+  });
+
+  describe('buildProbePsbt', () => {
+    const balanceSats = 20_000;
+    const mockFeeEstimates = mock<FeeEstimates>({ get: vi.fn() });
+    const probeAccount = mock<BitcoinAccount>({
+      id: 'acc-id',
+      network: 'bitcoin',
+      buildTx: vi.fn(),
+      balance: { trusted_spendable: { to_sat: () => BigInt(balanceSats) } },
+      publicAddress: mock<Address>({ toString: () => 'myAddress' }),
+    });
+    const probeTxBuilder = mock<TransactionBuilder>();
+
+    beforeEach(() => {
+      mockChain.getFeeEstimates.mockResolvedValue(mockFeeEstimates);
+      mockAccountRepository.getFrozenUTXOs.mockResolvedValue(['outpoint:0']);
+      probeAccount.buildTx.mockReturnValue(probeTxBuilder);
+      probeTxBuilder.feeRate.mockReturnThis();
+      probeTxBuilder.unspendable.mockReturnThis();
+      probeTxBuilder.addRecipient.mockReturnThis();
+      probeTxBuilder.drainWallet.mockReturnThis();
+      probeTxBuilder.drainTo.mockReturnThis();
+      probeTxBuilder.finish.mockReturnValue(mockPsbt);
+      (Amount.from_btc as Mock).mockImplementation(
+        (btc: number): { to_sat: () => bigint } => ({
+          to_sat: () => BigInt(Math.round(btc * 100_000_000)),
+        }),
+      );
+    });
+
+    it('builds a probe PSBT with the resolved fee rate and a recipient', async () => {
+      (mockFeeEstimates.get as Mock).mockReturnValue(7);
+
+      await useCases.buildProbePsbt(
+        probeAccount,
+        '0.00001',
+        'recipientAddress',
+      );
+
+      expect(mockChain.getFeeEstimates).toHaveBeenCalledWith('bitcoin');
+      expect(mockFeeEstimates.get).toHaveBeenCalledWith(
+        targetBlocksConfirmation,
+      );
+      expect(mockAccountRepository.getFrozenUTXOs).toHaveBeenCalledWith(
+        'acc-id',
+      );
+      expect(probeTxBuilder.feeRate).toHaveBeenCalledWith(7);
+      expect(probeTxBuilder.unspendable).toHaveBeenCalledWith(['outpoint:0']);
+      expect(probeTxBuilder.addRecipient).toHaveBeenCalledWith(
+        '1000',
+        'recipientAddress',
+      );
+      expect(probeTxBuilder.drainWallet).not.toHaveBeenCalled();
+      expect(probeTxBuilder.finish).toHaveBeenCalled();
+    });
+
+    it('drains to the recipient when the amount equals the balance', async () => {
+      (mockFeeEstimates.get as Mock).mockReturnValue(7);
+
+      await useCases.buildProbePsbt(probeAccount, '0.0002', 'recipientAddress');
+
+      expect(probeTxBuilder.drainWallet).toHaveBeenCalled();
+      expect(probeTxBuilder.drainTo).toHaveBeenCalledWith('recipientAddress');
+      expect(probeTxBuilder.addRecipient).not.toHaveBeenCalled();
+    });
+
+    it('drains to the account address when no recipient is known', async () => {
+      (mockFeeEstimates.get as Mock).mockReturnValue(7);
+
+      await useCases.buildProbePsbt(probeAccount, '0.0002');
+
+      expect(probeTxBuilder.drainWallet).toHaveBeenCalled();
+      expect(probeTxBuilder.drainTo).toHaveBeenCalledWith('myAddress');
+      expect(probeTxBuilder.addRecipient).not.toHaveBeenCalled();
+    });
+
+    it('uses the account address when no recipient is known', async () => {
+      (mockFeeEstimates.get as Mock).mockReturnValue(7);
+
+      await useCases.buildProbePsbt(probeAccount, '0.00001');
+
+      expect(probeTxBuilder.addRecipient).toHaveBeenCalledWith(
+        '1000',
+        'myAddress',
+      );
+    });
+
+    it('falls back to the configured fee rate when no estimate is available', async () => {
+      (mockFeeEstimates.get as Mock).mockReturnValue(undefined);
+
+      await useCases.buildProbePsbt(
+        probeAccount,
+        '0.00001',
+        'recipientAddress',
+      );
+
+      expect(probeTxBuilder.feeRate).toHaveBeenCalledWith(fallbackFeeRate);
+    });
+
+    it('caches the fee rate for one minute', async () => {
+      (mockFeeEstimates.get as Mock).mockReturnValue(7);
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+
+      try {
+        await useCases.buildProbePsbt(probeAccount, '0.00001', 'recipient');
+        await useCases.buildProbePsbt(probeAccount, '0.00002', 'recipient');
+
+        expect(mockChain.getFeeEstimates).toHaveBeenCalledTimes(1);
+
+        vi.advanceTimersByTime(feeRateCacheTtlMilliseconds + 1);
+        await useCases.buildProbePsbt(probeAccount, '0.00003', 'recipient');
+
+        expect(mockChain.getFeeEstimates).toHaveBeenCalledTimes(2);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('propagates funding errors from the builder', async () => {
+      (mockFeeEstimates.get as Mock).mockReturnValue(7);
+      const error = new Error('Insufficient funds');
+      probeTxBuilder.finish.mockImplementation(() => {
+        throw error;
+      });
+
+      await expect(
+        useCases.buildProbePsbt(probeAccount, '0.00001', 'recipientAddress'),
+      ).rejects.toThrow(error);
     });
   });
 
@@ -956,7 +1092,9 @@ describe('SendFlowUseCases', () => {
       mockTxBuilder.addRecipient.mockReturnThis();
       mockTxBuilder.drainWallet.mockReturnThis();
       mockTxBuilder.drainTo.mockReturnThis();
+      mockTxBuilder.unspendable.mockReturnThis();
       mockTxBuilder.finish.mockReturnValue(mockTemplatePsbt);
+      mockAccountRepository.getFrozenUTXOs.mockResolvedValue(['txid:vout']);
       mockSnapClient.getPreferences.mockResolvedValue(mockPreferences);
       mockFeeEstimates.get.mockReturnValue(2.5);
       mockChain.getFeeEstimates.mockResolvedValue(mockFeeEstimates);
@@ -983,6 +1121,10 @@ describe('SendFlowUseCases', () => {
 
       expect(Amount.from_btc).toHaveBeenCalledWith(Number(amount));
       expect(mockAccount.buildTx).toHaveBeenCalled();
+      expect(mockAccountRepository.getFrozenUTXOs).toHaveBeenCalledWith(
+        mockAccount.id,
+      );
+      expect(mockTxBuilder.unspendable).toHaveBeenCalledWith(['txid:vout']);
       expect(mockTxBuilder.feeRate).toHaveBeenCalledWith(2.5);
       expect(mockTxBuilder.addRecipient).toHaveBeenCalledWith(
         '10000',
