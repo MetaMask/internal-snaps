@@ -1,6 +1,7 @@
 import type { Infer } from '@metamask/superstruct';
 
 import type {
+  GetMaxSendableAmountRequestStruct,
   OnAddressInputRequestStruct,
   OnAmountInputRequestStruct,
   OnConfirmSendRequestStruct,
@@ -8,6 +9,10 @@ import type {
 } from '../../handlers/onClientRequest/validation';
 
 export type OnConfirmSendRequest = Infer<typeof OnConfirmSendRequestStruct>;
+
+export type GetMaxSendableAmountRequest = Infer<
+  typeof GetMaxSendableAmountRequestStruct
+>;
 
 export type OnAddressInputRequest = Infer<typeof OnAddressInputRequestStruct>;
 

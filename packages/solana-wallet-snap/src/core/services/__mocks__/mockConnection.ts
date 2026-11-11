@@ -139,6 +139,7 @@ export const createMockConnection = (): SolanaConnection =>
   ({
     getRpc: createMockGetRpc(),
     fetchMint: vi.fn().mockResolvedValue(MOCK_MINT_ACCOUNT),
+    fetchJsonParsedAccount: vi.fn().mockResolvedValue({ exists: false }),
     getLatestBlockhash: vi
       .fn()
       .mockResolvedValue(

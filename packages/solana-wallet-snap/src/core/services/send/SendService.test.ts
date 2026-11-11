@@ -8,7 +8,9 @@ import type {
   ICache,
   Serializable,
 } from '@metamask/snap-networks-utils';
-import { lamports } from '@solana/kit';
+import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
+import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
+import { address, lamports } from '@solana/kit';
 import * as SolanaKit from '@solana/kit';
 import type { Mock } from 'vitest';
 
@@ -24,14 +26,19 @@ import {
 } from '../../test/mocks/solana-keyring-accounts';
 import { mockLogger } from '../__mocks__/logger';
 import { createMockConnection } from '../__mocks__/mockConnection';
+import { MOCK_MINT_ACCOUNT } from '../__mocks__/mockSolanaRpcResponses';
 import type { AssetsService } from '../assets';
 import type { SolanaConnection } from '../connection';
 import type { RecipientClassifier } from './RecipientClassifier';
 import { SendService } from './SendService';
 import type { SendSolBuilder } from './SendSolBuilder';
-import type { SendSplTokenBuilder } from './SendSplTokenBuilder';
+import { SendSplTokenBuilder } from './SendSplTokenBuilder';
 import { SendErrorCodes } from './types';
-import type { OnAmountInputRequest, OnConfirmSendRequest } from './types';
+import type {
+  GetMaxSendableAmountRequest,
+  OnAmountInputRequest,
+  OnConfirmSendRequest,
+} from './types';
 
 describe('SendService', () => {
   let sendService: SendService;
@@ -44,6 +51,14 @@ describe('SendService', () => {
   let mockRecipientClassifier: RecipientClassifier;
 
   const mockAccount: ExtendedKeyringAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
+
+  const mockRecipientAtaAccount = (exists: boolean): void => {
+    vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue({
+      exists,
+    } as unknown as Awaited<
+      ReturnType<SolanaConnection['fetchJsonParsedAccount']>
+    >);
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -69,9 +84,15 @@ describe('SendService', () => {
     mockCache = new InMemoryCache(mockLogger);
 
     vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
-      getMinimumBalanceForRentExemption: vi.fn().mockReturnValue({
-        send: vi.fn().mockResolvedValue(lamports(1000000n)),
-      }),
+      getMinimumBalanceForRentExemption: vi
+        .fn()
+        .mockImplementation((dataLength: bigint) => ({
+          send: vi
+            .fn()
+            .mockResolvedValue(
+              lamports(dataLength === 0n ? 1000000n : 2000000n),
+            ),
+        })),
     } as any);
 
     mockKeyring = {
@@ -294,9 +315,15 @@ describe('SendService', () => {
       );
 
       vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getMinimumBalanceForRentExemption: vi.fn().mockReturnValue({
-          send: vi.fn().mockResolvedValue(lamports(1000000n)),
-        }),
+        getMinimumBalanceForRentExemption: vi
+          .fn()
+          .mockImplementation((dataLength: bigint) => ({
+            send: vi
+              .fn()
+              .mockResolvedValue(
+                lamports(dataLength === 0n ? 1000000n : 2000000n),
+              ),
+          })),
       } as any);
     });
 
@@ -557,6 +584,131 @@ describe('SendService', () => {
       });
     });
 
+    const usdcMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+    const nativeAssetId = Networks[Network.Mainnet].nativeToken.caip19Id;
+
+    const mockSplBalances = (nativeUiAmount: string): void => {
+      vi.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
+        [KnownCaip19Id.UsdcMainnet]: {
+          assetType: KnownCaip19Id.UsdcMainnet,
+          uiAmount: '100.0',
+          keyringAccountId: mockAccount.id,
+          network: Network.Mainnet,
+          mint: usdcMint,
+          symbol: 'USDC',
+          decimals: 6,
+          rawAmount: '100000000000',
+        },
+        [nativeAssetId]: {
+          assetType: nativeAssetId,
+          uiAmount: nativeUiAmount,
+          keyringAccountId: mockAccount.id,
+          network: Network.Mainnet,
+          address: mockAccount.address,
+          symbol: Networks[Network.Mainnet].nativeToken.symbol,
+          decimals: Networks[Network.Mainnet].nativeToken.decimals,
+          rawAmount: '0',
+        },
+      });
+    };
+
+    const splRequest = (requestToAddress?: string): OnAmountInputRequest => ({
+      ...mockRequest,
+      params: {
+        ...mockRequest.params,
+        assetId: KnownCaip19Id.UsdcMainnet,
+        ...(requestToAddress ? { toAddress: requestToAddress } : {}),
+      },
+    });
+
+    it('requires ATA rent for SPL when toAddress is omitted', async () => {
+      mockSplBalances('0.0011');
+
+      const result = await sendService.onAmountInput(splRequest());
+
+      expect(result).toStrictEqual({
+        valid: false,
+        errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
+      });
+    });
+
+    it('requires ATA rent for SPL when the recipient has no ATA', async () => {
+      mockSplBalances('0.0011');
+
+      const result = await sendService.onAmountInput(
+        splRequest(MOCK_SOLANA_KEYRING_ACCOUNT_1.address),
+      );
+
+      expect(result).toStrictEqual({
+        valid: false,
+        errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
+      });
+    });
+
+    it('skips ATA rent for SPL when the recipient ATA already exists', async () => {
+      mockSplBalances('0.0011');
+      mockRecipientAtaAccount(true);
+
+      const result = await sendService.onAmountInput(
+        splRequest(MOCK_SOLANA_KEYRING_ACCOUNT_1.address),
+      );
+
+      expect(result).toStrictEqual({
+        valid: true,
+        errors: [],
+      });
+    });
+
+    it('skips ATA rent for SPL when sending directly to a token account', async () => {
+      mockSplBalances('0.0011');
+      vi.spyOn(mockRecipientClassifier, 'classify').mockResolvedValue({
+        type: 'TOKEN_ACCOUNT',
+        mint: address(usdcMint),
+      });
+
+      const result = await sendService.onAmountInput(
+        splRequest(MOCK_SOLANA_KEYRING_ACCOUNT_1.address),
+      );
+
+      expect(result).toStrictEqual({
+        valid: true,
+        errors: [],
+      });
+    });
+
+    it('rejects SPL sends to a token account for another mint', async () => {
+      mockSplBalances('1.0');
+      vi.spyOn(mockRecipientClassifier, 'classify').mockResolvedValue({
+        type: 'TOKEN_ACCOUNT',
+        mint: address('HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr'),
+      });
+
+      const result = await sendService.onAmountInput(
+        splRequest(MOCK_SOLANA_KEYRING_ACCOUNT_1.address),
+      );
+
+      expect(result).toStrictEqual({
+        valid: false,
+        errors: [{ code: SendErrorCodes.Invalid }],
+      });
+    });
+
+    it('rejects SPL sends to an unsupported recipient', async () => {
+      mockSplBalances('1.0');
+      vi.spyOn(mockRecipientClassifier, 'classify').mockResolvedValue({
+        type: 'UNSUPPORTED',
+      });
+
+      const result = await sendService.onAmountInput(
+        splRequest(MOCK_SOLANA_KEYRING_ACCOUNT_1.address),
+      );
+
+      expect(result).toStrictEqual({
+        valid: false,
+        errors: [{ code: SendErrorCodes.Invalid }],
+      });
+    });
+
     it('handles errors if account is not found', async () => {
       const error = new Error('Account not found');
       vi.spyOn(mockKeyring, 'getAccountOrThrow').mockRejectedValue(error);
@@ -588,6 +740,295 @@ describe('SendService', () => {
       await expect(sendService.onAmountInput(mockRequest)).rejects.toThrow(
         'RPC connection failed',
       );
+    });
+  });
+
+  describe('getMaxSendableAmount', () => {
+    const nativeAssetId = Networks[Network.Mainnet].nativeToken.caip19Id;
+    const usdcMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+    const toAddress = MOCK_SOLANA_KEYRING_ACCOUNT_1.address;
+
+    const createRequest = (
+      assetId: GetMaxSendableAmountRequest['params']['assetId'],
+      requestToAddress?: string,
+    ): GetMaxSendableAmountRequest => ({
+      jsonrpc: '2.0',
+      id: '1',
+      method: ClientRequestMethod.GetMaxSendableAmount,
+      params: {
+        accountId: mockAccount.id,
+        assetId,
+        ...(requestToAddress ? { toAddress: requestToAddress } : {}),
+      },
+    });
+
+    const createAsset = (
+      assetType: AssetEntity['assetType'],
+      uiAmount: string,
+    ): AssetEntity =>
+      ({
+        assetType,
+        uiAmount,
+        keyringAccountId: mockAccount.id,
+        network: Network.Mainnet,
+        symbol: 'MOCK',
+        decimals: 6,
+        rawAmount: '0',
+      }) as AssetEntity;
+
+    const mockBalances = (
+      asset: AssetEntity | null,
+      nativeAsset: AssetEntity | null,
+    ): void => {
+      vi.spyOn(mockAssetsService, 'getAccountAssetsByIDs').mockResolvedValue({
+        [asset?.assetType ?? nativeAssetId]: asset,
+        [nativeAssetId]: nativeAsset,
+      });
+    };
+
+    it('returns the maximum SOL leaving the fee and rent exemption', async () => {
+      // Fee: 5000 base + 200 priority = 5200 lamports.
+      // Rent exemption: 1000000 lamports.
+      mockBalances(
+        createAsset(nativeAssetId, '10.0'),
+        createAsset(nativeAssetId, '10.0'),
+      );
+
+      const result = await sendService.getMaxSendableAmount(
+        createRequest(nativeAssetId, toAddress),
+      );
+
+      expect(result).toStrictEqual({ amount: '9.9989948' });
+    });
+
+    it('returns the maximum SOL when toAddress is omitted', async () => {
+      mockBalances(
+        createAsset(nativeAssetId, '10.0'),
+        createAsset(nativeAssetId, '10.0'),
+      );
+
+      const result = await sendService.getMaxSendableAmount(
+        createRequest(nativeAssetId),
+      );
+
+      expect(result).toStrictEqual({ amount: '9.9989948' });
+    });
+
+    it('returns 0 when the SOL balance only covers the fee and rent exemption', async () => {
+      mockBalances(
+        createAsset(nativeAssetId, '0.001'),
+        createAsset(nativeAssetId, '0.001'),
+      );
+
+      const result = await sendService.getMaxSendableAmount(
+        createRequest(nativeAssetId, toAddress),
+      );
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns the full SPL token balance when SOL covers the fee and rent', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
+        createAsset(nativeAssetId, '1.0'),
+      );
+
+      const result = await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
+      );
+
+      expect(result).toStrictEqual({ amount: '100' });
+    });
+
+    it('returns the full SPL token balance when toAddress is omitted', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
+        createAsset(nativeAssetId, '1.0'),
+      );
+
+      const result = await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet),
+      );
+
+      expect(result).toStrictEqual({ amount: '100' });
+    });
+
+    it('returns 0 when SOL cannot cover the SPL fee and rent', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
+        createAsset(nativeAssetId, '0.0001'),
+      );
+
+      const result = await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
+      );
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns 0 for SPL when SOL only covers the fee and ATA rent is needed', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
+        createAsset(nativeAssetId, '0.0011'),
+      );
+
+      const result = await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet),
+      );
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns 0 for SPL when the recipient has no ATA and SOL does not cover it', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
+        createAsset(nativeAssetId, '0.0011'),
+      );
+
+      const result = await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
+      );
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns the full SPL balance when the recipient ATA already exists', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
+        createAsset(nativeAssetId, '0.0011'),
+      );
+      mockRecipientAtaAccount(true);
+
+      const result = await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
+      );
+
+      expect(result).toStrictEqual({ amount: '100' });
+    });
+
+    it('reserves the legacy 165-byte ATA rent and queries the legacy ATA', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
+        createAsset(nativeAssetId, '1.0'),
+      );
+
+      const getMinimumBalanceForRentExemption = vi.fn().mockReturnValue({
+        send: vi.fn().mockResolvedValue(lamports(2000000n)),
+      });
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getMinimumBalanceForRentExemption,
+      } as never);
+
+      await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
+      );
+
+      expect(getMinimumBalanceForRentExemption).toHaveBeenCalledWith(165n);
+
+      const expectedAta =
+        await SendSplTokenBuilder.deriveAssociatedTokenAccountAddress({
+          mint: address(usdcMint),
+          owner: address(toAddress),
+          tokenProgram: TOKEN_PROGRAM_ADDRESS,
+        });
+
+      expect(mockConnection.fetchJsonParsedAccount).toHaveBeenCalledWith(
+        expectedAta,
+        Network.Mainnet,
+        undefined,
+        { skipCache: true },
+      );
+    });
+
+    it('reserves the Token-2022 ATA rent for the mint extensions', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
+        createAsset(nativeAssetId, '1.0'),
+      );
+
+      vi.spyOn(mockConnection, 'fetchMint').mockResolvedValue({
+        ...MOCK_MINT_ACCOUNT,
+        programAddress: TOKEN_2022_PROGRAM_ADDRESS,
+        data: {
+          ...MOCK_MINT_ACCOUNT.data,
+          extensions: {
+            __option: 'Some',
+            value: [{ __kind: 'TransferFeeConfig' }],
+          },
+        },
+      } as never);
+
+      const getMinimumBalanceForRentExemption = vi.fn().mockReturnValue({
+        send: vi.fn().mockResolvedValue(lamports(2000000n)),
+      });
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getMinimumBalanceForRentExemption,
+      } as never);
+
+      const result = await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
+      );
+
+      // 165 base + 4 immutable owner + 12 transfer fee amount.
+      expect(getMinimumBalanceForRentExemption).toHaveBeenCalledWith(181n);
+
+      const expectedAta =
+        await SendSplTokenBuilder.deriveAssociatedTokenAccountAddress({
+          mint: address(usdcMint),
+          owner: address(toAddress),
+          tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+        });
+
+      expect(mockConnection.fetchJsonParsedAccount).toHaveBeenCalledWith(
+        expectedAta,
+        Network.Mainnet,
+        undefined,
+        { skipCache: true },
+      );
+      expect(result).toStrictEqual({ amount: '100' });
+    });
+
+    it('returns the full SPL balance when sending directly to a token account', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
+        createAsset(nativeAssetId, '0.0011'),
+      );
+      vi.spyOn(mockRecipientClassifier, 'classify').mockResolvedValue({
+        type: 'TOKEN_ACCOUNT',
+        mint: address(usdcMint),
+      });
+
+      const result = await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
+      );
+
+      expect(result).toStrictEqual({ amount: '100' });
+    });
+
+    it('returns 0 for SPL when the recipient is unsupported', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
+        createAsset(nativeAssetId, '1.0'),
+      );
+      vi.spyOn(mockRecipientClassifier, 'classify').mockResolvedValue({
+        type: 'UNSUPPORTED',
+      });
+
+      const result = await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
+      );
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns 0 when the asset is not held', async () => {
+      mockBalances(null, createAsset(nativeAssetId, '10.0'));
+
+      const result = await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
+      );
+
+      expect(result).toStrictEqual({ amount: '0' });
     });
   });
 });
