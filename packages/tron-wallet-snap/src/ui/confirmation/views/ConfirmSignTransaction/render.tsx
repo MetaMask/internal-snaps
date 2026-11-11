@@ -1,10 +1,11 @@
+import { sha256 } from '@metamask/cryptography/sha';
 import type {
   ExtendedKeyringAccount,
   SecurityAlertsScanOption,
 } from '@metamask/snap-networks-utils';
 import type { DialogResult } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
-import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
+import { bytesToHex, hexToBytes } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
 
