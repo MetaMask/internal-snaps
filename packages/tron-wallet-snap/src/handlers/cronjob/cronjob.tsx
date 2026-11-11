@@ -254,16 +254,35 @@ export class CronHandler {
       ];
       const uniqueAssetCaipIds = [...new Set(assetCaipIds)];
 
-      const fetchingContext: ConfirmTransactionRequestContext = {
-        ...interfaceContext,
-        tokenPricesFetchStatus: FetchStatus.Fetching,
-      };
-
-      await this.#snapClient.updateInterface(
+      const interfaceExists = await this.#snapClient.withInterfaceLock(
         confirmationInterfaceId,
-        <ConfirmTransactionRequest context={fetchingContext} />,
-        fetchingContext,
+        async () => {
+          const latestContext =
+            await this.#snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
+              confirmationInterfaceId,
+            );
+
+          if (!latestContext) {
+            return false;
+          }
+
+          const fetchingContext: ConfirmTransactionRequestContext = {
+            ...latestContext,
+            tokenPricesFetchStatus: FetchStatus.Fetching,
+          };
+
+          await this.#snapClient.updateInterface(
+            confirmationInterfaceId,
+            <ConfirmTransactionRequest context={fetchingContext} />,
+            fetchingContext,
+          );
+
+          return true;
+        },
       );
+      if (!interfaceExists) {
+        return;
+      }
 
       this.#logger.info(
         `Fetching fresh prices for ${uniqueAssetCaipIds.length} assets`,
@@ -275,29 +294,40 @@ export class CronHandler {
         interfaceContext.preferences.currency,
       );
 
-      const latestContext =
-        await this.#snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
-          confirmationInterfaceId,
-        );
+      const interfaceUpdated = await this.#snapClient.withInterfaceLock(
+        confirmationInterfaceId,
+        async () => {
+          const latestContext =
+            await this.#snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
+              confirmationInterfaceId,
+            );
 
-      if (!latestContext) {
-        this.#logger.info(
-          'Interface context no longer exists after fetch, skipping update',
-        );
+          if (!latestContext) {
+            this.#logger.info(
+              'Interface context no longer exists after fetch, skipping update',
+            );
+            return false;
+          }
+
+          const updatedContext: ConfirmTransactionRequestContext = {
+            ...latestContext,
+            tokenPrices: prices,
+            tokenPricesFetchStatus: FetchStatus.Fetched,
+          };
+
+          await this.#snapClient.updateInterface(
+            confirmationInterfaceId,
+            <ConfirmTransactionRequest context={updatedContext} />,
+            updatedContext,
+          );
+
+          return true;
+        },
+      );
+
+      if (!interfaceUpdated) {
         return;
       }
-
-      const updatedContext: ConfirmTransactionRequestContext = {
-        ...latestContext,
-        tokenPrices: prices,
-        tokenPricesFetchStatus: FetchStatus.Fetched,
-      };
-
-      await this.#snapClient.updateInterface(
-        confirmationInterfaceId,
-        <ConfirmTransactionRequest context={updatedContext} />,
-        updatedContext,
-      );
 
       this.#logger.info('Successfully refreshed confirmation prices');
 
@@ -363,18 +393,38 @@ export class CronHandler {
     }
 
     try {
-      const fetchingContext: ConfirmTransactionRequestContext = {
-        ...interfaceContext,
-        scanFetchStatus: shouldRefreshScan
-          ? FetchStatus.Fetching
-          : interfaceContext.scanFetchStatus,
-      };
-
-      await this.#snapClient.updateInterface(
+      const interfaceExists = await this.#snapClient.withInterfaceLock(
         confirmationInterfaceId,
-        <ConfirmTransactionRequest context={fetchingContext} />,
-        fetchingContext,
+        async () => {
+          const latestContext =
+            await this.#snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
+              confirmationInterfaceId,
+            );
+
+          if (!latestContext) {
+            return false;
+          }
+
+          const fetchingContext: ConfirmTransactionRequestContext = {
+            ...latestContext,
+            scanFetchStatus: shouldRefreshScan
+              ? FetchStatus.Fetching
+              : latestContext.scanFetchStatus,
+          };
+
+          await this.#snapClient.updateInterface(
+            confirmationInterfaceId,
+            <ConfirmTransactionRequest context={fetchingContext} />,
+            fetchingContext,
+          );
+
+          return true;
+        },
       );
+
+      if (!interfaceExists) {
+        return;
+      }
 
       let { scan } = interfaceContext;
       let { scanFetchStatus } = interfaceContext;
@@ -420,30 +470,40 @@ export class CronHandler {
         scanFetchStatus = FetchStatus.Error;
       }
 
-      const latestContext =
-        await this.#snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
-          confirmationInterfaceId,
-        );
+      const interfaceUpdated = await this.#snapClient.withInterfaceLock(
+        confirmationInterfaceId,
+        async () => {
+          const latestContext =
+            await this.#snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
+              confirmationInterfaceId,
+            );
 
-      if (!latestContext) {
-        this.#logger.info(
-          'Interface context no longer exists after scan, skipping update',
-        );
+          if (!latestContext) {
+            this.#logger.info(
+              'Interface context no longer exists after scan, skipping update',
+            );
+            return false;
+          }
+
+          const updatedContext: ConfirmTransactionRequestContext = {
+            ...latestContext,
+            scan,
+            scanFetchStatus,
+            transactionRawData: freshTransactionRawData,
+          };
+
+          await this.#snapClient.updateInterface(
+            confirmationInterfaceId,
+            <ConfirmTransactionRequest context={updatedContext} />,
+            updatedContext,
+          );
+          return true;
+        },
+      );
+
+      if (!interfaceUpdated) {
         return;
       }
-
-      const updatedContext: ConfirmTransactionRequestContext = {
-        ...latestContext,
-        scan,
-        scanFetchStatus,
-        transactionRawData: freshTransactionRawData,
-      };
-
-      await this.#snapClient.updateInterface(
-        confirmationInterfaceId,
-        <ConfirmTransactionRequest context={updatedContext} />,
-        updatedContext,
-      );
 
       this.#logger.info('Successfully refreshed send confirmation');
 
@@ -506,18 +566,38 @@ export class CronHandler {
     const shouldRefreshScan = simulateOnChainActions || useSecurityAlerts;
 
     try {
-      const fetchingContext: ConfirmSignTransactionContext = {
-        ...interfaceContext,
-        scanFetchStatus: shouldRefreshScan
-          ? FetchStatus.Fetching
-          : interfaceContext.scanFetchStatus,
-      };
-
-      await this.#snapClient.updateInterface(
+      const interfaceExists = await this.#snapClient.withInterfaceLock(
         confirmationInterfaceId,
-        <ConfirmSignTransaction context={fetchingContext} />,
-        fetchingContext,
+        async () => {
+          const latestContext =
+            await this.#snapClient.getInterfaceContext<ConfirmSignTransactionContext>(
+              confirmationInterfaceId,
+            );
+
+          if (!latestContext) {
+            return false;
+          }
+
+          const fetchingContext: ConfirmSignTransactionContext = {
+            ...latestContext,
+            scanFetchStatus: shouldRefreshScan
+              ? FetchStatus.Fetching
+              : latestContext.scanFetchStatus,
+          };
+
+          await this.#snapClient.updateInterface(
+            confirmationInterfaceId,
+            <ConfirmSignTransaction context={fetchingContext} />,
+            fetchingContext,
+          );
+
+          return true;
+        },
       );
+
+      if (!interfaceExists) {
+        return;
+      }
 
       let { scan, scanFetchStatus } = interfaceContext;
 
@@ -598,29 +678,40 @@ export class CronHandler {
         }
       }
 
-      const latestContext =
-        await this.#snapClient.getInterfaceContext<ConfirmSignTransactionContext>(
-          confirmationInterfaceId,
-        );
+      const interfaceUpdated = await this.#snapClient.withInterfaceLock(
+        confirmationInterfaceId,
+        async () => {
+          const latestContext =
+            await this.#snapClient.getInterfaceContext<ConfirmSignTransactionContext>(
+              confirmationInterfaceId,
+            );
 
-      if (!latestContext) {
-        this.#logger.info(
-          'Interface context no longer exists after scan, skipping update',
-        );
+          if (!latestContext) {
+            this.#logger.info(
+              'Interface context no longer exists after scan, skipping update',
+            );
+            return false;
+          }
+
+          const updatedContext: ConfirmSignTransactionContext = {
+            ...latestContext,
+            scan,
+            scanFetchStatus,
+          };
+
+          await this.#snapClient.updateInterface(
+            confirmationInterfaceId,
+            <ConfirmSignTransaction context={updatedContext} />,
+            updatedContext,
+          );
+
+          return true;
+        },
+      );
+
+      if (!interfaceUpdated) {
         return;
       }
-
-      const updatedContext: ConfirmSignTransactionContext = {
-        ...latestContext,
-        scan,
-        scanFetchStatus,
-      };
-
-      await this.#snapClient.updateInterface(
-        confirmationInterfaceId,
-        <ConfirmSignTransaction context={updatedContext} />,
-        updatedContext,
-      );
 
       this.#logger.info('Successfully refreshed signTransaction confirmation');
 

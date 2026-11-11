@@ -23,6 +23,8 @@ export type ConfirmTransactionRequestContext = {
   tokenPricesFetchStatus: FetchStatus;
   scan: TransactionScanResult | null;
   scanFetchStatus: FetchStatus;
+  acknowledgementScreen?: boolean;
+  acknowledged?: boolean;
   transactionRawData: Json;
   accountType: string;
 };

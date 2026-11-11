@@ -8,6 +8,7 @@ import type {
   ResolveInterfaceResult,
   UpdateInterfaceResult,
 } from '@metamask/snaps-sdk';
+import { Mutex } from 'async-mutex';
 
 import type { Preferences } from '../../types/snap';
 import { trackError as reportErrorToSentry } from '../../utils/errors';
@@ -17,6 +18,31 @@ import { trackError as reportErrorToSentry } from '../../utils/errors';
  * Provides methods for managing interfaces, dialogs, preferences, and background events.
  */
 export class SnapClient {
+  readonly #interfaceLocks = new Map<string, Mutex>();
+
+  /**
+   * Runs work exclusively for an interface while allowing other interfaces to proceed.
+   *
+   * @param id - The interface ID.
+   * @param callback - The work to run while holding the lock.
+   * @returns The callback result.
+   */
+  async withInterfaceLock<TResult>(
+    id: string,
+    callback: () => Promise<TResult>,
+  ): Promise<TResult> {
+    const mutex = this.#interfaceLocks.get(id) ?? new Mutex();
+    this.#interfaceLocks.set(id, mutex);
+
+    try {
+      return await mutex.runExclusive(callback);
+    } finally {
+      if (!mutex.isLocked()) {
+        this.#interfaceLocks.delete(id);
+      }
+    }
+  }
+
   /**
    * Retrieves a `SLIP10NodeInterface` object for the specified path and curve.
    *
