@@ -26,6 +26,7 @@ import {
 } from './handlers/clientRequest';
 import { ComputeFeeHandler } from './handlers/clientRequest/computeFee';
 import { ConfirmSendHandler } from './handlers/clientRequest/confirmSend';
+import { GetMaxSendableAmountHandler } from './handlers/clientRequest/getMaxSendableAmount';
 import { OnAddressInputHandler } from './handlers/clientRequest/onAddressInput';
 import { OnAmountInputHandler } from './handlers/clientRequest/onAmountInput';
 import { SignAndSendTransactionHandler } from './handlers/clientRequest/signAndSendTransaction';
@@ -308,6 +309,13 @@ const onAmountInputHandler = new OnAmountInputHandler({
   transactionService,
 });
 
+const getMaxSendableAmountHandler = new GetMaxSendableAmountHandler({
+  logger,
+  accountResolver,
+  assetMetadataService,
+  transactionService,
+});
+
 const signAndSendTransactionHandler = new SignAndSendTransactionHandler({
   logger,
   accountResolver,
@@ -349,6 +357,7 @@ const clientRequestMethodHandlers: Record<
   [ClientRequestMethod.ChangeTrustOpt]: changeTrustOptHandler,
   [ClientRequestMethod.OnAddressInput]: onAddressInputHandler,
   [ClientRequestMethod.OnAmountInput]: onAmountInputHandler,
+  [ClientRequestMethod.GetMaxSendableAmount]: getMaxSendableAmountHandler,
   [ClientRequestMethod.ConfirmSend]: confirmSendHandler,
   [ClientRequestMethod.SignAndSendTransaction]: signAndSendTransactionHandler,
   [ClientRequestMethod.ComputeFee]: computeFeeHandler,
