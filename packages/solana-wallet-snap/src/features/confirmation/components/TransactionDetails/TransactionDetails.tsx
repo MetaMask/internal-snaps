@@ -263,6 +263,41 @@ const PaidToSponsorRow: SnapComponent<PaidToSponsorRowProps> = ({
   );
 };
 
+type AccountRowProps = {
+  accountAddress: string | null;
+  accountDomain: string | null;
+  scope: Network;
+  preferences: Preferences;
+};
+
+const AccountRow: SnapComponent<AccountRowProps> = ({
+  accountAddress,
+  accountDomain,
+  scope,
+  preferences,
+}) => {
+  const translate = i18n(preferences.locale);
+
+  return (
+    <Box alignment="space-between" direction="horizontal">
+      <Text fontWeight="medium" color="alternative">
+        {translate('confirmation.account')}
+      </Text>
+      {accountDomain && accountAddress ? (
+        <Domain domain={accountDomain} scope={scope} address={accountAddress} />
+      ) : null}
+      {!accountDomain && accountAddress ? (
+        <Address
+          address={addressToCaip10(scope, accountAddress)}
+          truncate
+          displayName
+          avatar
+        />
+      ) : null}
+    </Box>
+  );
+};
+
 type TransactionDetailsProps = {
   accountAddress: string | null;
   accountDomain: string | null;
@@ -332,26 +367,12 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
           <Box>{null}</Box>
         </Box>
       ) : null}
-      <Box alignment="space-between" direction="horizontal">
-        <Text fontWeight="medium" color="alternative">
-          {translate('confirmation.account')}
-        </Text>
-        {accountDomain && accountAddress ? (
-          <Domain
-            domain={accountDomain}
-            scope={scope}
-            address={accountAddress}
-          />
-        ) : null}
-        {!accountDomain && accountAddress ? (
-          <Address
-            address={addressToCaip10(scope, accountAddress)}
-            truncate
-            displayName
-            avatar
-          />
-        ) : null}
-      </Box>
+      <AccountRow
+        accountAddress={accountAddress}
+        accountDomain={accountDomain}
+        scope={scope}
+        preferences={preferences}
+      />
       {destinationAddress ? (
         <Box>
           <Box>{null}</Box>

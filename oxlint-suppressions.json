@@ -1340,7 +1340,7 @@
   },
   "packages/solana-wallet-snap/src/features/confirmation/components/TransactionDetails/TransactionDetails.tsx": {
     "typescript/no-unsafe-return": {
-      "count": 7
+      "count": 8
     }
   },
   "packages/solana-wallet-snap/src/features/confirmation/utils/analyzeFeePayment.ts": {
