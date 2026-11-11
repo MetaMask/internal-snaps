@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `onAmountInput` now accepts an optional `toAddress` parameter for the shared client request shape; the conservative SOL/SPL fee and rent estimation does not use it ([#589](https://github.com/MetaMask/internal-snaps/pull/589)).
+
 ### Fixed
 
 - Preserve accounts loaded from address lookup tables when decoding transaction instructions, preventing incomplete account lists and parsing errors during transaction history synchronization. ([#568](https://github.com/MetaMask/internal-snaps/pull/568))

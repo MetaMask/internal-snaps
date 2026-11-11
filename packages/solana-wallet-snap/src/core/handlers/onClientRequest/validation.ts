@@ -138,6 +138,7 @@ export const OnAmountInputRequestParamsStruct = object({
   value: PositiveNumberStringStruct,
   accountId: UuidStruct,
   assetId: CaipAssetTypeStruct,
+  toAddress: optional(SolanaAddressStruct),
 });
 
 export const OnAmountInputRequestStruct = object({
