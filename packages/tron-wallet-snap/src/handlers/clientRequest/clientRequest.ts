@@ -1,3 +1,4 @@
+import { sha256 } from '@metamask/cryptography/sha';
 import { TransactionStatus } from '@metamask/keyring-api';
 import {
   DEFAULT_METAMASK_ORIGIN,
@@ -11,7 +12,7 @@ import {
   UserRejectedRequestError,
 } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
-import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
+import { bytesToHex, hexToBytes } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 
