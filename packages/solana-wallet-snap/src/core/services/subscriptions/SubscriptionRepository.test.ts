@@ -23,6 +23,7 @@ describe('SubscriptionRepository', () => {
     mockStateManager = {
       get: vi.fn(),
       getKey: vi.fn(),
+      getKeys: vi.fn(),
       setKey: vi.fn(),
       setKeyWith: vi.fn(),
       update: vi.fn(),

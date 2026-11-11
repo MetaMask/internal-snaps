@@ -116,11 +116,17 @@ export class State<
   /**
    * Reads and deserializes the value at `key`, or the whole state blob when `key` is omitted.
    *
-   * @param key - The JSON-path key to read. Omit to read the whole blob.
-   * @returns The deserialized value, or `undefined` when the key is absent.
+   * @param key - The JSON-path key OR array of keys to read. Omit to read the whole blob.
+   * @returns - The deserialized value, or `undefined` when a single key is absent. If an array is passed, the values of the keys will be returned in an object.
    */
+  async #read<TValue extends Serializable>(key: string[]): Promise<TValue>;
+
   async #read<TValue extends Serializable>(
     key?: string,
+  ): Promise<TValue | undefined>;
+
+  async #read<TValue extends Serializable>(
+    key?: string | string[],
   ): Promise<TValue | undefined> {
     const value = await getSnapRequest()({
       method: 'snap_getState',
@@ -169,6 +175,12 @@ export class State<
   ): Promise<TResponse | undefined> {
     return this.#lock.wrapRegularStateOperation(async () =>
       this.#read<TResponse>(key),
+    );
+  }
+
+  async getKeys(keys: string[]): Promise<Record<string, Serializable>> {
+    return this.#lock.wrapRegularStateOperation(async () =>
+      this.#read<Record<string, Serializable>>(keys),
     );
   }
 

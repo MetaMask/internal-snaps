@@ -68,6 +68,7 @@ function createMockStateManager(
       }
       return undefined;
     },
+    getKeys: vi.fn(async () => Promise.resolve({})),
     setKey: vi.fn(async () => Promise.resolve()),
     setKeyWith: vi.fn(async () => Promise.resolve()),
     update: async (updater) => {
