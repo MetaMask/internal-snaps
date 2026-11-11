@@ -66,7 +66,7 @@ describe('KeyringRequestHandler', () => {
       createdAccountId = account.id;
     }
 
-    await blockchain.sendToAddress(account.address, 10);
+    await blockchain.sendToAddress(account.address, 10, false);
     await blockchain.mineBlocks(6);
     await snap.onCronjob({ method: 'synchronizeAccounts' });
   });
