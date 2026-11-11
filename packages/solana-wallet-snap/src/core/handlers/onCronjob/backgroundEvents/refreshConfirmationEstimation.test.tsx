@@ -14,9 +14,8 @@ import {
   state,
 } from '../../../../snapContext';
 import { Network } from '../../../constants/solana';
-import { EXPIRED_TRANSACTION_SCAN } from '../../../services/transaction-scan/buildExpiredScanResult';
-import { isTransactionBlockhashExpired } from '../../../services/transaction-scan/isTransactionBlockhashExpired';
-import * as BlockhashExpired from '../../../services/transaction-scan/isTransactionBlockhashExpired';
+import { isTransactionBlockhashExpired } from '../../../services/confirmation/isTransactionBlockhashExpired';
+import * as BlockhashExpired from '../../../services/confirmation/isTransactionBlockhashExpired';
 import * as Errors from '../../../utils/errors';
 import { trackError } from '../../../utils/errors';
 import {
@@ -27,7 +26,15 @@ import {
 import * as SnapInterface from '../../../utils/interface';
 import { refreshConfirmationEstimation } from './refreshConfirmationEstimation';
 
-const setupTest = () => {
+const setupTest = (): {
+  account: { address: string };
+  transaction: string;
+  scope: Network;
+  method: SolMethod;
+  origin: string;
+  preferences: { simulateOnChainActions: boolean };
+  scanFetchStatus: string;
+} => {
   vi.clearAllMocks();
   vi.spyOn(BlockhashExpired, 'isTransactionBlockhashExpired').mockResolvedValue(
     false,
@@ -66,6 +73,9 @@ const setupTest = () => {
   (updateInterface as Mock).mockResolvedValue(undefined);
   (serialize as Mock).mockImplementation((value) => value);
   vi.mocked(isTransactionBlockhashExpired).mockResolvedValue(false);
+  (globalThis as unknown as { snap: unknown }).snap = {
+    request: vi.fn().mockResolvedValue(undefined),
+  };
 
   return interfaceContext;
 };
@@ -75,7 +85,7 @@ describe('refreshConfirmationEstimation', () => {
     vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
   });
 
-  it('disables confirmation with an expired scan result for an invalid blockhash', async () => {
+  it('stores local expiry separately without replacing the API scan', async () => {
     setupTest();
 
     (transactionScanService.scanTransaction as Mock).mockResolvedValue({
@@ -91,13 +101,14 @@ describe('refreshConfirmationEstimation', () => {
       'interface-id',
       null,
       expect.objectContaining({
-        scan: EXPIRED_TRANSACTION_SCAN,
+        transactionExpired: true,
+        scan: { status: 'SUCCESS' },
         scanFetchStatus: 'fetched',
       }),
     );
   });
 
-  it('tracks refresh failures and restores the fetched state', async () => {
+  it('tracks unexpected refresh failures and restores the fetched state', async () => {
     setupTest();
 
     const error = new Error('Scan failed');
@@ -137,7 +148,7 @@ describe('refreshConfirmationEstimation', () => {
       'interface-id',
       null,
       expect.objectContaining({
-        scan: EXPIRED_TRANSACTION_SCAN,
+        transactionExpired: true,
         scanFetchStatus: 'fetched',
       }),
     );
@@ -157,7 +168,50 @@ describe('refreshConfirmationEstimation', () => {
     expect(isTransactionBlockhashExpired).not.toHaveBeenCalled();
   });
 
-  it('preserves the existing scan without a fetching state while checking a valid blockhash without simulation', async () => {
+  it('keeps a known local expiry when the next scan and expiry RPC are unavailable', async () => {
+    const interfaceContext = { ...setupTest(), transactionExpired: true };
+    (getInterfaceContext as Mock).mockResolvedValue(interfaceContext);
+    (transactionScanService.scanTransaction as Mock).mockResolvedValue(
+      null,
+    );
+    vi.mocked(isTransactionBlockhashExpired).mockResolvedValue(false);
+
+    await refreshConfirmationEstimation({
+      request: {} as JsonRpcRequest<JsonRpcParams>,
+    });
+
+    expect(updateInterface).toHaveBeenLastCalledWith(
+      'interface-id',
+      null,
+      expect.objectContaining({
+        transactionExpired: true,
+        scanFetchStatus: 'error',
+      }),
+    );
+  });
+
+  it('preserves a newly detected expiry when the scan is unavailable', async () => {
+    setupTest();
+    (transactionScanService.scanTransaction as Mock).mockResolvedValue(
+      null,
+    );
+    vi.mocked(isTransactionBlockhashExpired).mockResolvedValue(true);
+
+    await refreshConfirmationEstimation({
+      request: {} as JsonRpcRequest<JsonRpcParams>,
+    });
+
+    expect(updateInterface).toHaveBeenLastCalledWith(
+      'interface-id',
+      null,
+      expect.objectContaining({
+        transactionExpired: true,
+        scanFetchStatus: 'error',
+      }),
+    );
+  });
+
+  it('re-scans validation-only and preserves the scan result without a fetching state when simulation is disabled', async () => {
     const existingScan = { status: 'SUCCESS' };
     const interfaceContext = {
       ...setupTest(),
@@ -166,12 +220,18 @@ describe('refreshConfirmationEstimation', () => {
     };
 
     (getInterfaceContext as Mock).mockResolvedValue(interfaceContext);
+    (transactionScanService.scanTransaction as Mock).mockResolvedValue({
+      status: 'SUCCESS',
+    });
 
     await refreshConfirmationEstimation({
       request: {} as JsonRpcRequest<JsonRpcParams>,
     });
 
-    expect(transactionScanService.scanTransaction).not.toHaveBeenCalled();
+    expect(transactionScanService.scanTransaction).toHaveBeenCalledTimes(1);
+    expect(transactionScanService.scanTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({ options: ['validation'] }),
+    );
     expect(updateInterface).not.toHaveBeenCalledWith(
       'interface-id',
       null,
@@ -181,8 +241,68 @@ describe('refreshConfirmationEstimation', () => {
       'interface-id',
       null,
       expect.objectContaining({
-        scan: existingScan,
+        scan: { status: 'SUCCESS' },
         scanFetchStatus: 'fetched',
+      }),
+    );
+  });
+
+  it('re-scans with preference-respecting options when simulation is enabled', async () => {
+    setupTest();
+
+    (transactionScanService.scanTransaction as Mock).mockResolvedValue({
+      status: 'SUCCESS',
+    });
+
+    await refreshConfirmationEstimation({
+      request: {} as JsonRpcRequest<JsonRpcParams>,
+    });
+
+    expect(transactionScanService.scanTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({ options: ['simulation'] }),
+    );
+  });
+
+  it('never sets the fetching state while re-scanning so confirm stays enabled', async () => {
+    setupTest();
+
+    (transactionScanService.scanTransaction as Mock).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          // The scan is in flight while the pre-scan interface update happens.
+          setTimeout(() => resolve({ status: 'SUCCESS' }), 50);
+        }),
+    );
+
+    await refreshConfirmationEstimation({
+      request: {} as JsonRpcRequest<JsonRpcParams>,
+    });
+
+    expect(updateInterface).not.toHaveBeenCalledWith(
+      'interface-id',
+      null,
+      expect.objectContaining({ scanFetchStatus: 'fetching' }),
+    );
+    expect(updateInterface).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks the scan as errored without blocking confirm when the re-scan fails', async () => {
+    setupTest();
+
+    (transactionScanService.scanTransaction as Mock).mockResolvedValue(
+      null,
+    );
+
+    await refreshConfirmationEstimation({
+      request: {} as JsonRpcRequest<JsonRpcParams>,
+    });
+
+    expect(updateInterface).toHaveBeenLastCalledWith(
+      'interface-id',
+      null,
+      expect.objectContaining({
+        scan: null,
+        scanFetchStatus: 'error',
       }),
     );
   });
