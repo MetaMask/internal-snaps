@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Client request handler `confirmSend` now throws when signing, or submission fails after the user confirms, instead of returning a JSON error response such as `{ valid: false, errors }` ([#550](https://github.com/MetaMask/internal-snaps/pull/550))
+- Accept CAP-84 muxed contract addresses (`W…`) in SEP-41 transfer parsing and address validation ([#546](https://github.com/MetaMask/internal-snaps/pull/546))
+  - `signTransaction` confirmation and contract-event receive parsing accept `W…` destinations alongside `G…` / `C…`.
+  - MetaMask send UI for entering a `W…` recipient is unchanged.
 - Bump `@stellar/stellar-sdk` from `^17.2.1` to `^17.4.0` ([#545](https://github.com/MetaMask/internal-snaps/pull/545))
 - Retry transient Token API, Price API, and Security Alerts API failures with bounded timeouts and circuit breaking ([#534](https://github.com/MetaMask/internal-snaps/pull/534))
 - Retry transient RPC and Horizon failures with bounded timeouts and circuit breaking ([#551](https://github.com/MetaMask/internal-snaps/pull/551))

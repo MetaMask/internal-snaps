@@ -260,9 +260,10 @@ export function getSorobanAuthAddressFromAuthEntrySafe(
 }
 
 /**
- * Converts an XDR {@link xdr.ScAddress} to a Stellar strkey string (`G…` / `C…`).
+ * Converts an XDR {@link xdr.ScAddress} to a Stellar strkey string
+ * (`G…` / `C…` / CAP-84 `W…`).
  *
- * @param scAddress - Contract or account address from invoke / auth XDR.
+ * @param scAddress - Contract, account, or muxed-contract address from invoke / auth XDR.
  * @returns Strkey-encoded address.
  */
 export function getAddress(scAddress: xdr.ScAddress): string {
