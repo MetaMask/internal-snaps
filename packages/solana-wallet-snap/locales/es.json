@@ -172,6 +172,51 @@
     "confirmation.feeError": {
       "message": "No se puede calcular la tarifa"
     },
+    "confirmation.sponsoredBy": {
+      "message": "Patrocinado por"
+    },
+    "confirmation.sponsoredBy.tooltip": {
+      "message": "Esta cuenta paga la tarifa de red de esta transacción."
+    },
+    "confirmation.paidBy": {
+      "message": "Tarifa pagada por"
+    },
+    "confirmation.paidBy.tooltip": {
+      "message": "Otra cuenta de tu billetera paga la tarifa de red de esta transacción."
+    },
+    "confirmation.youPay": {
+      "message": "Tú pagas"
+    },
+    "confirmation.youPay.free": {
+      "message": "Gratis"
+    },
+    "confirmation.youPay.free.tooltip": {
+      "message": "El patrocinador paga la tarifa de red y esta transacción no te cobra ninguna tarifa ni renta. Las transferencias aparecen en los cambios estimados."
+    },
+    "confirmation.youPay.notFree": {
+      "message": "No es gratis"
+    },
+    "confirmation.youPay.unverified": {
+      "message": "No se puede confirmar"
+    },
+    "confirmation.youPay.unverified.tooltip": {
+      "message": "El patrocinador paga la tarifa de red, pero MetaMask no puede confirmar que esta transacción no te cobre. Revisa los cambios estimados."
+    },
+    "confirmation.youPay.mayCostMore.tooltip": {
+      "message": "MetaMask no puede confirmar que esta transacción no te cobre más de lo que se muestra."
+    },
+    "confirmation.youPay.uncheckedPrograms": {
+      "message": "No pudo simular la transacción y no puede revisar estos programas: {programs}."
+    },
+    "confirmation.rent": {
+      "message": "Renta de cuentas"
+    },
+    "confirmation.rent.tooltip": {
+      "message": "SOL que reservas para crear cuentas nuevas. Lo recuperas cuando se cierran las cuentas."
+    },
+    "confirmation.paidToSponsor": {
+      "message": "Pagado al patrocinador"
+    },
     "confirmation.origin": {
       "message": "Solicitud de"
     },
