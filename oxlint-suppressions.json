@@ -1483,11 +1483,6 @@
       "count": 1
     }
   },
-  "packages/solana-wallet-snap/src/polyfills/ed25519/index.ts": {
-    "typescript/explicit-function-return-type": {
-      "count": 1
-    }
-  },
   "packages/solana-wallet-snap/src/polyfills/ed25519/polyfill.ts": {
     "internal-snaps/no-in-operator": {
       "count": 1
