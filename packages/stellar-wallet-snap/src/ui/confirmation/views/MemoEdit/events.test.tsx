@@ -1,5 +1,6 @@
 import type { UserInputEvent } from '@metamask/snaps-sdk';
 import { UserInputEventType } from '@metamask/snaps-sdk';
+import type { Json } from '@metamask/utils';
 import type { Mock } from 'vitest';
 
 import {
@@ -12,6 +13,8 @@ import {
 } from '../../../../utils';
 import * as SnapUtils from '../../../../utils/snap';
 import { ConfirmationInterfaceKey, FetchStatus } from '../../api';
+import { MaliciousAcknowledgementFormNames } from '../MaliciousAcknowledgement/constants';
+import { createEventHandlers as createAcknowledgementEventHandlers } from '../MaliciousAcknowledgement/events';
 import { renderConfirmationView } from '../render';
 import * as ConfirmationRender from '../render';
 import { MemoEditFormNames } from './constants';
@@ -79,18 +82,22 @@ describe('MemoEdit event handlers', () => {
 
   describe('Open', () => {
     it('shows the memo editor without cancelling cron', async () => {
+      const context = {
+        interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
+        errorMessage: 'confirmation.txnError.requiresMemo',
+        backgroundEventId: 'live-event',
+        memoDraft: 'stale-draft',
+      };
+
+      vi.mocked(getInterfaceContextIfExists).mockResolvedValue(context);
+
       await handlers[MemoEditFormNames.Open]?.({
         id: 'interface-id',
         event: buttonEvent(MemoEditFormNames.Open),
-        context: {
-          interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-          errorMessage: 'confirmation.txnError.requiresMemo',
-          backgroundEventId: 'live-event',
-          memoDraft: 'stale-draft',
-        },
+        context,
       });
 
-      expect(getInterfaceContextIfExists).not.toHaveBeenCalled();
+      expect(getInterfaceContextIfExists).toHaveBeenCalledWith('interface-id');
       expect(updateInterfaceIfExists).toHaveBeenCalledWith(
         'interface-id',
         'RENDERED',
@@ -267,15 +274,19 @@ describe('MemoEdit event handlers', () => {
     });
 
     it('keeps a draft and shows validation error without committing memo or rescheduling', async () => {
+      const context = {
+        ...liveSendContext,
+        memo: 'committed-memo',
+        errorMessage: 'confirmation.txnError.requiresMemo',
+        transactionsFetchStatus: FetchStatus.Error,
+      };
+
+      vi.mocked(getInterfaceContextIfExists).mockResolvedValue(context);
+
       await handlers[MemoEditFormNames.Form]?.({
         id: 'interface-id',
         event: formSubmitEvent('é'.repeat(15)),
-        context: {
-          ...liveSendContext,
-          memo: 'committed-memo',
-          errorMessage: 'confirmation.txnError.requiresMemo',
-          transactionsFetchStatus: FetchStatus.Error,
-        },
+        context,
       });
 
       expect(scheduleSpy).not.toHaveBeenCalled();
@@ -291,13 +302,17 @@ describe('MemoEdit event handlers', () => {
     });
 
     it('shows a save error when context cannot restart refresh', async () => {
+      const context = {
+        interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
+        scope: 'stellar:pubnet',
+      };
+
+      vi.mocked(getInterfaceContextIfExists).mockResolvedValue(context);
+
       await handlers[MemoEditFormNames.Form]?.({
         id: 'interface-id',
         event: formSubmitEvent('optional-ref'),
-        context: {
-          interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-          scope: 'stellar:pubnet',
-        },
+        context,
       });
 
       expect(scheduleSpy).not.toHaveBeenCalled();
@@ -317,6 +332,70 @@ describe('MemoEdit event handlers', () => {
           memo: 'optional-ref',
         }),
       );
+    });
+
+    it('preserves malicious acknowledgement when save overlaps the checkbox', async () => {
+      let context: Record<string, Json> = {
+        ...liveSendContext,
+        acknowledgementScreen: true,
+        acknowledged: false,
+        memoScreen: true,
+      };
+
+      vi.mocked(getInterfaceContextIfExists).mockImplementation(
+        async () => context,
+      );
+
+      vi.mocked(updateInterfaceIfExists).mockImplementation(
+        async (_id, _ui, next) => {
+          context = next;
+          return true;
+        },
+      );
+
+      let releaseSchedule!: () => void;
+      let scheduleStarted!: () => void;
+
+      const scheduleGate = new Promise<void>((resolve) => {
+        releaseSchedule = resolve;
+      });
+      const scheduleReady = new Promise<void>((resolve) => {
+        scheduleStarted = resolve;
+      });
+
+      scheduleSpy.mockImplementation(async () => {
+        scheduleStarted();
+        await scheduleGate;
+        return 'new-event-id';
+      });
+
+      const save = handlers[MemoEditFormNames.Form]?.({
+        id: 'interface-id',
+        event: formSubmitEvent('exchange-ref'),
+        context,
+      });
+      await scheduleReady;
+
+      const acknowledge = MaliciousAcknowledgementFormNames.Acknowledge;
+      const checkbox = createAcknowledgementEventHandlers()[acknowledge]?.({
+        id: 'interface-id',
+        event: {
+          type: UserInputEventType.InputChangeEvent,
+          name: acknowledge,
+          value: true,
+        },
+        context,
+      });
+      releaseSchedule();
+
+      await Promise.all([save, checkbox]);
+
+      expect(context).toMatchObject({
+        memo: 'exchange-ref',
+        memoScreen: false,
+        acknowledgementScreen: true,
+        acknowledged: true,
+      });
     });
 
     it('shows a save error when scheduling fails', async () => {
@@ -354,16 +433,19 @@ describe('MemoEdit event handlers', () => {
 
   describe('Back', () => {
     it('closes the editor without committing the draft memo', async () => {
+      const context = {
+        interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
+        memo: 'committed-memo',
+        memoDraft: 'unsaved-draft',
+        memoError: 'confirmation.memo.error.tooLong',
+        memoScreen: true,
+      };
+      vi.mocked(getInterfaceContextIfExists).mockResolvedValue(context);
+
       await handlers[MemoEditFormNames.Back]?.({
         id: 'interface-id',
         event: buttonEvent(MemoEditFormNames.Back),
-        context: {
-          interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-          memo: 'committed-memo',
-          memoDraft: 'unsaved-draft',
-          memoError: 'confirmation.memo.error.tooLong',
-          memoScreen: true,
-        },
+        context,
       });
 
       expect(updateInterfaceIfExists).toHaveBeenCalledWith(

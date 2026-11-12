@@ -5,17 +5,18 @@ import { BigNumber } from 'bignumber.js';
 import type { KnownCaip19AssetIdOrSlip44Id } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
+import type { UserInputUiEventHandler } from '../../handlers/user-input/api';
 import { getNativeAssetMetadata } from '../../services/asset-metadata/utils';
-import { TransactionScanValidationType } from '../../services/transaction-scan';
-import type { TransactionScanResult } from '../../services/transaction-scan';
 import type { ReadableOperationField } from '../../services/transaction/OperationMapper';
 import { parseOperationAssetReferenceSafe } from '../../services/transaction/utils';
 import type { Locale } from '../../utils';
 import {
   FALLBACK_LANGUAGE,
+  getInterfaceContextIfExists,
   getPreferences,
   parseClassicAssetCodeIssuer,
   toDisplayBalance,
+  withInterfaceLock,
 } from '../../utils';
 import { xlmIcon } from '../images';
 import { FetchStatus } from './api';
@@ -214,31 +215,8 @@ export function isRemoteTransactionScanLoading(params: {
   // We only block while the scan is still running. A malicious result no longer
   // disables confirm: per product/Blockaid, the user must always retain a
   // "proceed anyway" path, gated behind the malicious acknowledgement screen
-  // (see {@link requiresMaliciousAcknowledgement}).
+  // (see the shared `requiresMaliciousAcknowledgement`).
   return params.scanFetchStatus === FetchStatus.Fetching;
-}
-
-/**
- * Determines whether a malicious scan result requires explicit user
- * acknowledgement before the transaction can be confirmed.
- *
- * When true, the confirmation footer routes Confirm through the acknowledgement
- * screen. Warning-level results show the banner without acknowledgement.
- *
- * @param params - Scan and preference state.
- * @param params.preferences - User preferences controlling scan behavior.
- * @param params.scan - Latest transaction scan result.
- * @returns True when the user must acknowledge a malicious result to proceed.
- */
-export function requiresMaliciousAcknowledgement(params: {
-  preferences: GetPreferencesResult;
-  scan?: TransactionScanResult | null;
-}): boolean {
-  const { preferences, scan } = params;
-  return (
-    preferences.useSecurityAlerts &&
-    scan?.validation?.type === TransactionScanValidationType.Malicious
-  );
 }
 
 /**
@@ -445,4 +423,27 @@ export function getInvocationDetailParams(
   params: ReadableOperationField[],
 ): ReadableOperationField[] {
   return params.filter((param) => !INVOCATION_HEADER_KEYS.has(param.key));
+}
+
+/**
+ * Runs a handler under the interface lock with the latest context.
+ *
+ * Memo save and malicious acknowledgement share this lock, so one write cannot
+ * drop the other's context fields.
+ *
+ * @param handler - The handler to wrap.
+ * @returns The protected handler.
+ */
+export function withLockedContext(
+  handler: UserInputUiEventHandler,
+): UserInputUiEventHandler {
+  return async (options) =>
+    withInterfaceLock(options.id, async () => {
+      const context = await getInterfaceContextIfExists<Record<string, Json>>(
+        options.id,
+      );
+      if (context) {
+        await handler({ ...options, context });
+      }
+    });
 }

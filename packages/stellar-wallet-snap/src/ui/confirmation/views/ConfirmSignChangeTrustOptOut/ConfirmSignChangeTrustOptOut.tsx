@@ -1,4 +1,8 @@
-import { ActionHeader, Asset } from '@metamask/snap-networks-utils';
+import {
+  ActionHeader,
+  Asset,
+  requiresMaliciousAcknowledgement,
+} from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
@@ -29,7 +33,6 @@ import { NetworkRow } from '../../components/Network';
 import {
   getAccountName,
   getClassicAssetExplorerUrl,
-  requiresMaliciousAcknowledgement,
   shouldDisableConfirmation,
 } from '../../utils';
 import { ConfirmSignChangeTrustOptOutFormNames } from './events';
@@ -144,10 +147,10 @@ export const ConfirmSignChangeTrustOptOut = ({
         cancelButtonName={ConfirmSignChangeTrustOptOutFormNames.Cancel}
         confirmButtonName={ConfirmSignChangeTrustOptOutFormNames.Confirm}
         confirmDisabled={shouldDisableConfirmButton}
-        requiresAcknowledgement={requiresMaliciousAcknowledgement({
-          preferences,
-          scan,
-        })}
+        requiresAcknowledgement={requiresMaliciousAcknowledgement(
+          preferences.useSecurityAlerts,
+          scan?.validation?.type,
+        )}
       />
     </Container>
   );

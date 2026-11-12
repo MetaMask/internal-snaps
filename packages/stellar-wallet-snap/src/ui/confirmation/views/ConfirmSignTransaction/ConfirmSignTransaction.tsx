@@ -1,4 +1,7 @@
-import { ActionHeader } from '@metamask/snap-networks-utils';
+import {
+  ActionHeader,
+  requiresMaliciousAcknowledgement,
+} from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
@@ -32,7 +35,6 @@ import {
   getAccountName,
   getInvocationDetailParams,
   getParam,
-  requiresMaliciousAcknowledgement,
   shouldDisableConfirmation,
 } from '../../utils';
 import { ConfirmSignTransactionFormNames } from './events';
@@ -213,10 +215,10 @@ export const ConfirmSignTransaction = ({
         cancelButtonName={ConfirmSignTransactionFormNames.Cancel}
         confirmButtonName={ConfirmSignTransactionFormNames.Confirm}
         confirmDisabled={shouldDisableConfirmButton}
-        requiresAcknowledgement={requiresMaliciousAcknowledgement({
-          preferences,
-          scan,
-        })}
+        requiresAcknowledgement={requiresMaliciousAcknowledgement(
+          preferences.useSecurityAlerts,
+          scan?.validation?.type,
+        )}
       />
     </Container>
   );

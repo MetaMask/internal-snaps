@@ -8,7 +8,11 @@ import type {
 import { resolveInterface, updateInterfaceIfExists } from '../../../../utils';
 import { ConfirmationInterfaceKey } from '../../api';
 import type { FetchStatus } from '../../api';
-import { getMemoFromContext, shouldDisableConfirmation } from '../../utils';
+import {
+  getMemoFromContext,
+  shouldDisableConfirmation,
+  withLockedContext,
+} from '../../utils';
 import { renderConfirmationView } from '../render';
 import { MaliciousAcknowledgementFormNames } from './constants';
 
@@ -144,9 +148,12 @@ async function onBackClick(
  */
 export function createEventHandlers(): Record<string, UserInputUiEventHandler> {
   return {
-    [MaliciousAcknowledgementFormNames.Review]: onReviewClick,
-    [MaliciousAcknowledgementFormNames.Acknowledge]: onAcknowledgeChange,
-    [MaliciousAcknowledgementFormNames.Proceed]: onProceedClick,
-    [MaliciousAcknowledgementFormNames.Back]: onBackClick,
+    [MaliciousAcknowledgementFormNames.Review]:
+      withLockedContext(onReviewClick),
+    [MaliciousAcknowledgementFormNames.Acknowledge]:
+      withLockedContext(onAcknowledgeChange),
+    [MaliciousAcknowledgementFormNames.Proceed]:
+      withLockedContext(onProceedClick),
+    [MaliciousAcknowledgementFormNames.Back]: withLockedContext(onBackClick),
   };
 }

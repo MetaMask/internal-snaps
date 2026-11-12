@@ -29,6 +29,7 @@ import {
 } from '../../../../utils';
 import type { ConfirmationInterfaceKey } from '../../api';
 import { ConfirmationInterfaceKeyStruct, FetchStatus } from '../../api';
+import { withLockedContext } from '../../utils';
 import { renderConfirmationView } from '../render';
 import { MemoEditFormNames } from './constants';
 
@@ -213,8 +214,8 @@ async function onBackClick(
  */
 export function createEventHandlers(): Record<string, UserInputUiEventHandler> {
   return {
-    [MemoEditFormNames.Open]: onOpenClick,
-    [MemoEditFormNames.Form]: onSaveSubmit,
-    [MemoEditFormNames.Back]: onBackClick,
+    [MemoEditFormNames.Open]: withLockedContext(onOpenClick),
+    [MemoEditFormNames.Form]: withLockedContext(onSaveSubmit),
+    [MemoEditFormNames.Back]: withLockedContext(onBackClick),
   };
 }
