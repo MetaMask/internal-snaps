@@ -1,8 +1,13 @@
+import { UserInputEventType } from '@metamask/snaps-sdk';
+
 import {
   ConfirmationInterfaceKey,
   FetchStatus,
 } from '../../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../../ui/confirmation/controller';
+import { MaliciousAcknowledgementFormNames } from '../../../ui/confirmation/views/MaliciousAcknowledgement/constants';
+import { createEventHandlers } from '../../../ui/confirmation/views/MaliciousAcknowledgement/events';
+import * as ConfirmationRender from '../../../ui/confirmation/views/render';
 import { Duration } from '../../../utils';
 import { logger } from '../../../utils/logger';
 import {
@@ -69,6 +74,99 @@ describe('RefreshConfirmationContextHandler', () => {
 
     return { handler, updateConfirmation };
   }
+
+  it('preserves a refreshed blocker when the acknowledgement checkbox update overlaps it', async () => {
+    let context = {
+      ...baseContext,
+      interfaceKey: ConfirmationInterfaceKey.SignTransaction,
+      locale: 'en',
+      acknowledgementScreen: true,
+      acknowledged: false,
+    };
+    let releaseRefresh!: () => void;
+    let refreshStarted!: () => void;
+    let releaseCheckbox!: () => void;
+    let checkboxStarted!: () => void;
+    const refreshGate = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    const refreshReady = new Promise<void>((resolve) => {
+      refreshStarted = resolve;
+    });
+    const checkboxGate = new Promise<void>((resolve) => {
+      releaseCheckbox = resolve;
+    });
+    const checkboxReady = new Promise<void>((resolve) => {
+      checkboxStarted = resolve;
+    });
+    vi.mocked(getInterfaceContextIfExists).mockImplementation(
+      async () => context,
+    );
+    vi.spyOn(ConfirmationRender, 'renderConfirmationView').mockReturnValue(
+      'RENDERED' as never,
+    );
+    vi.spyOn(SnapUtils, 'updateInterfaceIfExists').mockImplementation(
+      async (_id, _ui, next) => {
+        checkboxStarted();
+        await checkboxGate;
+        context = next as typeof context;
+        return true;
+      },
+    );
+    const resolve = vi
+      .spyOn(SnapUtils, 'resolveInterface')
+      .mockResolvedValue(null);
+    const refresher = createMockRefresher(
+      ConfirmationContextRefresherKey.Prices,
+      {
+        refresh: vi.fn(async () => {
+          refreshStarted();
+          await refreshGate;
+          return {
+            result: { transactionsFetchStatus: FetchStatus.Error },
+            reschedule: false,
+          };
+        }),
+      },
+    );
+    const { handler, updateConfirmation } = setup([refresher]);
+    updateConfirmation.mockImplementation(async ({ updatedContext }) => {
+      context = updatedContext;
+    });
+    const handlers = createEventHandlers();
+    const refresh = handler.handle({
+      jsonrpc: '2.0',
+      id: '1',
+      method: BackgroundEventMethod.RefreshConfirmationContext,
+      params: confirmationContextRequestParams,
+    });
+    await refreshReady;
+    const checkboxName = MaliciousAcknowledgementFormNames.Acknowledge;
+    const checkbox = handlers[checkboxName]?.({
+      id: confirmationContextRequestParams.interfaceId,
+      event: {
+        type: UserInputEventType.InputChangeEvent,
+        name: checkboxName,
+        value: true,
+      },
+      context,
+    });
+    await checkboxReady;
+    releaseRefresh();
+    releaseCheckbox();
+    await Promise.all([checkbox, refresh]);
+    expect(context).toMatchObject({
+      acknowledged: true,
+      transactionsFetchStatus: FetchStatus.Error,
+    });
+    const proceedName = MaliciousAcknowledgementFormNames.Proceed;
+    await handlers[proceedName]?.({
+      id: confirmationContextRequestParams.interfaceId,
+      event: { type: UserInputEventType.ButtonClickEvent, name: proceedName },
+      context,
+    });
+    expect(resolve).not.toHaveBeenCalled();
+  });
 
   it('schedules refresh confirmation context background event', async () => {
     const eventId =

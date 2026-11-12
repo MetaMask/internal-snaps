@@ -5,7 +5,12 @@ import type {
   UserInputUiEventHandler,
   UserInputUiEventHandlerContext,
 } from '../../../../handlers/user-input/api';
-import { resolveInterface, updateInterfaceIfExists } from '../../../../utils';
+import {
+  getInterfaceContextIfExists,
+  resolveInterface,
+  updateInterfaceIfExists,
+  withInterfaceLock,
+} from '../../../../utils';
 import { ConfirmationInterfaceKey } from '../../api';
 import type { FetchStatus } from '../../api';
 import { getMemoFromContext, shouldDisableConfirmation } from '../../utils';
@@ -138,15 +143,38 @@ async function onBackClick(
 }
 
 /**
+ * Runs a handler under the interface lock with the latest context.
+ *
+ * @param handler - The handler to wrap.
+ * @returns The protected handler.
+ */
+function withLockedContext(
+  handler: UserInputUiEventHandler,
+): UserInputUiEventHandler {
+  return async (options) =>
+    withInterfaceLock(options.id, async () => {
+      const context = await getInterfaceContextIfExists<Record<string, Json>>(
+        options.id,
+      );
+      if (context) {
+        await handler({ ...options, context });
+      }
+    });
+}
+
+/**
  * Create the shared malicious-acknowledgement event handlers.
  *
  * @returns Object containing event handlers keyed by form element name.
  */
 export function createEventHandlers(): Record<string, UserInputUiEventHandler> {
   return {
-    [MaliciousAcknowledgementFormNames.Review]: onReviewClick,
-    [MaliciousAcknowledgementFormNames.Acknowledge]: onAcknowledgeChange,
-    [MaliciousAcknowledgementFormNames.Proceed]: onProceedClick,
-    [MaliciousAcknowledgementFormNames.Back]: onBackClick,
+    [MaliciousAcknowledgementFormNames.Review]:
+      withLockedContext(onReviewClick),
+    [MaliciousAcknowledgementFormNames.Acknowledge]:
+      withLockedContext(onAcknowledgeChange),
+    [MaliciousAcknowledgementFormNames.Proceed]:
+      withLockedContext(onProceedClick),
+    [MaliciousAcknowledgementFormNames.Back]: withLockedContext(onBackClick),
   };
 }

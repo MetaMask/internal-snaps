@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add the `getMaxSendableAmount` client request method, returning the maximum amount that would pass `onAmountInput` for XLM and classic assets. XLM leaves the minimum reserve and the inclusion fee, token balances require XLM to cover the fee, and the result is `0` when no amount can pass ([#594](https://github.com/MetaMask/internal-snaps/pull/594))
 
+### Changed
+
+- Align security warning copy and the malicious-request acknowledgement screen ([#604](https://github.com/MetaMask/internal-snaps/pull/604))
+
 ## [2.1.0]
 
 ### Changed
