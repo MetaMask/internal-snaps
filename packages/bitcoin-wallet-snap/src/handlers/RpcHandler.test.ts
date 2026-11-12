@@ -7,6 +7,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { Logger, BitcoinAccount } from '../entities';
+import { ValidationError } from '../entities';
 import type { AccountUseCases, SendFlowUseCases } from '../use-cases';
 import { Caip19Asset } from './caip';
 import * as Mappings from './mappings';
@@ -824,6 +825,130 @@ describe('RpcHandler', () => {
         valid: false,
         errors: [{ code: SendErrorCodes.Invalid }],
       });
+    });
+  });
+
+  describe('getMaxSendableAmount', () => {
+    const spendableSats = 150_000_000n;
+    const feeSats = 10_000n;
+    const assetId = 'bip122:000000000019d6689c085ae165831e93/slip44:0';
+
+    const createRequest = (toAddress?: string): JsonRpcRequest => ({
+      id: 1,
+      jsonrpc: '2.0',
+      method: RpcMethod.GetMaxSendableAmount,
+      params: {
+        accountId: validAccountId,
+        assetId,
+        ...(toAddress === undefined ? {} : { toAddress }),
+      },
+    });
+
+    const mockProbeFee = (sats: bigint): void => {
+      const fee = mock<Amount>();
+      fee.to_sat.mockReturnValue(sats);
+      mockPsbt.fee.mockReturnValue(fee);
+    };
+
+    beforeEach(() => {
+      const trustedSpendable = mock<Amount>();
+      trustedSpendable.to_sat.mockReturnValue(spendableSats);
+
+      mockAccountsUseCases.get.mockResolvedValue({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+        balance: { trusted_spendable: trustedSpendable },
+      } as unknown as BitcoinAccount);
+      mockSendFlowUseCases.buildProbePsbt.mockResolvedValue(mockPsbt);
+      mockProbeFee(feeSats);
+
+      (Amount.from_btc as Mock).mockImplementation(
+        (btc): { to_sat: () => bigint } => ({
+          to_sat: (): bigint => BigInt(Math.round(btc * 100_000_000)),
+        }),
+      );
+    });
+
+    it('returns the drain amount for a known toAddress', async () => {
+      const toAddress = 'bc1qux9xtsj6mr4un7yg9kgd7tv8kndvlhv2gv5yc8';
+
+      const result = await handler.route(origin, createRequest(toAddress));
+
+      expect(mockSendFlowUseCases.buildProbePsbt).toHaveBeenCalledWith(
+        expect.objectContaining({ network: 'bitcoin' }),
+        '1.5',
+        toAddress,
+      );
+      expect(result).toStrictEqual({ amount: '1.4999' });
+    });
+
+    it('returns the drain amount when toAddress is omitted', async () => {
+      const result = await handler.route(origin, createRequest());
+
+      expect(mockSendFlowUseCases.buildProbePsbt).toHaveBeenCalledWith(
+        expect.objectContaining({ network: 'bitcoin' }),
+        '1.5',
+        undefined,
+      );
+      expect(result).toStrictEqual({ amount: '1.4999' });
+    });
+
+    it('returns 0 when the fee consumes the whole balance', async () => {
+      mockProbeFee(spendableSats);
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns 0 when the remaining amount is below the dust limit', async () => {
+      mockProbeFee(spendableSats - 100n);
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns 0 when the probe reports insufficient funds', async () => {
+      mockSendFlowUseCases.buildProbePsbt.mockRejectedValue(
+        new Error('Insufficient funds: 149990000 sat available'),
+      );
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns 0 without probing when the spendable balance is zero', async () => {
+      const trustedSpendable = mock<Amount>();
+      trustedSpendable.to_sat.mockReturnValue(0n);
+      mockAccountsUseCases.get.mockResolvedValue({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+        balance: { trusted_spendable: trustedSpendable },
+      } as unknown as BitcoinAccount);
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(mockSendFlowUseCases.buildProbePsbt).not.toHaveBeenCalled();
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns 0 when the probe reports a dust limit error', async () => {
+      mockSendFlowUseCases.buildProbePsbt.mockRejectedValue(
+        new Error('Output below the dust limit'),
+      );
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('rejects an invalid toAddress', async () => {
+      await expect(
+        handler.route(origin, createRequest('invalid-address')),
+      ).rejects.toThrow(ValidationError);
+      expect(mockSendFlowUseCases.buildProbePsbt).not.toHaveBeenCalled();
     });
   });
 

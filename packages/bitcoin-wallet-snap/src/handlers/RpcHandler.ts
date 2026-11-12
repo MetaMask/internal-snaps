@@ -1,3 +1,4 @@
+import type { Psbt } from '@metamask/bitcoindevkit';
 import { BtcScope } from '@metamask/keyring-api';
 import {
   DEFAULT_METAMASK_ORIGIN,
@@ -35,12 +36,15 @@ import type {
   SignProofOfOwnershipMessageBatchRequest,
   SignProofOfOwnershipMessageBatchResult,
 } from '../use-cases';
+import { formatBtcAmount } from '../utils/format-btc';
 import { scopeToNetwork } from './caip';
 import type { TransactionFee } from './mappings';
 import { mapPsbtToTransaction, mapToTransactionFees } from './mappings';
 import { parsePsbt } from './parsers';
 import type {
   ConfirmSendRequest,
+  GetMaxSendableAmountRequest,
+  GetMaxSendableAmountResponse,
   OnAddressInputRequest,
   OnAmountInputRequest,
 } from './types';
@@ -49,6 +53,7 @@ import {
   NO_ERRORS_RESPONSE,
   INVALID_RESPONSE,
   ConfirmSendRequestStruct,
+  GetMaxSendableAmountRequestStruct,
   OnAddressInputRequestStruct,
   OnAmountInputRequestStruct,
   RpcMethod,
@@ -191,6 +196,10 @@ export class RpcHandler {
       case RpcMethod.OnAmountInput: {
         assert(params, OnAmountInputRequestStruct);
         return this.#onAmountInput(params);
+      }
+      case RpcMethod.GetMaxSendableAmount: {
+        assert(params, GetMaxSendableAmountRequestStruct);
+        return this.#getMaxSendableAmount(params);
       }
       case RpcMethod.ConfirmSend: {
         assert(params, ConfirmSendRequestStruct);
@@ -388,6 +397,65 @@ export class RpcHandler {
       );
       return INVALID_RESPONSE;
     }
+  }
+
+  /**
+   * Returns the maximum amount that would pass `onAmountInput`.
+   *
+   * Drains the full spendable balance to price the fee with the same config as
+   * `onAmountInput`, then subtracts it. The probe PSBT is never signed.
+   *
+   * @param request - The request params.
+   * @returns The maximum sendable amount, or `0` when none can pass.
+   * @throws {ValidationError} When `toAddress` is not a valid destination.
+   */
+  async #getMaxSendableAmount(
+    request: GetMaxSendableAmountRequest,
+  ): Promise<GetMaxSendableAmountResponse> {
+    const { accountId, toAddress } = request;
+    const account = await this.#accountUseCases.get(accountId);
+
+    if (
+      toAddress !== undefined &&
+      !validateAddress(toAddress, account.network, this.#logger).valid
+    ) {
+      throw new ValidationError('Invalid Bitcoin address', {
+        toAddress,
+        network: account.network,
+      });
+    }
+
+    const spendableSats = account.balance.trusted_spendable.to_sat();
+    if (spendableSats <= 0n) {
+      return { amount: '0' };
+    }
+
+    let probe: Psbt;
+    try {
+      probe = await this.#sendFlowUseCases.buildProbePsbt(
+        account,
+        formatBtcAmount(spendableSats),
+        toAddress,
+      );
+    } catch (error) {
+      const { message } = error as CodifiedError;
+      if (message.includes('Insufficient funds') || /dust/iu.test(message)) {
+        return { amount: '0' };
+      }
+      throw error;
+    }
+
+    const maxSats = spendableSats - probe.fee().to_sat();
+    if (maxSats <= 0n) {
+      return { amount: '0' };
+    }
+
+    const amount = formatBtcAmount(maxSats);
+    if (!validateDustLimit(amount, account).valid) {
+      return { amount: '0' };
+    }
+
+    return { amount };
   }
 
   #verifyMessage(
