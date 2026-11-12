@@ -1,5 +1,6 @@
+import { sha256 } from '@metamask/cryptography/sha';
 import type { FetchPolicyError } from '@metamask/snap-networks-utils';
-import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
+import { bytesToHex, hexToBytes } from '@metamask/utils';
 import type { TronWeb, Types as TronwebTypes } from 'tronweb';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';

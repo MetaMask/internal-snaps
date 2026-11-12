@@ -63,6 +63,7 @@ export const ClientRequestMethod = {
   /** -------------------------------- Wallet Standard -------------------------------- */
   OnAddressInput: 'onAddressInput',
   OnAmountInput: 'onAmountInput',
+  GetMaxSendableAmount: 'getMaxSendableAmount',
   ConfirmSend: 'confirmSend',
   // Standard multichain workflow for bridge
   SignAndSendTransaction: 'signAndSendTransaction',
@@ -304,6 +305,61 @@ export const OnAmountInputJsonRpcResponseStruct = object({
       code: string(),
     }),
   ),
+});
+
+const GetMaxSendableAmountParamsWireStruct = object({
+  accountId: UuidStruct,
+  assetId: union([
+    KnownCaip19ClassicAssetStruct,
+    KnownCaip19Sep41AssetStruct,
+    KnownCaip19Slip44IdStruct,
+  ]),
+  toAddress: optional(StellarAddressStruct),
+});
+
+const GetMaxSendableAmountParamsStruct = assign(
+  GetMaxSendableAmountParamsWireStruct,
+  object({
+    scope: KnownCaip2ChainIdStruct,
+  }),
+);
+
+const GetMaxSendableAmountJsonRpcRequestCoercedStruct = coerce(
+  assign(
+    JsonRpcRequestStruct,
+    object({
+      method: literal(ClientRequestMethod.GetMaxSendableAmount),
+      params: GetMaxSendableAmountParamsStruct,
+    }),
+  ),
+  assign(
+    JsonRpcRequestStruct,
+    object({
+      method: literal(ClientRequestMethod.GetMaxSendableAmount),
+      params: GetMaxSendableAmountParamsWireStruct,
+    }),
+  ),
+  (request) => ({
+    ...request,
+    params: {
+      ...request.params,
+      scope: getStellarAssetChainId(request.params.assetId),
+    },
+  }),
+);
+
+/**
+ * Validation struct for the getMaxSendableAmount JSON-RPC request.
+ * Derives `scope` from `assetId` (clients do not send scope).
+ */
+export const GetMaxSendableAmountJsonRpcRequestStruct =
+  GetMaxSendableAmountJsonRpcRequestCoercedStruct;
+
+/**
+ * Validation struct for the getMaxSendableAmount JSON-RPC response.
+ */
+export const GetMaxSendableAmountJsonRpcResponseStruct = object({
+  amount: ValidAmountStruct,
 });
 
 const ConfirmSendParamsStruct = object({
@@ -565,6 +621,20 @@ export type OnAmountInputJsonRpcRequest = Infer<
  */
 export type OnAmountInputJsonRpcResponse = Infer<
   typeof OnAmountInputJsonRpcResponseStruct
+>;
+
+/**
+ * Type for the getMaxSendableAmount JSON-RPC request.
+ */
+export type GetMaxSendableAmountJsonRpcRequest = Infer<
+  typeof GetMaxSendableAmountJsonRpcRequestStruct
+>;
+
+/**
+ * Type for the getMaxSendableAmount JSON-RPC response.
+ */
+export type GetMaxSendableAmountJsonRpcResponse = Infer<
+  typeof GetMaxSendableAmountJsonRpcResponseStruct
 >;
 
 /**
