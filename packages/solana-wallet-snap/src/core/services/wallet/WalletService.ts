@@ -45,6 +45,12 @@ import logger from '../../utils/logger';
 import { resolveTransactionType } from '../../utils/transactionType';
 import { Base58Struct, Base64Struct } from '../../validation/structs';
 import type { SolanaConnection } from '../connection';
+import { PackPartnerSigner } from '../pack-partner/PackPartnerSigner';
+import type {
+  PackPartnerBuyContext,
+  PackPartnerBuybackContext,
+  PackPartnerSignedTransaction,
+} from '../pack-partner/PackPartnerSigner';
 import type { Signer } from '../signer/Signer';
 import type { SignatureMonitor } from '../subscriptions';
 import { TransactionMapper } from '../transactions';
@@ -92,6 +98,8 @@ export type SolanaSignMessageBatchResult =
 export class WalletService {
   readonly #connection: SolanaConnection;
 
+  readonly #packPartnerSigner: PackPartnerSigner;
+
   readonly #signer: Signer;
 
   readonly #signatureMonitor: SignatureMonitor;
@@ -111,11 +119,58 @@ export class WalletService {
     _logger = logger,
   ) {
     this.#connection = connection;
+    this.#packPartnerSigner = new PackPartnerSigner(connection);
     this.#signer = signer;
     this.#signatureMonitor = signatureMonitor;
     this.#analyticsService = analyticsService;
     this.#transactionsService = transactionsService;
     this.#logger = _logger.withPrefix('[👛 WalletService]');
+  }
+
+  /**
+   * Sign a Pack Partner purchase after atomic validation. Never broadcasts.
+   *
+   * @param account - The selected Solana keyring account.
+   * @param transaction - The presigned base64 wire transaction.
+   * @param context - Confirmed purchase amount in USDC base units.
+   * @param scope - Requested Solana cluster.
+   * @returns The signed wire transaction and first signature.
+   */
+  async signPackPartnerBuy(
+    account: ExtendedKeyringAccount,
+    transaction: string,
+    context: PackPartnerBuyContext,
+    scope: Network,
+  ): Promise<PackPartnerSignedTransaction> {
+    return this.#packPartnerSigner.signBuy(
+      account,
+      transaction,
+      context,
+      scope,
+    );
+  }
+
+  /**
+   * Sign a Pack Partner buyback after atomic validation. Never broadcasts.
+   *
+   * @param account - The selected Solana keyring account.
+   * @param transaction - The presigned base64 wire transaction.
+   * @param context - Confirmed asset, NFT standard and refund in USDC base units.
+   * @param scope - Requested Solana cluster.
+   * @returns The signed wire transaction and first signature.
+   */
+  async signPackPartnerBuyback(
+    account: ExtendedKeyringAccount,
+    transaction: string,
+    context: PackPartnerBuybackContext,
+    scope: Network,
+  ): Promise<PackPartnerSignedTransaction> {
+    return this.#packPartnerSigner.signBuyback(
+      account,
+      transaction,
+      context,
+      scope,
+    );
   }
 
   /**

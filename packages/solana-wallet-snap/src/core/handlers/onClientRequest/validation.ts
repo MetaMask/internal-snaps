@@ -99,6 +99,48 @@ export type SignAndSendTransactionResponse = Infer<
   typeof SignAndSendTransactionResponseStruct
 >;
 
+/** Atomic USDC units, with no decimals or precision-losing number conversion. */
+const PackPartnerAmountStruct = refine(
+  string(),
+  'PackPartnerAmount',
+  (value) =>
+    /^[1-9]\d{0,19}$/u.test(value) &&
+    BigInt(value) <= 18_446_744_073_709_551_615n,
+);
+
+export const SignPackPartnerBuyRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.SignPackPartnerBuy),
+  params: object({
+    accountId: UuidStruct,
+    transaction: Base64Struct,
+    scope: enums([Network.Mainnet, Network.Devnet]),
+    context: object({ amount: PackPartnerAmountStruct }),
+  }),
+});
+
+export const SignPackPartnerBuybackRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.SignPackPartnerBuyback),
+  params: object({
+    accountId: UuidStruct,
+    transaction: Base64Struct,
+    scope: enums([Network.Mainnet, Network.Devnet]),
+    context: object({
+      amount: PackPartnerAmountStruct,
+      assetAddress: SolanaAddressStruct,
+      expectedStandard: enums(['core', 'pnft', 'nft', 'cnft-core', 'unknown']),
+    }),
+  }),
+});
+
+export const PackPartnerRequestStruct = union([
+  SignPackPartnerBuyRequestStruct,
+  SignPackPartnerBuybackRequestStruct,
+]);
+
 /**
  * onConfirmSend request/response validation.
  */
