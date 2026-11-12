@@ -3,7 +3,11 @@ import type { ActionHeaderProps } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 
 import { KnownCaip2ChainId } from '../../../api';
-import { defaultPreferences as preferences } from '../__fixtures__/confirmation.fixtures';
+import {
+  defaultPreferences as preferences,
+  maliciousScan,
+} from '../__fixtures__/confirmation.fixtures';
+import { FetchStatus } from '../api';
 import { AccountActivationPrompt } from './AccountActivationPrompt/AccountActivationPrompt';
 import { ConfirmSendTransaction } from './ConfirmSendTransaction/ConfirmSendTransaction';
 import { ConfirmSignAuthEntry } from './ConfirmSignAuthEntry/ConfirmSignAuthEntry';
@@ -96,7 +100,7 @@ describe.each<
   [
     'MaliciousAcknowledgementScreen',
     MaliciousAcknowledgementScreen,
-    { title: 'Malicious request' },
+    { title: 'High-risk request' },
   ],
   ['MemoEditScreen', MemoEditScreen, { title: 'Transaction memo' }],
 ])('%s', (_name, View, header) => {
@@ -106,3 +110,38 @@ describe.each<
     );
   });
 });
+
+describe.each([
+  ['send', ConfirmSendTransaction],
+  ['sign', ConfirmSignTransaction],
+  ['change trust opt in', ConfirmSignChangeTrustOptIn],
+  ['change trust opt out', ConfirmSignChangeTrustOptOut],
+] as [string, (viewProps: never) => ComponentOrElement][])(
+  '%s confirmation footer',
+  (_name, View) => {
+    it('routes malicious confirmations through a destructive Confirm button', () => {
+      const view = View({
+        ...(props as object),
+        scan: maliciousScan,
+        scanFetchStatus: FetchStatus.Fetched,
+        transactionsFetchStatus: FetchStatus.Fetched,
+      } as never);
+      const serialized = JSON.stringify(view);
+      expect(serialized).toContain('malicious-acknowledgement-review');
+      expect(serialized).toContain('"variant":"destructive"');
+      expect(serialized).toContain('"children":"Confirm"');
+    });
+
+    it('keeps confirmation disabled when the scan is loading', () => {
+      const view = View({
+        ...(props as object),
+        scan: maliciousScan,
+        scanFetchStatus: FetchStatus.Fetching,
+        transactionsFetchStatus: FetchStatus.Fetched,
+      } as never);
+      const serialized = JSON.stringify(view);
+      expect(serialized).not.toContain('malicious-acknowledgement-review');
+      expect(serialized).toContain('"disabled":true');
+    });
+  },
+);

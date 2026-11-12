@@ -64,7 +64,7 @@ describe('ConfirmationFooter', () => {
     expect(findButton(footer, 'confirm')?.disabled).toBe(true);
   });
 
-  it('renders the review-alerts button when acknowledgement is required', () => {
+  it('renders a danger-styled Confirm button when acknowledgement is required', () => {
     const footer = ConfirmationFooter({
       ...baseProps,
       requiresAcknowledgement: true,
@@ -72,7 +72,8 @@ describe('ConfirmationFooter', () => {
 
     const review = findButton(footer, MaliciousAcknowledgementFormNames.Review);
     expect(review).toBeDefined();
-    expect(review?.children).toBe(translate('confirmation.reviewAlertsButton'));
+    expect(review?.children).toBe(translate('confirmation.confirmButton'));
+    expect(review?.variant).toBe('destructive');
     expect(findButton(footer, 'confirm')).toBeUndefined();
   });
 
