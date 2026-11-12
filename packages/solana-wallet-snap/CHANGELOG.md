@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for SOL and SPL assets. SOL leaves the rent-exempt minimum and the fee. SPL requires SOL to cover the fee, the rent-exempt minimum, and the recipient ATA rent unless `toAddress` shows the recipient ATA already exists, and the result is `0` when no amount can pass. An empty `toAddress` is treated as absent ([#585](https://github.com/MetaMask/internal-snaps/pull/585)).
-- `onAmountInput` now accepts an optional `toAddress` parameter for the shared client request shape, with an empty string treated as absent ([#589](https://github.com/MetaMask/internal-snaps/pull/589)).
+- Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for SOL and SPL assets. SOL leaves the rent-exempt minimum and the fee. SPL requires SOL to cover the fee, the rent-exempt minimum, and the recipient ATA rent unless `toAddress` shows the recipient ATA already exists, and the result is `0` when no amount can pass ([#585](https://github.com/MetaMask/internal-snaps/pull/585)).
+- `onAmountInput` now accepts an optional `toAddress` parameter for the shared client request shape ([#589](https://github.com/MetaMask/internal-snaps/pull/589)).
 - `onAmountInput` now uses `toAddress` to decide whether the recipient ATA rent applies, and returns `Invalid` for unsupported recipients or token accounts for another mint ([#585](https://github.com/MetaMask/internal-snaps/pull/585)).
 - Show who pays the network fee on transaction confirmations, and whether a sponsored transaction is free for the user ([#595](https://github.com/MetaMask/internal-snaps/pull/595))
   - When another account pays the fee, the confirmation shows the sponsor and a "You pay" row: "Free" only when no instruction charges the user, otherwise the account rent and payments to the sponsor the user covers

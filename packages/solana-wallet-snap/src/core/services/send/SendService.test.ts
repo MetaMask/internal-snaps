@@ -758,9 +758,7 @@ describe('SendService', () => {
       params: {
         accountId: mockAccount.id,
         assetId,
-        ...(requestToAddress === undefined
-          ? {}
-          : { toAddress: requestToAddress }),
+        ...(requestToAddress ? { toAddress: requestToAddress } : {}),
       },
     });
 
@@ -1091,23 +1089,6 @@ describe('SendService', () => {
       // 165 base + 1 account type + 4 immutable owner + 15 * 12 transfer fee
       // amount + 5 transfer hook, then + 2 to avoid the multisig length.
       expect(getMinimumBalanceForRentExemption).toHaveBeenCalledWith(357n);
-    });
-
-    it('treats an empty toAddress as absent', async () => {
-      mockBalances(
-        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
-        createAsset(nativeAssetId, '0.0011'),
-      );
-
-      const withoutToAddress = await sendService.getMaxSendableAmount(
-        createRequest(KnownCaip19Id.UsdcMainnet),
-      );
-      const withEmptyToAddress = await sendService.getMaxSendableAmount(
-        createRequest(KnownCaip19Id.UsdcMainnet, ''),
-      );
-
-      expect(withEmptyToAddress).toStrictEqual(withoutToAddress);
-      expect(withEmptyToAddress).toStrictEqual({ amount: '0' });
     });
 
     it('returns the full SPL balance when sending directly to a token account', async () => {

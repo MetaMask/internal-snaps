@@ -39,7 +39,6 @@ import {
   Base58Struct,
   Base64Struct,
   PositiveNumberStringStruct,
-  SolanaAddressOrEmptyStruct,
   SolanaAddressStruct,
 } from '../../validation/structs';
 import { ClientRequestMethod } from './types';
@@ -139,7 +138,7 @@ export const OnAmountInputRequestParamsStruct = object({
   value: PositiveNumberStringStruct,
   accountId: UuidStruct,
   assetId: CaipAssetTypeStruct,
-  toAddress: optional(SolanaAddressOrEmptyStruct),
+  toAddress: optional(SolanaAddressStruct),
 });
 
 export const OnAmountInputRequestStruct = object({
@@ -155,7 +154,7 @@ export const OnAmountInputRequestStruct = object({
 export const GetMaxSendableAmountRequestParamsStruct = object({
   accountId: UuidStruct,
   assetId: CaipAssetTypeStruct,
-  toAddress: optional(SolanaAddressOrEmptyStruct),
+  toAddress: optional(SolanaAddressStruct),
 });
 
 export const GetMaxSendableAmountRequestStruct = object({
