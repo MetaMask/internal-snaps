@@ -1,18 +1,8 @@
-import { ActionHeader } from '@metamask/snap-networks-utils';
+import { MaliciousAcknowledgementScreen as SharedMaliciousAcknowledgementScreen } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
-import {
-  Banner,
-  Box,
-  Button,
-  Checkbox,
-  Container,
-  Footer,
-  Text as SnapText,
-} from '@metamask/snaps-sdk/jsx';
 
 import { i18n } from '../../../../utils';
 import type { ConfirmationBaseProps } from '../../api';
-import { MaliciousAcknowledgementFormNames } from './constants';
 
 export type MaliciousAcknowledgementScreenProps = {
   locale: ConfirmationBaseProps['locale'];
@@ -20,14 +10,11 @@ export type MaliciousAcknowledgementScreenProps = {
 };
 
 /**
- * Friction screen shown when the user chooses to review a malicious-scan alert.
- *
- * The user cannot be outright blocked, so this screen forces an explicit
- * acknowledgement: "Confirm" stays disabled until the risk checkbox is checked.
+ * Renders the shared acknowledgement screen with Stellar's translated labels.
  *
  * @param props - The screen props.
  * @param props.locale - The active locale.
- * @param props.acknowledged - Whether the risk checkbox is currently checked.
+ * @param props.acknowledged - Whether the risk checkbox is checked.
  * @returns The acknowledgement screen.
  */
 export const MaliciousAcknowledgementScreen = ({
@@ -35,31 +22,16 @@ export const MaliciousAcknowledgementScreen = ({
   acknowledged = false,
 }: MaliciousAcknowledgementScreenProps): ComponentOrElement => {
   const t = i18n(locale);
-
   return (
-    <Container>
-      <Box>
-        <ActionHeader title={t('confirmation.maliciousAck.title')} />
-        <Banner title={t('confirmation.maliciousAck.title')} severity="danger">
-          <SnapText>{t('confirmation.maliciousAck.description')}</SnapText>
-        </Banner>
-        <Checkbox
-          name={MaliciousAcknowledgementFormNames.Acknowledge}
-          label={t('confirmation.maliciousAck.checkbox')}
-          checked={acknowledged}
-        />
-      </Box>
-      <Footer>
-        <Button name={MaliciousAcknowledgementFormNames.Back}>
-          {t('confirmation.maliciousAck.back')}
-        </Button>
-        <Button
-          name={MaliciousAcknowledgementFormNames.Proceed}
-          disabled={!acknowledged}
-        >
-          {t('confirmation.maliciousAck.proceed')}
-        </Button>
-      </Footer>
-    </Container>
+    <SharedMaliciousAcknowledgementScreen
+      labels={{
+        title: t('confirmation.maliciousAck.title'),
+        description: t('confirmation.maliciousAck.description'),
+        checkbox: t('confirmation.maliciousAck.checkbox'),
+        proceed: t('confirmation.maliciousAck.proceed'),
+        back: t('confirmation.maliciousAck.back'),
+      }}
+      acknowledged={acknowledged}
+    />
   );
 };

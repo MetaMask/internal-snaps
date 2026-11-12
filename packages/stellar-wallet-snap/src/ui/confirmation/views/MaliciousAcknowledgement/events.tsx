@@ -34,7 +34,7 @@ async function reRender(
 }
 
 /**
- * Opens the malicious acknowledgement screen when the user clicks "Review alerts".
+ * Opens the malicious acknowledgement screen when the user clicks Confirm.
  *
  * @param options - The user input handler context.
  */
