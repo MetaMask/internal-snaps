@@ -3,7 +3,7 @@ import type { ComponentOrElement, UserInputEvent } from '@metamask/snaps-sdk';
 import { assertJSXElement } from '@metamask/snaps-sdk/jsx';
 import type { Mock } from 'vitest';
 
-import type { SnapClient } from '../../clients/snap/SnapClient';
+import { SnapClient } from '../../clients/snap/SnapClient';
 import { TRANSACTION_TAPOS_EXPIRED } from '../../services/transaction-scan/isTransactionDeadlinePassedError';
 import { SimulationStatus } from '../../services/transaction-scan/types';
 import type { TransactionScanResult } from '../../services/transaction-scan/types';
@@ -265,6 +265,57 @@ describe.each([
     await dispatch(Ack.Proceed);
     expect(client.resolveInterface).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['malicious', scan],
+    [
+      'expired',
+      {
+        ...scan,
+        error: { type: TRANSACTION_TAPOS_EXPIRED, code: null, message: null },
+      },
+    ],
+  ] as const)(
+    'waits for a concurrent %s scan refresh before confirming',
+    async (_result, refreshedScan) => {
+      const initial: Context = {
+        ...baseContext,
+        preferences: { ...baseContext.preferences, useSecurityAlerts: true },
+        scan: { ...scan, validation: { type: 'Benign', reason: null } },
+      };
+      const { dispatch, client, setContext } = setup(initial);
+      const lockClient = new SnapClient();
+      client.withInterfaceLock.mockImplementation(
+        async (id: string, callback: () => Promise<void>) =>
+          lockClient.withInterfaceLock(id, callback),
+      );
+      let releaseRefresh!: () => void;
+      let refreshStarted!: () => void;
+      const refreshGate = new Promise<void>((resolve) => {
+        releaseRefresh = resolve;
+      });
+      const refreshReady = new Promise<void>((resolve) => {
+        refreshStarted = resolve;
+      });
+      const refresh = lockClient.withInterfaceLock(
+        'confirmation-id',
+        async () => {
+          refreshStarted();
+          await refreshGate;
+          setContext({
+            ...initial,
+            scan: refreshedScan,
+          });
+        },
+      );
+      await refreshReady;
+      const confirm = dispatch(names.Confirm);
+      await Promise.resolve();
+      releaseRefresh();
+      await Promise.all([refresh, confirm]);
+      expect(client.resolveInterface).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([FetchStatus.Fetching, FetchStatus.Error])(
     'keeps the acknowledgement screen visible during a scan refresh with status %s',

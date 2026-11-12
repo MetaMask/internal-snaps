@@ -31,19 +31,25 @@ async function onConfirmButtonClick(
   options: { id: string },
 ): Promise<void> {
   const { id } = options;
-  const context =
-    await snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(id);
-  if (
-    !context ||
-    isTransactionConfirmationBlocked(context) ||
-    requiresMaliciousAcknowledgement(
-      context.preferences.useSecurityAlerts,
-      context.scan?.validation?.type,
-    )
-  ) {
-    return;
-  }
-  await snapClient.resolveInterface(id, true);
+  await snapClient.withInterfaceLock(id, async () => {
+    const context =
+      await snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
+        id,
+      );
+
+    if (
+      !context ||
+      isTransactionConfirmationBlocked(context) ||
+      requiresMaliciousAcknowledgement(
+        context.preferences.useSecurityAlerts,
+        context.scan?.validation?.type,
+      )
+    ) {
+      return;
+    }
+
+    await snapClient.resolveInterface(id, true);
+  });
 }
 
 export const ConfirmSignAndSendTransactionFormNames = {

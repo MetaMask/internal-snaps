@@ -37,7 +37,7 @@ export class SnapClient {
     try {
       return await mutex.runExclusive(callback);
     } finally {
-      if (!mutex.isLocked()) {
+      if (!mutex.isLocked() && this.#interfaceLocks.get(id) === mutex) {
         this.#interfaceLocks.delete(id);
       }
     }
