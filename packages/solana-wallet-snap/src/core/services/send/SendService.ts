@@ -40,22 +40,25 @@ import type {
 
 const LEGACY_TOKEN_ACCOUNT_DATA_LENGTH = 165;
 
+// Token-2022 token accounts store a 1-byte account type before the TLV data.
+const TOKEN_2022_ACCOUNT_TYPE_DATA_LENGTH = 1;
+
 const MULTISIG_ACCOUNT_DATA_LENGTH = 355;
 
 const IMMUTABLE_OWNER_EXTENSION_DATA_LENGTH = 4;
 
 /**
  * TLV length (u16 type + u16 length + data) that the ATA program reserves on a
- * Token-2022 token account for each extension the mint requires.
+ * Token-2022 token account for each extension the mint requires at creation.
+ * Extensions added later (e.g. the confidential transfer ones) are not part of
+ * the initial allocation.
  *
- * @see https://github.com/solana-program/token-2022/blob/main/program/src/extension/mod.rs
+ * @see https://github.com/solana-program/token-2022/blob/main/interface/src/extension/account_len.rs
  */
 const TOKEN_ACCOUNT_EXTENSION_DATA_LENGTHS: Partial<
   Record<Extension['__kind'], number>
 > = {
   TransferFeeConfig: 12,
-  ConfidentialTransferMint: 299,
-  ConfidentialTransferFee: 68,
   NonTransferable: 4,
   TransferHook: 5,
   PausableConfig: 4,
@@ -65,8 +68,9 @@ const TOKEN_ACCOUNT_EXTENSION_DATA_LENGTHS: Partial<
  * Returns the data length of the associated token account that receives the
  * given mint, so its rent can be reserved.
  *
- * Legacy token accounts are always 165 bytes. Token-2022 accounts reserve room
- * for the extensions the mint requires, plus the immutable owner extension.
+ * Legacy token accounts are always 165 bytes. Token-2022 accounts add a 1-byte
+ * account type, then reserve room for the immutable owner extension and the
+ * extensions the mint requires.
  *
  * @param mintAccount - The mint account.
  * @returns The data length of the recipient ATA in bytes.
@@ -84,11 +88,14 @@ function getAtaDataLength(mintAccount: Account<Mint, Address>): number {
     IMMUTABLE_OWNER_EXTENSION_DATA_LENGTH,
   );
 
-  const dataLength = LEGACY_TOKEN_ACCOUNT_DATA_LENGTH + extensionDataLength;
+  const dataLength =
+    LEGACY_TOKEN_ACCOUNT_DATA_LENGTH +
+    TOKEN_2022_ACCOUNT_TYPE_DATA_LENGTH +
+    extensionDataLength;
 
-  // Token-2022 pads accounts that would collide with the multisig length.
+  // Token-2022 pads a multisig-length account by an extension type.
   return dataLength === MULTISIG_ACCOUNT_DATA_LENGTH
-    ? dataLength + 4
+    ? dataLength + 2
     : dataLength;
 }
 

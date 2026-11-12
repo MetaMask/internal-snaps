@@ -969,8 +969,8 @@ describe('SendService', () => {
         createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
       );
 
-      // 165 base + 4 immutable owner + 12 transfer fee amount.
-      expect(getMinimumBalanceForRentExemption).toHaveBeenCalledWith(181n);
+      // 165 base + 1 account type + 4 immutable owner + 12 transfer fee amount.
+      expect(getMinimumBalanceForRentExemption).toHaveBeenCalledWith(182n);
 
       const expectedAta =
         await SendSplTokenBuilder.deriveAssociatedTokenAccountAddress({
@@ -986,6 +986,68 @@ describe('SendService', () => {
         { skipCache: true },
       );
       expect(result).toStrictEqual({ amount: '100' });
+    });
+
+    it('reserves the Token-2022 ATA rent without mint extensions', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
+        createAsset(nativeAssetId, '1.0'),
+      );
+
+      vi.spyOn(mockConnection, 'fetchMint').mockResolvedValue({
+        ...MOCK_MINT_ACCOUNT,
+        programAddress: TOKEN_2022_PROGRAM_ADDRESS,
+      });
+
+      const getMinimumBalanceForRentExemption = vi.fn().mockReturnValue({
+        send: vi.fn().mockResolvedValue(lamports(2000000n)),
+      });
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getMinimumBalanceForRentExemption,
+      } as never);
+
+      await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
+      );
+
+      // 165 base + 1 account type + 4 immutable owner.
+      expect(getMinimumBalanceForRentExemption).toHaveBeenCalledWith(170n);
+    });
+
+    it('does not reserve rent for confidential transfer extensions', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
+        createAsset(nativeAssetId, '1.0'),
+      );
+
+      vi.spyOn(mockConnection, 'fetchMint').mockResolvedValue({
+        ...MOCK_MINT_ACCOUNT,
+        programAddress: TOKEN_2022_PROGRAM_ADDRESS,
+        data: {
+          ...MOCK_MINT_ACCOUNT.data,
+          extensions: {
+            __option: 'Some',
+            value: [
+              { __kind: 'ConfidentialTransferMint' },
+              { __kind: 'ConfidentialTransferFee' },
+            ],
+          },
+        },
+      } as never);
+
+      const getMinimumBalanceForRentExemption = vi.fn().mockReturnValue({
+        send: vi.fn().mockResolvedValue(lamports(2000000n)),
+      });
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getMinimumBalanceForRentExemption,
+      } as never);
+
+      await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
+      );
+
+      // Confidential transfer extensions are configured after ATA creation.
+      expect(getMinimumBalanceForRentExemption).toHaveBeenCalledWith(170n);
     });
 
     it('returns the full SPL balance when sending directly to a token account', async () => {
