@@ -39,6 +39,7 @@ import {
   Base58Struct,
   Base64Struct,
   PositiveNumberStringStruct,
+  SolanaAddressOrEmptyStruct,
   SolanaAddressStruct,
 } from '../../validation/structs';
 import { ClientRequestMethod } from './types';
@@ -138,7 +139,7 @@ export const OnAmountInputRequestParamsStruct = object({
   value: PositiveNumberStringStruct,
   accountId: UuidStruct,
   assetId: CaipAssetTypeStruct,
-  toAddress: optional(SolanaAddressStruct),
+  toAddress: optional(SolanaAddressOrEmptyStruct),
 });
 
 export const OnAmountInputRequestStruct = object({
@@ -154,7 +155,7 @@ export const OnAmountInputRequestStruct = object({
 export const GetMaxSendableAmountRequestParamsStruct = object({
   accountId: UuidStruct,
   assetId: CaipAssetTypeStruct,
-  toAddress: optional(SolanaAddressStruct),
+  toAddress: optional(SolanaAddressOrEmptyStruct),
 });
 
 export const GetMaxSendableAmountRequestStruct = object({
@@ -167,10 +168,6 @@ export const GetMaxSendableAmountRequestStruct = object({
 export const GetMaxSendableAmountResponseStruct = object({
   amount: PositiveNumberStringStruct,
 });
-
-export type GetMaxSendableAmountResponse = Infer<
-  typeof GetMaxSendableAmountResponseStruct
->;
 
 /**
  * Utility function to decode and parse a rewards message.

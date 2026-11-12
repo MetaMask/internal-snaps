@@ -33,6 +33,7 @@ import { SendSplTokenBuilder } from './SendSplTokenBuilder';
 import { SendErrorCodes } from './types';
 import type {
   GetMaxSendableAmountRequest,
+  GetMaxSendableAmountResponse,
   OnAmountInputRequest,
   OnConfirmSendRequest,
   ValidationResponse,
@@ -491,7 +492,7 @@ export class SendService {
    */
   async getMaxSendableAmount(
     request: GetMaxSendableAmountRequest,
-  ): Promise<{ amount: string }> {
+  ): Promise<GetMaxSendableAmountResponse> {
     const {
       params: { accountId, assetId, toAddress },
     } = request;

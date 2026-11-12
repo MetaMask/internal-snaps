@@ -758,7 +758,9 @@ describe('SendService', () => {
       params: {
         accountId: mockAccount.id,
         assetId,
-        ...(requestToAddress ? { toAddress: requestToAddress } : {}),
+        ...(requestToAddress === undefined
+          ? {}
+          : { toAddress: requestToAddress }),
       },
     });
 
@@ -1050,6 +1052,64 @@ describe('SendService', () => {
       expect(getMinimumBalanceForRentExemption).toHaveBeenCalledWith(170n);
     });
 
+    it('pads the ATA rent at the multisig-length boundary', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
+        createAsset(nativeAssetId, '1.0'),
+      );
+
+      // Synthetic extensions that add up to the 355-byte multisig length, which
+      // is padded by an extra extension type.
+      vi.spyOn(mockConnection, 'fetchMint').mockResolvedValue({
+        ...MOCK_MINT_ACCOUNT,
+        programAddress: TOKEN_2022_PROGRAM_ADDRESS,
+        data: {
+          ...MOCK_MINT_ACCOUNT.data,
+          extensions: {
+            __option: 'Some',
+            value: [
+              ...Array.from({ length: 15 }, () => ({
+                __kind: 'TransferFeeConfig',
+              })),
+              { __kind: 'TransferHook' },
+            ],
+          },
+        },
+      } as never);
+
+      const getMinimumBalanceForRentExemption = vi.fn().mockReturnValue({
+        send: vi.fn().mockResolvedValue(lamports(2000000n)),
+      });
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        getMinimumBalanceForRentExemption,
+      } as never);
+
+      await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
+      );
+
+      // 165 base + 1 account type + 4 immutable owner + 15 * 12 transfer fee
+      // amount + 5 transfer hook, then + 2 to avoid the multisig length.
+      expect(getMinimumBalanceForRentExemption).toHaveBeenCalledWith(357n);
+    });
+
+    it('treats an empty toAddress as absent', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
+        createAsset(nativeAssetId, '0.0011'),
+      );
+
+      const withoutToAddress = await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet),
+      );
+      const withEmptyToAddress = await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet, ''),
+      );
+
+      expect(withEmptyToAddress).toStrictEqual(withoutToAddress);
+      expect(withEmptyToAddress).toStrictEqual({ amount: '0' });
+    });
+
     it('returns the full SPL balance when sending directly to a token account', async () => {
       mockBalances(
         createAsset(KnownCaip19Id.UsdcMainnet, '100.0'),
@@ -1085,6 +1145,19 @@ describe('SendService', () => {
 
     it('returns 0 when the asset is not held', async () => {
       mockBalances(null, createAsset(nativeAssetId, '10.0'));
+
+      const result = await sendService.getMaxSendableAmount(
+        createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
+      );
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns 0 when the SPL balance is zero', async () => {
+      mockBalances(
+        createAsset(KnownCaip19Id.UsdcMainnet, '0'),
+        createAsset(nativeAssetId, '1.0'),
+      );
 
       const result = await sendService.getMaxSendableAmount(
         createRequest(KnownCaip19Id.UsdcMainnet, toAddress),

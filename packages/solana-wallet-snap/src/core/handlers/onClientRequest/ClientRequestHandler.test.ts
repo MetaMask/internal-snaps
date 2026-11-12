@@ -552,6 +552,32 @@ describe('ClientRequestHandler', () => {
       expect(result).toStrictEqual(response);
     });
 
+    it('accepts an empty toAddress', async () => {
+      const requestWithEmptyToAddress: JsonRpcRequest = {
+        ...request,
+        params: {
+          value: '10',
+          accountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+          assetId: KnownCaip19Id.UsdcMainnet,
+          toAddress: '',
+        },
+      };
+
+      const response = {
+        valid: true,
+        errors: [],
+      };
+
+      vi.spyOn(sendService, 'onAmountInput').mockResolvedValue(response);
+
+      const result = await handler.handle(requestWithEmptyToAddress);
+
+      expect(sendService.onAmountInput).toHaveBeenCalledWith(
+        requestWithEmptyToAddress,
+      );
+      expect(result).toStrictEqual(response);
+    });
+
     it('throws an error if value is not provided', async () => {
       const emptyValueRequest: JsonRpcRequest = {
         ...request,
@@ -615,6 +641,27 @@ describe('ClientRequestHandler', () => {
 
       expect(sendService.getMaxSendableAmount).toHaveBeenCalledWith(
         requestWithoutToAddress,
+      );
+      expect(result).toStrictEqual(response);
+    });
+
+    it('accepts an empty toAddress', async () => {
+      const requestWithEmptyToAddress: JsonRpcRequest = {
+        ...request,
+        params: {
+          accountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+          assetId: KnownCaip19Id.UsdcMainnet,
+          toAddress: '',
+        },
+      };
+      const response = { amount: '0' };
+
+      vi.spyOn(sendService, 'getMaxSendableAmount').mockResolvedValue(response);
+
+      const result = await handler.handle(requestWithEmptyToAddress);
+
+      expect(sendService.getMaxSendableAmount).toHaveBeenCalledWith(
+        requestWithEmptyToAddress,
       );
       expect(result).toStrictEqual(response);
     });

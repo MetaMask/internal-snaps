@@ -7,12 +7,14 @@ import {
   define,
   enums,
   integer,
+  literal,
   nullable,
   object,
   optional,
   pattern,
   record,
   string,
+  union,
 } from '@metamask/superstruct';
 import { address } from '@solana/kit';
 
@@ -194,3 +196,11 @@ export const SolanaAddressStruct: Struct<string, null> = define(
     }
   },
 );
+
+/**
+ * Allows an empty string, which callers treat as an absent address.
+ */
+export const SolanaAddressOrEmptyStruct: Struct<string, null> = union([
+  literal(''),
+  SolanaAddressStruct,
+]);
