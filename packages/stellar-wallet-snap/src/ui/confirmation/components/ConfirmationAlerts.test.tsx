@@ -200,6 +200,9 @@ describe('ConfirmationAlerts', () => {
         severity: 'warning',
         title: 'This request may be risky',
       });
+      expect(JSON.stringify(component)).toContain(
+        'Only continue if you trust this site and/or every address involved.',
+      );
     });
 
     it('renders nothing for benign validation', () => {
