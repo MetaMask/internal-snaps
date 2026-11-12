@@ -336,7 +336,7 @@ export class RpcHandler {
   async #onAmountInput(
     request: OnAmountInputRequest,
   ): Promise<ValidationResponse> {
-    const { value, accountId } = request;
+    const { value, accountId, toAddress } = request;
 
     const amountValidation = validateAmount(value);
     if (!amountValidation.valid) {
@@ -350,8 +350,35 @@ export class RpcHandler {
         return dustValidation;
       }
       const balanceValidation = validateAccountBalance(value, bitcoinAccount);
+      if (!balanceValidation.valid) {
+        return balanceValidation;
+      }
 
-      return balanceValidation.valid ? NO_ERRORS_RESPONSE : balanceValidation;
+      if (
+        toAddress !== undefined &&
+        !validateAddress(toAddress, bitcoinAccount.network).valid
+      ) {
+        return INVALID_RESPONSE;
+      }
+
+      try {
+        await this.#sendFlowUseCases.buildProbePsbt(
+          bitcoinAccount,
+          value,
+          toAddress,
+        );
+      } catch (error) {
+        // The balance alone is sufficient, so a funding failure is a fee shortfall.
+        if ((error as CodifiedError).message.includes('Insufficient funds')) {
+          return {
+            valid: false,
+            errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
+          };
+        }
+        throw error;
+      }
+
+      return NO_ERRORS_RESPONSE;
     } catch (error) {
       // We do not track this error as it is a user input.
 

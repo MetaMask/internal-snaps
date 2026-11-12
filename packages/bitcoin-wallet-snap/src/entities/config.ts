@@ -7,6 +7,7 @@ export type SnapConfig = {
   targetBlocksConfirmation: number; // Temporary global config to set the expected confirmation target, should eventually be a user setting
   fallbackFeeRate: number;
   ratesRefreshInterval: string;
+  feeRateCacheTtlMilliseconds: number;
   priceApi: PriceApiConfig;
   defaultAddressType: AddressType;
 };

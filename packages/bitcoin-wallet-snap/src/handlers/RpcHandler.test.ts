@@ -646,6 +646,7 @@ describe('RpcHandler', () => {
         },
       };
       mockAccountsUseCases.get.mockResolvedValue(mockAmountAccount as any);
+      mockSendFlowUseCases.buildProbePsbt.mockResolvedValue(mockPsbt);
 
       (Amount.from_btc as Mock).mockImplementation((btc) => ({
         to_sat: () => BigInt(Math.round(btc * 100_000_000)),
@@ -656,13 +657,101 @@ describe('RpcHandler', () => {
       const result = await handler.route(origin, validAmountRequest);
 
       expect(mockAccountsUseCases.get).toHaveBeenCalledWith(validAccountId);
+      expect(mockSendFlowUseCases.buildProbePsbt).toHaveBeenCalledWith(
+        expect.objectContaining({ network: 'bitcoin' }),
+        '0.5',
+        undefined,
+      );
       expect(result).toStrictEqual({
         valid: true,
         errors: [],
       });
     });
 
-    it('rejects amount exceeding balance', async () => {
+    it('rejects amounts whose fee cannot be covered by the balance', async () => {
+      mockSendFlowUseCases.buildProbePsbt.mockRejectedValue(
+        new Error(
+          'Insufficient funds: 149990000 sat available of 150000100 sat needed',
+        ),
+      );
+
+      const result = await handler.route(origin, validAmountRequest);
+
+      expect(mockSendFlowUseCases.buildProbePsbt).toHaveBeenCalled();
+      expect(result).toStrictEqual({
+        valid: false,
+        errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
+      });
+    });
+
+    it('accepts the full balance as a drain amount', async () => {
+      const drainRequest: JsonRpcRequest = {
+        id: 1,
+        jsonrpc: '2.0',
+        method: RpcMethod.OnAmountInput,
+        params: {
+          value: '1.5',
+          accountId: validAccountId,
+          assetId: 'bip122:000000000019d6689c085ae165831e93/slip44:0',
+        },
+      };
+
+      const result = await handler.route(origin, drainRequest);
+
+      expect(mockSendFlowUseCases.buildProbePsbt).toHaveBeenCalledWith(
+        expect.objectContaining({ network: 'bitcoin' }),
+        '1.5',
+        undefined,
+      );
+      expect(result).toStrictEqual({ valid: true, errors: [] });
+    });
+
+    it('passes a provided toAddress to the fee check', async () => {
+      const withAddressRequest: JsonRpcRequest = {
+        id: 1,
+        jsonrpc: '2.0',
+        method: RpcMethod.OnAmountInput,
+        params: {
+          value: '0.5',
+          accountId: validAccountId,
+          assetId: 'bip122:000000000019d6689c085ae165831e93/slip44:0',
+          toAddress: 'bc1qux9xtsj6mr4un7yg9kgd7tv8kndvlhv2gv5yc8',
+        },
+      };
+
+      const result = await handler.route(origin, withAddressRequest);
+
+      expect(mockSendFlowUseCases.buildProbePsbt).toHaveBeenCalledWith(
+        expect.objectContaining({ network: 'bitcoin' }),
+        '0.5',
+        'bc1qux9xtsj6mr4un7yg9kgd7tv8kndvlhv2gv5yc8',
+      );
+      expect(result).toStrictEqual({ valid: true, errors: [] });
+    });
+
+    it('returns an invalid response for an invalid toAddress', async () => {
+      const invalidAddressRequest: JsonRpcRequest = {
+        id: 1,
+        jsonrpc: '2.0',
+        method: RpcMethod.OnAmountInput,
+        params: {
+          value: '0.5',
+          accountId: validAccountId,
+          assetId: 'bip122:000000000019d6689c085ae165831e93/slip44:0',
+          toAddress: 'invalid-address',
+        },
+      };
+
+      const result = await handler.route(origin, invalidAddressRequest);
+
+      expect(mockSendFlowUseCases.buildProbePsbt).not.toHaveBeenCalled();
+      expect(result).toStrictEqual({
+        valid: false,
+        errors: [{ code: SendErrorCodes.Invalid }],
+      });
+    });
+
+    it('rejects amount exceeding balance before checking the fee', async () => {
       const excessiveAmountRequest: JsonRpcRequest = {
         id: 1,
         jsonrpc: '2.0',
@@ -676,6 +765,7 @@ describe('RpcHandler', () => {
 
       const result = await handler.route(origin, excessiveAmountRequest);
 
+      expect(mockSendFlowUseCases.buildProbePsbt).not.toHaveBeenCalled();
       expect(result).toStrictEqual({
         valid: false,
         errors: [{ code: SendErrorCodes.InsufficientBalance }],
