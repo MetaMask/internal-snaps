@@ -194,4 +194,3 @@ export const SolanaAddressStruct: Struct<string, null> = define(
     }
   },
 );
-
