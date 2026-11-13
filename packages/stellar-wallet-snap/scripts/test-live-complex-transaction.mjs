@@ -273,10 +273,10 @@ function recallOptional(caseName) {
  * Removes a trustline this setup created. A balance blocks removal, because
  * that balance was not part of the starting state this helper can safely drop.
  *
- * @param {AccountBinding} binding
- * @param {import('@stellar/stellar-sdk').Asset} asset
- * @param {CaseHelpers['submit']} submit
- * @param {string} label
+ * @param {AccountBinding} binding - Account that holds the trustline.
+ * @param {import('@stellar/stellar-sdk').Asset} asset - Trustline to remove.
+ * @param {CaseHelpers['submit']} submit - Submits the changeTrust transaction.
+ * @param {string} label - Account name used in the log line.
  */
 async function removeTrustlineIfEmpty(binding, asset, submit, label) {
   binding.account = await server.loadAccount(binding.keypair.publicKey());
@@ -498,7 +498,7 @@ function requireAccount(binding, label) {
 }
 
 /**
- * @param {AccountBinding | undefined} binding
+ * @param {AccountBinding | undefined} binding - Sponsored account, when its secret is set.
  * @returns {asserts binding is AccountBinding}
  */
 function requireSponsoredAccount(binding) {
@@ -575,7 +575,7 @@ async function restingOfferIdFromTx(hash) {
 }
 
 /**
- * @param {string} offerId
+ * @param {string} offerId - Horizon offer id.
  * @returns {Promise<import('@stellar/stellar-sdk').Horizon.ServerApi.OfferRecord | null>}
  */
 async function loadOfferIfExists(offerId) {
@@ -590,7 +590,7 @@ async function loadOfferIfExists(offerId) {
 }
 
 /**
- * @param {{ asset_type: string, asset_code?: string, asset_issuer?: string }} asset
+ * @param {{ asset_type: string, asset_code?: string, asset_issuer?: string }} asset - Horizon asset row from an offer.
  * @returns {import('@stellar/stellar-sdk').Asset}
  */
 function horizonAsset(asset) {
@@ -2105,7 +2105,7 @@ async function confirmMainnet(command, caseName, description) {
 }
 
 /**
- * @param {PlannedTx} plan
+ * @param {PlannedTx} plan - Transaction to build, sign, and submit.
  * @returns {Promise<SubmitResult>}
  */
 async function submitPlan(plan) {
@@ -2136,8 +2136,8 @@ async function submitPlan(plan) {
 }
 
 /**
- * @param {import('@stellar/stellar-sdk').Transaction} inner
- * @param {import('@stellar/stellar-sdk').Keypair} feeSource
+ * @param {import('@stellar/stellar-sdk').Transaction} inner - Transaction whose fee another account pays.
+ * @param {import('@stellar/stellar-sdk').Keypair} feeSource - Key that pays the fee.
  * @returns {import('@stellar/stellar-sdk').FeeBumpTransaction}
  */
 function wrapFeeBump(inner, feeSource) {
@@ -2191,8 +2191,8 @@ function assetFromOptionalId(assetId) {
 }
 
 /**
- * @param {Accounts} accounts
- * @param {string} address
+ * @param {Accounts} accounts - Fixture accounts loaded from the environment.
+ * @param {string} address - Stellar G address to match.
  * @returns {AccountBinding}
  */
 function bindingForAddress(accounts, address) {
@@ -2213,10 +2213,10 @@ function bindingForAddress(accounts, address) {
 /**
  * Submits changeTrust limit 0. Does not move a remaining balance.
  *
- * @param {object} params
- * @param {Accounts} params.accounts
- * @param {string} params.accountAddress
- * @param {string} params.assetId
+ * @param {object} params - Removal arguments.
+ * @param {Accounts} params.accounts - Fixture accounts loaded from the environment.
+ * @param {string} params.accountAddress - Account whose trustline is removed.
+ * @param {string} params.assetId - Asset id, `CODE-ISSUER` or `stellar:pubnet/asset:CODE-ISSUER`.
  */
 async function removeTrustline({ accounts, accountAddress, assetId }) {
   const binding = bindingForAddress(accounts, accountAddress);
