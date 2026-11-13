@@ -19,6 +19,7 @@ import { mapKeys } from 'lodash';
 
 import { SNAP_OWNED_ASSETS } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import logger from '../../utils/logger';
 import type { SpotPrice, SpotPrices, VsCurrencyParam } from './types';
 import { SpotPricesStruct, VsCurrencyParamStruct } from './types';
@@ -61,6 +62,7 @@ export class PriceApiClient {
     this.#policy = createFetchPolicy({
       service: 'price_api',
       logger: this.#logger,
+      ...fetchPolicyReporting,
     });
   }
 

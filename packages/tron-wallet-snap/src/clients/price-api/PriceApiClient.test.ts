@@ -5,12 +5,14 @@ import type {
   Logger,
   Serializable,
 } from '@metamask/snap-networks-utils';
+import * as snapNetworksUtils from '@metamask/snap-networks-utils';
 import { InMemoryCache } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 import type { Mock } from 'vitest';
 
 import { KnownCaip19Id } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import { mockLogger } from '../../utils/mockLogger';
 import { PriceApiClient } from './PriceApiClient';
 import type { SpotPrices, VsCurrencyParam } from './types';
@@ -57,6 +59,24 @@ async function withPriceApiClient(
 }
 
 describe('PriceApiClient', () => {
+  describe('constructor', () => {
+    it('reports outages through the fetch policy', async () => {
+      const createFetchPolicySpy = vi.spyOn(
+        snapNetworksUtils,
+        'createFetchPolicy',
+      );
+
+      await withPriceApiClient(() => {
+        expect(createFetchPolicySpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            service: 'price_api',
+            ...fetchPolicyReporting,
+          }),
+        );
+      });
+    });
+  });
+
   describe('getMultipleSpotPrices', () => {
     const mockResponse: SpotPrices = {
       [KnownCaip19Id.TrxMainnet]: {

@@ -1,3 +1,4 @@
+import { BrokenCircuitError } from '@metamask/snap-networks-utils';
 import { SnapError, UserRejectedRequestError } from '@metamask/snaps-sdk';
 import type { Mock } from 'vitest';
 
@@ -23,6 +24,19 @@ describe('errors', () => {
       const { mockSnapRequest } = setupTest();
 
       expect(await trackError(new UserRejectedRequestError())).toBeUndefined();
+
+      expect(mockSnapRequest).not.toHaveBeenCalled();
+    });
+
+    it('does not track errors the fetch policy already reported', async () => {
+      const { mockSnapRequest } = setupTest();
+
+      expect(await trackError(new BrokenCircuitError())).toBeUndefined();
+      expect(
+        await trackError(
+          new Error('wrapped', { cause: new BrokenCircuitError() }),
+        ),
+      ).toBeUndefined();
 
       expect(mockSnapRequest).not.toHaveBeenCalled();
     });

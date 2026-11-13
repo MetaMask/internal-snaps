@@ -7,6 +7,7 @@ import { providers, TronWeb } from 'tronweb';
 
 import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import { toFetchPolicyError } from '../../utils/fetchPolicy';
 import logger from '../../utils/logger';
 
@@ -34,6 +35,7 @@ export class TronWebFactory {
           service: 'tronweb_provider',
           chainIdCaip: network,
           logger: clientLogger,
+          ...fetchPolicyReporting,
         }),
       ]),
     );
@@ -44,6 +46,7 @@ export class TronWebFactory {
           service: 'tronweb_broadcast',
           chainIdCaip: network,
           logger: clientLogger,
+          ...fetchPolicyReporting,
         }),
       ]),
     );
