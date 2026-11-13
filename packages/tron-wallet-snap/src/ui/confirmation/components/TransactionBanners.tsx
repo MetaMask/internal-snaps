@@ -9,14 +9,21 @@ import type { FetchStatus, Preferences } from '../../../types/snap';
 import { i18n } from '../../../utils/i18n';
 import { getTransactionAlertProps } from '../utils/getTransactionAlertProps';
 
+type TransactionBannersProps = {
+  preferences: Preferences;
+  scan: TransactionScanResult | null | undefined;
+  scanFetchStatus: FetchStatus;
+  isInsufficientBalance?: boolean;
+};
+
 /**
  * Displays the security result alongside at most one transaction error.
  *
- * @param options - Confirmation scan and preference state.
- * @param options.preferences - User preferences.
- * @param options.scan - Latest scan result.
- * @param options.scanFetchStatus - Scan request status.
- * @param options.isInsufficientBalance - Whether the local balance blocks confirmation.
+ * @param props - Confirmation scan and preference state.
+ * @param props.preferences - User preferences.
+ * @param props.scan - Latest scan result.
+ * @param props.scanFetchStatus - Scan request status.
+ * @param props.isInsufficientBalance - Whether the local balance blocks confirmation.
  * @returns The ordered transaction banners.
  */
 export const TransactionBanners = ({
@@ -24,12 +31,7 @@ export const TransactionBanners = ({
   scan,
   scanFetchStatus,
   isInsufficientBalance = false,
-}: {
-  preferences: Preferences;
-  scan: TransactionScanResult | null | undefined;
-  scanFetchStatus: FetchStatus;
-  isInsufficientBalance?: boolean;
-}): ComponentOrElement => {
+}: TransactionBannersProps): ComponentOrElement => {
   const props = getTransactionAlertProps({
     preferences,
     scan,
