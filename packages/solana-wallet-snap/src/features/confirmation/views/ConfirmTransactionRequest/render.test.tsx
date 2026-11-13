@@ -254,11 +254,20 @@ describe('render', () => {
 
       const screen1 = await (response as any).getInterface();
 
-      const mockContext = {
+      const mockContext: ConfirmTransactionRequestContext = {
         ...mockConfirmationContext,
         preferences: mockPreferences,
         scan: null,
         tokenPrices: {},
+        // The fixture transaction is paid and signed by another wallet only.
+        feePayment: {
+          feePayer: 'DtMUkCoeyzs35B6EpQQxPyyog6TRwXxV1W1Acp8nWBNa',
+          paidBy: 'sponsor',
+          userCost: 'free',
+          userCosts: [],
+          mayCostMore: false,
+          uncheckedPrograms: [],
+        },
       };
 
       expect(screen1).toRender(
@@ -288,6 +297,7 @@ describe('render tracking', () => {
       .fn()
       .mockResolvedValue([{}]);
     const extractDestinationAddress = vi.fn();
+    const analyzeFeePayment = vi.fn();
     const nameResolutionService = {
       resolveAddress: vi.fn().mockResolvedValue(null),
     };
@@ -326,7 +336,16 @@ describe('render tracking', () => {
     vi.doMock('../../utils/extractDestinationAddress', () => ({
       extractDestinationAddress,
     }));
+    vi.doMock('../../utils/analyzeFeePayment', () => ({
+      analyzeFeePayment,
+    }));
     vi.doMock('../../../../snapContext', () => ({
+      accountsService: {
+        getAll: vi.fn().mockResolvedValue([]),
+      },
+      assetsService: {
+        getAssetsMetadata: vi.fn(),
+      },
       connection: {
         getRpc: vi.fn().mockReturnValue({}),
       },
@@ -353,6 +372,9 @@ describe('render tracking', () => {
       trackError,
       calculateFee,
       extractDestinationAddress,
+      analyzeFeePayment,
+      extractInstructionsFromUnknownBase64String,
+      updateInterface,
       nameResolutionService,
       priceApiClient,
       transactionScanService,
@@ -365,6 +387,7 @@ describe('render tracking', () => {
       trackError,
       calculateFee,
       extractDestinationAddress,
+      analyzeFeePayment,
       nameResolutionService,
       priceApiClient,
       transactionScanService,
@@ -375,6 +398,7 @@ describe('render tracking', () => {
     const pricesError = new Error('Prices failed');
     const feeError = new Error('Fee failed');
     const scanError = new Error('Scan failed');
+    const feePaymentError = new Error('Fee payment failed');
 
     extractDestinationAddress.mockImplementation(() => {
       throw destinationExtractError;
@@ -387,6 +411,7 @@ describe('render tracking', () => {
       throw feeError;
     });
     transactionScanService.scanTransaction.mockRejectedValue(scanError);
+    analyzeFeePayment.mockRejectedValue(feePaymentError);
 
     await expect(
       render({
@@ -404,6 +429,57 @@ describe('render tracking', () => {
     expect(trackError).toHaveBeenCalledWith(pricesError);
     expect(trackError).toHaveBeenCalledWith(feeError);
     expect(trackError).toHaveBeenCalledWith(scanError);
-    expect(trackError).toHaveBeenCalledTimes(4);
+    expect(trackError).toHaveBeenCalledWith(feePaymentError);
+    expect(trackError).toHaveBeenCalledTimes(5);
+  });
+
+  it('tells the fee analysis when the instructions cannot be parsed', async () => {
+    const {
+      render,
+      analyzeFeePayment,
+      extractInstructionsFromUnknownBase64String,
+      updateInterface,
+      priceApiClient,
+      transactionScanService,
+    } = await setupTest();
+
+    extractInstructionsFromUnknownBase64String.mockRejectedValue(
+      new Error('Cannot parse'),
+    );
+    priceApiClient.getMultipleSpotPrices.mockResolvedValue({});
+    transactionScanService.scanTransaction.mockResolvedValue(null);
+    analyzeFeePayment.mockResolvedValue({
+      feePayer: 'CDg3bPoM21fSXEzrXWHWyJR33JHX6xaYboq5p7s4uo48',
+      paidBy: 'sponsor',
+      userCost: 'free',
+      userCosts: [],
+      mayCostMore: false,
+      uncheckedPrograms: [],
+    });
+
+    await render({
+      method: SolMethod.SignAndSendTransaction,
+      scope: Network.Mainnet,
+      transaction: 'transaction',
+      account: {
+        address: 'BLw3RweJmfbTapJRgnPRvd962YDjFYAnVGd1p5hmZ5tP',
+      },
+      origin: 'https://metamask.io',
+    } as unknown as ConfirmTransactionRequestContext);
+
+    expect(analyzeFeePayment).toHaveBeenCalledWith(
+      expect.objectContaining({ instructions: null }),
+    );
+
+    // The analysis owns the verdict, so its result is used as it comes.
+    const contextAfterFee = updateInterface.mock.calls[0]?.[2];
+    expect(contextAfterFee.feePayment).toStrictEqual({
+      feePayer: 'CDg3bPoM21fSXEzrXWHWyJR33JHX6xaYboq5p7s4uo48',
+      paidBy: 'sponsor',
+      userCost: 'free',
+      userCosts: [],
+      mayCostMore: false,
+      uncheckedPrograms: [],
+    });
   });
 });
