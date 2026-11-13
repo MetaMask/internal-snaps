@@ -4,6 +4,7 @@ export {
   SynchronizationError,
   formatAccountSyncFailures,
   getSyncFailuresFromSettledResult,
+  getUnreportedSyncFailures,
 } from './syncError';
 export type { AccountSyncFailure } from './syncError';
 export { createWithCatchAndThrowSnapError, normalizeError } from './errors';

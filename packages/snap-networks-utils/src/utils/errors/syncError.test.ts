@@ -1,7 +1,9 @@
+import { BrokenCircuitError } from '../fetchPolicy/createFetchPolicy';
 import {
   SynchronizationError,
   formatAccountSyncFailures,
   getSyncFailuresFromSettledResult,
+  getUnreportedSyncFailures,
 } from './syncError';
 
 describe('formatAccountSyncFailures', () => {
@@ -96,6 +98,29 @@ describe('getSyncFailuresFromSettledResult', () => {
     expect(
       getSyncFailuresFromSettledResult(results, ['account-1']),
     ).toStrictEqual([]);
+  });
+});
+
+describe('getUnreportedSyncFailures', () => {
+  it('drops rejections a fetch policy already reported', () => {
+    const results = [
+      { status: 'rejected', reason: new BrokenCircuitError() },
+      {
+        status: 'rejected',
+        reason: new Error('wrapped', { cause: new BrokenCircuitError() }),
+      },
+      { status: 'fulfilled', value: undefined },
+      { status: 'rejected', reason: new Error('boom') },
+    ] as PromiseSettledResult<unknown>[];
+
+    expect(
+      getUnreportedSyncFailures(results, [
+        'account-1',
+        'account-2',
+        'account-3',
+        'account-4',
+      ]),
+    ).toStrictEqual([{ accountId: 'account-4', reason: 'Error: boom' }]);
   });
 });
 
