@@ -14,7 +14,6 @@ import {
   InFlightCoalescer,
   SynchronizationError,
   asStrictKeyringAccount,
-  getSyncFailuresFromSettledResult,
 } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
@@ -32,7 +31,11 @@ import {
   createTronBip44AddressDeriver,
   createTronBip44KeypairDeriver,
 } from '../../utils/deriveTronFromCoinTypeNode';
-import { sanitizeSensitiveError, trackError } from '../../utils/errors';
+import {
+  getUnreportedSyncFailures,
+  sanitizeSensitiveError,
+  trackError,
+} from '../../utils/errors';
 import { DerivationPathStruct } from '../../validation/structs';
 import type { AssetsService } from '../assets/AssetsService';
 import type { ConfigProvider } from '../config';
@@ -638,7 +641,7 @@ export class AccountsService {
     accountIds: string[],
   ): Promise<void> {
     try {
-      const failures = getSyncFailuresFromSettledResult(results, accountIds);
+      const failures = getUnreportedSyncFailures(results, accountIds);
 
       if (failures.length === 0) {
         return;

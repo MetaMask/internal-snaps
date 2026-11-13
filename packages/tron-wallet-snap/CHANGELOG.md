@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Report Trongrid, Tron HTTP, TronWeb provider and broadcast, Price API, Token API and Security Alerts API outages through the shared fetch policy ([#605](https://github.com/MetaMask/internal-snaps/pull/605))
+  - Slow or failing requests now emit `Snap Service Degraded` and `Snap Service Unavailable` Segment events, and give-ups are sent to Sentry without URLs, request params or response data.
+  - Errors the policy already reported, including open-circuit rejections during account synchronization, are no longer sent to Sentry a second time.
 - `onAmountInput` now estimates send fees when `toAddress` is not provided ([#554](https://github.com/MetaMask/internal-snaps/pull/554))
   - Previously, `onAmountInput` returned true for all cases when `toAddress` was not provided
   - Native TRX and TRC-10 transfers now add a pessimistic account activation fee on top of the estimated transfer fee; TRC-20 transfers only estimate the transfer fee

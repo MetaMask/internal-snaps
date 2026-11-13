@@ -1,7 +1,12 @@
+import { BrokenCircuitError } from '@metamask/snap-networks-utils';
 import { SnapError, UserRejectedRequestError } from '@metamask/snaps-sdk';
 import type { Mock } from 'vitest';
 
-import { trackError, withCatchAndThrowSnapError } from './errors';
+import {
+  getUnreportedSyncFailures,
+  trackError,
+  withCatchAndThrowSnapError,
+} from './errors';
 import { mockLogger } from './mockLogger';
 
 const setupTest = (): { mockSnapRequest: Mock } => {
@@ -27,6 +32,19 @@ describe('errors', () => {
       expect(mockSnapRequest).not.toHaveBeenCalled();
     });
 
+    it('does not track errors the fetch policy already reported', async () => {
+      const { mockSnapRequest } = setupTest();
+
+      expect(await trackError(new BrokenCircuitError())).toBeUndefined();
+      expect(
+        await trackError(
+          new Error('wrapped', { cause: new BrokenCircuitError() }),
+        ),
+      ).toBeUndefined();
+
+      expect(mockSnapRequest).not.toHaveBeenCalled();
+    });
+
     it('sanitizes errors before tracking', async () => {
       const { mockSnapRequest } = setupTest();
       mockSnapRequest.mockResolvedValue('tracked-error-id');
@@ -42,6 +60,23 @@ describe('errors', () => {
           }),
         },
       });
+    });
+  });
+
+  describe('getUnreportedSyncFailures', () => {
+    it('drops rejections the fetch policy already reported', () => {
+      const failures = getUnreportedSyncFailures(
+        [
+          { status: 'rejected', reason: new BrokenCircuitError() },
+          { status: 'fulfilled', value: undefined },
+          { status: 'rejected', reason: new Error('boom') },
+        ],
+        ['account-1', 'account-2', 'account-3'],
+      );
+
+      expect(failures).toStrictEqual([
+        { accountId: 'account-3', reason: 'Error: boom' },
+      ]);
     });
   });
 

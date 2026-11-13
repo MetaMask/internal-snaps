@@ -15,6 +15,7 @@ import { Network, SNAP_OWNED_ASSETS } from '../../constants';
 import type { TokenCaipAssetType } from '../../services/assets/types';
 import { TokenCaipAssetTypeStruct } from '../../services/assets/types';
 import type { ConfigProvider } from '../../services/config';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import { parseTronCaipAssetType } from '../../utils/caip';
 import logger from '../../utils/logger';
 import { TokenMetadataResponseStruct } from './structs';
@@ -67,6 +68,7 @@ export class TokenApiClient {
     this.#policy = createFetchPolicy({
       service: 'token_api',
       logger: this.#logger,
+      ...fetchPolicyReporting,
     });
   }
 

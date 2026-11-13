@@ -12,6 +12,7 @@ import { assert } from '@metamask/superstruct';
 
 import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import { hexToString } from '../../utils/hex';
 import logger, { noOpLogger } from '../../utils/logger';
 import {
@@ -92,6 +93,7 @@ export class TronHttpClient {
           service: 'tronweb_provider',
           chainIdCaip: network,
           logger: clientLogger,
+          ...fetchPolicyReporting,
         }),
       ]),
     );
