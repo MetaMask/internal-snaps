@@ -152,10 +152,10 @@
       "message": "This usually takes a few seconds."
     },
     "confirmation.securityScanAPIErrorTitle": {
-      "message": "Security scan failed"
+      "message": "Comprobación de seguridad no disponible"
     },
     "confirmation.securityScanAPIErrorMessage": {
-      "message": "Only continue if you trust every address involved."
+      "message": "No pudimos completar esta comprobación de seguridad. Continúa solo si confías en el sitio y en las direcciones involucradas."
     },
     "confirmation.securityScanErrorTitle": {
       "message": "Security scan failed"

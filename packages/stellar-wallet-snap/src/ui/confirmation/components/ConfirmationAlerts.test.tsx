@@ -57,14 +57,17 @@ describe('ConfirmationAlerts', () => {
       });
     });
 
-    it('renders API scan failures as danger banners', () => {
+    it('renders API scan failures as unavailable informational banners', () => {
       const component = renderScanAlert({ scanFetchStatus: FetchStatus.Error });
 
       expect(getType(component)).toBe('Banner');
       expect(getProps(component)).toMatchObject({
-        severity: 'danger',
-        title: 'Security scan failed',
+        severity: 'info',
+        title: 'Security check unavailable',
       });
+      expect(JSON.stringify(component)).toContain(
+        "We couldn't complete this safety check. Continue only if you trust the site and addresses involved.",
+      );
     });
 
     it('renders simulation errors when only simulation alerts are enabled', () => {
@@ -109,9 +112,13 @@ describe('ConfirmationAlerts', () => {
 
       expect(getType(component)).toBe('Banner');
       expect(getProps(component)).toMatchObject({
-        severity: 'warning',
+        severity: 'info',
         title: 'Security check unavailable',
       });
+      expect(JSON.stringify(component)).toContain(
+        "We couldn't complete this safety check. Continue only if you trust the site and addresses involved.",
+      );
+      expect(JSON.stringify(component)).not.toContain('invalid_transaction');
     });
 
     it('renders response scan errors with incomplete scan copy', () => {
@@ -126,9 +133,12 @@ describe('ConfirmationAlerts', () => {
 
       expect(getType(component)).toBe('Banner');
       expect(getProps(component)).toMatchObject({
-        severity: 'warning',
-        title: 'Security scan incomplete',
+        severity: 'info',
+        title: 'Security check unavailable',
       });
+      expect(JSON.stringify(component)).toContain(
+        "We couldn't complete this safety check. Continue only if you trust the site and addresses involved.",
+      );
     });
 
     it('renders a localized message for transaction expired simulation errors', () => {

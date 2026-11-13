@@ -1,5 +1,6 @@
 import { TransactionAlert } from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
+import { Banner, Text } from '@metamask/snaps-sdk/jsx';
 
 import type { TransactionScanError } from '../../../services/transaction-scan';
 import type { LocalizedMessage } from '../../../utils';
@@ -43,14 +44,6 @@ const ERROR_TYPE_TO_COPY: Record<string, ErrorCopy> = {
     title: 'confirmation.simulationErrorTitle',
     subtitle: 'confirmation.simulationErrorSubtitle',
   },
-  validation: {
-    title: 'confirmation.validationScanErrorTitle',
-    subtitle: 'confirmation.validationScanErrorSubtitle',
-  },
-  response: {
-    title: 'confirmation.securityScanIncompleteTitle',
-    subtitle: 'confirmation.securityScanIncompleteSubtitle',
-  },
 };
 
 /**
@@ -87,6 +80,25 @@ export const ConfirmationAlerts = ({
     case ConfirmationBanner.TransactionScan: {
       const translate = i18n(preferences.locale);
       const scanError = scan?.error;
+      const scanUnavailable =
+        scanFetchStatus === FetchStatus.Error ||
+        (scanFetchStatus !== FetchStatus.Fetching &&
+          scanError &&
+          (scanError.type === 'validation' || scanError.type === 'response') &&
+          shouldShowError(scanError, preferences));
+
+      if (scanUnavailable) {
+        // Oxlint cannot resolve the Snap JSX element type here.
+        // oxlint-disable-next-line typescript/no-unsafe-return
+        return (
+          <Banner
+            title={translate('confirmation.securityScanAPIErrorTitle')}
+            severity="info"
+          >
+            <Text>{translate('confirmation.securityScanAPIErrorMessage')}</Text>
+          </Banner>
+        );
+      }
       const errorCopy =
         scanError && shouldShowError(scanError, preferences)
           ? (ERROR_TYPE_TO_COPY[scanError.type ?? ''] ?? DEFAULT_ERROR_COPY)
@@ -117,7 +129,7 @@ export const ConfirmationAlerts = ({
             ),
           }}
           isFetching={scanFetchStatus === FetchStatus.Fetching}
-          isFetchError={scanFetchStatus === FetchStatus.Error}
+          isFetchError={false}
           error={
             scanError && errorCopy
               ? {
