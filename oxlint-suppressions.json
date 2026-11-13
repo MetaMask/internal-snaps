@@ -1521,9 +1521,6 @@
     "jsdoc/require-param": {
       "count": 1
     },
-    "jsdoc/require-param-description": {
-      "count": 12
-    },
     "jsdoc/require-property-description": {
       "count": 14
     },
