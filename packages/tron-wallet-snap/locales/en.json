@@ -43,6 +43,18 @@
     "confirmation.cancelButton": {
       "message": "Cancel"
     },
+    "confirmation.maliciousAck.title": {
+      "message": "High-risk request"
+    },
+    "confirmation.maliciousAck.description": {
+      "message": "Security partners found high-risk signals in this request. If you continue, your funds can't be recovered."
+    },
+    "confirmation.maliciousAck.checkbox": {
+      "message": "I have acknowledged the risk and still want to proceed"
+    },
+    "confirmation.maliciousAck.back": {
+      "message": "Go back"
+    },
     "confirmation.signMessage.title": {
       "message": "Sign message"
     },

@@ -1,5 +1,4 @@
 import {
-  AnalyticsService,
   AssetsProvider,
   createFetchPolicy,
   InMemoryCache,
@@ -8,6 +7,7 @@ import {
   State,
 } from '@metamask/snap-networks-utils';
 import type {
+  AnalyticsService,
   AssetsProviderMessenger,
   IStateManager,
   RemoteFeatureFlagsProviderMessenger,
@@ -56,9 +56,9 @@ import type { UnencryptedStateValue } from './core/services/state/stateTypes';
 import { TransactionScanService } from './core/services/transaction-scan/TransactionScanService';
 import { WalletService } from './core/services/wallet/WalletService';
 import type { CoreMessenger } from './core/types/core-messenger';
+import { analyticsService, fetchPolicyReporting } from './core/utils/analytics';
 import { trackError } from './core/utils/errors';
 import logger, { noOpLogger } from './core/utils/logger';
-import { getSnapProvider } from './core/utils/snap';
 import { EventEmitter } from './infrastructure';
 
 /**
@@ -100,12 +100,6 @@ const state = new State({
 registerStateMigration(eventEmitter, state);
 
 const inMemoryCache = new InMemoryCache(noOpLogger);
-
-const analyticsService = new AnalyticsService({
-  getSnapProvider,
-  logger,
-  trackError,
-});
 
 const connection = new SolanaConnection(configProvider, inMemoryCache, logger);
 
@@ -219,6 +213,7 @@ const securityAlertsApiClient = new SecurityAlertsApiClient({
   policy: createFetchPolicy({
     service: 'security_alerts_api',
     logger,
+    ...fetchPolicyReporting,
   }),
 });
 
@@ -329,8 +324,10 @@ const snapContext: SnapExecutionContext = {
 };
 
 export {
+  accountsService,
   accountsSynchronizer,
   analyticsService,
+  assetsService,
   clientRequestHandler,
   connection,
   eventEmitter,

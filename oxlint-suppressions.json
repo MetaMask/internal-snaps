@@ -1340,6 +1340,14 @@
   },
   "packages/solana-wallet-snap/src/features/confirmation/components/TransactionDetails/TransactionDetails.tsx": {
     "typescript/no-unsafe-return": {
+      "count": 8
+    }
+  },
+  "packages/solana-wallet-snap/src/features/confirmation/utils/analyzeFeePayment.ts": {
+    "typescript/no-unsafe-argument": {
+      "count": 3
+    },
+    "typescript/no-unsafe-assignment": {
       "count": 1
     }
   },
@@ -1437,7 +1445,7 @@
       "count": 10
     },
     "typescript/no-unsafe-member-access": {
-      "count": 11
+      "count": 12
     },
     "vitest/no-disabled-tests": {
       "count": 1
@@ -2459,7 +2467,7 @@
       "count": 2
     },
     "typescript/no-unsafe-return": {
-      "count": 1
+      "count": 2
     }
   },
   "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmSignTransaction/render.test.tsx": {
@@ -2491,7 +2499,7 @@
       "count": 2
     },
     "typescript/no-unsafe-return": {
-      "count": 1
+      "count": 2
     }
   },
   "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmTransactionRequest/render.test.tsx": {
@@ -2506,6 +2514,11 @@
     },
     "typescript/no-unsafe-member-access": {
       "count": 4
+    }
+  },
+  "packages/tron-wallet-snap/src/ui/confirmation/views/MaliciousAcknowledgement/events.tsx": {
+    "typescript/no-unsafe-assignment": {
+      "count": 1
     }
   },
   "packages/tron-wallet-snap/src/utils/sensitiveErrors.ts": {

@@ -1,7 +1,6 @@
 import { assert } from '@metamask/superstruct';
 
 import { HttpError } from '../../utils/errors';
-import { FetchPolicyErrorName } from '../../utils/fetchPolicy/createFetchPolicy';
 import type { FetchPolicy } from '../../utils/fetchPolicy/executeWithFetchPolicy';
 import {
   executeWithFetchPolicy,
@@ -122,14 +121,7 @@ export class SecurityAlertsApiClient {
         throw error;
       }
 
-      throw new HttpError('Security Alerts API error', {
-        cause:
-          error instanceof Error &&
-          error.name === FetchPolicyErrorName.Network &&
-          error.cause !== undefined
-            ? error.cause
-            : error,
-      });
+      throw new HttpError('Security Alerts API error', { cause: error });
     }
   }
 }

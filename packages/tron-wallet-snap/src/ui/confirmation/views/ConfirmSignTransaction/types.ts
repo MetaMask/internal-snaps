@@ -20,6 +20,8 @@ export type ConfirmSignTransactionContext = {
   networkImage: string;
   scan: TransactionScanResult | null;
   scanFetchStatus: FetchStatus;
+  acknowledgementScreen?: boolean;
+  acknowledged?: boolean;
   tokenPrices: SpotPrices;
   tokenPricesFetchStatus: FetchStatus;
   fees: ComputeFeeResult;

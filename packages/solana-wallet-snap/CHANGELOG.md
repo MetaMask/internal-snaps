@@ -10,9 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `onAmountInput` now accepts an optional `toAddress` parameter for the shared client request shape; the conservative SOL/SPL fee and rent estimation does not use it ([#589](https://github.com/MetaMask/internal-snaps/pull/589)).
+- Show who pays the network fee on transaction confirmations, and whether a sponsored transaction is free for the user ([#595](https://github.com/MetaMask/internal-snaps/pull/595))
+  - When another account pays the fee, the confirmation shows the sponsor and a "You pay" row: "Free" only when no instruction charges the user, otherwise the account rent and payments to the sponsor the user covers
+  - Shows "Can't confirm" instead of "Free" when it can't rule out other costs, for example when the simulation fails
+  - Simulates the transaction to find what other programs charge the user through the System and token programs, so it doesn't need to know each program
 
 ### Changed
 
+- Report Solana RPC, Price API, Token API, NFT API and Security Alerts API outages through the shared fetch policy ([#583](https://github.com/MetaMask/internal-snaps/pull/583))
+  - Slow or failing requests now emit `Snap Service Degraded` and `Snap Service Unavailable` Segment events, and give-ups are sent to Sentry without URLs, request params or response data.
+  - The Solana RPC error-tracking transport has been removed, and errors the policy already reported are no longer sent to Sentry a second time.
 - Prefer the runtime's native Ed25519 implementation for Solana signatures, falling back to the pure JS polyfill only when Web Crypto does not support Ed25519. ([#600](https://github.com/MetaMask/internal-snaps/pull/600))
 
 ### Fixed
