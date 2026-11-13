@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Native TRX and TRC-10 transfers now add a pessimistic account activation fee on top of the estimated transfer fee; TRC-20 transfers only estimate the transfer fee
   - Fee estimation now fails instead of treating an account whose on-chain lookup failed as inactive
 
+### Fixed
+
+- Allow Confirm on `TriggerSmartContract` scans when the Security Alerts simulator returns `Unsupported call type` (such as JustLend energy rental / TRX staking), treating them as skipped estimates instead of a hard-block revert ([#301](https://github.com/MetaMask/internal-snaps/pull/301))
+
 ## [4.4.1]
 
 ### Fixed
