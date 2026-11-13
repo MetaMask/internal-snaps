@@ -150,10 +150,10 @@
     "message": "This usually takes a few seconds."
   },
   "confirmation.securityScanAPIErrorTitle": {
-    "message": "Security scan failed"
+    "message": "Security check unavailable"
   },
   "confirmation.securityScanAPIErrorMessage": {
-    "message": "Only continue if you trust every address involved."
+    "message": "We couldn't complete this safety check. Continue only if you trust the site and addresses involved."
   },
   "confirmation.securityScanErrorTitle": {
     "message": "Security scan failed"
