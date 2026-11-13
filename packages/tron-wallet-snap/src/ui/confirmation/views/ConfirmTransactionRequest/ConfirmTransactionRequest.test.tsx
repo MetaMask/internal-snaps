@@ -239,6 +239,29 @@ describe('ConfirmTransactionRequest', () => {
   });
 
   it.each([
+    { failure: 'outage', scanFetchStatus: FetchStatus.Error, scan: null },
+    {
+      failure: 'validation error',
+      scanFetchStatus: FetchStatus.Fetched,
+      scan: { ...mockScanResult, validation: { type: 'Error', reason: null } },
+    },
+  ] as const)(
+    'shows an informational unavailable banner for $failure without blocking confirm',
+    ({ scanFetchStatus, scan }) => {
+      const context: ConfirmTransactionRequestContext = {
+        ...baseContext,
+        scanFetchStatus,
+        scan,
+      };
+      const serialized = JSON.stringify(ConfirmTransactionRequest({ context }));
+      expect(serialized).toContain('confirmation.simulationTitleAPIError');
+      expect(serialized).toContain('confirmation.simulationMessageAPIError');
+      expect(serialized).toContain('"severity":"info"');
+      expect(serialized).not.toContain('"disabled":true');
+    },
+  );
+
+  it.each([
     [FetchStatus.Fetched, 'confirmation.simulationErrorTitle'],
     [FetchStatus.Fetching, 'confirmation.simulationErrorTitle'],
     [FetchStatus.Error, 'confirmation.simulationTitleAPIError'],
