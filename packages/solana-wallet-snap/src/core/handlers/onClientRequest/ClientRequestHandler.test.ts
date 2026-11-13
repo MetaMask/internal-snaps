@@ -57,6 +57,7 @@ describe('ClientRequestHandler', () => {
     } as unknown as Mocked<Logger>;
 
     sendService = {
+      getMaxSendableAmount: vi.fn(),
       onAmountInput: vi.fn(),
       onAddressInput: vi.fn(),
       confirmSend: vi.fn(),
@@ -572,6 +573,80 @@ describe('ClientRequestHandler', () => {
       vi.spyOn(sendService, 'onAmountInput').mockResolvedValue(response);
 
       await expect(handler.handle(request)).rejects.toThrow(/At path: valid/iu);
+    });
+  });
+
+  describe('getMaxSendableAmount', () => {
+    const request: JsonRpcRequest = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: ClientRequestMethod.GetMaxSendableAmount,
+      params: {
+        accountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+        assetId: KnownCaip19Id.UsdcMainnet,
+        toAddress: MOCK_SOLANA_KEYRING_ACCOUNT_1.address,
+      },
+    };
+
+    it('calls the send service and returns the response', async () => {
+      const response = { amount: '100' };
+
+      vi.spyOn(sendService, 'getMaxSendableAmount').mockResolvedValue(response);
+
+      const result = await handler.handle(request);
+
+      expect(sendService.getMaxSendableAmount).toHaveBeenCalledWith(request);
+      expect(result).toStrictEqual(response);
+    });
+
+    it('accepts a request without toAddress', async () => {
+      const requestWithoutToAddress: JsonRpcRequest = {
+        ...request,
+        params: {
+          accountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+          assetId: KnownCaip19Id.UsdcMainnet,
+        },
+      };
+      const response = { amount: '0' };
+
+      vi.spyOn(sendService, 'getMaxSendableAmount').mockResolvedValue(response);
+
+      const result = await handler.handle(requestWithoutToAddress);
+
+      expect(sendService.getMaxSendableAmount).toHaveBeenCalledWith(
+        requestWithoutToAddress,
+      );
+      expect(result).toStrictEqual(response);
+    });
+
+    it('throws an error if the params are invalid', async () => {
+      const invalidRequest: JsonRpcRequest = {
+        ...request,
+        params: {
+          accountId: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+          assetId: KnownCaip19Id.UsdcMainnet,
+          toAddress: 'not-a-solana-address',
+        },
+      };
+
+      await expect(handler.handle(invalidRequest)).rejects.toThrow(
+        InvalidParamsError,
+      );
+      expect(sendService.getMaxSendableAmount).not.toHaveBeenCalled();
+    });
+
+    it('validates the response if invalid', async () => {
+      const response = {
+        property: 'invalid',
+      };
+
+      vi.spyOn(sendService, 'getMaxSendableAmount').mockResolvedValue(
+        response as never,
+      );
+
+      await expect(handler.handle(request)).rejects.toThrow(
+        /At path: amount/iu,
+      );
     });
   });
 

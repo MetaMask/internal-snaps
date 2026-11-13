@@ -149,6 +149,26 @@ export const OnAmountInputRequestStruct = object({
 });
 
 /**
+ * getMaxSendableAmount request/response validation.
+ */
+export const GetMaxSendableAmountRequestParamsStruct = object({
+  accountId: UuidStruct,
+  assetId: CaipAssetTypeStruct,
+  toAddress: optional(SolanaAddressStruct),
+});
+
+export const GetMaxSendableAmountRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.GetMaxSendableAmount),
+  params: GetMaxSendableAmountRequestParamsStruct,
+});
+
+export const GetMaxSendableAmountResponseStruct = object({
+  amount: PositiveNumberStringStruct,
+});
+
+/**
  * Utility function to decode and parse a rewards message.
  * Returns the parsed components or throws an error if invalid.
  *

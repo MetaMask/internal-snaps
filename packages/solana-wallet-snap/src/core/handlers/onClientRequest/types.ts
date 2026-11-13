@@ -4,6 +4,7 @@ export const ClientRequestMethod = {
   ConfirmSend: 'confirmSend',
   SignAndSendTransaction: 'signAndSendTransaction',
   ComputeFee: 'computeFee',
+  GetMaxSendableAmount: 'getMaxSendableAmount',
   OnAddressInput: 'onAddressInput',
   OnAmountInput: 'onAmountInput',
   SignRewardsMessage: 'signRewardsMessage',
