@@ -479,6 +479,9 @@ describe('EsploraClientAdapter', () => {
     let realBdk: RealBdkBindings;
 
     beforeAll(async () => {
+      // These real WASM tests share a worker, so drop leftover spies/module state before loading the actual module.
+      vi.restoreAllMocks();
+      vi.resetModules();
       const bdkDir = dirname(
         fileURLToPath(
           import.meta.resolve('@metamask/bitcoindevkit/package.json'),

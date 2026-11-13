@@ -91,6 +91,7 @@ const sendFlowUseCases = new SendFlowUseCases(
   config.targetBlocksConfirmation,
   config.fallbackFeeRate,
   config.ratesRefreshInterval,
+  config.feeRateCacheTtlMilliseconds,
 );
 const confirmationUseCases = new ConfirmationUseCases(logger, snapClient);
 

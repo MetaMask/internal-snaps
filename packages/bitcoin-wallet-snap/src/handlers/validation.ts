@@ -71,6 +71,7 @@ export const OnAmountInputRequestStruct = object({
   value: NonEmptyStringStruct,
   accountId: UuidStruct,
   assetId: CaipAssetTypeStruct,
+  toAddress: optional(NonEmptyStringStruct),
 });
 
 export const ConfirmSendRequestStruct = object({
