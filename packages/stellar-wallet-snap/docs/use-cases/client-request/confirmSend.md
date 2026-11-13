@@ -17,8 +17,10 @@ Confirms and submits a send for Unified Non-EVM Send (live on-chain data at buil
 - `toAddress` — Stellar destination
 - `assetId` — CAIP-19 classic / SEP-41 / slip44 (`scope` derived from `assetId`)
 - `amount` — human-readable amount string
+- `memo` — optional Stellar memo value (≤ 64 chars on the wire)
+- `memoType` — optional `MEMO_TEXT` | `MEMO_ID`. When omitted, all-digit uint64 values are treated as `MEMO_ID`; otherwise `MEMO_TEXT`
 
-Memo is **not** a client wire param. The confirmation UI owns memo on interface context (`context.memo`); the dialog resolves with `{ confirmed, memo? }`, and that value is passed into post-confirm / refresh rebuilds via `createValidatedSendTransaction({ memo })`.
+A client-supplied memo reaches the transaction (draft and post-confirm rebuild) and is seeded read-only into the confirmation UI (no Add/Update). The confirmation UI also owns a memo on interface context (`context.memo`); the dialog resolves with `{ confirmed, memo? }`, and that value is used only as a fallback when the client sent no memo. Strict memo validation runs at build time (`resolveStellarMemo`): text memos are limited to 28 UTF-8 bytes, and `MEMO_ID` values must be uint64.
 
 **Response**
 
@@ -27,7 +29,7 @@ Memo is **not** a client wire param. The confirmation UI owns memo on interface 
 
 Pre-submit validation failures (balance, trustline, create-account, expired transaction, non-native send to an unfunded destination) are shown in the send confirmation dialog first (no fee or price estimates). That dialog only supports dismiss; after it closes, the handler throws `UserRejectedRequestError`. Failures after the user confirms a valid send — refresh, fee-buffer, memo, signing, or submission — are thrown. They are not returned as `{ valid: false, errors }`.
 
-**RequiresMemo (SEP-29 and SEP-37 directory):** when the destination requires a memo (on-chain SEP-29 and/or hardcoded StellarExpert `memo-required` directory) and none was provided, the snap opens a send confirmation on a draft envelope (`skipExceptions: [RequiresMemoException]`) with a banner asking the user to add a memo. The confirm UI includes an Add/Update memo row and edit screen that stores the memo on confirmation **context** (`context.memo`), not on `request.params`. After the user confirms with a memo, the handler re-validates (including the memo requirement) via the existing post-confirm refresh path before signing. Confirming without a memo throws `RequiresMemoException`. While the dialog is open, live refresh **pauses** on `RequiresMemo` (omit scan this cycle, pause auto-cron); MemoEdit Save cancel-and-replaces to restart validation and security scanning.
+**RequiresMemo (SEP-29 and SEP-37 directory):** when the destination requires a memo (on-chain SEP-29 and/or hardcoded StellarExpert `memo-required` directory) and none was provided, the snap opens a send confirmation on a draft envelope (`skipExceptions: [RequiresMemoException]`) with a banner asking the user to add a memo. The confirm UI includes an Add/Update memo row and edit screen that stores the memo on confirmation **context** (`context.memo`), not on `request.params`. After the user confirms with a memo, the handler re-validates (including the memo requirement) via the existing post-confirm refresh path before signing. Confirming without a memo throws `RequiresMemoException`. If the client supplied a memo but the draft still does not satisfy the memo-required destination (e.g. blank/whitespace), the handler rejects with `RequiresMemoException` instead of opening memo recovery. While the dialog is open, live refresh **pauses** on `RequiresMemo` (omit scan this cycle, pause auto-cron); MemoEdit Save cancel-and-replaces to restart validation and security scanning.
 
 User rejection of a valid confirmation dialog also throws `UserRejectedRequestError`. Unactivated sender accounts show the account activation prompt and rethrow `AccountNotActivatedException`.
 
@@ -56,7 +58,7 @@ User rejection of a valid confirmation dialog also throws `UserRejectedRequestEr
 3. **Build** — Resolve asset metadata; convert amount; `TransactionService.createValidatedSendTransaction`.
 4. **Pre-submit validation errors** — Balance, trustline, and create-account failures are shown in the send confirmation (no fee or price estimates). After the dialog is dismissed, the handler throws `UserRejectedRequestError`. `RequiresMemo` opens a send confirmation instead (draft + banner) so the user can add a memo.
 5. **Confirm** — `ConfirmationUXController` shows send UI (fee, estimated changes, security scan, memo row, local re-validation cron while open). Dialog resolves with `{ confirmed, memo? }` from `context.memo`.
-6. **Refresh** — After confirm, account is resolved again from the live network; refreshed fee may be up to 20% above the open-time draft fee (in-dialog fee refreshes are display-only). Larger increases return `Invalid`. Dialog memo is applied on rebuild via `createValidatedSendTransaction({ memo })` (never written onto ConfirmSend RPC params).
+6. **Refresh** — After confirm, account is resolved again from the live network; refreshed fee may be up to 20% above the open-time draft fee (in-dialog fee refreshes are display-only). Larger increases return `Invalid`. The client memo (if any) is applied on rebuild via `createValidatedSendTransaction({ memo, memoType })`; otherwise the dialog memo is used as fallback.
 7. **Sign & send** — `Wallet.signTransaction` → `TransactionService.sendTransaction`.
 8. **Post-submit** — Persist pending keyring tx (`Send`) and schedule `TrackTransactionHandler` for sender + destination.
 
@@ -75,7 +77,7 @@ sequenceDiagram
   participant Wallet
   participant Track as TrackTransactionHandler
 
-  Client->>Handler: confirmSend { fromAccountId, toAddress, assetId, amount }
+  Client->>Handler: confirmSend { fromAccountId, toAddress, assetId, amount, memo?, memoType? }
   Handler->>Resolver: resolve activated account (live on-chain)
   Resolver-->>Handler: account, wallet, onChainAccount
   Handler->>Meta: resolve(assetId)

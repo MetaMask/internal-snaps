@@ -39,6 +39,8 @@ import {
   ValidAmountStruct,
   ValidStellarAmountStruct,
   SwapTransactionXdrStruct,
+  StellarMemoTypeStruct,
+  StellarMemoValueStruct,
 } from '../../api';
 import { getStellarAssetChainId, isSep41Id } from '../../utils';
 import { parseProofOfOwnershipMessage } from './utils';
@@ -371,6 +373,8 @@ const ConfirmSendParamsStruct = object({
     KnownCaip19Slip44IdStruct,
   ]),
   amount: nonempty(string()),
+  memo: optional(StellarMemoValueStruct),
+  memoType: optional(StellarMemoTypeStruct),
 });
 
 /**

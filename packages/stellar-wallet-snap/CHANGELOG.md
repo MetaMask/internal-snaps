@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add the `getMaxSendableAmount` client request method, returning the maximum amount that would pass `onAmountInput` for XLM and classic assets. XLM leaves the minimum reserve and the inclusion fee, token balances require XLM to cover the fee, and the result is `0` when no amount can pass ([#594](https://github.com/MetaMask/internal-snaps/pull/594))
+- Accept optional client-supplied `memo` and `memoType` (`MEMO_TEXT` or `MEMO_ID`) in `confirmSend`; the dialog memo is kept as fallback, and a client memo that cannot satisfy a memo-required destination is rejected ([#597](https://github.com/MetaMask/internal-snaps/pull/597))
 
 ## [2.1.0]
 

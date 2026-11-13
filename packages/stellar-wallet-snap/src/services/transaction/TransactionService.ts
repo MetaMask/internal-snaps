@@ -7,6 +7,7 @@ import type {
   KnownCaip19Sep41AssetId,
   KnownCaip19Slip44Id,
   KnownCaip2ChainId,
+  StellarMemoType,
 } from '../../api';
 import { isSep41Id, isSlip44Id, trackError } from '../../utils';
 import type { AnyErrorConstructor } from '../../utils';
@@ -157,6 +158,7 @@ export class TransactionService {
    * @param params.assetId - The CAIP-19 asset ID.
    * @param params.destination - The destination address.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
+   * @param params.memoType - Optional explicit memo type for `memo`.
    * @param params.skipExceptions - Validation exception constructors to suppress during simulation.
    * @param params.useCache - Whether to use the cache.
    * @returns The validated transaction.
@@ -168,6 +170,7 @@ export class TransactionService {
     assetId: KnownCaip19AssetIdOrSlip44Id;
     destination: string;
     memo?: string;
+    memoType?: StellarMemoType;
     skipExceptions?: readonly AnyErrorConstructor[];
     useCache?: boolean;
   }): Promise<Transaction> {
@@ -178,6 +181,7 @@ export class TransactionService {
       amount,
       destination,
       memo,
+      memoType,
       skipExceptions,
       useCache = false,
     } = params;
@@ -210,6 +214,7 @@ export class TransactionService {
         destination,
         destinationAccount,
         memo,
+        memoType,
         skipExceptions,
         useCache,
       });
@@ -224,6 +229,7 @@ export class TransactionService {
       destination,
       destinationAccount,
       memo,
+      memoType,
       skipExceptions,
     });
   }
@@ -242,6 +248,7 @@ export class TransactionService {
    * @param params.assetId - The CAIP-19 asset ID.
    * @param params.destination - The destination address.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
+   * @param params.memoType - Optional explicit memo type for `memo`.
    * @param params.useCache - Whether to use the cache.
    * @returns The draft transaction and whether the confirmation should show RequiresMemo recovery.
    */
@@ -252,6 +259,7 @@ export class TransactionService {
     assetId: KnownCaip19AssetIdOrSlip44Id;
     destination: string;
     memo?: string;
+    memoType?: StellarMemoType;
     useCache?: boolean;
   }): Promise<{ transaction: Transaction; requiresMemoRecovery: boolean }> {
     const { onChainAccount, scope, destination } = params;
@@ -301,6 +309,7 @@ export class TransactionService {
    * @param params.destination - The destination address.
    * @param params.destinationAccount - The destination account.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
+   * @param params.memoType - Optional explicit memo type for `memo`.
    * @param params.skipExceptions - Validation exception constructors to suppress during simulation.
    * @param params.useCache - When `true`, reuses a cached SEP-41 simulation keyed by
    * asset, sender, recipient, and scope (not amount). Use only for preflight checks
@@ -318,6 +327,7 @@ export class TransactionService {
     destination: string;
     destinationAccount: OnChainAccount;
     memo?: string;
+    memoType?: StellarMemoType;
     skipExceptions?: readonly AnyErrorConstructor[];
     useCache: boolean;
   }): Promise<Transaction> {
@@ -329,6 +339,7 @@ export class TransactionService {
       destination,
       destinationAccount,
       memo,
+      memoType,
       skipExceptions,
       useCache,
     } = params;
@@ -343,6 +354,7 @@ export class TransactionService {
       destination,
       baseFee,
       memo,
+      memoType,
     });
 
     // Use getRawAsset so we only fetch when the asset is absent from the State.
@@ -413,6 +425,7 @@ export class TransactionService {
    * @param params.destination - The destination address.
    * @param params.destinationAccount - The destination account.
    * @param params.memo - Optional Stellar memo value to attach to the envelope.
+   * @param params.memoType - Optional explicit memo type for `memo`.
    * @param params.skipExceptions - Validation exception constructors to suppress during simulation.
    * @returns A promise that resolves to the validated transaction.
    */
@@ -424,6 +437,7 @@ export class TransactionService {
     destination: string;
     destinationAccount: OnChainAccount | null;
     memo?: string;
+    memoType?: StellarMemoType;
     skipExceptions?: readonly AnyErrorConstructor[];
   }): Promise<Transaction> {
     const {
@@ -434,6 +448,7 @@ export class TransactionService {
       destinationAccount,
       destination,
       memo,
+      memoType,
       skipExceptions,
     } = params;
 
@@ -457,6 +472,7 @@ export class TransactionService {
       },
       baseFee,
       memo,
+      memoType,
     });
 
     this.validateTransaction(transaction, onChainAccount, {
