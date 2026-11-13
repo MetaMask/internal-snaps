@@ -35,6 +35,8 @@ export type TransactionAlertProps = {
   isFetching: boolean;
   /** Whether the transaction scan request itself failed. */
   isFetchError: boolean;
+  /** Severity for an unavailable scan, defaulting to danger. */
+  fetchErrorSeverity?: BannerProps['severity'];
   /** The scan error to show, or `null` when there is none (or it is disabled). */
   error: TransactionAlertError | null;
   /** The security validation to show, or `null` when there is none (or it is disabled). */
@@ -91,7 +93,7 @@ function getValidationAlert(
  * Exactly one banner is rendered, picked in this order:
  *
  * 1. `isFetching` → "scan in progress" info banner.
- * 2. `isFetchError` → "scan failed" danger banner.
+ * 2. `isFetchError` → "scan failed" banner (danger by default).
  * 3. `error` → warning banner with the error title and message.
  * 4. `Malicious` or `Warning` validation → security banner with a link to the
  * security alerts documentation and the Blockaid attribution.
@@ -101,6 +103,7 @@ function getValidationAlert(
  * @param props.labels - The translated labels.
  * @param props.isFetching - Whether the transaction scan is in flight.
  * @param props.isFetchError - Whether the transaction scan request failed.
+ * @param props.fetchErrorSeverity - Severity for an unavailable scan.
  * @param props.error - The scan error to show.
  * @param props.validation - The security validation to show.
  * @returns The banner, or `null` when no alert applies.
@@ -109,6 +112,7 @@ export const TransactionAlert = ({
   labels,
   isFetching,
   isFetchError,
+  fetchErrorSeverity = 'danger',
   error,
   validation,
 }: TransactionAlertProps): ComponentOrElement | null => {
@@ -122,7 +126,7 @@ export const TransactionAlert = ({
 
   if (isFetchError) {
     return (
-      <Banner title={labels.scanFailedTitle} severity="danger">
+      <Banner title={labels.scanFailedTitle} severity={fetchErrorSeverity}>
         <SnapText>{labels.scanFailedMessage}</SnapText>
       </Banner>
     );

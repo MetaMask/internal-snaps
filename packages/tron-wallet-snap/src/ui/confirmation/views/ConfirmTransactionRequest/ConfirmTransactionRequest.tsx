@@ -1,11 +1,16 @@
-import { ActionHeader, TransactionAlert } from '@metamask/snap-networks-utils';
+import {
+  ActionHeader,
+  TransactionAlert,
+  ConfirmationFooter,
+  MaliciousAcknowledgementFormNames,
+  MaliciousAcknowledgementScreen,
+  requiresMaliciousAcknowledgement,
+} from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
   Box,
-  Button,
   Container,
-  Footer,
   Icon,
   Image,
   Link,
@@ -15,21 +20,24 @@ import {
 } from '@metamask/snaps-sdk/jsx';
 
 import { Networks } from '../../../../constants';
-import { TRANSACTION_TAPOS_EXPIRED } from '../../../../services/transaction-scan/isTransactionDeadlinePassedError';
 import { SimulationStatus } from '../../../../services/transaction-scan/types';
 import { TRX_IMAGE_SVG } from '../../../../static/tron-logo';
-import { FetchStatus } from '../../../../types/snap';
 import { formatOrigin } from '../../../../utils/formatOrigin';
 import { getExplorerUrl } from '../../../../utils/getExplorerUrl';
 import { i18n } from '../../../../utils/i18n';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { Fees } from '../../components/Fees';
 import { getTransactionAlertProps } from '../../utils/getTransactionAlertProps';
+import { isTransactionConfirmationBlocked } from '../../utils/isTransactionConfirmationBlocked';
 import { ConfirmSignAndSendTransactionFormNames } from './events';
 import type { ConfirmTransactionRequestContext } from './types';
 
 export const ConfirmTransactionRequest = ({
-  context: {
+  context,
+}: {
+  context: ConfirmTransactionRequestContext;
+}): ComponentOrElement => {
+  const {
     origin,
     scope,
     fromAddress,
@@ -41,20 +49,25 @@ export const ConfirmTransactionRequest = ({
     tokenPricesFetchStatus,
     scan,
     scanFetchStatus,
-  },
-}: {
-  context: ConfirmTransactionRequestContext;
-}): ComponentOrElement => {
+  } = context;
   const translate = i18n(preferences.locale);
 
-  /**
-   * Block the initial scan load and locally invalid transactions. Remote
-   * simulation failures and background refreshes do not block confirmation.
-   */
-  const shouldDisableConfirmButton =
-    scanFetchStatus === FetchStatus.Loading ||
-    scan?.error?.type === TRANSACTION_TAPOS_EXPIRED ||
-    scan?.error?.type === 'MALFORMED_TRANSACTION';
+  const shouldDisableConfirmButton = isTransactionConfirmationBlocked(context);
+
+  if (context.acknowledgementScreen && !shouldDisableConfirmButton) {
+    return (
+      <MaliciousAcknowledgementScreen
+        labels={{
+          title: translate('confirmation.maliciousAck.title'),
+          description: translate('confirmation.maliciousAck.description'),
+          checkbox: translate('confirmation.maliciousAck.checkbox'),
+          proceed: translate('confirmation.confirmButton'),
+          back: translate('confirmation.maliciousAck.back'),
+        }}
+        acknowledged={context.acknowledged}
+      />
+    );
+  }
 
   let estimatedChangesSection: ComponentOrElement | null = null;
   if (preferences.simulateOnChainActions) {
@@ -182,17 +195,20 @@ export const ConfirmTransactionRequest = ({
           />
         </Section>
       </Box>
-      <Footer>
-        <Button name={ConfirmSignAndSendTransactionFormNames.Cancel}>
-          {translate(`confirmation.cancelButton`)}
-        </Button>
-        <Button
-          name={ConfirmSignAndSendTransactionFormNames.Confirm}
-          disabled={shouldDisableConfirmButton}
-        >
-          {translate(`confirmation.confirmButton`)}
-        </Button>
-      </Footer>
+      <ConfirmationFooter
+        labels={{
+          cancelButton: translate('confirmation.cancelButton'),
+          confirmButton: translate('confirmation.confirmButton'),
+        }}
+        cancelButtonName={ConfirmSignAndSendTransactionFormNames.Cancel}
+        confirmButtonName={ConfirmSignAndSendTransactionFormNames.Confirm}
+        openAcknowledgementName={MaliciousAcknowledgementFormNames.Review}
+        confirmDisabled={shouldDisableConfirmButton}
+        requiresAcknowledgement={requiresMaliciousAcknowledgement(
+          preferences.useSecurityAlerts,
+          scan?.validation?.type,
+        )}
+      />
     </Container>
   );
 };
