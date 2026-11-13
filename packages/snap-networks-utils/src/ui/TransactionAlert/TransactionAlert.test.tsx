@@ -57,6 +57,16 @@ describe('TransactionAlert', () => {
     expect(serialized).not.toContain(error.title);
   });
 
+  it('supports an info banner for an unavailable scan', () => {
+    const serialized = render({
+      isFetchError: true,
+      fetchErrorSeverity: 'info',
+    });
+
+    expect(serialized).toContain('"severity":"info"');
+    expect(serialized).toContain(labels.scanFailedTitle);
+  });
+
   it('renders a warning banner for a scan error, ahead of the validation', () => {
     const serialized = render({ error, validation: { type: 'Malicious' } });
 

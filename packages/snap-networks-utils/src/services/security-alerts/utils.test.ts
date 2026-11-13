@@ -48,54 +48,23 @@ describe('getSecurityAlertDescription', () => {
 });
 
 describe('requiresMaliciousAcknowledgement', () => {
-  it('requires acknowledgement for a malicious verdict with security alerts on', () => {
-    expect(
-      requiresMaliciousAcknowledgement({
-        useSecurityAlerts: true,
-        scan: { status: 'SUCCESS', validation: { type: 'Malicious' } },
-      }),
-    ).toBe(true);
+  it('requires acknowledgement for a malicious verdict', () => {
+    expect(requiresMaliciousAcknowledgement(true, 'Malicious')).toBe(true);
   });
 
-  it('does not require acknowledgement when security alerts are off', () => {
-    expect(
-      requiresMaliciousAcknowledgement({
-        useSecurityAlerts: false,
-        scan: { status: 'SUCCESS', validation: { type: 'Malicious' } },
-      }),
-    ).toBe(false);
-  });
+  it.each([false, null, undefined])(
+    'does not require acknowledgement when security alerts are %s',
+    (useSecurityAlerts) => {
+      expect(
+        requiresMaliciousAcknowledgement(useSecurityAlerts, 'Malicious'),
+      ).toBe(false);
+    },
+  );
 
-  it('does not require acknowledgement for a missing scan', () => {
-    expect(
-      requiresMaliciousAcknowledgement({ useSecurityAlerts: true, scan: null }),
-    ).toBe(false);
-    expect(requiresMaliciousAcknowledgement({ useSecurityAlerts: true })).toBe(
-      false,
-    );
-  });
-
-  it('does not require acknowledgement for a missing validation', () => {
-    expect(
-      requiresMaliciousAcknowledgement({
-        useSecurityAlerts: true,
-        scan: { status: 'ERROR', validation: null },
-      }),
-    ).toBe(false);
-  });
-
-  it('does not require acknowledgement for warning and benign verdicts', () => {
-    expect(
-      requiresMaliciousAcknowledgement({
-        useSecurityAlerts: true,
-        scan: { status: 'SUCCESS', validation: { type: 'Warning' } },
-      }),
-    ).toBe(false);
-    expect(
-      requiresMaliciousAcknowledgement({
-        useSecurityAlerts: true,
-        scan: { status: 'SUCCESS', validation: { type: 'Benign' } },
-      }),
-    ).toBe(false);
-  });
+  it.each(['Warning', 'Benign', 'Error', null, undefined] as const)(
+    'does not require acknowledgement for %s',
+    (alert) => {
+      expect(requiresMaliciousAcknowledgement(true, alert)).toBe(false);
+    },
+  );
 });

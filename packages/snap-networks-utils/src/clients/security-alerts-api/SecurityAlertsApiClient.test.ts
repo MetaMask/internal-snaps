@@ -2,7 +2,11 @@ import { ConstantBackoff } from '@metamask/base-data-service';
 import type { Mock, MockedFunction } from 'vitest';
 
 import { HttpError } from '../../utils/errors';
-import { createFetchPolicy } from '../../utils/fetchPolicy/createFetchPolicy';
+import {
+  createFetchPolicy,
+  FetchPolicyErrorName,
+  isReportedFetchPolicyError,
+} from '../../utils/fetchPolicy/createFetchPolicy';
 import {
   SecurityAlertsApiClient,
   SECURITY_ALERTS_REQUEST_HEADERS,
@@ -136,8 +140,22 @@ describe('SecurityAlertsApiClient', () => {
     expect(error).toMatchObject({
       name: 'HttpError',
       message: 'Security Alerts API error',
-      cause: fetchFailure,
+      cause: { name: FetchPolicyErrorName.Network, cause: fetchFailure },
     });
+  });
+
+  it('keeps exhausted network failures recognisable as already reported', async () => {
+    fetchMock.mockRejectedValue(new TypeError('fetch failed'));
+    const policy = createFetchPolicy({
+      service: 'security_alerts_api',
+      logger: { warn: vi.fn() },
+      backoff: new ConstantBackoff(0),
+      trackError: vi.fn().mockResolvedValue(undefined),
+    });
+
+    const error = await caughtError(scan({ policy }));
+
+    expect(isReportedFetchPolicyError(error)).toBe(true);
   });
 
   it('retries transient 503 responses through the policy when one is provided', async () => {

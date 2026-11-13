@@ -2467,7 +2467,7 @@
       "count": 2
     },
     "typescript/no-unsafe-return": {
-      "count": 1
+      "count": 2
     }
   },
   "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmSignTransaction/render.test.tsx": {
@@ -2499,7 +2499,7 @@
       "count": 2
     },
     "typescript/no-unsafe-return": {
-      "count": 1
+      "count": 2
     }
   },
   "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmTransactionRequest/render.test.tsx": {
@@ -2514,6 +2514,11 @@
     },
     "typescript/no-unsafe-member-access": {
       "count": 4
+    }
+  },
+  "packages/tron-wallet-snap/src/ui/confirmation/views/MaliciousAcknowledgement/events.tsx": {
+    "typescript/no-unsafe-assignment": {
+      "count": 1
     }
   },
   "packages/tron-wallet-snap/src/utils/sensitiveErrors.ts": {

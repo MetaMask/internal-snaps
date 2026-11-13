@@ -6,10 +6,7 @@ import type {
   Balance,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import {
-  SynchronizationError,
-  getSyncFailuresFromSettledResult,
-} from '@metamask/snap-networks-utils';
+import { SynchronizationError } from '@metamask/snap-networks-utils';
 import type {
   ExtendedKeyringAccount,
   ICache,
@@ -45,7 +42,7 @@ import type {
 } from '../../../constants/solana';
 import type { TokenAccountInfoWithJsonData } from '../../../sdk-extensions/rpc-api';
 import { useCache } from '../../../utils/caching';
-import { trackError } from '../../../utils/errors';
+import { getUnreportedSyncFailures, trackError } from '../../../utils/errors';
 import { fromTokenUnits } from '../../../utils/fromTokenUnit';
 import { getNetworkFromToken } from '../../../utils/getNetworkFromToken';
 import { tokenAddressToCaip19 } from '../../../utils/tokenAddressToCaip19';
@@ -257,7 +254,7 @@ export class SnapAssetsAdapter {
     accountIds: string[],
   ): Promise<void> {
     try {
-      const failures = getSyncFailuresFromSettledResult(results, accountIds);
+      const failures = getUnreportedSyncFailures(results, accountIds);
 
       if (failures.length === 0) {
         return;
