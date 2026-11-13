@@ -669,7 +669,10 @@ export class CronHandler {
             );
 
           if (expired) {
-            scan = EXPIRED_TRANSACTION_SCAN;
+            scan = {
+              ...EXPIRED_TRANSACTION_SCAN,
+              validation: scan?.validation ?? { type: 'Error', reason: null },
+            };
             scanFetchStatus = FetchStatus.Fetched;
           }
         } catch (error) {
