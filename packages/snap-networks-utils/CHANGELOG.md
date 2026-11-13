@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Change `requiresMaliciousAcknowledgement` to accept the security-alerts preference and verdict, treating a missing preference as disabled, and allow `TransactionAlert` callers to select the unavailable-scan banner severity ([#578](https://github.com/MetaMask/internal-snaps/pull/578))
 
+### Fixed
+
+- `SecurityAlertsApiClient.scanTransaction` now keeps the fetch policy's network error as the `cause` of the `HttpError` it throws, so `isReportedFetchPolicyError` recognises network failures the policy already reported ([#583](https://github.com/MetaMask/internal-snaps/pull/583))
+
 ## [3.2.0]
 
 ### Added
