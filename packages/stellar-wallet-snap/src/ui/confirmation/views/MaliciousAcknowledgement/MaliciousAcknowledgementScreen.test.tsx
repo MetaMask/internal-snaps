@@ -1,7 +1,21 @@
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 
+import { ConfirmationInterfaceKey } from '../../api';
+import { renderConfirmationView } from '../render';
 import { MaliciousAcknowledgementFormNames } from './constants';
-import { MaliciousAcknowledgementScreen } from './MaliciousAcknowledgementScreen';
+
+const renderScreen = ({
+  locale,
+  acknowledged,
+}: {
+  locale: string;
+  acknowledged?: boolean;
+}): ComponentOrElement =>
+  renderConfirmationView(ConfirmationInterfaceKey.SignTransaction, {
+    locale,
+    acknowledgementScreen: true,
+    acknowledged: acknowledged ?? false,
+  });
 
 type Element = {
   type?: string;
@@ -46,18 +60,23 @@ const findButton = (node: ComponentOrElement | null, name: string) =>
 const isBanner = (element: Element) => element.type === 'Banner';
 
 describe('MaliciousAcknowledgementScreen', () => {
-  it('renders a danger banner with the malicious warning copy', () => {
-    const screen = MaliciousAcknowledgementScreen({ locale: 'en' });
+  it('renders the target heading once and a danger banner with the risk description', () => {
+    const screen = renderScreen({ locale: 'en' });
 
     const banner = find(screen, isBanner);
     expect(banner).toMatchObject({
       severity: 'danger',
-      title: 'Malicious request',
+      title: '',
     });
+    const serialized = JSON.stringify(screen);
+    expect(serialized.match(/High-risk request/gu)).toHaveLength(1);
+    expect(serialized).toContain(
+      "Security partners found high-risk signals in this request. If you continue, your funds can't be recovered.",
+    );
   });
 
   it('disables the proceed button until the risk is acknowledged', () => {
-    const screen = MaliciousAcknowledgementScreen({
+    const screen = renderScreen({
       locale: 'en',
       acknowledged: false,
     });
@@ -68,7 +87,7 @@ describe('MaliciousAcknowledgementScreen', () => {
   });
 
   it('enables the proceed button once the risk is acknowledged', () => {
-    const screen = MaliciousAcknowledgementScreen({
+    const screen = renderScreen({
       locale: 'en',
       acknowledged: true,
     });
@@ -79,7 +98,7 @@ describe('MaliciousAcknowledgementScreen', () => {
   });
 
   it('reflects the acknowledgement state on the checkbox', () => {
-    const screen = MaliciousAcknowledgementScreen({
+    const screen = renderScreen({
       locale: 'en',
       acknowledged: true,
     });
@@ -92,7 +111,7 @@ describe('MaliciousAcknowledgementScreen', () => {
   });
 
   it('renders a back button', () => {
-    const screen = MaliciousAcknowledgementScreen({ locale: 'en' });
+    const screen = renderScreen({ locale: 'en' });
 
     expect(
       findButton(screen, MaliciousAcknowledgementFormNames.Back),

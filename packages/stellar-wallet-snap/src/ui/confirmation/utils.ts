@@ -222,10 +222,8 @@ export function isRemoteTransactionScanLoading(params: {
  * Determines whether a malicious scan result requires explicit user
  * acknowledgement before the transaction can be confirmed.
  *
- * When true, the confirmation footer swaps its primary button to "Review alerts"
- * and routes the user through the acknowledgement screen instead of confirming
- * directly. Warning-level results intentionally do not require this (reduced
- * friction): they show the banner only.
+ * When true, the confirmation footer routes Confirm through the acknowledgement
+ * screen. Warning-level results show the banner without acknowledgement.
  *
  * @param params - Scan and preference state.
  * @param params.preferences - User preferences controlling scan behavior.

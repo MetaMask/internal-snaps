@@ -3,6 +3,7 @@ import type { Json } from '@metamask/utils';
 
 import type { ConfirmationInterfaceKey } from '../../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../../ui/confirmation/controller';
+import { withInterfaceLock } from '../../../utils/interfaceLock';
 import {
   cancelBackgroundEventIfExists,
   Duration,
@@ -139,75 +140,77 @@ export class RefreshConfirmationContextHandler extends CronjobBaseHandler<Refres
       return;
     }
 
-    const latestContext = await this.#getInterfaceContextIfExists({
-      interfaceId,
-      activeRefreshers,
-    });
-    if (latestContext === null) {
-      return;
-    }
+    await withInterfaceLock(interfaceId, async () => {
+      const latestContext = await this.#getInterfaceContextIfExists({
+        interfaceId,
+        activeRefreshers,
+      });
+      if (latestContext === null) {
+        return;
+      }
 
-    const latestEventId =
-      typeof latestContext.backgroundEventId === 'string'
-        ? latestContext.backgroundEventId
-        : null;
-    // Another writer took the chain (e.g. Save cancelled/replaced while we ran).
-    if (
-      startedWithEventId !== null &&
-      latestEventId !== null &&
-      latestEventId !== startedWithEventId
-    ) {
-      this.logger.info(
-        'Confirmation refresh ownership lost; skipping write and reschedule',
+      const latestEventId =
+        typeof latestContext.backgroundEventId === 'string'
+          ? latestContext.backgroundEventId
+          : null;
+      // Another writer took the chain (e.g. Save cancelled/replaced while we ran).
+      if (
+        startedWithEventId !== null &&
+        latestEventId !== null &&
+        latestEventId !== startedWithEventId
+      ) {
+        this.logger.info(
+          'Confirmation refresh ownership lost; skipping write and reschedule',
+        );
+        return;
+      }
+
+      const refresherPatches = results.reduce<Record<string, Json>>(
+        (acc, result) => ({ ...acc, ...(result?.result ?? {}) }),
+        {},
       );
-      return;
-    }
 
-    const refresherPatches = results.reduce<Record<string, Json>>(
-      (acc, result) => ({ ...acc, ...(result?.result ?? {}) }),
-      {},
-    );
+      let updatedContext: ConfirmationDataContext = {
+        ...latestContext,
+        ...refresherPatches,
+      };
 
-    let updatedContext: ConfirmationDataContext = {
-      ...latestContext,
-      ...refresherPatches,
-    };
+      // `pause` stops auto-cron. UI may call scheduleBackgroundEvent again after
+      // an in-dialog fix (e.g. user adds a memo). Clear the spent event id — this
+      // tick already ran; there is no pending replacement.
+      if (results.some(shouldPauseRefresh)) {
+        this.logger.info(
+          'Confirmation refresh paused; cron will not be rescheduled',
+        );
+        updatedContext = omitBackgroundEventId(updatedContext);
+        await this.#reRender({
+          interfaceId,
+          interfaceKey,
+          updatedContext,
+        });
+        return;
+      }
 
-    // `pause` stops auto-cron. UI may call scheduleBackgroundEvent again after
-    // an in-dialog fix (e.g. user adds a memo). Clear the spent event id — this
-    // tick already ran; there is no pending replacement.
-    if (results.some(shouldPauseRefresh)) {
-      this.logger.info(
-        'Confirmation refresh paused; cron will not be rescheduled',
-      );
-      updatedContext = omitBackgroundEventId(updatedContext);
+      // Schedule the next tick before re-render so `backgroundEventId` is persisted
+      // in the same context write (bitcoin send-flow pattern).
+      if (results.some((result) => result?.reschedule)) {
+        const backgroundEventId =
+          await RefreshConfirmationContextHandler.scheduleBackgroundEvent({
+            scope,
+            interfaceId,
+            interfaceKey,
+            refresherKeys,
+          });
+        updatedContext = { ...updatedContext, backgroundEventId };
+      } else {
+        updatedContext = omitBackgroundEventId(updatedContext);
+      }
+
       await this.#reRender({
         interfaceId,
         interfaceKey,
         updatedContext,
       });
-      return;
-    }
-
-    // Schedule the next tick before re-render so `backgroundEventId` is persisted
-    // in the same context write (bitcoin send-flow pattern).
-    if (results.some((result) => result?.reschedule)) {
-      const backgroundEventId =
-        await RefreshConfirmationContextHandler.scheduleBackgroundEvent({
-          scope,
-          interfaceId,
-          interfaceKey,
-          refresherKeys,
-        });
-      updatedContext = { ...updatedContext, backgroundEventId };
-    } else {
-      updatedContext = omitBackgroundEventId(updatedContext);
-    }
-
-    await this.#reRender({
-      interfaceId,
-      interfaceKey,
-      updatedContext,
     });
   }
 
