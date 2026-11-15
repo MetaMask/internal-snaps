@@ -188,6 +188,7 @@ describe('TransactionScanService', () => {
           description: null,
         },
         error: null,
+        validationError: null,
       });
     });
 
@@ -219,6 +220,7 @@ describe('TransactionScanService', () => {
           description: null,
         },
         error: null,
+        validationError: null,
       });
     });
 
@@ -256,6 +258,7 @@ describe('TransactionScanService', () => {
           description: null,
         },
         error: null,
+        validationError: null,
       });
     });
 
@@ -289,11 +292,12 @@ describe('TransactionScanService', () => {
           description: null,
         },
         error: null,
+        validationError: null,
       });
     });
   });
 
-  it('prioritizes the simulation revert over a validation error', async () => {
+  it('preserves simulation and security validation errors independently', async () => {
     const { service, securityAlertsApiClient } = setup();
     securityAlertsApiClient.scanTransaction.mockResolvedValue(
       insufficientBalanceResponse as StellarTransactionScanResponse,
@@ -304,6 +308,10 @@ describe('TransactionScanService', () => {
     expect(result?.error).toMatchObject({
       type: 'simulation',
       code: TransactionScanErrorId.InsufficientBalance,
+    });
+    expect(result?.validationError).toMatchObject({
+      type: 'validation',
+      message: 'Simulation failed',
     });
   });
 
@@ -329,6 +337,25 @@ describe('TransactionScanService', () => {
     });
   });
 
+  it('stores a validation failure separately when no simulation error occurs', async () => {
+    const { service, securityAlertsApiClient } = setup();
+    securityAlertsApiClient.scanTransaction.mockResolvedValue({
+      simulation: null,
+      validation: { status: 'Error', error: 'Validation unavailable' },
+    });
+
+    const result = await service.scanTransaction(scanParams);
+
+    expect(result).toMatchObject({
+      status: 'ERROR',
+      error: null,
+      validationError: {
+        type: 'validation',
+        message: 'Validation unavailable',
+      },
+    });
+  });
+
   it('returns error when requested scan results are missing', async () => {
     const { service, securityAlertsApiClient } = setup();
     securityAlertsApiClient.scanTransaction.mockResolvedValue({
@@ -340,7 +367,7 @@ describe('TransactionScanService', () => {
 
     expect(result).toMatchObject({
       status: 'ERROR',
-      error: {
+      validationError: {
         type: 'response',
         code: 'empty',
         message: 'No scan results returned',
@@ -371,6 +398,7 @@ describe('TransactionScanService', () => {
         description: null,
       },
       error: null,
+      validationError: null,
     });
   });
 
@@ -485,7 +513,7 @@ describe('TransactionScanService', () => {
       });
 
       expect(result).toMatchObject({
-        status: 'ERROR',
+        status: 'SUCCESS',
         error: {
           type: 'simulation',
           code: TransactionScanErrorId.TransactionExpired,
@@ -518,6 +546,7 @@ describe('TransactionScanService', () => {
       expect(result).toMatchObject({
         status: 'SUCCESS',
         error: null,
+        validationError: null,
       });
     });
 
@@ -540,6 +569,7 @@ describe('TransactionScanService', () => {
       expect(result).toMatchObject({
         status: 'SUCCESS',
         error: null,
+        validationError: null,
       });
     });
 
@@ -586,6 +616,10 @@ describe('TransactionScanService', () => {
         code: TransactionScanErrorId.TransactionExpired,
         message: 'Transaction expired',
       });
+      expect(result?.validationError).toMatchObject({
+        type: 'validation',
+        message: 'Simulation failed',
+      });
     });
 
     it('returns estimated changes when preflight reports expiration but simulation succeeds', async () => {
@@ -600,7 +634,7 @@ describe('TransactionScanService', () => {
       });
 
       expect(result).toMatchObject({
-        status: 'ERROR',
+        status: 'SUCCESS',
         error: {
           code: TransactionScanErrorId.TransactionExpired,
         },
@@ -813,6 +847,98 @@ describe('TransactionScanService', () => {
         result_type: TransactionScanValidationType.Benign,
       },
     } as unknown as StellarTransactionScanResponse;
+
+    it('tracks a successful security scan when only simulation fails', async () => {
+      const { service, securityAlertsApiClient, analyticsService } = setup();
+      securityAlertsApiClient.scanTransaction.mockResolvedValue({
+        simulation: { status: 'Error', error: 'insufficient_balance' },
+        validation: {
+          status: 'Success',
+          result_type: TransactionScanValidationType.Benign,
+        },
+      });
+
+      const result = await service.scanTransaction({
+        ...scanParams,
+        accountType,
+      });
+
+      expect(result).toMatchObject({
+        status: 'SUCCESS',
+        error: { type: 'simulation' },
+      });
+      expect(analyticsService.trackSecurityScanCompleted).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scanStatus: 'SUCCESS',
+          hasSecurityAlerts: false,
+        }),
+      );
+    });
+
+    it.each([{ status: 'Error' as const, error: 'unavailable' }, null])(
+      'tracks an error when requested security validation fails or is missing: %s',
+      async (validation) => {
+        const { service, securityAlertsApiClient, analyticsService } = setup();
+        securityAlertsApiClient.scanTransaction.mockResolvedValue({
+          simulation: {
+            status: 'Success',
+            account_summary: { account_assets_diffs: [] },
+            assets_diffs: {},
+          },
+          validation,
+        });
+
+        const result = await service.scanTransaction({
+          ...scanParams,
+          accountType,
+        });
+
+        expect(result?.status).toBe('ERROR');
+        expect(
+          analyticsService.trackSecurityScanCompleted,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({
+            scanStatus: 'ERROR',
+            hasSecurityAlerts: false,
+          }),
+        );
+      },
+    );
+
+    it.each([
+      {
+        scenario: 'simulation error',
+        request: (): ReturnType<SecurityAlertsApiClient['scanTransaction']> =>
+          Promise.resolve({
+            simulation: { status: 'Error', error: 'insufficient_balance' },
+            validation: null,
+          }),
+      },
+      {
+        scenario: 'request failure',
+        request: (): ReturnType<SecurityAlertsApiClient['scanTransaction']> =>
+          Promise.reject(new Error('network error')),
+      },
+    ])(
+      'does not track a security scan for simulation-only $scenario',
+      async ({ request }) => {
+        const { service, securityAlertsApiClient, analyticsService } = setup();
+        securityAlertsApiClient.scanTransaction.mockImplementation(request);
+
+        await service.scanTransaction({
+          ...scanParams,
+          accountType,
+          options: [TransactionScanOption.Simulation],
+        });
+
+        expect(
+          analyticsService.trackSecurityScanCompleted,
+        ).not.toHaveBeenCalled();
+        expect(
+          analyticsService.trackSecurityAlertDetected,
+        ).not.toHaveBeenCalled();
+      },
+    );
 
     it('tracks scan completed without alerts for benign scans', async () => {
       const { service, securityAlertsApiClient, analyticsService } = setup();

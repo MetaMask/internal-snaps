@@ -362,6 +362,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
           estimatedChanges,
           validation: null,
           error: null,
+          validationError: null,
         },
         transactionValidationRequest: {
           accountId: account.id,
@@ -440,6 +441,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         estimatedChanges,
         validation: null,
         error: null,
+        validationError: null,
       },
       tokenPrices: {
         [assetId]: null,

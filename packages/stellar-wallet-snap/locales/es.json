@@ -152,10 +152,10 @@
       "message": "This usually takes a few seconds."
     },
     "confirmation.securityScanAPIErrorTitle": {
-      "message": "Comprobación de seguridad no disponible"
+      "message": "Security check unavailable"
     },
     "confirmation.securityScanAPIErrorMessage": {
-      "message": "No pudimos completar esta comprobación de seguridad. Continúa solo si confías en el sitio y en las direcciones involucradas."
+      "message": "We couldn't complete this safety check. Only continue if you trust this site and/or every address involved."
     },
     "confirmation.securityScanErrorTitle": {
       "message": "Security scan failed"

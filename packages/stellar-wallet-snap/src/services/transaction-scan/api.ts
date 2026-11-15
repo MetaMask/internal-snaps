@@ -238,6 +238,7 @@ export const TransactionScanResultStruct = type({
   }),
   validation: nullable(TransactionScanValidationStruct),
   error: nullable(TransactionScanErrorStruct),
+  validationError: nullable(TransactionScanErrorStruct),
 });
 
 export type TransactionScanAssetChange = Infer<

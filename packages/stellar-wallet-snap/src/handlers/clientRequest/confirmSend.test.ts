@@ -343,6 +343,7 @@ describe('ConfirmSendHandler', () => {
         },
         validation: null,
         error: null,
+        validationError: null,
       },
       transactionValidationRequest: {
         accountId: account.id,
@@ -638,6 +639,7 @@ describe('ConfirmSendHandler', () => {
             },
             validation: null,
             error: null,
+            validationError: null,
           },
           tokenPrices: {
             [assetId]: null,
