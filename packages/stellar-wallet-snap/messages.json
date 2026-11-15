@@ -153,7 +153,7 @@
     "message": "Security check unavailable"
   },
   "confirmation.securityScanAPIErrorMessage": {
-    "message": "We couldn't complete this safety check. Continue only if you trust the site and addresses involved."
+    "message": "We couldn't complete this safety check. Only continue if you trust this site and/or every address involved."
   },
   "confirmation.securityScanErrorTitle": {
     "message": "Security scan failed"

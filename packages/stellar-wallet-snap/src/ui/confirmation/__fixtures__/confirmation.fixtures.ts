@@ -30,6 +30,7 @@ export const maliciousScan = {
     description: null,
   },
   error: null,
+  validationError: null,
 };
 
 /**

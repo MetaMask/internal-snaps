@@ -1690,7 +1690,7 @@
   },
   "packages/stellar-wallet-snap/src/ui/confirmation/components/ConfirmationAlerts.tsx": {
     "typescript/no-unsafe-return": {
-      "count": 2
+      "count": 6
     }
   },
   "packages/stellar-wallet-snap/src/ui/confirmation/components/ConfirmationFooter.tsx": {

@@ -21,6 +21,7 @@ import { ConfirmationAlerts } from './ConfirmationAlerts';
  * @param params.preferences - User preferences controlling scan behavior.
  * @param params.validation - Scan validation result.
  * @param params.error - Scan error.
+ * @param params.validationError - Security validation or response error.
  * @param params.scanFetchStatus - Scan fetch status.
  * @returns The rendered banner, or `null`.
  */
@@ -28,16 +29,18 @@ function renderScanAlert({
   preferences: scanPreferences = preferences,
   validation = null,
   error = null,
+  validationError = null,
   scanFetchStatus = FetchStatus.Fetched,
 }: {
   preferences?: typeof preferences;
   validation?: TransactionScanValidation | null;
   error?: TransactionScanError | null;
+  validationError?: TransactionScanError | null;
   scanFetchStatus?: FetchStatus;
 }): ComponentOrElement | null {
   return ConfirmationAlerts({
     preferences: scanPreferences,
-    scan: { ...maliciousScan, validation, error },
+    scan: { ...maliciousScan, validation, error, validationError },
     scanFetchStatus,
     transactionsFetchStatus: FetchStatus.Fetched,
   });
@@ -66,7 +69,7 @@ describe('ConfirmationAlerts', () => {
         title: 'Security check unavailable',
       });
       expect(JSON.stringify(component)).toContain(
-        "We couldn't complete this safety check. Continue only if you trust the site and addresses involved.",
+        "We couldn't complete this safety check. Only continue if you trust this site and/or every address involved.",
       );
     });
 
@@ -103,7 +106,7 @@ describe('ConfirmationAlerts', () => {
     it('renders validation scan errors with validation failure copy', () => {
       const component = renderScanAlert({
         preferences: { ...preferences, simulateOnChainActions: false },
-        error: {
+        validationError: {
           type: 'validation',
           code: 'invalid_transaction',
           message: 'invalid_transaction',
@@ -116,7 +119,7 @@ describe('ConfirmationAlerts', () => {
         title: 'Security check unavailable',
       });
       expect(JSON.stringify(component)).toContain(
-        "We couldn't complete this safety check. Continue only if you trust the site and addresses involved.",
+        "We couldn't complete this safety check. Only continue if you trust this site and/or every address involved.",
       );
       expect(JSON.stringify(component)).not.toContain('invalid_transaction');
     });
@@ -124,7 +127,7 @@ describe('ConfirmationAlerts', () => {
     it('renders response scan errors with incomplete scan copy', () => {
       const component = renderScanAlert({
         preferences: { ...preferences, simulateOnChainActions: false },
-        error: {
+        validationError: {
           type: 'response',
           code: 'empty',
           message: 'No scan results returned',
@@ -137,8 +140,54 @@ describe('ConfirmationAlerts', () => {
         title: 'Security check unavailable',
       });
       expect(JSON.stringify(component)).toContain(
-        "We couldn't complete this safety check. Continue only if you trust the site and addresses involved.",
+        "We couldn't complete this safety check. Only continue if you trust this site and/or every address involved.",
       );
+    });
+
+    it('renders an untyped scan error with its own message', () => {
+      const component = renderScanAlert({
+        preferences: { ...preferences, useSecurityAlerts: false },
+        error: {
+          type: null,
+          code: 'not_a_known_code',
+          message: 'Custom failure',
+        },
+      });
+
+      expect(getProps(component)).toMatchObject({
+        title: 'Security scan failed',
+      });
+      expect(JSON.stringify(component)).toContain('Custom failure');
+    });
+
+    it('renders the unknown-error copy when a scan error has no message', () => {
+      const component = renderScanAlert({
+        preferences: { ...preferences, simulateOnChainActions: false },
+        error: {
+          type: null,
+          code: null,
+          message: null,
+        },
+      });
+
+      expect(JSON.stringify(component)).toContain('An unknown error occurred');
+    });
+
+    it('hides an untyped scan error when both scan preferences are off', () => {
+      const component = renderScanAlert({
+        preferences: {
+          ...preferences,
+          useSecurityAlerts: false,
+          simulateOnChainActions: false,
+        },
+        error: {
+          type: null,
+          code: null,
+          message: 'Custom failure',
+        },
+      });
+
+      expect(component).toBeNull();
     });
 
     it('renders a localized message for transaction expired simulation errors', () => {
@@ -154,7 +203,7 @@ describe('ConfirmationAlerts', () => {
       expect(JSON.stringify(component)).toContain('Transaction expired');
     });
 
-    it('renders scan errors before validation severity findings', () => {
+    it('renders simulation errors and malicious security findings together', () => {
       const component = renderScanAlert({
         validation: maliciousScan.validation,
         error: {
@@ -164,10 +213,51 @@ describe('ConfirmationAlerts', () => {
         },
       });
 
-      expect(getProps(component)).toMatchObject({
-        severity: 'warning',
-        title: 'This transaction is expected to fail.',
+      expect(JSON.stringify(component)).toContain(
+        'This transaction is expected to fail.',
+      );
+      expect(JSON.stringify(component)).toContain(
+        'This is a deceptive request',
+      );
+    });
+
+    it('renders simulation and security errors together', () => {
+      const component = renderScanAlert({
+        error: {
+          type: 'simulation',
+          code: 'insufficient_balance',
+          message: 'insufficient_balance',
+        },
+        validationError: {
+          type: 'validation',
+          code: null,
+          message: 'Validation unavailable',
+        },
       });
+
+      expect(JSON.stringify(component)).toContain(
+        'This transaction is expected to fail.',
+      );
+      expect(JSON.stringify(component)).toContain('Security check unavailable');
+    });
+
+    it('hides the unavailable banner when security alerts are disabled', () => {
+      const component = renderScanAlert({
+        preferences: { ...preferences, useSecurityAlerts: false },
+        scanFetchStatus: FetchStatus.Error,
+        error: {
+          type: 'simulation',
+          code: 'insufficient_balance',
+          message: 'insufficient_balance',
+        },
+      });
+
+      expect(JSON.stringify(component)).toContain(
+        'This transaction is expected to fail.',
+      );
+      expect(JSON.stringify(component)).not.toContain(
+        'Security check unavailable',
+      );
     });
 
     it('does not render validation alerts when security alerts are disabled', () => {
