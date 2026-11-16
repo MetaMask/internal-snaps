@@ -89,11 +89,15 @@ export function getTransactionTrxValue(
   }
 
   if (contract.type === TronwebTypes.ContractType.TransferContract) {
-    return sunToTrx('amount' in value ? (value.amount ?? 0) : 0);
+    const { amount } = contract.parameter.value as { amount?: number };
+    return sunToTrx(amount ?? 0);
   }
 
   if (contract.type === TronwebTypes.ContractType.TriggerSmartContract) {
-    return sunToTrx('call_value' in value ? (value.call_value ?? 0) : 0);
+    const { call_value: callValue } = contract.parameter.value as {
+      call_value?: number;
+    };
+    return sunToTrx(callValue ?? 0);
   }
 
   return ZERO;

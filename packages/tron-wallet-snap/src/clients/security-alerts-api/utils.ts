@@ -4,6 +4,22 @@ import { TronWeb, Types as TronwebTypes } from 'tronweb';
 import type { SecurityScanPayload } from './types';
 
 /**
+ * Contract parameter value, as it appears in a deserialized Tron transaction.
+ *
+ * TronWeb types this as a union of contract-specific values, so individual
+ * fields are only reachable through narrowing. Every field is optional here
+ * because the concrete shape depends on the contract type.
+ */
+type ContractParameterValue = {
+  owner_address: string;
+  amount?: number;
+  call_value?: number;
+  contract_address?: string;
+  to_address?: string;
+  data?: string;
+};
+
+/**
  * Contract types for which the Security Alerts API can produce reliable
  * simulation results.
  */
@@ -53,16 +69,17 @@ export function isContractTypeSupported(
 export function extractScanParametersFromTransactionData(
   rawData: TronwebTypes.Transaction['raw_data'],
 ): SecurityScanPayload {
-  const contractParam = rawData.contract[0]?.parameter.value;
+  const contractParam: ContractParameterValue | undefined =
+    rawData.contract[0]?.parameter.value;
 
   if (!contractParam) {
     throw new Error('Could not extract scan parameters from transaction.');
   }
 
   let callValue = 0;
-  if ('call_value' in contractParam && contractParam.call_value) {
+  if (contractParam.call_value) {
     callValue = contractParam.call_value;
-  } else if ('amount' in contractParam && contractParam.amount) {
+  } else if (contractParam.amount) {
     callValue = contractParam.amount;
   }
 
@@ -71,13 +88,13 @@ export function extractScanParametersFromTransactionData(
     value: `0x${callValue.toString(16)}`,
   };
 
-  if ('contract_address' in contractParam && contractParam.contract_address) {
+  if (contractParam.contract_address) {
     payload.to = TronWeb.address.fromHex(contractParam.contract_address);
-  } else if ('to_address' in contractParam && contractParam.to_address) {
+  } else if (contractParam.to_address) {
     payload.to = TronWeb.address.fromHex(contractParam.to_address);
   }
 
-  if ('data' in contractParam && contractParam.data) {
+  if (contractParam.data) {
     payload.data = add0x(contractParam.data);
   }
 
