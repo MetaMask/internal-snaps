@@ -1,9 +1,6 @@
 {
   "locale": "hi",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "आगे बढ़ने से पहले ट्रांसेक्शन की समीक्षा करें"
-    },
     "from": {
       "message": "से"
     },
@@ -57,9 +54,6 @@
     },
     "asset": {
       "message": "एसेट"
-    },
-    "sending": {
-      "message": "भेजा जा रहा है"
     },
     "max": {
       "message": "अधिकतम"

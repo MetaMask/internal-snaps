@@ -1,9 +1,6 @@
 {
   "locale": "中文",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "继续之前，请先审查交易"
-    },
     "from": {
       "message": "从"
     },
@@ -57,9 +54,6 @@
     },
     "asset": {
       "message": "Asset"
-    },
-    "sending": {
-      "message": "发送中"
     },
     "max": {
       "message": "最多"

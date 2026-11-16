@@ -1,9 +1,6 @@
 {
   "locale": "id",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "Tinjau transaksi sebelum melanjutkan"
-    },
     "from": {
       "message": "Dari"
     },
@@ -57,9 +54,6 @@
     },
     "asset": {
       "message": "Aset"
-    },
-    "sending": {
-      "message": "Mengirim"
     },
     "max": {
       "message": "Maks"

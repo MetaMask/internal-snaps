@@ -1,9 +1,6 @@
 {
   "locale": "el",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "Ελέγξτε τη συναλλαγή πριν προχωρήσετε"
-    },
     "from": {
       "message": "Από"
     },
@@ -57,9 +54,6 @@
     },
     "asset": {
       "message": "Περιουσιακό στοιχείο"
-    },
-    "sending": {
-      "message": "Αποστολή"
     },
     "max": {
       "message": "Μέγ"

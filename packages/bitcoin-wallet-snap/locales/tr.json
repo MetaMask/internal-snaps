@@ -1,9 +1,6 @@
 {
   "locale": "tr",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "Devam etmeden önce işlemi inceleyin"
-    },
     "from": {
       "message": "Gönderen"
     },
@@ -57,9 +54,6 @@
     },
     "asset": {
       "message": "Asset"
-    },
-    "sending": {
-      "message": "Gönderiliyor"
     },
     "max": {
       "message": "Maksimum"

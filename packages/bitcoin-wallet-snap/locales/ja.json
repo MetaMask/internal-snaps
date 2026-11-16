@@ -1,9 +1,6 @@
 {
   "locale": "ja",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "進める前にトランザクションを確認してください"
-    },
     "from": {
       "message": "送金元"
     },
@@ -57,9 +54,6 @@
     },
     "asset": {
       "message": "資産"
-    },
-    "sending": {
-      "message": "送信中"
     },
     "max": {
       "message": "最大"

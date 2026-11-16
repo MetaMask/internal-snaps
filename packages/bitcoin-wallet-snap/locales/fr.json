@@ -1,9 +1,6 @@
 {
   "locale": "fr",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "Vérifiez la transaction avant de continuer"
-    },
     "from": {
       "message": "De"
     },
@@ -57,9 +54,6 @@
     },
     "asset": {
       "message": "Actif"
-    },
-    "sending": {
-      "message": "Envoi"
     },
     "max": {
       "message": "Max"

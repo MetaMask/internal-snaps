@@ -1,9 +1,6 @@
 {
   "locale": "vi",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "Xem lại giao dịch trước khi tiếp tục"
-    },
     "from": {
       "message": "Từ"
     },
@@ -57,9 +54,6 @@
     },
     "asset": {
       "message": "Asset"
-    },
-    "sending": {
-      "message": "Đang gửi"
     },
     "max": {
       "message": "Tối đa"

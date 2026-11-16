@@ -1,9 +1,6 @@
 {
   "locale": "tl",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "Suriin ang transaksyon bago magpatuloy"
-    },
     "from": {
       "message": "Mula sa"
     },
@@ -57,9 +54,6 @@
     },
     "asset": {
       "message": "Asset"
-    },
-    "sending": {
-      "message": "Ipinapadala"
     },
     "max": {
       "message": "Max"

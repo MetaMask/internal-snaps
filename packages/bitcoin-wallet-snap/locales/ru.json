@@ -1,9 +1,6 @@
 {
   "locale": "ru",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "Проверьте транзакцию, прежде чем продолжить"
-    },
     "from": {
       "message": "От"
     },
@@ -57,9 +54,6 @@
     },
     "asset": {
       "message": "Asset"
-    },
-    "sending": {
-      "message": "Отправка..."
     },
     "max": {
       "message": "Макс."

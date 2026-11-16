@@ -1,7 +1,4 @@
 {
-  "reviewTransactionWarning": {
-    "message": "Review the transaction before proceeding"
-  },
   "from": {
     "message": "From"
   },
@@ -55,9 +52,6 @@
   },
   "asset": {
     "message": "Asset"
-  },
-  "sending": {
-    "message": "Sending"
   },
   "max": {
     "message": "Max"
@@ -253,9 +247,6 @@
   },
   "confirmation.signPsbt.confirmButton": {
     "message": "Sign"
-  },
-  "confirmation.signPsbt.psbt": {
-    "message": "Transaction (PSBT)"
   },
   "confirmation.signPsbt.options": {
     "message": "Options"

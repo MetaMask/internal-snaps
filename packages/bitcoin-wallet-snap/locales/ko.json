@@ -1,9 +1,6 @@
 {
   "locale": "ko",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "계속하기 전에 트랜잭션을 검토하세요"
-    },
     "from": {
       "message": "보내는 사람"
     },
@@ -57,9 +54,6 @@
     },
     "asset": {
       "message": "Asset"
-    },
-    "sending": {
-      "message": "보내는 중"
     },
     "max": {
       "message": "최대"
