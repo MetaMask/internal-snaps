@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Align Solana transaction security alerts with the shared transaction warning contract ([#617](https://github.com/MetaMask/internal-snaps/pull/617))
 - Update Solana confirmation copy to match the shared wording ([#614](https://github.com/MetaMask/internal-snaps/pull/614))
 - Report Solana RPC, Price API, Token API, NFT API and Security Alerts API outages through the shared fetch policy ([#583](https://github.com/MetaMask/internal-snaps/pull/583))
   - Slow or failing requests now emit `Snap Service Degraded` and `Snap Service Unavailable` Segment events, and give-ups are sent to Sentry without URLs, request params or response data.

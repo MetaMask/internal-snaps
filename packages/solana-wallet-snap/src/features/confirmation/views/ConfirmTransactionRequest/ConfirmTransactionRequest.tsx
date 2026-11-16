@@ -5,7 +5,6 @@ import {
   MaliciousAcknowledgementFormNames,
   MaliciousAcknowledgementScreen,
   requiresMaliciousAcknowledgement,
-  TransactionAlert,
 } from '@metamask/snap-networks-utils';
 import { Box, Container } from '@metamask/snaps-sdk/jsx';
 
@@ -15,7 +14,8 @@ import { Advanced } from '../../components/Advanced/Advanced';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { TransactionDetails } from '../../components/TransactionDetails/TransactionDetails';
 import { ConfirmSignAndSendTransactionFormNames } from './events';
-import { getErrorMessage } from './getErrorMessage';
+import { SecurityScanAlert } from './SecurityScanAlert';
+import { TransactionFailureAlert } from './TransactionFailureAlert';
 import type { ConfirmTransactionRequestContext } from './types';
 import { shouldDisableConfirmation } from './utils';
 
@@ -45,70 +45,46 @@ export const ConfirmTransactionRequest = ({
   const { nativeToken } = Networks[context.scope];
   const nativePrice = context.tokenPrices[nativeToken.caip19Id]?.price ?? null;
 
-  const isScanError = context.scan?.status === 'ERROR';
-
   const shouldDisableConfirmButton = shouldDisableConfirmation({
     scanFetchStatus: context.scanFetchStatus,
     transactionExpired: context.transactionExpired,
   });
 
-  // A malicious verdict opens the acknowledgement screen from the confirm
-  // button. The API can return any `result_type` string; the shared helper
-  // only treats `Malicious` as malicious.
+  // Local expiry is the blocking alert, so it is shown alone. Otherwise the
+  // security verdict and the simulation failure render side by side.
+  const isBlockedByExpiry = context.transactionExpired === true;
+
+  // A blocking state takes priority over the acknowledgement swap: the shared
+  // footer falls back to the disabled "Confirm" button so the user can never
+  // enter the acknowledgement flow for a transaction that is no longer valid.
+  // The API can return any `result_type` string. The shared helper only checks
+  // for `Malicious`, so unrecognized values are never treated as malicious.
   const requiresAcknowledgement = requiresMaliciousAcknowledgement(
     context.preferences.useSecurityAlerts,
     context.scan?.validation?.type as SecurityAlertResponse | null | undefined,
   );
 
-  const shouldShowAlert = context.preferences.useSecurityAlerts || isScanError;
-  const scanError = context.scan?.error;
-
   return (
     <Container>
       <Box>
-        {shouldShowAlert ? (
-          <TransactionAlert
-            labels={{
-              scanInProgressTitle: translate(
-                'confirmation.securityScanInProgressTitle',
-              ),
-              scanInProgressMessage: translate(
-                'confirmation.securityScanInProgressMessage',
-              ),
-              scanFailedTitle: translate('send.simulationTitleAPIError'),
-              scanFailedMessage: translate('send.simulationMessageAPIError'),
-              maliciousTitle: translate('confirmation.validationErrorTitle'),
-              maliciousMessage: translate(
-                'confirmation.validationErrorSubtitle',
-              ),
-              warningTitle: translate('confirmation.validationErrorTitle'),
-              warningMessage: translate('confirmation.validationErrorSubtitle'),
-              learnMore: translate('confirmation.validationErrorLearnMore'),
-              securityAdvisedBy: translate(
-                'confirmation.validationErrorSecurityAdviced',
-              ),
-            }}
-            isFetching={context.scanFetchStatus === 'fetching'}
-            isFetchError={context.scanFetchStatus === 'error'}
-            error={
-              scanError
-                ? {
-                    title: translate('confirmation.simulationErrorTitle'),
-                    message: translate('confirmation.simulationErrorSubtitle', {
-                      reason: getErrorMessage(scanError, context.preferences),
-                    }),
-                  }
-                : null
-            }
-            validation={context.scan?.validation ?? null}
+        {isBlockedByExpiry ? null : (
+          <SecurityScanAlert
+            scan={context.scan}
+            scanFetchStatus={context.scanFetchStatus}
+            preferences={context.preferences}
           />
-        ) : null}
+        )}
+        <TransactionFailureAlert
+          scan={context.scan}
+          scanFetchStatus={context.scanFetchStatus}
+          transactionExpired={context.transactionExpired}
+          preferences={context.preferences}
+        />
         <ActionHeader
           title={translate(`confirmation.${context.method}.title`)}
         />
         {context.preferences.simulateOnChainActions ? (
           <EstimatedChanges
-            scanStatus={context.scan?.status ?? null}
             scanFetchStatus={context.scanFetchStatus}
             changes={context.scan?.estimatedChanges ?? null}
             preferences={context.preferences}

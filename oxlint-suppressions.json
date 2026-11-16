@@ -826,7 +826,7 @@
   },
   "packages/solana-wallet-snap/src/core/services/transaction-scan/TransactionScanService.ts": {
     "internal-snaps/no-in-operator": {
-      "count": 2
+      "count": 1
     },
     "typescript/no-unsafe-assignment": {
       "count": 1
@@ -1207,6 +1207,16 @@
     },
     "typescript/no-unsafe-return": {
       "count": 2
+    }
+  },
+  "packages/solana-wallet-snap/src/features/confirmation/views/ConfirmTransactionRequest/SecurityScanAlert.tsx": {
+    "typescript/no-unsafe-return": {
+      "count": 2
+    }
+  },
+  "packages/solana-wallet-snap/src/features/confirmation/views/ConfirmTransactionRequest/TransactionFailureAlert.tsx": {
+    "typescript/no-unsafe-return": {
+      "count": 1
     }
   },
   "packages/solana-wallet-snap/src/features/confirmation/views/ConfirmTransactionRequest/events.tsx": {

@@ -1,4 +1,3 @@
-import { TRANSACTION_BLOCKHASH_EXPIRED } from '../../../../core/services/transaction-scan/buildExpiredScanResult';
 import type { TransactionScanError } from '../../../../core/services/transaction-scan/types';
 import type { Preferences } from '../../../../core/types/snap';
 import { i18n } from '../../../../core/utils/i18n';
@@ -12,7 +11,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   SlippageToleranceExceeded: 'transactionScan.errors.slippageToleranceExceeded', // Jupiter
   ExceededDesiredSlippageLimit:
     'transactionScan.errors.slippageToleranceExceeded', // Raydium
-  [TRANSACTION_BLOCKHASH_EXPIRED]:
+  TransactionBlockhashExpired:
     'transactionScan.errors.transactionBlockhashExpired',
 };
 
@@ -21,17 +20,21 @@ const ERROR_MESSAGES: Record<string, string> = {
  *
  * @param error - The error of the transaction scan.
  * @param preferences - The user preferences containing locale information.
- * @returns A user-friendly error message, or the original error code if no mapping exists.
+ * @returns The translated copy for a mapped error code, otherwise the API
+ * message, otherwise the unknown error copy.
  */
 export function getErrorMessage(
   error: TransactionScanError,
   preferences: Preferences,
 ): string {
   const translate = i18n(preferences.locale);
-  const { code } = error;
+  const { code, message } = error;
 
-  const translationKey =
-    (code && ERROR_MESSAGES[code]) ?? 'transactionScan.errors.unknownError';
+  const translationKey = code ? ERROR_MESSAGES[code] : undefined;
 
-  return translate(translationKey as keyof typeof translate);
+  if (translationKey) {
+    return translate(translationKey as keyof typeof translate);
+  }
+
+  return message ?? translate('transactionScan.errors.unknownError');
 }
