@@ -597,39 +597,43 @@ export class FeeCalculatorService {
         throw new Error('Simulation yields failed result');
       }
 
-      if ('energy_used' in result) {
-        const totalEnergy = result.energy_used;
-
-        // Fetch deployer's available energy
-        const deployerAvailableEnergy = await this.#getDeployerAvailableEnergy(
-          scope,
-          contractInfo?.origin_address,
-        );
-
-        // Calculate user's portion based on energy sharing
-        const { userEnergy } = this.#calculateEnergySharing(
-          totalEnergy,
-          contractInfo,
-          deployerAvailableEnergy,
-        );
-
-        this.#logger.log(
-          {
-            data: data.slice(0, 8),
-            totalEnergy,
-            userEnergy,
-            energyPenalty: result.energy_penalty,
-            hasEnergySharing: contractInfo !== null,
-            deployerAvailableEnergy,
-          },
-          `Energy estimate for ${data.slice(0, 8)}: user pays ${userEnergy} of ${totalEnergy} units`,
-        );
-
-        return userEnergy;
+      /**
+       * The API can omit `energy_used` when the simulation is partial, in which
+       * case we fall back to a fee-limit based estimate.
+       */
+      if (!Object.hasOwn(result, 'energy_used')) {
+        this.#logger.warn('No energy_used in result, using fallback');
+        return this.#getFallbackEnergy(scope, feeLimit);
       }
 
-      this.#logger.warn('No energy_used in result, using fallback');
-      return this.#getFallbackEnergy(scope, feeLimit);
+      const totalEnergy = result.energy_used;
+
+      // Fetch deployer's available energy
+      const deployerAvailableEnergy = await this.#getDeployerAvailableEnergy(
+        scope,
+        contractInfo?.origin_address,
+      );
+
+      // Calculate user's portion based on energy sharing
+      const { userEnergy } = this.#calculateEnergySharing(
+        totalEnergy,
+        contractInfo,
+        deployerAvailableEnergy,
+      );
+
+      this.#logger.log(
+        {
+          data: data.slice(0, 8),
+          totalEnergy,
+          userEnergy,
+          energyPenalty: result.energy_penalty,
+          hasEnergySharing: contractInfo !== null,
+          deployerAvailableEnergy,
+        },
+        `Energy estimate for ${data.slice(0, 8)}: user pays ${userEnergy} of ${totalEnergy} units`,
+      );
+
+      return userEnergy;
     } catch (error) {
       await this.#snapClient.trackError(error as Error);
       this.#logger.error(

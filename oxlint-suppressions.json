@@ -1839,11 +1839,6 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/clients/security-alerts-api/utils.ts": {
-    "internal-snaps/no-in-operator": {
-      "count": 5
-    }
-  },
   "packages/tron-wallet-snap/src/clients/snap/SnapClient.ts": {
     "typescript/no-unsafe-assignment": {
       "count": 2
@@ -1898,9 +1893,6 @@
     }
   },
   "packages/tron-wallet-snap/src/services/send/FeeCalculatorService.ts": {
-    "internal-snaps/no-in-operator": {
-      "count": 1
-    },
     "typescript/no-unsafe-argument": {
       "count": 1
     },
@@ -1959,9 +1951,6 @@
     }
   },
   "packages/tron-wallet-snap/src/services/transaction-scan/TransactionScanService.ts": {
-    "internal-snaps/no-in-operator": {
-      "count": 3
-    },
     "typescript/no-unsafe-assignment": {
       "count": 1
     }
@@ -2030,11 +2019,6 @@
   "packages/tron-wallet-snap/src/ui/confirmation/components/Fees.tsx": {
     "typescript/no-unsafe-return": {
       "count": 2
-    }
-  },
-  "packages/tron-wallet-snap/src/ui/confirmation/utils/getIconUrlForKnownAsset.ts": {
-    "internal-snaps/no-in-operator": {
-      "count": 1
     }
   },
   "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmSignMessage/ConfirmSignMessage.tsx": {
@@ -2119,11 +2103,6 @@
     },
     "typescript/no-unsafe-return": {
       "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/src/validation/transaction.ts": {
-    "internal-snaps/no-in-operator": {
-      "count": 2
     }
   },
   "scripts/create-package/cli.test.ts": {

@@ -10,7 +10,7 @@ import { TokenMetadata } from '../../../constants';
 export const getIconUrlForKnownAsset = (
   assetType: string,
 ): string | undefined => {
-  if (assetType in TokenMetadata) {
+  if (Object.hasOwn(TokenMetadata, assetType)) {
     return TokenMetadata[assetType as keyof typeof TokenMetadata].iconUrl;
   }
   return undefined;
