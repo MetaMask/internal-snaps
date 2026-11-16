@@ -155,7 +155,7 @@ export class TransactionExpirationRefresherService {
         }
 
         return !referencedBlockMatchesRawData({
-          rawData: rawData as TransactionRawDataWithExpirationMetadata,
+          rawData,
           referencedBlock,
         });
       });
