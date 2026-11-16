@@ -86,7 +86,12 @@ describe('AssetsRepository', () => {
       uiAmount: amount,
     });
 
-  const createRepository = (initialState: UnencryptedStateValue) => {
+  const createRepository = (
+    initialState: UnencryptedStateValue,
+  ): {
+    repository: AssetsRepository;
+    getState: () => UnencryptedStateValue;
+  } => {
     let stateValue = initialState;
 
     const mockState: IStateManager<UnencryptedStateValue> = {
@@ -96,12 +101,8 @@ describe('AssetsRepository', () => {
           return stateValue.assets as TResponse;
         }
 
-        if (key.startsWith('assets.')) {
-          const accountId = key.replace('assets.', '');
-          return stateValue.assets[accountId] as TResponse;
-        }
-
-        return undefined;
+        const accountId = key.replace('assets.', '');
+        return stateValue.assets[accountId] as TResponse;
       },
       setKey: async () => undefined,
       setKeyWith: async () => undefined,
@@ -115,7 +116,7 @@ describe('AssetsRepository', () => {
 
     return {
       repository: new AssetsRepository(mockState),
-      getState: () => stateValue,
+      getState: (): UnencryptedStateValue => stateValue,
     };
   };
 

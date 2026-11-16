@@ -216,7 +216,7 @@ async function withRender(
 
   const callRender = async (
     contextOverrides?: Partial<Parameters<typeof render>[2]>,
-  ) =>
+  ): ReturnType<typeof render> =>
     render(
       mockSnapClient as unknown as SnapClient,
       mockState as unknown as IStateManager<UnencryptedStateValue>,

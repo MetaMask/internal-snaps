@@ -49,17 +49,18 @@ import type { OnAmountInputRequestStruct } from './validation';
 
 const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
-const createPassThroughTransactionExpirationRefresherService = () =>
-  ({
-    ensureFreshMetadata: vi.fn(
-      async <TransactionType>({
-        transaction,
-      }: {
-        transaction: TransactionType;
-      }) => transaction,
-    ),
-    ensureFreshRawData: vi.fn(async ({ rawData }) => rawData),
-  }) as unknown as TransactionExpirationRefresherService;
+const createPassThroughTransactionExpirationRefresherService =
+  (): TransactionExpirationRefresherService =>
+    ({
+      ensureFreshMetadata: vi.fn(
+        async <TransactionType>({
+          transaction,
+        }: {
+          transaction: TransactionType;
+        }) => transaction,
+      ),
+      ensureFreshRawData: vi.fn(async ({ rawData }) => rawData),
+    }) as unknown as TransactionExpirationRefresherService;
 
 /**
  * Creates a minimal TronKeyringAccount fixture for tests that only need
@@ -323,7 +324,10 @@ describe('ClientRequestHandler', () => {
       number: number;
       timestamp: number;
       hashSegment?: string;
-    }) => ({
+    }): {
+      blockID: string;
+      block_header: { raw_data: { number: number; timestamp: number } };
+    } => ({
       blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
 
       block_header: {
@@ -334,7 +338,7 @@ describe('ClientRequestHandler', () => {
       },
     });
 
-    const getRefBlockBytes = (number: number) =>
+    const getRefBlockBytes = (number: number): string =>
       number.toString(16).slice(-4).padStart(4, '0');
 
     async function withComputeFeeHandler<ReturnValue>(
@@ -1941,9 +1945,10 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
         });
 
         const result = await handler.handle(request as JsonRpcRequest);
-        const signedTransactionId = (
-          mockTronWeb.trx.sign.mock.calls[0]?.[0] as { txID: string }
-        ).txID;
+        const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0] as {
+          txID: string;
+        };
+        const signedTransactionId = signedTransaction.txID;
 
         expect(result).toStrictEqual({ transactionId: signedTransactionId });
         expect(mockTransactionsService.save).toHaveBeenCalledWith(
