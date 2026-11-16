@@ -86,7 +86,7 @@
       "message": "We couldn't complete this safety check. Continue only if you trust the site and addresses involved."
     },
     "confirmation.simulationErrorTitle": {
-      "message": "This transaction was reverted during simulation."
+      "message": "This transaction is expected to fail."
     },
     "confirmation.simulationErrorSubtitle": {
       "message": "{reason}"
@@ -101,13 +101,13 @@
       "message": "This request may be risky"
     },
     "confirmation.validationWarningSubtitle": {
-      "message": "Only continue if you trust this site and/or every address involved."
+      "message": "Security Alerts found potential risk. Only continue if you trust this site and every address involved."
     },
     "confirmation.validationErrorLearnMore": {
-      "message": "Learn more"
+      "message": "See details"
     },
     "confirmation.validationErrorSecurityAdviced": {
-      "message": "Security advice by"
+      "message": "Powered by"
     },
     "confirmation.securityScanInProgressTitle": {
       "message": "Checking for security issues"

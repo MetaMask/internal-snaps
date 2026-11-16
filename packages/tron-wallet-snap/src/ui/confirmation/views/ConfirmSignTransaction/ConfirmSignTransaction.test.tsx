@@ -153,8 +153,7 @@ describe('ConfirmSignTransaction', () => {
     message: null,
   };
 
-  const SIMULATION_ERROR_TITLE =
-    'This transaction was reverted during simulation.';
+  const SIMULATION_ERROR_TITLE = 'This transaction is expected to fail.';
   const FRIENDLY_EXPIRED_MESSAGE = 'Please go back and try again';
 
   const renderTexts = (context: ConfirmSignTransactionContext): string[] => {
@@ -384,7 +383,7 @@ describe('ConfirmSignTransaction', () => {
       );
 
       expect(texts).toContain(MALICIOUS_TITLE);
-      expect(texts).toContain('Learn more');
+      expect(texts).toContain('See details');
       expect(serialized).toContain('"severity":"danger"');
     });
 
@@ -399,7 +398,7 @@ describe('ConfirmSignTransaction', () => {
 
       expect(texts).toContain('This request may be risky');
       expect(texts).toContain(
-        'Only continue if you trust this site and/or every address involved.',
+        'Security Alerts found potential risk. Only continue if you trust this site and every address involved.',
       );
 
       expect(serialized).toContain('"severity":"warning"');
