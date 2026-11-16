@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- BDK wallet errors now display their English message instead of a raw placeholder: renamed the mistyped `MmssingNonWitnessUtxo` locale key to `missingNonWitnessUtxo` and added the missing English messages for the `descriptor`, `policy`, `spendingPolicyRequired`, `version0`, `version1Csv`, `lockTime`, `rbfSequenceCsv`, `missingKeyOrigin`, `miniscriptPsbt`, and `unknownHrp` BDK error codes
+- BDK wallet errors now display their English message instead of a raw placeholder: renamed the mistyped `MmssingNonWitnessUtxo` locale key to `missingNonWitnessUtxo` and added the missing English messages for the `descriptor`, `policy`, `spendingPolicyRequired`, `version0`, `version1Csv`, `lockTime`, `rbfSequenceCsv`, `missingKeyOrigin`, `miniscriptPsbt`, and `unknownHrp` BDK error codes ([#610](https://github.com/MetaMask/internal-snaps/pull/610))
 
 ## [3.3.0]
 
