@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { FeeType } from '@metamask/keyring-api';
 import type { Logger } from '@metamask/snap-networks-utils';
+import { hasProperty } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import { TronWeb } from 'tronweb';
 import type { Types as TronwebTypes } from 'tronweb';
@@ -597,43 +598,39 @@ export class FeeCalculatorService {
         throw new Error('Simulation yields failed result');
       }
 
-      /**
-       * The API can omit `energy_used` when the simulation is partial, in which
-       * case we fall back to a fee-limit based estimate.
-       */
-      if (!Object.hasOwn(result, 'energy_used')) {
-        this.#logger.warn('No energy_used in result, using fallback');
-        return this.#getFallbackEnergy(scope, feeLimit);
+      if (hasProperty(result, 'energy_used')) {
+        const totalEnergy = result.energy_used;
+
+        // Fetch deployer's available energy
+        const deployerAvailableEnergy = await this.#getDeployerAvailableEnergy(
+          scope,
+          contractInfo?.origin_address,
+        );
+
+        // Calculate user's portion based on energy sharing
+        const { userEnergy } = this.#calculateEnergySharing(
+          totalEnergy,
+          contractInfo,
+          deployerAvailableEnergy,
+        );
+
+        this.#logger.log(
+          {
+            data: data.slice(0, 8),
+            totalEnergy,
+            userEnergy,
+            energyPenalty: result.energy_penalty,
+            hasEnergySharing: contractInfo !== null,
+            deployerAvailableEnergy,
+          },
+          `Energy estimate for ${data.slice(0, 8)}: user pays ${userEnergy} of ${totalEnergy} units`,
+        );
+
+        return userEnergy;
       }
 
-      const totalEnergy = result.energy_used;
-
-      // Fetch deployer's available energy
-      const deployerAvailableEnergy = await this.#getDeployerAvailableEnergy(
-        scope,
-        contractInfo?.origin_address,
-      );
-
-      // Calculate user's portion based on energy sharing
-      const { userEnergy } = this.#calculateEnergySharing(
-        totalEnergy,
-        contractInfo,
-        deployerAvailableEnergy,
-      );
-
-      this.#logger.log(
-        {
-          data: data.slice(0, 8),
-          totalEnergy,
-          userEnergy,
-          energyPenalty: result.energy_penalty,
-          hasEnergySharing: contractInfo !== null,
-          deployerAvailableEnergy,
-        },
-        `Energy estimate for ${data.slice(0, 8)}: user pays ${userEnergy} of ${totalEnergy} units`,
-      );
-
-      return userEnergy;
+      this.#logger.warn('No energy_used in result, using fallback');
+      return this.#getFallbackEnergy(scope, feeLimit);
     } catch (error) {
       await this.#snapClient.trackError(error as Error);
       this.#logger.error(

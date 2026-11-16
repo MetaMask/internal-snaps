@@ -1,4 +1,4 @@
-import { add0x } from '@metamask/utils';
+import { add0x, hasProperty } from '@metamask/utils';
 import { TronWeb, Types as TronwebTypes } from 'tronweb';
 
 import type { SecurityScanPayload } from './types';
@@ -77,9 +77,9 @@ export function extractScanParametersFromTransactionData(
   }
 
   let callValue = 0;
-  if (contractParam.call_value) {
+  if (hasProperty(contractParam, 'call_value') && contractParam.call_value) {
     callValue = contractParam.call_value;
-  } else if (contractParam.amount) {
+  } else if (hasProperty(contractParam, 'amount') && contractParam.amount) {
     callValue = contractParam.amount;
   }
 
@@ -88,13 +88,19 @@ export function extractScanParametersFromTransactionData(
     value: `0x${callValue.toString(16)}`,
   };
 
-  if (contractParam.contract_address) {
+  if (
+    hasProperty(contractParam, 'contract_address') &&
+    contractParam.contract_address
+  ) {
     payload.to = TronWeb.address.fromHex(contractParam.contract_address);
-  } else if (contractParam.to_address) {
+  } else if (
+    hasProperty(contractParam, 'to_address') &&
+    contractParam.to_address
+  ) {
     payload.to = TronWeb.address.fromHex(contractParam.to_address);
   }
 
-  if (contractParam.data) {
+  if (hasProperty(contractParam, 'data') && contractParam.data) {
     payload.data = add0x(contractParam.data);
   }
 

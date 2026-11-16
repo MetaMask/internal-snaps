@@ -1,5 +1,6 @@
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import { assert, define, is } from '@metamask/superstruct';
+import { hasProperty } from '@metamask/utils';
 import type { BigNumber } from 'bignumber.js';
 import { TronWeb, Types as TronwebTypes } from 'tronweb';
 
@@ -89,15 +90,19 @@ export function getTransactionTrxValue(
   }
 
   if (contract.type === TronwebTypes.ContractType.TransferContract) {
-    const { amount } = contract.parameter.value as { amount?: number };
-    return sunToTrx(amount ?? 0);
+    return sunToTrx(
+      hasProperty(value, 'amount') && typeof value.amount === 'number'
+        ? value.amount
+        : 0,
+    );
   }
 
   if (contract.type === TronwebTypes.ContractType.TriggerSmartContract) {
-    const { call_value: callValue } = contract.parameter.value as {
-      call_value?: number;
-    };
-    return sunToTrx(callValue ?? 0);
+    return sunToTrx(
+      hasProperty(value, 'call_value') && typeof value.call_value === 'number'
+        ? value.call_value
+        : 0,
+    );
   }
 
   return ZERO;
