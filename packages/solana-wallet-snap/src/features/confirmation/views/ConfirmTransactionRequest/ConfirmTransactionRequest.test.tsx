@@ -1,5 +1,8 @@
 import { SolMethod } from '@metamask/keyring-api';
-import { ActionHeader } from '@metamask/snap-networks-utils';
+import {
+  ActionHeader,
+  MaliciousAcknowledgementFormNames,
+} from '@metamask/snap-networks-utils';
 
 import type { SpotPrices } from '../../../../core/clients/price-api/types';
 import { KnownCaip19Id, Network } from '../../../../core/constants/solana';
@@ -28,6 +31,8 @@ const context: ConfirmTransactionRequestContext = {
   tokenPrices: {},
   tokenPricesFetchStatus: 'fetched',
   origin: '',
+  acknowledgementScreen: false,
+  acknowledged: false,
   preferences: {
     locale: 'en',
     currency: 'usd',
@@ -108,6 +113,31 @@ describe('ConfirmTransactionRequest', () => {
       },
     );
 
+    it('renders a destructive Confirm that opens acknowledgement for a malicious validation', () => {
+      const serialized = render({
+        scan: scan({ validation: { type: 'Malicious', reason: null } }),
+      });
+
+      expect(serialized).toContain('Confirm');
+      expect(serialized).toContain('"variant":"destructive"');
+      expect(serialized).toContain(MaliciousAcknowledgementFormNames.Review);
+      expect(serialized).not.toContain('Review alert');
+      expect(serialized).not.toContain('"disabled":true');
+      expect(serialized).not.toContain(
+        'confirm-sign-and-send-transaction-confirm',
+      );
+    });
+
+    it('keeps the confirm button for a warning validation', () => {
+      const serialized = render({
+        scan: scan({ validation: { type: 'Warning', reason: null } }),
+      });
+
+      expect(serialized).not.toContain('Review alert');
+      expect(serialized).not.toContain('"variant":"destructive"');
+      expect(serialized).toContain('confirm-sign-and-send-transaction-confirm');
+    });
+
     it('renders no banner for a benign validation', () => {
       expect(render({ scan: scan({}) })).not.toContain('"type":"Banner"');
     });
@@ -119,6 +149,33 @@ describe('ConfirmTransactionRequest', () => {
       });
 
       expect(serialized).not.toContain('"type":"Banner"');
+    });
+  });
+
+  describe('malicious acknowledgement', () => {
+    it('renders the acknowledgement title once with an untitled danger banner', () => {
+      const serialized = render({ acknowledgementScreen: true });
+
+      expect(serialized.match(/High-risk request/gu)).toHaveLength(1);
+      expect(serialized).toContain(
+        "Security partners found high-risk signals in this request. If you continue, your funds can't be recovered.",
+      );
+      expect(serialized).toContain('"type":"Banner"');
+      expect(serialized).toContain('"title":""');
+      expect(serialized).toContain('"severity":"danger"');
+      expect(serialized).toContain(
+        'I have acknowledged the risk and still want to proceed',
+      );
+      expect(serialized).toContain('"disabled":true');
+    });
+
+    it('enables the proceed button once the risk is acknowledged', () => {
+      const serialized = render({
+        acknowledgementScreen: true,
+        acknowledged: true,
+      });
+
+      expect(serialized).not.toContain('"disabled":true');
     });
   });
 

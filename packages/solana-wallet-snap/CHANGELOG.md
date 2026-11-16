@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [7.4.0]
-
 ### Added
+
+- Require risk acknowledgement before confirming Solana transactions flagged as malicious. Confirm opens a danger-styled acknowledgement screen, and proceeding requires checking the risk checkbox ([#615](https://github.com/MetaMask/internal-snaps/pull/615)).
+
+## [7.4.0]
 
 - Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for SOL and SPL assets. SOL leaves the rent-exempt minimum and the fee. SPL requires SOL to cover the fee, the rent-exempt minimum, and the recipient ATA rent unless `toAddress` shows the recipient ATA already exists, and the result is `0` when no amount can pass. ([#585](https://github.com/MetaMask/internal-snaps/pull/585))
 - `onAmountInput` now accepts an optional `toAddress` parameter for the shared client request shape. ([#589](https://github.com/MetaMask/internal-snaps/pull/589))
