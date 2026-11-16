@@ -6,7 +6,6 @@ import {
   defaultedUrlStruct,
   LogLevelStruct,
 } from '@metamask/snap-networks-utils';
-import type { Infer } from '@metamask/superstruct';
 import {
   coerce,
   defaulted,
@@ -94,8 +93,6 @@ export const ENVIRONMENT = {
     url: process.env.PRICE_API_URL,
   },
 };
-
-export type Config = Infer<typeof ConfigStruct>;
 
 /**
  * The configuration provider of the snap.
