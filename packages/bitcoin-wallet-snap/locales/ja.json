@@ -100,7 +100,7 @@
     "unknownUtxo": {
       "message": "トランザクションの構築に失敗: 不明な UTXO"
     },
-    "MmssingNonWitnessUtxo": {
+    "missingNonWitnessUtxo": {
       "message": "トランザクションの構築に失敗: non-witness UTXO が不足しています"
     },
     "base58": {

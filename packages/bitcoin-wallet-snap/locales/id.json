@@ -100,7 +100,7 @@
     "unknownUtxo": {
       "message": "Gagal membangun transaksi: UTXO tidak dikenal"
     },
-    "MmssingNonWitnessUtxo": {
+    "missingNonWitnessUtxo": {
       "message": "Gagal membangun transaksi: UTXO non-witness hilang"
     },
     "base58": {

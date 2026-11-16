@@ -100,7 +100,7 @@
     "unknownUtxo": {
       "message": "Transaktion konnte nicht erstellt werden: unbekannter UTXO"
     },
-    "MmssingNonWitnessUtxo": {
+    "missingNonWitnessUtxo": {
       "message": "Transaktion konnte nicht erstellt werden: fehlender Non-Witness UTXO"
     },
     "base58": {

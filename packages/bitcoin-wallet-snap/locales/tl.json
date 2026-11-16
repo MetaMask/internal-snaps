@@ -100,7 +100,7 @@
     "unknownUtxo": {
       "message": "Failed to build transaction: unknown UTXO"
     },
-    "MmssingNonWitnessUtxo": {
+    "missingNonWitnessUtxo": {
       "message": "Failed to build transaction: missing non-witness UTXO"
     },
     "base58": {
