@@ -1,6 +1,6 @@
 import { createI18n } from '@metamask/snap-networks-utils';
-import en from '@metamask/snap-networks-utils/locales/stellar/en.json';
-import es from '@metamask/snap-networks-utils/locales/stellar/es.json';
+import en from '@metamask/snap-networks-utils/locales/en.json';
+import es from '@metamask/snap-networks-utils/locales/es.json';
 
 export const locales = {
   en: en.messages,

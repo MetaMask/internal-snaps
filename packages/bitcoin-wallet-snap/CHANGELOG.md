@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Load locale catalogs from `@metamask/snap-networks-utils` instead of a local `locales/` directory, which is no longer published with the snap ([#575](https://github.com/MetaMask/internal-snaps/pull/575))
+- Load the shared merged locale catalog from `@metamask/snap-networks-utils` instead of per-snap `locales/` directories, reusing the same strings across snaps; conflicting shared copy is unified, which slightly changes some user-facing strings ([#575](https://github.com/MetaMask/internal-snaps/pull/575))
 - `onAmountInput` now estimates the send fee and rejects amounts that cannot cover it, including when `toAddress` is omitted ([#586](https://github.com/MetaMask/internal-snaps/pull/586))
 
 ## [3.3.0]

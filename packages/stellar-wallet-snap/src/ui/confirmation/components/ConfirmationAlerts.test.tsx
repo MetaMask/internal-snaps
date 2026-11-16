@@ -80,7 +80,7 @@ describe('ConfirmationAlerts', () => {
       expect(getType(component)).toBe('Banner');
       expect(getProps(component)).toMatchObject({
         severity: 'warning',
-        title: 'This transaction is expected to fail.',
+        title: 'This transaction was reverted during simulation.',
       });
     });
 
@@ -156,7 +156,7 @@ describe('ConfirmationAlerts', () => {
 
       expect(getProps(component)).toMatchObject({
         severity: 'warning',
-        title: 'This transaction is expected to fail.',
+        title: 'This transaction was reverted during simulation.',
       });
     });
 
@@ -226,7 +226,7 @@ describe('ConfirmationAlerts', () => {
     expect(getType(component)).toBe('Banner');
     expect(getProps(component)).toMatchObject({
       severity: 'danger',
-      title: 'This transaction is expected to fail.',
+      title: 'This transaction was reverted during simulation.',
     });
   });
 
@@ -271,7 +271,7 @@ describe('ConfirmationAlerts', () => {
     expect(getType(component)).toBe('Banner');
     expect(getProps(component)).toMatchObject({
       severity: 'danger',
-      title: 'This transaction is expected to fail.',
+      title: 'This transaction was reverted during simulation.',
     });
     expect(
       getProps(getProps(component)?.children as ComponentOrElement)?.children,
@@ -287,7 +287,7 @@ describe('ConfirmationAlerts', () => {
     });
 
     expect(getProps(component)).toMatchObject({
-      title: 'This transaction is expected to fail.',
+      title: 'This transaction was reverted during simulation.',
     });
   });
 });

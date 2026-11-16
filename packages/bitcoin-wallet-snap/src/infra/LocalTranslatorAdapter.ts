@@ -1,20 +1,20 @@
 import { FALLBACK_LANGUAGE } from '@metamask/snap-networks-utils';
-import de from '@metamask/snap-networks-utils/locales/bitcoin/de.json';
-import el from '@metamask/snap-networks-utils/locales/bitcoin/el.json';
-import en from '@metamask/snap-networks-utils/locales/bitcoin/en.json';
-import es from '@metamask/snap-networks-utils/locales/bitcoin/es.json';
-import es419 from '@metamask/snap-networks-utils/locales/bitcoin/es_419.json';
-import fr from '@metamask/snap-networks-utils/locales/bitcoin/fr.json';
-import hi from '@metamask/snap-networks-utils/locales/bitcoin/hi.json';
-import id from '@metamask/snap-networks-utils/locales/bitcoin/id.json';
-import ja from '@metamask/snap-networks-utils/locales/bitcoin/ja.json';
-import ko from '@metamask/snap-networks-utils/locales/bitcoin/ko.json';
-import pt from '@metamask/snap-networks-utils/locales/bitcoin/pt.json';
-import ru from '@metamask/snap-networks-utils/locales/bitcoin/ru.json';
-import tl from '@metamask/snap-networks-utils/locales/bitcoin/tl.json';
-import tr from '@metamask/snap-networks-utils/locales/bitcoin/tr.json';
-import vi from '@metamask/snap-networks-utils/locales/bitcoin/vi.json';
-import zhCN from '@metamask/snap-networks-utils/locales/bitcoin/zh_CN.json';
+import de from '@metamask/snap-networks-utils/locales/de.json';
+import el from '@metamask/snap-networks-utils/locales/el.json';
+import en from '@metamask/snap-networks-utils/locales/en.json';
+import es from '@metamask/snap-networks-utils/locales/es.json';
+import es419 from '@metamask/snap-networks-utils/locales/es_419.json';
+import fr from '@metamask/snap-networks-utils/locales/fr.json';
+import hi from '@metamask/snap-networks-utils/locales/hi.json';
+import id from '@metamask/snap-networks-utils/locales/id.json';
+import ja from '@metamask/snap-networks-utils/locales/ja.json';
+import ko from '@metamask/snap-networks-utils/locales/ko.json';
+import pt from '@metamask/snap-networks-utils/locales/pt.json';
+import ru from '@metamask/snap-networks-utils/locales/ru.json';
+import tl from '@metamask/snap-networks-utils/locales/tl.json';
+import tr from '@metamask/snap-networks-utils/locales/tr.json';
+import vi from '@metamask/snap-networks-utils/locales/vi.json';
+import zhCN from '@metamask/snap-networks-utils/locales/zh_CN.json';
 
 import type { Messages, Translator } from '../entities';
 

@@ -1,0 +1,458 @@
+{
+  "locale": "de",
+  "messages": {
+    "MmssingNonWitnessUtxo": {
+      "message": "Transaktion konnte nicht erstellt werden: fehlender Non-Witness UTXO"
+    },
+    "amount": {
+      "message": "Betrag"
+    },
+    "balance": {
+      "message": "Guthaben"
+    },
+    "base58": {
+      "message": "Ungültige Bitcoin-Adresse"
+    },
+    "bech32": {
+      "message": "Ungültige Bitcoin-Adresse"
+    },
+    "cancel": {
+      "message": "Abbrechen"
+    },
+    "clear": {
+      "message": "Löschen"
+    },
+    "confirmation.account": {
+      "message": "Konto"
+    },
+    "confirmation.advanced.data": {
+      "message": "Daten"
+    },
+    "confirmation.advanced.hide": {
+      "message": "Erweiterte Einstellungen verbergen"
+    },
+    "confirmation.advanced.programId": {
+      "message": "Programm-ID"
+    },
+    "confirmation.advanced.show": {
+      "message": "Erweiterte Einstellungen anzeigen"
+    },
+    "confirmation.advanced.unknownInstruction": {
+      "message": "Unbekannt"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Verbrauchte Bandbreite"
+    },
+    "confirmation.cancelButton": {
+      "message": "Stornieren"
+    },
+    "confirmation.confirmButton": {
+      "message": "Bestätigen"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "Geschätzte Änderungen"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Keine Änderungen"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Nicht verfügbar"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Sie empfangen"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Sie senden"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Geschätzte Änderungen"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Die geschätzten Änderungen beziehen sich auf das, was passieren könnte, wenn Sie diese Transaktion durchführen. Es handelt sich hierbei lediglich um eine Prognose, nicht um eine Garantie."
+    },
+    "confirmation.fee": {
+      "message": "Netzwerk-Gebühr"
+    },
+    "confirmation.feeError": {
+      "message": "Gebühr kann nicht geschätzt werden"
+    },
+    "confirmation.from": {
+      "message": "Von"
+    },
+    "confirmation.network": {
+      "message": "Netzwerk"
+    },
+    "confirmation.origin": {
+      "message": "Anfrage von"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "Die dApp, die die Signatur anfordert"
+    },
+    "confirmation.requestOrigin": {
+      "message": "Anfrage von"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "Transaktionsanfrage"
+    },
+    "confirmation.signIn.badAccount": {
+      "message": "Diese Seite fordert Sie auf, sich mit dem falschen Konto anzumelden."
+    },
+    "confirmation.signIn.chainId": {
+      "message": "Chain-ID"
+    },
+    "confirmation.signIn.description": {
+      "message": "Eine Website verlangt eine Anmeldung als Nachweis, dass Sie der Kontoinhaber sind."
+    },
+    "confirmation.signIn.expirationTime": {
+      "message": "Ablaufzeit"
+    },
+    "confirmation.signIn.issuedAt": {
+      "message": "Ausgestellt am"
+    },
+    "confirmation.signIn.message": {
+      "message": "Nachricht"
+    },
+    "confirmation.signIn.notBefore": {
+      "message": "Nicht vor"
+    },
+    "confirmation.signIn.requestId": {
+      "message": "Request-ID"
+    },
+    "confirmation.signIn.resources": {
+      "message": "Ressourcen"
+    },
+    "confirmation.signIn.signingInWith": {
+      "message": "Anmelden mit"
+    },
+    "confirmation.signIn.statement": {
+      "message": "Erklärung"
+    },
+    "confirmation.signIn.title": {
+      "message": "Anmeldeanfrage"
+    },
+    "confirmation.signIn.unknownDomain": {
+      "message": "Unbekannte Domain"
+    },
+    "confirmation.signMessage.confirmButton": {
+      "message": "Signieren"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Nachricht"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Nachricht signieren"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signing request"
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "Grund: {reason}"
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Diese Transaktion wurde während der Simulation zurückgesetzt."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Fahren Sie nur fort, wenn Sie jeder beteiligten Adresse vertrauen."
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "Aufgrund eines Fehlers konnten wir nicht auf Sicherheitswarnungen prüfen."
+    },
+    "confirmation.to": {
+      "message": "An"
+    },
+    "confirmation.transaction.title": {
+      "message": "Transaktionsanfrage"
+    },
+    "confirmation.transactionFee": {
+      "message": "Netzwerk-Gebühr"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Mehr erfahren"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Sicherheitshinweis von"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Wenn Sie diese Anfrage genehmigen, wird eine für Betrügereien bekannte Drittpartei Ihre gesamten Assets an sich reißen."
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Dies ist eine betrügerische Anfrage"
+    },
+    "continue": {
+      "message": "Fortfahren"
+    },
+    "error": {
+      "message": "Fehler"
+    },
+    "error.0": {
+      "message": "Ungültiges Format"
+    },
+    "error.1000": {
+      "message": "Validierung fehlgeschlagen"
+    },
+    "error.2000": {
+      "message": "Ressource nicht gefunden"
+    },
+    "error.3000": {
+      "message": "Verbindungsfehler"
+    },
+    "error.4000": {
+      "message": "Wallet-Zustand beschädigt"
+    },
+    "error.5000": {
+      "message": "Speicherfehler"
+    },
+    "error.6000": {
+      "message": "Methode nicht implementiert oder nicht unterstützt"
+    },
+    "error.7000": {
+      "message": "Zugriff verweigert oder unzureichende Berechtigung"
+    },
+    "error.8000": {
+      "message": "Benutzeraktionsfehler"
+    },
+    "error.9000": {
+      "message": "Beschädigter Zustand, Invariante nicht eingehalten oder fehlgeschlagene Assertion"
+    },
+    "error.internal": {
+      "message": "Interner Fehler. Bitte versuchen Sie es später erneut oder kontaktieren Sie den Support"
+    },
+    "feeRate": {
+      "message": "Gebührenrate"
+    },
+    "feeRateTooLow": {
+      "message": "Gebührenrate zu niedrig"
+    },
+    "feeTooLow": {
+      "message": "Gebühr zu niedrig"
+    },
+    "from": {
+      "message": "Von"
+    },
+    "inputTooLarge": {
+      "message": "Ungültiger Betrag: zu groß"
+    },
+    "insufficientFunds": {
+      "message": "Unzureichende Mittel, um Betrag plus Gebühr zu decken"
+    },
+    "invalidBase58PayloadLength": {
+      "message": "Ungültige Bitcoin-Adresse: ungültige Länge"
+    },
+    "invalidCharacter": {
+      "message": "Ungültiger Betrag: ungültiges Zeichen"
+    },
+    "invalidLegacyPrefix": {
+      "message": "Ungültige Bitcoin-Adresse: ungültiges Legacy-Prefix"
+    },
+    "legacyAddressTooLong": {
+      "message": "Ungültige Bitcoin-Adresse"
+    },
+    "missingDigits": {
+      "message": "Ungültiger Betrag: fehlende Ziffern"
+    },
+    "network": {
+      "message": "Netzwerk"
+    },
+    "networkFee": {
+      "message": "Netzwerkgebühr"
+    },
+    "networkFeeTooltip": {
+      "message": "Die gesamte Netzwerkgebühr"
+    },
+    "networkValidation": {
+      "message": "Ungültige Bitcoin-Adresse: falsches Netzwerk"
+    },
+    "noRecipients": {
+      "message": "Fehlende Empfänger"
+    },
+    "noUtxosSelected": {
+      "message": "Transaktion konnte nicht erstellt werden: fehlende UTXOs"
+    },
+    "outOfRange": {
+      "message": "Ungültiger Betrag: außerhalb des Bereichs"
+    },
+    "outputBelowDustLimit": {
+      "message": "Betrag unter Dust-Limit"
+    },
+    "psbt": {
+      "message": "Ungültiges PSBT"
+    },
+    "recipient": {
+      "message": "Empfänger"
+    },
+    "recipientPlaceholder": {
+      "message": "Empfängeradresse eingeben"
+    },
+    "review": {
+      "message": "Überprüfen"
+    },
+    "reviewTransactionWarning": {
+      "message": "Überprüfen Sie die Transaktion, bevor Sie fortfahren"
+    },
+    "send": {
+      "message": "Senden"
+    },
+    "send.amountField": {
+      "message": "Betrag"
+    },
+    "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+      "message": "Betrag muss größer sein als {minimumValue}"
+    },
+    "send.amountRequiredError": {
+      "message": "Betrag erforderlich"
+    },
+    "send.balance": {
+      "message": "Guthaben"
+    },
+    "send.cancelButton": {
+      "message": "Stornieren"
+    },
+    "send.confirmation.cancelButton": {
+      "message": "Stornieren"
+    },
+    "send.confirmation.fee": {
+      "message": "Netzwerk-Gebühr"
+    },
+    "send.confirmation.from": {
+      "message": "Von"
+    },
+    "send.confirmation.network": {
+      "message": "Netzwerk"
+    },
+    "send.confirmation.recipient": {
+      "message": "Empfänger"
+    },
+    "send.confirmation.sendButton": {
+      "message": "Senden"
+    },
+    "send.confirmation.title": {
+      "message": "Überprüfen"
+    },
+    "send.confirmation.transactionSpeed": {
+      "message": "Transaktionsgeschwindigkeit"
+    },
+    "send.confirmation.viewTransaction": {
+      "message": "Transaktion einsehen"
+    },
+    "send.continueButton": {
+      "message": "Fortfahren"
+    },
+    "send.fromField": {
+      "message": "Von"
+    },
+    "send.fromRequiredError": {
+      "message": "Konto erforderlich"
+    },
+    "send.insufficientBalance": {
+      "message": "Unzureichendes Guthaben"
+    },
+    "send.insuffientSolToCoverFee": {
+      "message": "Unzureichendes SOL-Guthaben zur Begleichung der Transaktionsgebühr"
+    },
+    "send.maxButton": {
+      "message": "Max."
+    },
+    "send.selectedTokenPriceNotAvailable": {
+      "message": "Preisangaben für Token in {currency} sind derzeit nicht verfügbar. Sie können dennoch Token versenden."
+    },
+    "send.send-pending.subtitle": {
+      "message": "Übermittlung Ihrer Transaktion."
+    },
+    "send.send-pending.title": {
+      "message": "Wird gesendet ..."
+    },
+    "send.simulationMessageAPIError": {
+      "message": "Fahren Sie nur fort, wenn Sie jeder beteiligten Adresse vertrauen."
+    },
+    "send.simulationMessageError": {
+      "message": "Diese Transaktion wurde während der Simulation zurückgesetzt."
+    },
+    "send.simulationTitleAPIError": {
+      "message": "Aufgrund eines Fehlers konnten wir nicht auf Sicherheitsbenachrichtigungen prüfen."
+    },
+    "send.simulationTitleError": {
+      "message": "Transaktionssimulation fehlgeschlagen"
+    },
+    "send.title": {
+      "message": "Senden"
+    },
+    "send.toField": {
+      "message": "An"
+    },
+    "send.toInvalidError": {
+      "message": "Ungültige Solana-Adresse"
+    },
+    "send.toPlaceholder": {
+      "message": "Öffentliche Adresse eingeben"
+    },
+    "send.toRequiredError": {
+      "message": "Adresse des Empfängers ist erforderlich"
+    },
+    "send.transaction-failure.subtitle": {
+      "message": "{amount} {tokenSymbol} konnte nicht gesendet werden"
+    },
+    "send.transaction-failure.title": {
+      "message": "Transaktion fehlgeschlagen"
+    },
+    "send.transaction-success.subtitle": {
+      "message": "{amount} {tokenSymbol} wurde erfolgreich gesendet"
+    },
+    "send.transaction-success.title": {
+      "message": "Versendet"
+    },
+    "sending": {
+      "message": "Wird gesendet"
+    },
+    "toAddress": {
+      "message": "An"
+    },
+    "tooPrecise": {
+      "message": "Ungültiger Betrag: zu präzise"
+    },
+    "total": {
+      "message": "Gesamt"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Unzureichendes Guthaben"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Unzureichende Mittel"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Ungültige Adresse"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Ungültige Transaktion"
+    },
+    "transactionScan.errors.slippageToleranceExceeded": {
+      "message": "Die Transaktion wurde aufgrund einer Überschreitung der Slippage-Toleranz zurückgesetzt."
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred."
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Nicht unterstützte Methode"
+    },
+    "transactionSpeed": {
+      "message": "Transaktionsgeschwindigkeit"
+    },
+    "transactionSpeedTooltip": {
+      "message": "Die geschätzte Zeit der Transaktion"
+    },
+    "unexpected": {
+      "message": "Ein unerwarteter Fehler ist aufgetreten"
+    },
+    "unknownError": {
+      "message": "Ein unbekannter Fehler ist aufgetreten"
+    },
+    "unknownUtxo": {
+      "message": "Transaktion konnte nicht erstellt werden: unbekannter UTXO"
+    },
+    "witnessProgram": {
+      "message": "Ungültige Bitcoin-Adresse: Witness-Programm"
+    },
+    "witnessVersion": {
+      "message": "Ungültige Bitcoin-Adresse: Witness-Version"
+    }
+  }
+}

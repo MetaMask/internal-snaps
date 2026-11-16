@@ -53,15 +53,15 @@ describe('EstimatedChanges', () => {
 
   it('renders not available when the scan fetch fails', () => {
     expect(render({ changes: null, scanFetchStatus: 'error' })).toContain(
-      'Not available',
+      'Estimated changes are not available',
     );
   });
 
   it('renders not available when the scan result is an error', () => {
     const serialized = render({ changes: null, scanStatus: 'ERROR' });
 
-    expect(serialized).toContain('Not available');
-    expect(serialized).not.toContain('No changes');
+    expect(serialized).toContain('Estimated changes are not available');
+    expect(serialized).not.toContain('No estimated changes');
   });
 
   it.each([
@@ -73,10 +73,10 @@ describe('EstimatedChanges', () => {
 
     expect(serialized).toContain('-1.5 SOL');
     expect(serialized).not.toContain('"type":"Skeleton"');
-    expect(serialized).not.toContain('Not available');
+    expect(serialized).not.toContain('Estimated changes are not available');
   });
 
   it('renders no changes when there are no estimated changes', () => {
-    expect(render({ changes: null })).toContain('No changes');
+    expect(render({ changes: null })).toContain('No estimated changes');
   });
 });

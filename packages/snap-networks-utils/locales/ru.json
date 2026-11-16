@@ -1,0 +1,359 @@
+{
+  "locale": "ru",
+  "messages": {
+    "amount": {
+      "message": "Сумма"
+    },
+    "balance": {
+      "message": "Баланс"
+    },
+    "cancel": {
+      "message": "Отмена"
+    },
+    "confirmation.account": {
+      "message": "Аккаунт"
+    },
+    "confirmation.advanced.data": {
+      "message": "Данные"
+    },
+    "confirmation.advanced.hide": {
+      "message": "Скрыть дополнительные"
+    },
+    "confirmation.advanced.programId": {
+      "message": "Ид. программы"
+    },
+    "confirmation.advanced.show": {
+      "message": "Показать дополнительные"
+    },
+    "confirmation.advanced.unknownInstruction": {
+      "message": "Неизвестно"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Использованная пропускная способность"
+    },
+    "confirmation.cancelButton": {
+      "message": "Отмена"
+    },
+    "confirmation.confirmButton": {
+      "message": "Подтвердить"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "Прогнозируемые изменения"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Изменений нет"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Недоступно"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Вы получаете"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Вы отправляете"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Прогнозируемые изменения"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Прогнозируемые изменения — это то, что может произойти, если вы завершите эту транзакцию. Это всего лишь прогноз, а не гарантия."
+    },
+    "confirmation.fee": {
+      "message": "Комиссия сети"
+    },
+    "confirmation.feeError": {
+      "message": "Невозможно оценить комиссию"
+    },
+    "confirmation.from": {
+      "message": "От"
+    },
+    "confirmation.network": {
+      "message": "Сеть"
+    },
+    "confirmation.origin": {
+      "message": "Запрос от"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "dApp, запрашивающий подпись"
+    },
+    "confirmation.requestOrigin": {
+      "message": "Запрос от"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "Запрос транзакции"
+    },
+    "confirmation.signIn.badAccount": {
+      "message": "Этот сайт просит вас войти в систему, используя неправильный счет."
+    },
+    "confirmation.signIn.chainId": {
+      "message": "ID блокчейна"
+    },
+    "confirmation.signIn.description": {
+      "message": "Сайт хочет, чтобы вы вошли в систему, чтобы доказать, что вы являетесь владельцем этого счета."
+    },
+    "confirmation.signIn.expirationTime": {
+      "message": "Срок экспирации"
+    },
+    "confirmation.signIn.issuedAt": {
+      "message": "Выпущено в"
+    },
+    "confirmation.signIn.message": {
+      "message": "Сообщение"
+    },
+    "confirmation.signIn.nonce": {
+      "message": "Одноразовый код"
+    },
+    "confirmation.signIn.notBefore": {
+      "message": "Не раньше"
+    },
+    "confirmation.signIn.requestId": {
+      "message": "ID запроса"
+    },
+    "confirmation.signIn.resources": {
+      "message": "Ресурсы"
+    },
+    "confirmation.signIn.signingInWith": {
+      "message": "Вход через"
+    },
+    "confirmation.signIn.statement": {
+      "message": "Выписка"
+    },
+    "confirmation.signIn.title": {
+      "message": "Запрос на вход"
+    },
+    "confirmation.signIn.unknownDomain": {
+      "message": "Неизвестный домен"
+    },
+    "confirmation.signIn.version": {
+      "message": "Версия"
+    },
+    "confirmation.signMessage.confirmButton": {
+      "message": "Подписать"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Сообщение"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Подписать сообщение"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signing request"
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "Причина: {reason}"
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Эта транзакция была отменена во время моделирования."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Продолжайте только если доверяете каждому адресу."
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "Из-за ошибки мы не смогли проверить предупреждения безопасности."
+    },
+    "confirmation.to": {
+      "message": "Кому"
+    },
+    "confirmation.transaction.title": {
+      "message": "Запрос транзакции"
+    },
+    "confirmation.transactionFee": {
+      "message": "Комиссия сети"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Подробнее"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Совет по безопасности от"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Если вы одобрите этот запрос, третья сторона, известная мошенническим поведением, похитит все ваши активы."
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Это запрос с целью обмана"
+    },
+    "error": {
+      "message": "Ошибка"
+    },
+    "error.internal": {
+      "message": "Внутренняя ошибка. Пожалуйста, попробуйте позже или обратитесь в поддержку"
+    },
+    "from": {
+      "message": "От"
+    },
+    "max": {
+      "message": "Макс."
+    },
+    "network": {
+      "message": "Сеть"
+    },
+    "networkFee": {
+      "message": "Network Fee"
+    },
+    "recipient": {
+      "message": "Получатель"
+    },
+    "review": {
+      "message": "Просмотр"
+    },
+    "reviewTransactionWarning": {
+      "message": "Проверьте транзакцию, прежде чем продолжить"
+    },
+    "send": {
+      "message": "Отправить"
+    },
+    "send.amountField": {
+      "message": "Сумма"
+    },
+    "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+      "message": "Сумма должна быть больше {minimumValue}"
+    },
+    "send.amountRequiredError": {
+      "message": "Требуется сумма"
+    },
+    "send.assetField": {
+      "message": "Токен"
+    },
+    "send.balance": {
+      "message": "Баланс"
+    },
+    "send.cancelButton": {
+      "message": "Отмена"
+    },
+    "send.confirmation.cancelButton": {
+      "message": "Отмена"
+    },
+    "send.confirmation.fee": {
+      "message": "Комиссия сети"
+    },
+    "send.confirmation.from": {
+      "message": "От"
+    },
+    "send.confirmation.network": {
+      "message": "Сеть"
+    },
+    "send.confirmation.recipient": {
+      "message": "Получатель"
+    },
+    "send.confirmation.sendButton": {
+      "message": "Отправить"
+    },
+    "send.confirmation.title": {
+      "message": "Проверить"
+    },
+    "send.confirmation.transactionSpeed": {
+      "message": "Скорость транзакции"
+    },
+    "send.confirmation.viewTransaction": {
+      "message": "Смотреть транзакцию"
+    },
+    "send.continueButton": {
+      "message": "Продолжить"
+    },
+    "send.fromField": {
+      "message": "От"
+    },
+    "send.fromRequiredError": {
+      "message": "Требуется счет"
+    },
+    "send.insufficientBalance": {
+      "message": "Недостаточный баланс"
+    },
+    "send.insuffientSolToCoverFee": {
+      "message": "Недостаточный баланс SOL для покрытия комиссии за транзакцию"
+    },
+    "send.maxButton": {
+      "message": "Макс."
+    },
+    "send.selectedTokenPriceNotAvailable": {
+      "message": "Цены на токены в {currency} в настоящее время недоступны. Вы все еще можете отправлять токены."
+    },
+    "send.send-pending.subtitle": {
+      "message": "Ваша транзакция отправлена."
+    },
+    "send.send-pending.title": {
+      "message": "Отправка..."
+    },
+    "send.simulationMessageAPIError": {
+      "message": "Продолжайте только если вы доверяете каждому адресу."
+    },
+    "send.simulationMessageError": {
+      "message": "Эта транзакция была отменена во время моделирования."
+    },
+    "send.simulationTitleAPIError": {
+      "message": "Из -за ошибки мы не смогли проверить наличие оповещений о безопасности."
+    },
+    "send.simulationTitleError": {
+      "message": "Моделирование транзакции не удалось"
+    },
+    "send.title": {
+      "message": "Отправить"
+    },
+    "send.toField": {
+      "message": "Кому"
+    },
+    "send.toInvalidError": {
+      "message": "Неверный адрес Solana"
+    },
+    "send.toPlaceholder": {
+      "message": "Введите публичный адрес"
+    },
+    "send.toRequiredError": {
+      "message": "Требуется адрес получателя"
+    },
+    "send.transaction-failure.subtitle": {
+      "message": "Невозможно отправить {amount} {tokenSymbol}"
+    },
+    "send.transaction-failure.title": {
+      "message": "Транзакция не удалась"
+    },
+    "send.transaction-success.subtitle": {
+      "message": "{amount} {tokenSymbol} успешно отправлено"
+    },
+    "send.transaction-success.title": {
+      "message": "Отправлена"
+    },
+    "sending": {
+      "message": "Отправка..."
+    },
+    "toAddress": {
+      "message": "To Address"
+    },
+    "total": {
+      "message": "Итого"
+    },
+    "transactionScan.errors.accountAlreadyInUse": {
+      "message": "Счет с тем же адресом уже существует."
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Недостаточный баланс"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Недостаточно средств"
+    },
+    "transactionScan.errors.insufficientSol": {
+      "message": "На счете недостаточно SOL для выполнения операции."
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Неверный адрес"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Недействительная транзакция"
+    },
+    "transactionScan.errors.slippageToleranceExceeded": {
+      "message": "Транзакция возвращена, потому что толерантность к проскальзыванию превышена."
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred."
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Неподдерживаемый метод"
+    },
+    "transactionSpeed": {
+      "message": "Скорость транзакции"
+    },
+    "transactionSpeedTooltip": {
+      "message": "Примерное время транзакции"
+    }
+  }
+}

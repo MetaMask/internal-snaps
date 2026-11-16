@@ -1,0 +1,473 @@
+{
+  "locale": "hi",
+  "messages": {
+    "MmssingNonWitnessUtxo": {
+      "message": "ट्रांसेक्शन बनाने में विफल: गैर-गवाह UTXO गायब"
+    },
+    "amount": {
+      "message": "राशि"
+    },
+    "asset": {
+      "message": "एसेट"
+    },
+    "balance": {
+      "message": "शेष राशि"
+    },
+    "base58": {
+      "message": "अमान्य बिटकॉइन पता"
+    },
+    "bech32": {
+      "message": "अमान्य बिटकॉइन पता"
+    },
+    "cancel": {
+      "message": "रद्द करें"
+    },
+    "clear": {
+      "message": "साफ़ करें"
+    },
+    "confirmation.account": {
+      "message": "अकाउंट"
+    },
+    "confirmation.advanced.data": {
+      "message": "डेटा"
+    },
+    "confirmation.advanced.hide": {
+      "message": "एडवांस्ड को छुपाएं"
+    },
+    "confirmation.advanced.programId": {
+      "message": "प्रोग्राम आईडी"
+    },
+    "confirmation.advanced.show": {
+      "message": "एडवांस्ड दिखाएं"
+    },
+    "confirmation.advanced.unknownInstruction": {
+      "message": "अज्ञात"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "खपत की गई बैंडविड्थ"
+    },
+    "confirmation.cancelButton": {
+      "message": "कैंसिल करें"
+    },
+    "confirmation.confirmButton": {
+      "message": "कन्फर्म करें"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "अनुमानित बदलाव"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "कोई बदलाव नहीं"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "उपलब्ध नहीं है"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "आप प्राप्त करते हैं"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "आप भेजते हैं"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "अनुमानित बदलाव"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "अगर आप यह ट्रांसेक्शन करते हैं तो अनुमानित परिवर्तन हो सकते हैं। यह सिर्फ एक प्रेडिक्शन है, कोई गारंटी नहीं।"
+    },
+    "confirmation.fee": {
+      "message": "नेटवर्क फीस"
+    },
+    "confirmation.feeError": {
+      "message": "फीस का अनुमान लगाने में अक्षम"
+    },
+    "confirmation.from": {
+      "message": "से"
+    },
+    "confirmation.network": {
+      "message": "नेटवर्क"
+    },
+    "confirmation.origin": {
+      "message": "इनसे मिला अनुरोध"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "हस्ताक्षर का अनुरोध करने वाला dApp"
+    },
+    "confirmation.requestOrigin": {
+      "message": "इनसे मिला अनुरोध"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "ट्रांसेक्शन रिक्वेस्ट"
+    },
+    "confirmation.signIn.badAccount": {
+      "message": "यह साइट आपसे गलत अकाउंट का उपयोग करके साइन इन करने के लिए कह रही है।"
+    },
+    "confirmation.signIn.chainId": {
+      "message": "चेन ID"
+    },
+    "confirmation.signIn.description": {
+      "message": "एक साइट चाहती है कि आप यह साबित करने के लिए साइन इन करें कि यह अकाउंट आपका है।"
+    },
+    "confirmation.signIn.expirationTime": {
+      "message": "एक्सपायर होने का समय"
+    },
+    "confirmation.signIn.issuedAt": {
+      "message": "में जारी किया गया"
+    },
+    "confirmation.signIn.message": {
+      "message": "मैसेज"
+    },
+    "confirmation.signIn.notBefore": {
+      "message": "पहले नहीं"
+    },
+    "confirmation.signIn.requestId": {
+      "message": "रिक्वेस्ट ID"
+    },
+    "confirmation.signIn.resources": {
+      "message": "संसाधन"
+    },
+    "confirmation.signIn.signingInWith": {
+      "message": "के साथ साइन इन किया जा रहा है"
+    },
+    "confirmation.signIn.statement": {
+      "message": "कथन"
+    },
+    "confirmation.signIn.title": {
+      "message": "साइन-इन का अनुरोध"
+    },
+    "confirmation.signIn.unknownDomain": {
+      "message": "अज्ञात डोमेन"
+    },
+    "confirmation.signIn.version": {
+      "message": "वर्शन"
+    },
+    "confirmation.signMessage.confirmButton": {
+      "message": "हस्ताक्षर"
+    },
+    "confirmation.signMessage.message": {
+      "message": "संदेश"
+    },
+    "confirmation.signMessage.title": {
+      "message": "संदेश पर हस्ताक्षर करें"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signing request"
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "वजह: {reason}"
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "सिमुलेशन के दौरान ये ट्रांसेक्शन वापस कर दिया गया।"
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "केवल तभी जारी रखें जब आप हर शामिल पते पर भरोसा करते हैं।"
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "एक त्रुटि के कारण, हम सुरक्षा अलर्ट की जांच नहीं कर सके।"
+    },
+    "confirmation.to": {
+      "message": "को"
+    },
+    "confirmation.transaction.title": {
+      "message": "ट्रांसेक्शन रिक्वेस्ट"
+    },
+    "confirmation.transactionFee": {
+      "message": "नेटवर्क फीस"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "ज़्यादा जानें"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "की ओर से सुरक्षा सलाह"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "यदि आप इस रिक्वेस्ट को एप्रूव करते हैं, तो स्कैम के लिए मशहूर कोई थर्ड पार्टी आपके सारे एसेट चुरा लेगी।"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "इस रिक्वेस्ट को धोखेबाज़ी के उद्देश्य से भेजा गया है"
+    },
+    "continue": {
+      "message": "जारी रखें"
+    },
+    "error": {
+      "message": "त्रुटि"
+    },
+    "error.0": {
+      "message": "अमान्य प्रारूप"
+    },
+    "error.1000": {
+      "message": "मान्यकरण विफल"
+    },
+    "error.2000": {
+      "message": "संसाधन नहीं मिला"
+    },
+    "error.3000": {
+      "message": "कनेक्शन त्रुटि"
+    },
+    "error.4000": {
+      "message": "वॉलेट स्थिति दूषित"
+    },
+    "error.5000": {
+      "message": "भंडारण त्रुटि"
+    },
+    "error.6000": {
+      "message": "विधि लागू नहीं या समर्थित नहीं"
+    },
+    "error.7000": {
+      "message": "अनुमति अस्वीकृत या अपर्याप्त प्राधिकरण"
+    },
+    "error.8000": {
+      "message": "उपयोगकर्ता क्रिया त्रुटि"
+    },
+    "error.9000": {
+      "message": "दूषित स्थिति, अपरिवर्तनीय नहीं माना गया या असफल दावा."
+    },
+    "error.internal": {
+      "message": "आंतरिक त्रुटि. कृपया बाद में प्रयास करें या समर्थन से संपर्क करें"
+    },
+    "feeRate": {
+      "message": "शुल्क दर"
+    },
+    "feeRateTooLow": {
+      "message": "शुल्क दर बहुत कम है"
+    },
+    "feeTooLow": {
+      "message": "शुल्क बहुत कम है"
+    },
+    "from": {
+      "message": "से"
+    },
+    "inputTooLarge": {
+      "message": "अमान्य राशि: बहुत बड़ा"
+    },
+    "insufficientFunds": {
+      "message": "राशि और शुल्क कवर करने के लिए अपर्याप्त फंड"
+    },
+    "invalidBase58PayloadLength": {
+      "message": "अमान्य बिटकॉइन पता: अमान्य लंबाई"
+    },
+    "invalidCharacter": {
+      "message": "अमान्य राशि: अमान्य अक्षर"
+    },
+    "invalidLegacyPrefix": {
+      "message": "अमान्य बिटकॉइन पता: अमान्य लिगेसी उपसर्ग"
+    },
+    "legacyAddressTooLong": {
+      "message": "अमान्य बिटकॉइन पता"
+    },
+    "max": {
+      "message": "अधिकतम"
+    },
+    "minutes": {
+      "message": "मिनट"
+    },
+    "missingDigits": {
+      "message": "अमान्य राशि: अंक गायब"
+    },
+    "network": {
+      "message": "नेटवर्क"
+    },
+    "networkFee": {
+      "message": "नेटवर्क शुल्क"
+    },
+    "networkFeeTooltip": {
+      "message": "कुल नेटवर्क शुल्क"
+    },
+    "networkValidation": {
+      "message": "अमान्य बिटकॉइन पता: गलत नेटवर्क"
+    },
+    "noRecipients": {
+      "message": "प्राप्तकर्ता गायब हैं"
+    },
+    "noUtxosSelected": {
+      "message": "ट्रांसेक्शन बनाने में विफल: UTXOs गायब हैं"
+    },
+    "outOfRange": {
+      "message": "अमान्य राशि: रेंज के बाहर"
+    },
+    "outputBelowDustLimit": {
+      "message": "राशि डस्ट लिमिट से कम है"
+    },
+    "psbt": {
+      "message": "अमान्य PSBT"
+    },
+    "recipient": {
+      "message": "प्राप्तकर्ता"
+    },
+    "recipientPlaceholder": {
+      "message": "प्राप्त करने वाला पता दर्ज करें"
+    },
+    "review": {
+      "message": "समीक्षा करें"
+    },
+    "reviewTransactionWarning": {
+      "message": "आगे बढ़ने से पहले ट्रांसेक्शन की समीक्षा करें"
+    },
+    "send": {
+      "message": "भेजें"
+    },
+    "send.amountField": {
+      "message": "रकम"
+    },
+    "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+      "message": "राशि {minimumValue} से ज़्यादा होनी चाहिए"
+    },
+    "send.amountRequiredError": {
+      "message": "अमाउंट होना ज़रूरी है"
+    },
+    "send.assetField": {
+      "message": "टोकन"
+    },
+    "send.balance": {
+      "message": "बैलेंस"
+    },
+    "send.cancelButton": {
+      "message": "कैंसिल करें"
+    },
+    "send.confirmation.cancelButton": {
+      "message": "कैंसिल करें"
+    },
+    "send.confirmation.fee": {
+      "message": "नेटवर्क फीस"
+    },
+    "send.confirmation.from": {
+      "message": "द्वारा भेजा गया"
+    },
+    "send.confirmation.network": {
+      "message": "नेटवर्क"
+    },
+    "send.confirmation.recipient": {
+      "message": "द्वारा प्राप्त किया गया"
+    },
+    "send.confirmation.sendButton": {
+      "message": "भेजें"
+    },
+    "send.confirmation.title": {
+      "message": "समीक्षा करें"
+    },
+    "send.confirmation.transactionSpeed": {
+      "message": "ट्रांसेक्शन स्पीड"
+    },
+    "send.confirmation.viewTransaction": {
+      "message": "ट्रांसेक्शन देखें"
+    },
+    "send.continueButton": {
+      "message": "जारी रखें"
+    },
+    "send.fromField": {
+      "message": "द्वारा भेजा गया"
+    },
+    "send.fromRequiredError": {
+      "message": "अकाउंट होना ज़रूरी है"
+    },
+    "send.insufficientBalance": {
+      "message": "कम बैलेंस"
+    },
+    "send.insuffientSolToCoverFee": {
+      "message": "ट्रांसेक्शन शुल्क को कवर करने के लिए अपर्याप्त SOL बैलेंस"
+    },
+    "send.maxButton": {
+      "message": "मैक्स"
+    },
+    "send.selectedTokenPriceNotAvailable": {
+      "message": "{currency} में टोकनों के लिए कीमत फिलहाल उपलब्ध नहीं हैं। पर आप अभी भी टोकन भेज सकते हैं।"
+    },
+    "send.send-pending.subtitle": {
+      "message": "आपका ट्रांसेक्शन सबमिट किया गया।"
+    },
+    "send.send-pending.title": {
+      "message": "भेजा जा रहा है..."
+    },
+    "send.simulationMessageAPIError": {
+      "message": "केवल तभी आगे बढ़ें जब आपको शामिल प्रत्येक एड्रेस पर भरोसा हो।"
+    },
+    "send.simulationMessageError": {
+      "message": "सिमुलेशन के दौरान ये ट्रांसेक्शन वापस कर दिया गया।"
+    },
+    "send.simulationTitleAPIError": {
+      "message": "किसी गड़बड़ी (एरर) के कारण, हम सुरक्षा एलर्ट की जांच नहीं कर सके।"
+    },
+    "send.simulationTitleError": {
+      "message": "ट्रांसेक्शन सिमुलेशन विफल रहा"
+    },
+    "send.title": {
+      "message": "भेजें"
+    },
+    "send.toField": {
+      "message": "को भेजा गया"
+    },
+    "send.toInvalidError": {
+      "message": "सोलाना का अमान्य पता"
+    },
+    "send.toPlaceholder": {
+      "message": "पब्लिक एड्रेस डालें"
+    },
+    "send.toRequiredError": {
+      "message": "जिसको भेजा जा रहा है उसका एड्रेस होना चाहिए"
+    },
+    "send.transaction-failure.subtitle": {
+      "message": "{amount} {tokenSymbol} भेज नहीं पा रहे हैं"
+    },
+    "send.transaction-failure.title": {
+      "message": "ट्रांसेक्शन नहीं हो पाया"
+    },
+    "send.transaction-success.subtitle": {
+      "message": "{amount} {tokenSymbol} सफलतापूर्वक भेजा गया"
+    },
+    "send.transaction-success.title": {
+      "message": "भेजा गया"
+    },
+    "sending": {
+      "message": "भेजा जा रहा है"
+    },
+    "toAddress": {
+      "message": "को"
+    },
+    "tooPrecise": {
+      "message": "अमान्य राशि: बहुत सटीक"
+    },
+    "total": {
+      "message": "कुल"
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "अपर्याप्त शेष राशि"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "अपर्याप्त धनराशि"
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "अमान्य पता"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "अमान्य ट्रांसेक्शन"
+    },
+    "transactionScan.errors.slippageToleranceExceeded": {
+      "message": "ट्रांसेक्शन को वापस कर दिया गया क्योंकि स्लिपेज (slippage) टॉलरेंस की सीमा पार हो गई थी।"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred."
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "असमर्थित विधि"
+    },
+    "transactionSpeed": {
+      "message": "ट्रांसेक्शन की गति"
+    },
+    "transactionSpeedTooltip": {
+      "message": "ट्रांसेक्शन का अनुमानित समय"
+    },
+    "unexpected": {
+      "message": "एक अप्रत्याशित त्रुटि हुई"
+    },
+    "unknownError": {
+      "message": "एक अज्ञात त्रुटि हुई"
+    },
+    "unknownUtxo": {
+      "message": "ट्रांसेक्शन बनाने में विफल: अज्ञात UTXO"
+    },
+    "witnessProgram": {
+      "message": "अमान्य बिटकॉइन पता: गवाह कार्यक्रम"
+    },
+    "witnessVersion": {
+      "message": "अमान्य बिटकॉइन पता: गवाह संस्करण"
+    }
+  }
+}

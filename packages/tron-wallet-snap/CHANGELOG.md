@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Load locale catalogs from `@metamask/snap-networks-utils` instead of a local `locales/` directory, which is no longer published with the snap ([#575](https://github.com/MetaMask/internal-snaps/pull/575))
+- Load the shared merged locale catalog from `@metamask/snap-networks-utils` instead of per-snap `locales/` directories, reusing the same strings across snaps; conflicting shared copy is unified, which slightly changes some user-facing strings ([#575](https://github.com/MetaMask/internal-snaps/pull/575))
 - Show security alerts separately from transaction and simulation errors, prioritizing blocking errors ([#603](https://github.com/MetaMask/internal-snaps/pull/603))
 - Show a consistent informational security-check unavailable banner when validation fails or a scan returns no requested results, including validation. ([#601](https://github.com/MetaMask/internal-snaps/pull/601))
 - `onAmountInput` now estimates send fees when `toAddress` is not provided ([#554](https://github.com/MetaMask/internal-snaps/pull/554))

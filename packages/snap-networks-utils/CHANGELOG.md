@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add the wallet snaps' locale catalogs under `locales/<snap>/`, exposed through a `./locales/*` package export, and add a `createI18n` utility for building translators with locale fallback and `{placeholder}` interpolation ([#575](https://github.com/MetaMask/internal-snaps/pull/575))
+- Add a single merged locale catalog shared by all wallet snaps under `locales/`, exposed through a `./locales/*` package export, and add a `createI18n` utility for building translators with per-message fallback to the fallback locale and `{placeholder}` interpolation ([#575](https://github.com/MetaMask/internal-snaps/pull/575))
 - Add optional `analytics` and `trackError` options to `createFetchPolicy`, to send the "Snap Service Degraded" and "Snap Service Unavailable" events and report calls that use up their retries ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
 - Add `isReportedFetchPolicyError`, so callers can skip errors a policy already reported ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
 - Add `trackServiceDegraded` and `trackServiceUnavailable` to `AnalyticsService` ([#566](https://github.com/MetaMask/internal-snaps/pull/566))

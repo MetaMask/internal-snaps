@@ -9,6 +9,7 @@ const locales = {
   es: {
     greeting: { message: 'Hola {name}' },
     farewell: { message: 'Adiós' },
+    onlyInSpanish: { message: 'Solo español' },
   },
 };
 
@@ -35,9 +36,14 @@ describe('createI18n', () => {
     expect(translate('farewell')).toBe('Goodbye');
   });
 
-  it('returns the key when it is missing from the requested locale', () => {
+  it('falls back to the fallback locale for a key missing from the requested locale', () => {
     const translate = createI18n(locales)('es');
-    expect(translate('onlyInEnglish')).toBe('onlyInEnglish');
+    expect(translate('onlyInEnglish')).toBe('Translated');
+  });
+
+  it('returns the key when no locale has the message', () => {
+    const translate = createI18n(locales)('en');
+    expect(translate('onlyInSpanish')).toBe('onlyInSpanish');
   });
 
   it('returns the key when no catalog is available', () => {
