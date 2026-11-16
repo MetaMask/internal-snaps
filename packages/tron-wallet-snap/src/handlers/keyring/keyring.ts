@@ -453,7 +453,7 @@ export class KeyringHandler implements KeyringSnapRpc {
     const result = await this.#walletService.handleKeyringRequest({
       account,
       scope: requestToHandle.scope,
-      method: requestToHandle.request.method as TronMultichainMethod,
+      method: requestToHandle.request.method,
       params: requestToHandle.request.params ?? params,
     });
 
