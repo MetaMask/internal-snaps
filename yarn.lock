@@ -2250,7 +2250,6 @@ __metadata:
     dotenv: "npm:^17.2.1"
     jest: "npm:30.0.3"
     oxfmt: "npm:^0.70.0"
-    superstruct: "npm:^2.0.2"
     ts-jest: "npm:^29.4.14"
     typescript: "npm:~5.8.3"
     uuid: "npm:^14.0.0"
@@ -14769,13 +14768,6 @@ __metadata:
   version: 2.3.0
   resolution: "strnum@npm:2.3.0"
   checksum: 10/ce79c86bb2b96f053eb28e14924c13604e22977dcdece9aa914c25e16cc5c4bbe048976fe0b2a4decf08a1e13600b820749cea25463fc0e5fee3078339e0a457
-  languageName: node
-  linkType: hard
-
-"superstruct@npm:^2.0.2":
-  version: 2.0.2
-  resolution: "superstruct@npm:2.0.2"
-  checksum: 10/10e1944a9da4baee187fbaa6c5d97d7af266b55786dfe50bce67f0f1e7d93f1a5a42dd51e245a2e16404f8336d07c21c67f1c1fbc4ad0a252d3d2601d6c926da
   languageName: node
   linkType: hard
 
