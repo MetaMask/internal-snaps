@@ -94,7 +94,6 @@ export const ConfirmSignIn: SnapComponent<ConfirmSignInProps> = ({
         {preferences.simulateOnChainActions ? (
           <EstimatedChanges
             changes={null}
-            scanStatus={null}
             preferences={preferences}
             scanFetchStatus="fetched"
           />

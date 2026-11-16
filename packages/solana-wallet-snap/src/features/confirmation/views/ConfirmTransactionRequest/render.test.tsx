@@ -369,6 +369,8 @@ describe('render tracking', () => {
 
     return {
       render,
+      createInterface,
+      getPreferences,
       trackError,
       calculateFee,
       extractDestinationAddress,
@@ -380,6 +382,57 @@ describe('render tracking', () => {
       transactionScanService,
     };
   };
+
+  it.each([
+    [false, false, false, 'fetched', 0],
+    [false, false, true, 'fetched', 0],
+    [true, false, false, 'fetching', 1],
+    [false, true, false, 'fetching', 1],
+    [true, true, false, 'fetching', 1],
+  ] as const)(
+    'initializes security=%s simulation=%s expiry=%s with scan state %s',
+    async (
+      useSecurityAlerts,
+      simulateOnChainActions,
+      transactionExpired,
+      scanFetchStatus,
+      expectedScanCalls,
+    ) => {
+      const {
+        render,
+        createInterface,
+        getPreferences,
+        transactionScanService,
+      } = await setupTest();
+      getPreferences.mockResolvedValue({
+        locale: 'en',
+        currency: 'usd',
+        useExternalPricingData: false,
+        useSecurityAlerts,
+        simulateOnChainActions,
+      });
+      transactionScanService.scanTransaction.mockResolvedValue({
+        status: 'SUCCESS',
+        estimatedChanges: { assets: [] },
+        validation: { type: 'Benign', reason: null },
+        error: null,
+      });
+
+      await render({
+        ...DEFAULT_CONFIRMATION_CONTEXT,
+        networkImage: null,
+        transactionExpired,
+      });
+
+      expect(createInterface).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({ scanFetchStatus, transactionExpired }),
+      );
+      expect(transactionScanService.scanTransaction).toHaveBeenCalledTimes(
+        expectedScanCalls,
+      );
+    },
+  );
 
   it('tracks confirmation fallbacks', async () => {
     const {

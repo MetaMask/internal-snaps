@@ -49,6 +49,7 @@ const scan = (
   estimatedChanges: { assets: [] },
   validation: { type: 'Benign', reason: null },
   error: null,
+  validationError: null,
   ...overrides,
 });
 
@@ -75,28 +76,34 @@ describe('ConfirmTransactionRequest', () => {
     it('renders the API error banner when the scan request fails', () => {
       const serialized = render({ scanFetchStatus: 'error' });
 
-      expect(serialized).toContain('"severity":"danger"');
+      expect(serialized).toContain('"severity":"info"');
+      expect(serialized).toContain('Security check unavailable');
       expect(serialized).toContain(
-        "Because of an error, we couldn't check for security alerts.",
+        "We couldn't complete this safety check. Continue only if you trust the site and addresses involved.",
       );
+      expect(serialized).not.toContain('"disabled":true');
     });
 
     it('renders the simulation error banner with the translated reason', () => {
       const serialized = render({
+        preferences: { ...context.preferences, simulateOnChainActions: true },
         scan: scan({
-          error: { type: 'simulation', code: 'ResultWithNegativeLamports' },
+          error: {
+            type: 'simulation',
+            code: 'ResultWithNegativeLamports',
+            message: null,
+          },
           validation: { type: 'Malicious', reason: null },
         }),
       });
 
       expect(serialized).toContain('"severity":"warning"');
-      expect(serialized).toContain(
-        'This transaction was reverted during simulation.',
-      );
+      expect(serialized).toContain('This transaction is expected to fail.');
       expect(serialized).toContain(
         'Account does not have enough SOL to perform the operation.',
       );
-      expect(serialized).not.toContain('This is a deceptive request');
+      expect(serialized).toContain('This is a deceptive request');
+      expect(serialized.match(/"type":"Banner"/gu)).toHaveLength(2);
     });
 
     it.each([['Malicious', 'danger']] as const)(
@@ -150,24 +157,327 @@ describe('ConfirmTransactionRequest', () => {
       expect(serialized).toContain('confirm-sign-and-send-transaction-confirm');
     });
 
-    it('disables confirm when the scan errored even with a malicious validation', () => {
+    it('keeps malicious acknowledgement available despite a remote execution failure', () => {
       const serialized = render({
         scan: scan({
           status: 'ERROR',
-          error: { type: 'simulation', code: 'ResultWithNegativeLamports' },
+          error: {
+            type: 'simulation',
+            code: 'ResultWithNegativeLamports',
+            message: null,
+          },
           validation: { type: 'Malicious', reason: null },
         }),
       });
 
-      expect(serialized).not.toContain(
-        MaliciousAcknowledgementFormNames.Review,
+      expect(serialized).toContain(MaliciousAcknowledgementFormNames.Review);
+      expect(serialized).toContain('"variant":"destructive"');
+      expect(serialized).not.toContain('"disabled":true');
+    });
+
+    it('shows the execution-failure warning while allowing normal confirmation', () => {
+      const serialized = render({
+        preferences: { ...context.preferences, simulateOnChainActions: true },
+        scan: scan({
+          status: 'ERROR',
+          error: {
+            type: 'simulation',
+            code: 'ResultWithNegativeLamports',
+            message: null,
+          },
+        }),
+      });
+
+      expect(serialized).toContain('This transaction is expected to fail.');
+      expect(serialized).toContain(
+        'Account does not have enough SOL to perform the operation.',
       );
-      expect(serialized).not.toContain('"variant":"destructive"');
-      expect(serialized).toContain('"disabled":true');
+      expect(serialized).toContain('"severity":"warning"');
+      expect(serialized).toContain('confirm-sign-and-send-transaction-confirm');
+      expect(serialized).not.toContain('"disabled":true');
     });
 
     it('renders no banner for a benign validation', () => {
       expect(render({ scan: scan({}) })).not.toContain('"type":"Banner"');
+    });
+
+    it.each(['validation', 'response'] as const)(
+      'shows an info banner and enables confirmation for a %s error',
+      (type) => {
+        const serialized = render({
+          scan: scan({
+            status: 'ERROR',
+            validationError: {
+              type,
+              code: 'empty',
+              message: 'No scan results returned',
+            },
+          }),
+        });
+
+        expect(serialized).toContain('Security check unavailable');
+        expect(serialized).toContain('"severity":"info"');
+        expect(serialized).not.toContain('expected to fail');
+        expect(serialized).not.toContain('"disabled":true');
+      },
+    );
+
+    it('keeps missing simulation estimates unavailable without hiding a successful security verdict', () => {
+      const serialized = render({
+        preferences: { ...context.preferences, simulateOnChainActions: true },
+        scan: scan({
+          status: 'SUCCESS',
+          estimatedChanges: null,
+          validation: { type: 'Warning', reason: null },
+        }),
+      });
+
+      expect(serialized).toContain('This request may be risky');
+      expect(serialized).toContain('Not available');
+      expect(serialized).not.toContain('No changes');
+      expect(serialized).not.toContain('Security check unavailable');
+      expect(serialized).not.toContain('"disabled":true');
+    });
+
+    it('does not let a retained execution failure block confirmation after a scan outage', () => {
+      const serialized = render({
+        scanFetchStatus: 'error',
+        scan: scan({
+          status: 'ERROR',
+          error: {
+            type: 'simulation',
+            code: 'ResultWithNegativeLamports',
+            message: null,
+          },
+        }),
+      });
+
+      expect(serialized).toContain('Security check unavailable');
+      expect(serialized).not.toContain('expected to fail');
+      expect(serialized).not.toContain('"disabled":true');
+    });
+
+    it.each(['fetched', 'error'] as const)(
+      'shows only the local expiry banner independently of a %s scan',
+      (scanFetchStatus) => {
+        const serialized = render({
+          scanFetchStatus,
+          transactionExpired: true,
+          scan: scan({}),
+        });
+
+        expect(serialized).toContain('This transaction is expected to fail.');
+        expect(serialized).toContain(
+          'This transaction has expired. Close this request and try again.',
+        );
+        expect(serialized).toContain('"disabled":true');
+        expect(serialized).not.toContain('Security check unavailable');
+        expect(serialized.match(/"type":"Banner"/gu)).toHaveLength(1);
+        expect(serialized).toContain('"severity":"danger"');
+      },
+    );
+
+    it.each([
+      ['Malicious', 'This is a deceptive request'],
+      ['Warning', 'This request may be risky'],
+    ])(
+      'shows only the local expiry banner over a %s security banner',
+      (type, title) => {
+        const serialized = render({
+          transactionExpired: true,
+          scan: scan({ validation: { type, reason: null } }),
+        });
+
+        expect(serialized).not.toContain(title);
+        expect(serialized).toContain(
+          'This transaction has expired. Close this request and try again.',
+        );
+        expect(serialized).toContain('"severity":"danger"');
+        expect(serialized.match(/"type":"Banner"/gu)).toHaveLength(1);
+        expect(serialized).toContain('"disabled":true');
+        expect(serialized).not.toContain(
+          MaliciousAcknowledgementFormNames.Review,
+        );
+      },
+    );
+
+    it('keeps the warning security verdict alongside a remote execution failure', () => {
+      const serialized = render({
+        preferences: { ...context.preferences, simulateOnChainActions: true },
+        scan: scan({
+          status: 'ERROR',
+          validation: { type: 'Warning', reason: null },
+          error: {
+            type: 'simulation',
+            code: 'ResultWithNegativeLamports',
+            message: null,
+          },
+        }),
+      });
+
+      expect(serialized).toContain('This request may be risky');
+      expect(serialized).toContain(
+        'Account does not have enough SOL to perform the operation.',
+      );
+      expect(serialized.match(/"type":"Banner"/gu)).toHaveLength(2);
+      expect(serialized).not.toContain('"disabled":true');
+    });
+
+    it('shows the malicious verdict and a simulation failure side by side when not expired', () => {
+      const serialized = render({
+        preferences: { ...context.preferences, simulateOnChainActions: true },
+        scan: scan({
+          status: 'ERROR',
+          validation: { type: 'Malicious', reason: null },
+          error: {
+            type: 'simulation',
+            code: 'ResultWithNegativeLamports',
+            message: null,
+          },
+        }),
+      });
+
+      expect(serialized).toContain('This is a deceptive request');
+      expect(serialized).toContain(
+        'Account does not have enough SOL to perform the operation.',
+      );
+      expect(serialized.match(/"type":"Banner"/gu)).toHaveLength(2);
+      expect(serialized).toContain(MaliciousAcknowledgementFormNames.Review);
+    });
+
+    it('shows security unavailability and a reported execution failure independently', () => {
+      const serialized = render({
+        preferences: { ...context.preferences, simulateOnChainActions: true },
+        scan: scan({
+          status: 'ERROR',
+          validation: { type: 'Error', reason: null },
+          validationError: {
+            type: 'validation',
+            code: null,
+            message: null,
+          },
+          error: {
+            type: 'simulation',
+            code: 'ResultWithNegativeLamports',
+            message: null,
+          },
+        }),
+      });
+
+      expect(serialized).toContain('Security check unavailable');
+      expect(serialized).toContain(
+        'Account does not have enough SOL to perform the operation.',
+      );
+      expect(serialized).toContain('"severity":"info"');
+      expect(serialized).toContain('"severity":"warning"');
+      expect(serialized.match(/"type":"Banner"/gu)).toHaveLength(2);
+      expect(serialized).not.toContain('"disabled":true');
+    });
+
+    it('shows the simulation error and the unavailable security check side by side', () => {
+      const serialized = render({
+        preferences: { ...context.preferences, simulateOnChainActions: true },
+        scan: scan({
+          status: 'ERROR',
+          error: {
+            type: 'simulation',
+            code: 'ResultWithNegativeLamports',
+            message: null,
+          },
+          validationError: {
+            type: 'response',
+            code: 'empty',
+            message: 'No scan results returned',
+          },
+        }),
+      });
+
+      expect(serialized).toContain('Security check unavailable');
+      expect(serialized).toContain(
+        'Account does not have enough SOL to perform the operation.',
+      );
+      expect(serialized.match(/"type":"Banner"/gu)).toHaveLength(2);
+      expect(serialized).not.toContain('"disabled":true');
+    });
+
+    it('hides the unavailable security check when security alerts are disabled', () => {
+      const serialized = render({
+        preferences: {
+          ...context.preferences,
+          useSecurityAlerts: false,
+          simulateOnChainActions: true,
+        },
+        scan: scan({
+          status: 'ERROR',
+          validationError: {
+            type: 'response',
+            code: 'empty',
+            message: 'No scan results returned',
+          },
+        }),
+      });
+
+      expect(serialized).not.toContain('Security check unavailable');
+      expect(serialized).not.toContain('"type":"Banner"');
+    });
+
+    it('hides a failed scan request when security alerts are disabled', () => {
+      const serialized = render({
+        scanFetchStatus: 'error',
+        preferences: {
+          ...context.preferences,
+          useSecurityAlerts: false,
+          simulateOnChainActions: true,
+        },
+      });
+
+      expect(serialized).not.toContain('Security check unavailable');
+    });
+
+    it('hides the security verdict when disabled without hiding the execution warning', () => {
+      const serialized = render({
+        preferences: {
+          ...context.preferences,
+          useSecurityAlerts: false,
+          simulateOnChainActions: true,
+        },
+        scan: scan({
+          status: 'ERROR',
+          validation: { type: 'Malicious', reason: null },
+          error: {
+            type: 'simulation',
+            code: 'ResultWithNegativeLamports',
+            message: null,
+          },
+        }),
+      });
+
+      expect(serialized).not.toContain('This is a deceptive request');
+      expect(serialized).toContain(
+        'Account does not have enough SOL to perform the operation.',
+      );
+      expect(serialized.match(/"type":"Banner"/gu)).toHaveLength(1);
+      expect(serialized).not.toContain(
+        MaliciousAcknowledgementFormNames.Review,
+      );
+      expect(serialized).not.toContain('"disabled":true');
+    });
+
+    it('shows local expiry even with all scan preferences disabled', () => {
+      const serialized = render({
+        transactionExpired: true,
+        preferences: {
+          ...context.preferences,
+          useSecurityAlerts: false,
+          simulateOnChainActions: false,
+        },
+      });
+
+      expect(serialized).toContain(
+        'This transaction has expired. Close this request and try again.',
+      );
+      expect(serialized).toContain('"disabled":true');
+      expect(serialized).toContain('"severity":"danger"');
     });
 
     it('renders no banner when security alerts are disabled and the scan succeeded', () => {
@@ -177,22 +487,6 @@ describe('ConfirmTransactionRequest', () => {
       });
 
       expect(serialized).not.toContain('"type":"Banner"');
-    });
-
-    it('renders the fetch-error banner when security alerts are disabled but simulation is on', () => {
-      const serialized = render({
-        preferences: {
-          ...context.preferences,
-          useSecurityAlerts: false,
-          simulateOnChainActions: true,
-        },
-        scanFetchStatus: 'error',
-      });
-
-      expect(serialized).toContain('"severity":"danger"');
-      expect(serialized).toContain(
-        "Because of an error, we couldn't check for security alerts.",
-      );
     });
 
     it('renders no banner when all scan preferences are disabled', () => {

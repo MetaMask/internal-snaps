@@ -1,10 +1,16 @@
-import { MaliciousAcknowledgementFormNames } from '@metamask/snap-networks-utils';
+import type { SecurityAlertResponse } from '@metamask/snap-networks-utils';
+import {
+  MaliciousAcknowledgementFormNames,
+  requiresMaliciousAcknowledgement,
+} from '@metamask/snap-networks-utils';
 import type { InputChangeEvent } from '@metamask/snaps-sdk';
 
 import {
   CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME,
+  getInterfaceContext,
   resolveInterface,
   updateInterface,
+  withInterfaceLock,
 } from '../../../../core/utils/interface';
 import { state } from '../../../../snapContext';
 import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
@@ -36,24 +42,62 @@ async function reRender(
 }
 
 /**
+ * Applies an update to the latest stored context while holding the interface
+ * lock.
+ *
+ * The context passed with an event is captured when the event is dispatched.
+ * A background refresh or another event can update the interface before this
+ * handler runs, so the update reads the stored context inside the lock and
+ * skips the update if the interface no longer has a context.
+ *
+ * @param id - The ID of the interface to update.
+ * @param update - Applies the change to the latest context.
+ */
+async function updateLatestContext(
+  id: string,
+  update: (context: ConfirmTransactionRequestContext) => Promise<void>,
+): Promise<void> {
+  await withInterfaceLock(id, async () => {
+    const context =
+      await getInterfaceContext<ConfirmTransactionRequestContext>(id);
+    if (!context) {
+      return;
+    }
+
+    await update(context);
+  });
+}
+
+/**
+ * Marks the confirmation interface as confirmed and clears its mapping.
+ *
+ * @param id - The ID of the interface to resolve.
+ */
+async function resolveConfirmation(id: string): Promise<void> {
+  await resolveInterface(id, true);
+  await state.deleteKey(
+    `mapInterfaceNameToId.${CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME}`,
+  );
+}
+
+/**
  * Handles the click event for the show advanced button.
  *
  * @param params - The parameters for the function.
  * @param params.id - The ID of the interface to update.
- * @param params.context - The current confirmation context.
  */
 async function onShowAdvancedButtonClick({
   id,
-  context,
 }: {
   id: string;
-  context: ConfirmTransactionRequestContext;
 }): Promise<void> {
-  await reRender(id, context, {
-    advanced: {
-      ...context.advanced,
-      shown: !context.advanced.shown,
-    },
+  await updateLatestContext(id, async (context) => {
+    await reRender(id, context, {
+      advanced: {
+        ...context.advanced,
+        shown: !context.advanced.shown,
+      },
+    });
   });
 }
 
@@ -73,14 +117,33 @@ async function onCancelButtonClick({ id }: { id: string }): Promise<void> {
 /**
  * Handles the click event for the confirm button.
  *
+ * The latest context is checked under the interface lock. A background refresh
+ * can block the transaction or require acknowledgement after this button was
+ * rendered, so a click for that earlier render must not confirm it. Nothing is
+ * resolved in that case, and the confirmation view shows the current state.
+ *
  * @param params - The parameters for the function.
  * @param params.id - The ID of the interface to update.
  */
 async function onConfirmButtonClick({ id }: { id: string }): Promise<void> {
-  await resolveInterface(id, true);
-  await state.deleteKey(
-    `mapInterfaceNameToId.${CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME}`,
-  );
+  await withInterfaceLock(id, async () => {
+    const context =
+      await getInterfaceContext<ConfirmTransactionRequestContext>(id);
+    if (!context || shouldDisableConfirmation(context)) {
+      return;
+    }
+
+    const requiresAcknowledgement = requiresMaliciousAcknowledgement(
+      context.preferences.useSecurityAlerts,
+      context.scan?.validation?.type as SecurityAlertResponse,
+    );
+
+    if (requiresAcknowledgement) {
+      return;
+    }
+
+    await resolveConfirmation(id);
+  });
 }
 
 /**
@@ -88,18 +151,17 @@ async function onConfirmButtonClick({ id }: { id: string }): Promise<void> {
  *
  * @param params - The parameters for the function.
  * @param params.id - The ID of the interface to update.
- * @param params.context - The current confirmation context.
  */
 async function onOpenAcknowledgementButtonClick({
   id,
-  context,
 }: {
   id: string;
-  context: ConfirmTransactionRequestContext;
 }): Promise<void> {
-  await reRender(id, context, {
-    acknowledgementScreen: true,
-    acknowledged: false,
+  await updateLatestContext(id, async (context) => {
+    await reRender(id, context, {
+      acknowledgementScreen: true,
+      acknowledged: false,
+    });
   });
 }
 
@@ -109,19 +171,18 @@ async function onOpenAcknowledgementButtonClick({
  * @param params - The parameters for the function.
  * @param params.id - The ID of the interface to update.
  * @param params.event - The checkbox change event.
- * @param params.context - The current confirmation context.
  */
 async function onAcknowledgeChange({
   id,
   event,
-  context,
 }: {
   id: string;
   event: InputChangeEvent;
-  context: ConfirmTransactionRequestContext;
 }): Promise<void> {
   const acknowledged = Boolean(event.value);
-  await reRender(id, context, { acknowledged });
+  await updateLatestContext(id, async (context) => {
+    await reRender(id, context, { acknowledged });
+  });
 }
 
 /**
@@ -137,35 +198,30 @@ async function onAcknowledgeChange({
  * click, we send the user back to the confirmation view where the disabled
  * Confirm button and the banner explain why they can't proceed.
  *
+ * The check and the resolve run under the interface lock, using the latest
+ * stored context rather than the context captured with the event.
+ *
  * @param params - The parameters for the function.
  * @param params.id - The ID of the interface to update.
- * @param params.context - The current confirmation context.
  */
-async function onProceedButtonClick({
-  id,
-  context,
-}: {
-  id: string;
-  context: ConfirmTransactionRequestContext;
-}): Promise<void> {
-  if (!context?.acknowledged) {
-    return;
-  }
+async function onProceedButtonClick({ id }: { id: string }): Promise<void> {
+  await withInterfaceLock(id, async () => {
+    const context =
+      await getInterfaceContext<ConfirmTransactionRequestContext>(id);
+    if (!context?.acknowledged) {
+      return;
+    }
 
-  if (
-    shouldDisableConfirmation({
-      scanFetchStatus: context.scanFetchStatus,
-      scan: context.scan,
-    })
-  ) {
-    await reRender(id, context, {
-      acknowledgementScreen: false,
-      acknowledged: false,
-    });
-    return;
-  }
+    if (shouldDisableConfirmation(context)) {
+      await reRender(id, context, {
+        acknowledgementScreen: false,
+        acknowledged: false,
+      });
+      return;
+    }
 
-  await onConfirmButtonClick({ id });
+    await resolveConfirmation(id);
+  });
 }
 
 /**
@@ -173,18 +229,13 @@ async function onProceedButtonClick({
  *
  * @param params - The parameters for the function.
  * @param params.id - The ID of the interface to update.
- * @param params.context - The current confirmation context.
  */
-async function onBackButtonClick({
-  id,
-  context,
-}: {
-  id: string;
-  context: ConfirmTransactionRequestContext;
-}): Promise<void> {
-  await reRender(id, context, {
-    acknowledgementScreen: false,
-    acknowledged: false,
+async function onBackButtonClick({ id }: { id: string }): Promise<void> {
+  await updateLatestContext(id, async (context) => {
+    await reRender(id, context, {
+      acknowledgementScreen: false,
+      acknowledged: false,
+    });
   });
 }
 

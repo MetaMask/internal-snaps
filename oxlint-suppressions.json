@@ -504,13 +504,13 @@
   },
   "packages/solana-wallet-snap/src/core/handlers/onCronjob/backgroundEvents/refreshConfirmationEstimation.tsx": {
     "typescript/no-explicit-any": {
-      "count": 3
+      "count": 2
     },
     "typescript/no-unsafe-argument": {
-      "count": 3
+      "count": 2
     },
     "typescript/no-unsafe-assignment": {
-      "count": 3
+      "count": 2
     }
   },
   "packages/solana-wallet-snap/src/core/handlers/onKeyringRequest/Keyring.test.ts": {
@@ -906,7 +906,7 @@
   },
   "packages/solana-wallet-snap/src/core/services/transaction-scan/TransactionScanService.ts": {
     "internal-snaps/no-in-operator": {
-      "count": 2
+      "count": 1
     },
     "typescript/no-unsafe-assignment": {
       "count": 1
@@ -1395,13 +1395,20 @@
       "count": 1
     },
     "typescript/no-unsafe-return": {
+      "count": 2
+    }
+  },
+  "packages/solana-wallet-snap/src/features/confirmation/views/ConfirmTransactionRequest/SecurityScanAlert.tsx": {
+    "typescript/no-unsafe-return": {
+      "count": 2
+    }
+  },
+  "packages/solana-wallet-snap/src/features/confirmation/views/ConfirmTransactionRequest/TransactionFailureAlert.tsx": {
+    "typescript/no-unsafe-return": {
       "count": 1
     }
   },
   "packages/solana-wallet-snap/src/features/confirmation/views/ConfirmTransactionRequest/events.tsx": {
-    "typescript/explicit-function-return-type": {
-      "count": 3
-    },
     "typescript/no-unsafe-argument": {
       "count": 1
     }

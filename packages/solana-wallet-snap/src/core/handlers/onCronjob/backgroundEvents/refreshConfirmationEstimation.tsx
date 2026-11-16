@@ -12,14 +12,14 @@ import {
   state,
   transactionScanService,
 } from '../../../../snapContext';
+import { isTransactionBlockhashExpired } from '../../../services/confirmation/isTransactionBlockhashExpired';
 import type { UnencryptedStateValue } from '../../../services/state/stateTypes';
-import { EXPIRED_TRANSACTION_SCAN } from '../../../services/transaction-scan/buildExpiredScanResult';
-import { isTransactionBlockhashExpired } from '../../../services/transaction-scan/isTransactionBlockhashExpired';
 import { trackError } from '../../../utils/errors';
 import {
   CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME,
   getInterfaceContext,
   updateInterface,
+  withInterfaceLock,
 } from '../../../utils/interface';
 import baseLogger from '../../../utils/logger';
 import { ScheduleBackgroundEventMethod } from './ScheduleBackgroundEventMethod';
@@ -89,7 +89,9 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
       logger.info(`Transaction simulation is disabled in preferences`);
     }
 
-    const [scan, isExpired, updatedInterfaceContextFinal] = await Promise.all([
+    // The scan and expiry check run outside the interface lock because they
+    // can take a while. Only the read-merge-write below runs under the lock.
+    const [scan, isExpired] = await Promise.all([
       shouldScan
         ? transactionScanService.scanTransaction({
             method: interfaceContext.method,
@@ -100,51 +102,66 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
             account: interfaceContext.account,
             options,
           })
-        : Promise.resolve(interfaceContext.scan),
+        : Promise.resolve(null),
       shouldSkipBlockhashCheck
         ? Promise.resolve(false)
         : isTransactionBlockhashExpired(
             interfaceContext.transaction,
             connection.getRpc(interfaceContext.scope),
           ),
-      getInterfaceContext<ConfirmTransactionRequestContext>(
-        confirmationInterfaceId,
-      ),
     ]);
 
-    // Check if context exists in case the UI was closed while scanning
-    if (!updatedInterfaceContextFinal) {
-      logger.info(
-        `Interface context no longer exists after scan, skipping update`,
-      );
+    // Read and write the latest context under the lock. A handler, such as the
+    // user opening acknowledgement, may update the interface while the scan is
+    // running. Writing a context captured before the scan would overwrite it.
+    const isUpdated = await withInterfaceLock(
+      confirmationInterfaceId,
+      async () => {
+        const latestInterfaceContext =
+          await getInterfaceContext<ConfirmTransactionRequestContext>(
+            confirmationInterfaceId,
+          );
+
+        // Check if context exists in case the UI was closed while scanning
+        if (!latestInterfaceContext) {
+          logger.info(
+            `Interface context no longer exists after scan, skipping update`,
+          );
+          return false;
+        }
+
+        // Retain estimates after an outage, but do not reuse a stale execution
+        // failure as a blocker. Local expiry remains independent and cannot be
+        // cleared by a later failed scan or inconclusive blockhash check.
+        const scanFailed = shouldScan && scan === null;
+
+        const updatedInterfaceContext = {
+          ...latestInterfaceContext,
+          scanFetchStatus: scanFailed ? 'error' : 'fetched',
+          scan: scan ?? latestInterfaceContext.scan ?? null,
+          transactionExpired:
+            isExpired || latestInterfaceContext.transactionExpired === true,
+        };
+
+        if (shouldScan) {
+          logger.info(`New scan fetched`);
+        }
+
+        await updateInterface(
+          confirmationInterfaceId,
+          <ConfirmTransactionRequest
+            context={serialize(updatedInterfaceContext) as any}
+          />,
+          updatedInterfaceContext,
+        );
+
+        return true;
+      },
+    );
+
+    if (!isUpdated) {
       return;
     }
-
-    // Update the current context with the new rates. A failed re-scan (null)
-    // keeps the previous scan result for its estimates and reports the error
-    // so the "scan failed" banner shows — the user is warned, not blocked.
-    const scanFailed = shouldScan && scan === null && !isExpired;
-    const nextScan = isExpired
-      ? EXPIRED_TRANSACTION_SCAN
-      : (scan ?? updatedInterfaceContextFinal.scan ?? null);
-
-    const updatedInterfaceContext = {
-      ...updatedInterfaceContextFinal,
-      scanFetchStatus: scanFailed ? ('error' as const) : ('fetched' as const),
-      scan: nextScan,
-    };
-
-    if (shouldScan) {
-      logger.info(`New scan fetched`);
-    }
-
-    await updateInterface(
-      confirmationInterfaceId,
-      <ConfirmTransactionRequest
-        context={serialize(updatedInterfaceContext) as any}
-      />,
-      updatedInterfaceContext,
-    );
 
     logger.info(`Background event suceeded`);
 
@@ -161,33 +178,44 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
   } catch (error) {
     await trackError(error);
 
-    // Check if context exists in case the UI was closed, nothing to rollback
-    const fetchedInterfaceContext =
-      await getInterfaceContext<ConfirmTransactionRequestContext>(
-        confirmationInterfaceId,
-      );
-
-    if (!fetchedInterfaceContext) {
-      logger.info(`Interface context no longer exists, skipping rollback`);
-      return;
-    }
-
-    const fetchingConfirmationContext = {
-      ...fetchedInterfaceContext,
-      scanFetchStatus: 'fetched',
-    } as ConfirmTransactionRequestContext;
-
-    await updateInterface(
+    // Roll back under the lock so a handler's concurrent update is not
+    // overwritten. Check if context exists in case the UI was closed, in which
+    // case there is nothing to roll back.
+    const isRolledBack = await withInterfaceLock(
       confirmationInterfaceId,
-      <ConfirmTransactionRequest
-        context={serialize(fetchingConfirmationContext) as any}
-      />,
-      fetchingConfirmationContext,
+      async () => {
+        const fetchedInterfaceContext =
+          await getInterfaceContext<ConfirmTransactionRequestContext>(
+            confirmationInterfaceId,
+          );
+
+        if (!fetchedInterfaceContext) {
+          logger.info(`Interface context no longer exists, skipping rollback`);
+          return false;
+        }
+
+        const fetchingConfirmationContext = {
+          ...fetchedInterfaceContext,
+          scanFetchStatus: 'fetched',
+        } as ConfirmTransactionRequestContext;
+
+        await updateInterface(
+          confirmationInterfaceId,
+          <ConfirmTransactionRequest
+            context={serialize(fetchingConfirmationContext) as any}
+          />,
+          fetchingConfirmationContext,
+        );
+
+        return true;
+      },
     );
 
-    logger.warn(
-      { error },
-      `Could not update the interface. But rolled back status to fetched.`,
-    );
+    if (isRolledBack) {
+      logger.warn(
+        { error },
+        `Could not update the interface. But rolled back status to fetched.`,
+      );
+    }
   }
 };
