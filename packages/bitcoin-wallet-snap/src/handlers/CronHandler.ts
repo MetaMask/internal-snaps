@@ -7,8 +7,8 @@ import {
 } from '@metamask/snap-networks-utils';
 import type { IStateManager } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
-import type { Describe } from 'superstruct';
-import { array, assert, is, object, string } from 'superstruct';
+import type { Describe } from '@metamask/superstruct';
+import { array, assert, is, object, string } from '@metamask/superstruct';
 
 import {
   InexistentMethodError,

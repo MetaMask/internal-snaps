@@ -1,6 +1,6 @@
 import type { AddressType, Network } from '@metamask/bitcoindevkit';
 import { BtcAccountType, BtcScope } from '@metamask/keyring-api';
-import { enums } from 'superstruct';
+import { enums } from '@metamask/superstruct';
 
 const reverseMapping = <
   From extends string | number | symbol,

@@ -1,6 +1,6 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
 import type { Json } from '@metamask/snaps-sdk';
-import { assert } from 'superstruct';
+import { assert } from '@metamask/superstruct';
 
 import type { ConfirmationRepository } from '../entities';
 import {

@@ -1,6 +1,6 @@
 import type { AddressType } from '@metamask/bitcoindevkit';
 import { Amount } from '@metamask/bitcoindevkit';
-import { assert } from 'superstruct';
+import { assert } from '@metamask/superstruct';
 import { mock } from 'vitest-mock-extended';
 
 import type { BitcoinAccount } from '../entities';

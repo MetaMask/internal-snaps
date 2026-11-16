@@ -10,7 +10,7 @@ import {
   SnapError,
   getErrorMessage,
 } from '@metamask/snaps-sdk';
-import { StructError } from 'superstruct';
+import { StructError } from '@metamask/superstruct';
 
 import type { Translator, Logger, SnapClient } from '../entities';
 import {

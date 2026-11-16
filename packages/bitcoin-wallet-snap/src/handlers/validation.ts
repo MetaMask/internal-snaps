@@ -6,8 +6,7 @@ import {
   UuidStruct,
 } from '@metamask/snap-networks-utils';
 import type { ProofOfOwnershipMessage } from '@metamask/snap-networks-utils';
-import { CaipAssetTypeStruct } from '@metamask/utils';
-import type { Infer } from 'superstruct';
+import type { Infer } from '@metamask/superstruct';
 import {
   pattern,
   array,
@@ -22,7 +21,8 @@ import {
   refine,
   union,
   is,
-} from 'superstruct';
+} from '@metamask/superstruct';
+import { CaipAssetTypeStruct } from '@metamask/utils';
 
 import type { BitcoinAccount, CodifiedError, Logger } from '../entities';
 import { ValidationError } from '../entities';

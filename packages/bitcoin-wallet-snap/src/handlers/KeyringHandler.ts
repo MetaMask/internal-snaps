@@ -24,7 +24,7 @@ import type {
 import { SnapError } from '@metamask/snaps-sdk';
 import type { CaipChainId, Json, JsonRpcRequest } from '@metamask/snaps-sdk';
 import { sensitive } from '@metamask/superstruct';
-import { assert, is, string } from 'superstruct';
+import { assert, is, string } from '@metamask/superstruct';
 import { encode } from 'wif';
 
 import snapManifest from '../../snap.manifest.json';

@@ -9,8 +9,6 @@ import type {
   ProofOfOwnershipBatchResponse,
 } from '@metamask/snap-networks-utils';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
-import type { CaipAssetType } from '@metamask/utils';
-import { Verifier } from 'bip322-js';
 import {
   assert,
   array,
@@ -20,7 +18,9 @@ import {
   record,
   string,
   unknown,
-} from 'superstruct';
+} from '@metamask/superstruct';
+import type { CaipAssetType } from '@metamask/utils';
+import { Verifier } from 'bip322-js';
 
 import {
   AssertionError,

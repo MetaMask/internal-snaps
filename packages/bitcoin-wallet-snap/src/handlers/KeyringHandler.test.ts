@@ -20,8 +20,8 @@ import {
   BtcMethod,
   BtcScope,
 } from '@metamask/keyring-api';
-import { assert } from 'superstruct';
-import * as Superstruct from 'superstruct';
+import { assert } from '@metamask/superstruct';
+import * as Superstruct from '@metamask/superstruct';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { encode } from 'wif';
