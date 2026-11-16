@@ -1,4 +1,13 @@
+import { hasProperty } from '@metamask/utils';
+
 import { TokenMetadata } from '../../../constants';
+
+/**
+ * Lookup view of {@link TokenMetadata}, keyed by CAIP-19 asset type.
+ */
+const knownAssetMetadata: Readonly<
+  Record<string, { iconUrl?: string } | undefined>
+> = TokenMetadata;
 
 /**
  * Resolves iconUrl for a given asset type.
@@ -10,8 +19,8 @@ import { TokenMetadata } from '../../../constants';
 export const getIconUrlForKnownAsset = (
   assetType: string,
 ): string | undefined => {
-  if (Object.hasOwn(TokenMetadata, assetType)) {
-    return TokenMetadata[assetType as keyof typeof TokenMetadata].iconUrl;
+  if (hasProperty(knownAssetMetadata, assetType)) {
+    return knownAssetMetadata[assetType]?.iconUrl;
   }
   return undefined;
 };

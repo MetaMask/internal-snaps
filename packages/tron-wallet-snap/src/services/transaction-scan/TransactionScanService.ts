@@ -7,6 +7,7 @@ import {
   DEFAULT_METAMASK_ORIGIN,
 } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
+import { hasProperty } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
 
@@ -33,37 +34,6 @@ import type {
   TransactionScanResult,
 } from './types';
 import { SimulationStatus } from './types';
-
-/**
- * An asset change that carries a token ID, i.e. an NFT change
- * (ERC-721 or ERC-1155).
- */
-type NonFungibleAssetChange = Extract<AssetChange, { token_id: string }>;
-
-/**
- * Checks whether an asset change carries a token ID.
- *
- * @param change - The asset change to check.
- * @returns True if the change is a non-fungible asset change.
- */
-function isNonFungibleAssetChange(
-  change: AssetChange,
-): change is NonFungibleAssetChange {
-  return Object.hasOwn(change, 'token_id');
-}
-
-/**
- * Checks whether a non-fungible asset change carries an explicit `value`
- * (ERC-1155), as opposed to a single-unit ERC-721 change.
- *
- * @param change - The asset change to check.
- * @returns True if the NFT change has a value field.
- */
-function isMultiTokenAssetChange(
-  change: NonFungibleAssetChange,
-): change is Extract<NonFungibleAssetChange, { value: string }> {
-  return Object.hasOwn(change, 'value');
-}
 
 export class TransactionScanService extends BaseTransactionScanService {
   /**
@@ -265,7 +235,7 @@ export class TransactionScanService extends BaseTransactionScanService {
    */
   #isDisplayableChange(change: AssetChange): boolean {
     // NFT types (ERC721/ERC1155) use token_id instead of value
-    return isNonFungibleAssetChange(change) || change.value !== undefined;
+    return hasProperty(change, 'token_id') || change.value !== undefined;
   }
 
   /**
@@ -303,10 +273,12 @@ export class TransactionScanService extends BaseTransactionScanService {
     change: AssetChange,
     decimals: number | undefined,
   ): string {
-    if (isNonFungibleAssetChange(change)) {
+    if (hasProperty(change, 'token_id')) {
       // NFT assets (ERC721): each token is a single unit
       // ERC1155: use the value field if present
-      return isMultiTokenAssetChange(change) ? change.value : '1';
+      return hasProperty(change, 'value') && typeof change.value === 'string'
+        ? change.value
+        : '1';
     }
 
     if (change.raw_value && decimals !== undefined) {
