@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Validation now uses `@metamask/superstruct` (the MetaMask fork) uniformly instead of mixing it with `superstruct` v2, and the plain `superstruct` dependency was removed. This makes `HandlerMiddleware` recognize `StructError`s from every validation path, including fork-built structs
+
 - `onAmountInput` now estimates the send fee and rejects amounts that cannot cover it, including when `toAddress` is omitted ([#586](https://github.com/MetaMask/internal-snaps/pull/586))
 
 ### Removed
