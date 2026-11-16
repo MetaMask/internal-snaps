@@ -350,7 +350,7 @@
       "message": "This request may be risky"
     },
     "confirmation.validationWarningSubtitle": {
-      "message": "Only continue if you trust this site and/or every address involved."
+      "message": "Security Alerts found potential risk. Only continue if you trust this site and every address involved."
     },
     "confirmation.maliciousAck.title": {
       "message": "High-risk request"

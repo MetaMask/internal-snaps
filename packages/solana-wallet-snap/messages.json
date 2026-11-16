@@ -115,7 +115,7 @@
   "transactionScan.errors.transactionBlockhashExpired": "Please go back and try again",
   "transactionScan.errors.unknownError": "An unknown error occurred.",
   "confirmation.validationWarningTitle": "This request may be risky",
-  "confirmation.validationWarningSubtitle": "Only continue if you trust this site and/or every address involved.",
+  "confirmation.validationWarningSubtitle": "Security Alerts found potential risk. Only continue if you trust this site and every address involved.",
   "confirmation.maliciousAck.title": "High-risk request",
   "confirmation.maliciousAck.description": "Security partners found high-risk signals in this request. If you continue, your funds can't be recovered.",
   "confirmation.maliciousAck.checkbox": "I have acknowledged the risk and still want to proceed",
