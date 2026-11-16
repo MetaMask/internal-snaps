@@ -283,9 +283,25 @@ describe('ConfirmSignTransaction render', () => {
     },
   );
 
-  it.each(['expiry', 'insufficient balance'])(
-    'keeps local %s blocking on the initial screen with scans disabled',
-    async (blocker) => {
+  it.each([
+    {
+      blocker: 'expiry',
+      isTransactionExpired: true,
+      accountAssets: mockAssets,
+      expectedContext: { scan: { error: { type: 'TransactionTaposExpired' } } },
+    },
+    {
+      blocker: 'insufficient balance',
+      isTransactionExpired: false,
+      accountAssets: [
+        { ...mockAssets[0], rawAmount: '0' } as AssetEntity,
+        ...mockAssets.slice(1),
+      ],
+      expectedContext: { isInsufficientBalance: true },
+    },
+  ])(
+    'keeps local $blocker blocking on the initial screen with scans disabled',
+    async ({ isTransactionExpired, accountAssets, expectedContext }) => {
       await withSnapContext(
         async ({
           mockSnapClient,
@@ -298,14 +314,11 @@ describe('ConfirmSignTransaction render', () => {
             simulateOnChainActions: false,
           });
           mockTransactionExpirationRefresherService.isTransactionExpired.mockResolvedValue(
-            blocker === 'expiry',
+            isTransactionExpired,
           );
-          if (blocker === 'insufficient balance') {
-            mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-              { ...mockAssets[0], rawAmount: '0' } as AssetEntity,
-              ...mockAssets.slice(1),
-            ]);
-          }
+          mockAssetsService.getAccountAssetsByIDs.mockResolvedValue(
+            accountAssets,
+          );
           mockSnapClient.createInterface.mockImplementation(
             async (ui, context) => {
               expect(context).toMatchObject({
@@ -315,11 +328,7 @@ describe('ConfirmSignTransaction render', () => {
               expect(JSON.stringify(ui)).not.toContain(
                 'Checking for security issues',
               );
-              expect(context).toMatchObject(
-                blocker === 'expiry'
-                  ? { scan: { error: { type: 'TransactionTaposExpired' } } }
-                  : { isInsufficientBalance: true },
-              );
+              expect(context).toMatchObject(expectedContext);
               return 'interface-id-123';
             },
           );
@@ -426,13 +435,17 @@ describe('ConfirmSignTransaction render', () => {
         // Verify interface was updated with scan results
         expect(mockSnapClient.updateInterface).toHaveBeenCalled();
         // A transaction can expire while a remote scan is in flight.
-        expect(
+        const expirationCheckOrder = Number(
           mockTransactionExpirationRefresherService.isTransactionExpired.mock
             .invocationCallOrder[0],
-        ).toBeGreaterThan(
-          mockTransactionScanService.scanTransaction.mock
-            .invocationCallOrder[0] ?? 0,
         );
+        const scanOrder = Number(
+          mockTransactionScanService.scanTransaction.mock
+            .invocationCallOrder[0],
+        );
+
+        expect(scanOrder).toBeGreaterThan(0);
+        expect(expirationCheckOrder).toBeGreaterThan(scanOrder);
       },
     );
   });

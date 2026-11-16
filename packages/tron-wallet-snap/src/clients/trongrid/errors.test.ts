@@ -29,11 +29,13 @@ describe('trongrid errors', () => {
   });
 
   describe('createTrongridHttpError', () => {
-    const buildResponse = (status: number, retryAfter?: string) =>
-      ({
-        status,
-        headers: { get: () => retryAfter ?? null },
-      }) as unknown as Parameters<typeof createTrongridHttpError>[0];
+    const buildResponse = (
+      status: number,
+      retryAfter?: string,
+    ): Parameters<typeof createTrongridHttpError>[0] => ({
+      status,
+      headers: { get: () => retryAfter ?? null },
+    });
 
     it('returns a TrongridRateLimitError for 429', () => {
       const error = createTrongridHttpError(buildResponse(429));

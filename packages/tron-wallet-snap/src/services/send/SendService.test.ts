@@ -52,27 +52,32 @@ describe('SendService', () => {
     let mockTronWeb: any;
     let mockTransactionExpirationRefresherService: any;
 
-    const createMockTransaction = (ownerAddress = TEST_OWNER_HEX) => ({
-      visible: false,
-      txID: 'mock-tx-id',
-      raw_data: {
-        contract: [
-          {
-            type: 'TransferContract',
-            parameter: {
-              value: {
-                owner_address: ownerAddress,
-                to_address: TronWeb.address.toHex(TEST_TO_ADDRESS),
-                amount: 1000000,
+    const createMockTransaction = (
+      ownerAddress = TEST_OWNER_HEX,
+    ): MockTransferTransaction =>
+      ({
+        visible: false,
+        txID: 'mock-tx-id',
+        raw_data: {
+          contract: [
+            {
+              type: 'TransferContract',
+              parameter: {
+                value: {
+                  owner_address: ownerAddress,
+                  to_address: TronWeb.address.toHex(TEST_TO_ADDRESS),
+                  amount: 1000000,
+                },
               },
             },
-          },
-        ],
-      },
-      raw_data_hex: 'mock-hex',
-    });
+          ],
+        },
+        raw_data_hex: 'mock-hex',
+      }) as unknown as MockTransferTransaction;
 
-    const createMockTrc20Transaction = (ownerAddress = TEST_OWNER_HEX) =>
+    const createMockTrc20Transaction = (
+      ownerAddress = TEST_OWNER_HEX,
+    ): TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract> =>
       ({
         visible: false,
         txID: 'mock-trc20-tx-id',
@@ -342,7 +347,10 @@ describe('SendService', () => {
       number: number;
       timestamp: number;
       hashSegment?: string;
-    }) => ({
+    }): {
+      blockID: string;
+      block_header: { raw_data: { number: number; timestamp: number } };
+    } => ({
       blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
       block_header: {
         raw_data: {
@@ -352,7 +360,7 @@ describe('SendService', () => {
       },
     });
 
-    const getRefBlockBytes = (number: number) =>
+    const getRefBlockBytes = (number: number): string =>
       number.toString(16).slice(-4).padStart(4, '0');
 
     beforeEach(() => {

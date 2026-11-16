@@ -2027,9 +2027,6 @@
     }
   },
   "packages/tron-wallet-snap/src/clients/snap/SnapClient.test.ts": {
-    "typescript/explicit-function-return-type": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     },
@@ -2057,28 +2054,12 @@
       "count": 4
     }
   },
-  "packages/tron-wallet-snap/src/clients/trongrid/errors.test.ts": {
-    "typescript/explicit-function-return-type": {
-      "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/src/clients/trongrid/types.ts": {
-    "id-length": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/clients/tronweb/TronWebFactory.test.ts": {
     "typescript/no-unsafe-return": {
       "count": 2
     }
   },
   "packages/tron-wallet-snap/src/handlers/clientRequest/clientRequest.test.ts": {
-    "no-unsafe-optional-chaining": {
-      "count": 1
-    },
-    "typescript/explicit-function-return-type": {
-      "count": 3
-    },
     "typescript/no-explicit-any": {
       "count": 15
     },
@@ -2098,9 +2079,6 @@
     }
   },
   "packages/tron-wallet-snap/src/handlers/cronjob/cronjob.test.tsx": {
-    "typescript/explicit-function-return-type": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 4
     },
@@ -2146,14 +2124,8 @@
     }
   },
   "packages/tron-wallet-snap/src/services/assets/AssetsRepository.test.ts": {
-    "typescript/explicit-function-return-type": {
-      "count": 2
-    },
     "typescript/no-unnecessary-type-assertion": {
       "count": 3
-    },
-    "unicorn/no-useless-undefined": {
-      "count": 1
     }
   },
   "packages/tron-wallet-snap/src/services/assets/AssetsService.test.ts": {
@@ -2165,17 +2137,11 @@
     },
     "typescript/no-unsafe-return": {
       "count": 4
-    },
-    "unicorn/no-useless-undefined": {
-      "count": 1
     }
   },
   "packages/tron-wallet-snap/src/services/assets/adapters/CoreAssetsAdapter.test.ts": {
     "typescript/no-unnecessary-type-assertion": {
       "count": 1
-    },
-    "vitest/no-conditional-in-test": {
-      "count": 3
     }
   },
   "packages/tron-wallet-snap/src/services/assets/adapters/SnapAssetsAdapter.ts": {
@@ -2227,9 +2193,6 @@
     }
   },
   "packages/tron-wallet-snap/src/services/send/SendService.test.ts": {
-    "typescript/explicit-function-return-type": {
-      "count": 4
-    },
     "typescript/no-explicit-any": {
       "count": 15
     },
@@ -2252,9 +2215,6 @@
     }
   },
   "packages/tron-wallet-snap/src/services/send/TransactionExpirationRefresherService.test.ts": {
-    "typescript/explicit-function-return-type": {
-      "count": 5
-    },
     "typescript/no-unsafe-member-access": {
       "count": 2
     },
@@ -2342,9 +2302,6 @@
     }
   },
   "packages/tron-wallet-snap/src/services/wallet/WalletService.test.ts": {
-    "typescript/explicit-function-return-type": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 7
     },
@@ -2451,18 +2408,10 @@
     },
     "typescript/no-unsafe-argument": {
       "count": 12
-    },
-    "vitest/no-conditional-in-test": {
-      "count": 3
     }
   },
   "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmSignTransaction/render.tsx": {
     "typescript/no-unsafe-argument": {
-      "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest.test.tsx": {
-    "typescript/explicit-function-return-type": {
       "count": 1
     }
   },
@@ -2475,9 +2424,6 @@
     }
   },
   "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmTransactionRequest/render.test.tsx": {
-    "typescript/explicit-function-return-type": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 2
     },

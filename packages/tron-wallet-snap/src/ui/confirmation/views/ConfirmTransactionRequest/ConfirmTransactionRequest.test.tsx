@@ -13,7 +13,11 @@ import type { ConfirmTransactionRequestContext } from './types';
 
 describe('ConfirmTransactionRequest', () => {
   beforeEach(() => {
-    vi.spyOn(I18n, 'i18n').mockImplementation(() => (key: string) => key);
+    vi.spyOn(I18n, 'i18n').mockImplementation(
+      () =>
+        (key: string): string =>
+          key,
+    );
     vi.spyOn(ExplorerUrl, 'getExplorerUrl').mockReturnValue(
       'https://explorer.example.com',
     );

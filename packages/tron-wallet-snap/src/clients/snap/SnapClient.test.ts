@@ -24,7 +24,7 @@ async function withSnapClient(
     mockSnapRequest: Mock;
     mockLogger: Logger;
   }) => void | Promise<void>,
-) {
+): Promise<void> {
   mockSnapRequest.mockReset();
   const snapClient = new SnapClient();
   await testFn({ snapClient, mockSnapRequest, mockLogger });
