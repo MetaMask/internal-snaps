@@ -1,0 +1,329 @@
+{
+  "locale": "tl",
+  "messages": {
+    "amount": {
+      "message": "Halaga"
+    },
+    "balance": {
+      "message": "Balanse"
+    },
+    "cancel": {
+      "message": "Kanselahin"
+    },
+    "confirmation.advanced.hide": {
+      "message": "Itago ang advanced"
+    },
+    "confirmation.advanced.programId": {
+      "message": "ID ng Programa"
+    },
+    "confirmation.advanced.show": {
+      "message": "Ipakita ang advanced"
+    },
+    "confirmation.advanced.unknownInstruction": {
+      "message": "Hindi alam"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Ginamit na bandwidth"
+    },
+    "confirmation.cancelButton": {
+      "message": "Kanselahin"
+    },
+    "confirmation.confirmButton": {
+      "message": "Kumpirmahin"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "Tinatayang mga pagbabago"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Walang pagbabago"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Hindi available"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Nakatanggap ka ng"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Nagpadala ka ng"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Tinatayang mga pagbabago"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Ang tinatayang mga pagbabago ay ang maaaring mangyari kung magpapatuloy ka sa transaksyong ito. Ito ay isang hula lamang, hindi isang garantiya."
+    },
+    "confirmation.fee": {
+      "message": "Bayad sa network"
+    },
+    "confirmation.feeError": {
+      "message": "Hindi matantya ang bayad"
+    },
+    "confirmation.from": {
+      "message": "Mula sa"
+    },
+    "confirmation.origin": {
+      "message": "Kahilingan mula sa/kay"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "Ang dApp na humihingi ng lagda"
+    },
+    "confirmation.requestOrigin": {
+      "message": "Kahilingan mula sa/kay"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "Hiling na transaksyon"
+    },
+    "confirmation.signIn.badAccount": {
+      "message": "Hinihiling ng site na ito na mag-sign in ka gamit ang maling account."
+    },
+    "confirmation.signIn.chainId": {
+      "message": "ID ng Chain"
+    },
+    "confirmation.signIn.description": {
+      "message": "Nais ng isang site na mag-sign in ka upang patunayan na pag-aari mo ang account na ito."
+    },
+    "confirmation.signIn.expirationTime": {
+      "message": "Oras ng pag-expire"
+    },
+    "confirmation.signIn.issuedAt": {
+      "message": "Inisyu sa"
+    },
+    "confirmation.signIn.message": {
+      "message": "Mensahe"
+    },
+    "confirmation.signIn.notBefore": {
+      "message": "Hindi lalampas sa"
+    },
+    "confirmation.signIn.requestId": {
+      "message": "Humiling ng ID"
+    },
+    "confirmation.signIn.resources": {
+      "message": "Mga Mapagkukunan"
+    },
+    "confirmation.signIn.signingInWith": {
+      "message": "Nagsa-sign in gamit ang"
+    },
+    "confirmation.signIn.statement": {
+      "message": "Pahayag"
+    },
+    "confirmation.signIn.title": {
+      "message": "Kahilingan sa pag-sign in"
+    },
+    "confirmation.signIn.unknownDomain": {
+      "message": "Hindi kilalang domain"
+    },
+    "confirmation.signIn.version": {
+      "message": "Bersyon"
+    },
+    "confirmation.signMessage.confirmButton": {
+      "message": "Lagdaan"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Mensahe"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Pirmahan ang mensahe"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signing request"
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "Dahilan: {reason}"
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Binawi ang transaksyong ito habang nagsa-simulate."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Magpatuloy lamang kung nagtitiwala ka sa bawat address na kasangkot."
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "Dahil sa isang error, hindi namin masuri ang mga alerto sa seguridad."
+    },
+    "confirmation.to": {
+      "message": "Papunta sa"
+    },
+    "confirmation.transaction.title": {
+      "message": "Hiling na transaksyon"
+    },
+    "confirmation.transactionFee": {
+      "message": "Bayad sa network"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Matuto pa"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Abiso sa seguridad ng"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Kung aaprubahan mo ang kahilingang ito, kukunin ng third party na kilala sa mga panloloko ang lahat ng asset mo."
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Isa itong mapanlinlang na kahilingan"
+    },
+    "error.internal": {
+      "message": "Panloob na error. Subukang muli mamaya o makipag-ugnayan sa suporta"
+    },
+    "from": {
+      "message": "Mula sa"
+    },
+    "networkFee": {
+      "message": "Network Fee"
+    },
+    "recipient": {
+      "message": "Tatanggap"
+    },
+    "review": {
+      "message": "Suriin"
+    },
+    "reviewTransactionWarning": {
+      "message": "Suriin ang transaksyon bago magpatuloy"
+    },
+    "send": {
+      "message": "Ipadala"
+    },
+    "send.amountField": {
+      "message": "Halaga"
+    },
+    "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+      "message": "Ang halaga ay dapat na mas malaki sa {minimumValue}"
+    },
+    "send.amountRequiredError": {
+      "message": "Kinakailangan ang halaga"
+    },
+    "send.balance": {
+      "message": "Balanse"
+    },
+    "send.cancelButton": {
+      "message": "Kanselahin"
+    },
+    "send.confirmation.cancelButton": {
+      "message": "Kanselahin"
+    },
+    "send.confirmation.fee": {
+      "message": "Bayad sa network"
+    },
+    "send.confirmation.from": {
+      "message": "Mula sa/kay"
+    },
+    "send.confirmation.recipient": {
+      "message": "Tatanggap"
+    },
+    "send.confirmation.sendButton": {
+      "message": "Ipadala"
+    },
+    "send.confirmation.title": {
+      "message": "Suriin"
+    },
+    "send.confirmation.transactionSpeed": {
+      "message": "Bilis ng transaksyon"
+    },
+    "send.confirmation.viewTransaction": {
+      "message": "Tingnan ang transaksyon"
+    },
+    "send.continueButton": {
+      "message": "Magpatuloy"
+    },
+    "send.fromField": {
+      "message": "Mula sa/kay"
+    },
+    "send.fromRequiredError": {
+      "message": "Kinakailangan ang account"
+    },
+    "send.insufficientBalance": {
+      "message": "Hindi sapat ang balanse"
+    },
+    "send.insuffientSolToCoverFee": {
+      "message": "Hindi sapat ang balanse na SOL para mabayaran ang transaksyon"
+    },
+    "send.selectedTokenPriceNotAvailable": {
+      "message": "Kasalukuyang hindi available ang mga presyo para sa mga token sa {currency}. Makakapagpadala ka pa rin ng mga token."
+    },
+    "send.send-pending.subtitle": {
+      "message": "Isinumite ang iyong transaksyon."
+    },
+    "send.send-pending.title": {
+      "message": "Ipinapadala..."
+    },
+    "send.simulationMessageAPIError": {
+      "message": "Magpatuloy lang kung pinagkakatiwalaan mo ang bawat address na sangkot."
+    },
+    "send.simulationMessageError": {
+      "message": "Binawi ang transaksyong ito habang nagsa-simulate."
+    },
+    "send.simulationTitleAPIError": {
+      "message": "Dahil sa isang error, hindi namin masuri kung may mga alerto sa seguridad."
+    },
+    "send.simulationTitleError": {
+      "message": "Nabigo ang pag-simulate ng transaksyon"
+    },
+    "send.title": {
+      "message": "Ipadala"
+    },
+    "send.toField": {
+      "message": "Para kay/sa"
+    },
+    "send.toInvalidError": {
+      "message": "Hindi valid na address ng Solana"
+    },
+    "send.toPlaceholder": {
+      "message": "Ilagay ang pampublikong address"
+    },
+    "send.toRequiredError": {
+      "message": "Kinakailangan ang address na pupuntahan"
+    },
+    "send.transaction-failure.subtitle": {
+      "message": "Hindi naipadala ang {amount} {tokenSymbol}"
+    },
+    "send.transaction-failure.title": {
+      "message": "Nabigo ang transaksyon"
+    },
+    "send.transaction-success.subtitle": {
+      "message": "Matagumpay na naipadala ang {amount} {tokenSymbol}"
+    },
+    "send.transaction-success.title": {
+      "message": "Ipinadala"
+    },
+    "sending": {
+      "message": "Ipinapadala"
+    },
+    "toAddress": {
+      "message": "To Address"
+    },
+    "total": {
+      "message": "Kabuuan"
+    },
+    "transactionScan.errors.accountAlreadyInUse": {
+      "message": "May umiiral nang account na may kaparehong address."
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Kulang ang balanse"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Kulang ang pondo"
+    },
+    "transactionScan.errors.insufficientSol": {
+      "message": "Walang sapat na SOL ang account para isagawa ang operasyong ito."
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Hindi wastong address"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Hindi wastong transaksyon"
+    },
+    "transactionScan.errors.slippageToleranceExceeded": {
+      "message": "Ibinalik ang transaksyon dahil lumampas sa slippage tolerance."
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred."
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Hindi suportadong paraan"
+    },
+    "transactionSpeed": {
+      "message": "Bilis ng Transaksyon"
+    },
+    "transactionSpeedTooltip": {
+      "message": "Ang tinatayang tagal ng transaksyon"
+    }
+  }
+}

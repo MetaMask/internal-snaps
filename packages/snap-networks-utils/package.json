@@ -16,7 +16,8 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "files": [
-    "dist/"
+    "dist/",
+    "locales/"
   ],
   "sideEffects": false,
   "main": "./dist/index.mjs",
@@ -38,6 +39,7 @@
       "types": "./dist/utils/logger/Logger.d.mts",
       "default": "./dist/utils/logger/Logger.mjs"
     },
+    "./locales/*": "./locales/*",
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -55,7 +57,9 @@
     "test": "vitest run --coverage --reporter=dot --silent",
     "test:clean": "vitest --clearCache",
     "test:verbose": "vitest run --reporter=verbose",
-    "test:watch": "vitest --silent"
+    "test:watch": "vitest --silent",
+    "build:locale": "node ./scripts/populate-en-locale.js",
+    "build:locale:watch": "npx nodemon --watch messages.json --exec \"node ./scripts/populate-en-locale.js\""
   },
   "dependencies": {
     "@metamask/assets-controller": "^19.1.0",

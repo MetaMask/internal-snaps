@@ -96,7 +96,7 @@ describe.each<
   [
     'MaliciousAcknowledgementScreen',
     MaliciousAcknowledgementScreen,
-    { title: 'Malicious request' },
+    { title: 'High-risk request' },
   ],
   ['MemoEditScreen', MemoEditScreen, { title: 'Transaction memo' }],
 ])('%s', (_name, View, header) => {

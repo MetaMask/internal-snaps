@@ -20,7 +20,6 @@ High-level layout of `packages/snap` (nested implementation folders like `servic
 
 | Folder                           | Purpose                                                                        |
 | -------------------------------- | ------------------------------------------------------------------------------ |
-| `locales/`                       | Localized UI strings (built from `messages.json`)                              |
 | `images/`                        | Snap icons / static assets                                                     |
 | `scripts/`                       | Build helpers (manifest, locale, preinstalled snap)                            |
 | `docs/`                          | Package documentation (folder map, use cases, transaction pipeline)            |

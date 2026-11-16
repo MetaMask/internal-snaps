@@ -1,0 +1,470 @@
+{
+  "locale": "el",
+  "messages": {
+    "MmssingNonWitnessUtxo": {
+      "message": "Αποτυχία κατασκευής συναλλαγής: λείπει non-witness UTXO"
+    },
+    "amount": {
+      "message": "Ποσό"
+    },
+    "asset": {
+      "message": "Περιουσιακό στοιχείο"
+    },
+    "balance": {
+      "message": "Υπόλοιπο"
+    },
+    "base58": {
+      "message": "Άκυρη διεύθυνση Bitcoin"
+    },
+    "bech32": {
+      "message": "Άκυρη διεύθυνση Bitcoin"
+    },
+    "cancel": {
+      "message": "Ακύρωση"
+    },
+    "clear": {
+      "message": "Καθαρισμός"
+    },
+    "confirmation.account": {
+      "message": "Λογαριασμός"
+    },
+    "confirmation.advanced.data": {
+      "message": "Δεδομένα"
+    },
+    "confirmation.advanced.hide": {
+      "message": "Απόκρυψη προηγμένων"
+    },
+    "confirmation.advanced.programId": {
+      "message": "Αναγνωριστικό προγράμματος"
+    },
+    "confirmation.advanced.show": {
+      "message": "Εμφάνιση προηγμένων"
+    },
+    "confirmation.advanced.unknownInstruction": {
+      "message": "Άγνωστο"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Καταναλωμένο εύρος ζώνης"
+    },
+    "confirmation.cancelButton": {
+      "message": "Άκυρο"
+    },
+    "confirmation.confirmButton": {
+      "message": "Επιβεβαίωση"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "Εκτιμώμενες αλλαγές"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Δεν υπάρχουν αλλαγές"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Μη διαθέσιμο"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Θα λάβετε"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Θα στείλετε"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Εκτιμώμενες αλλαγές"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Οι εκτιμώμενες αλλαγές είναι αυτές που μπορεί να συμβούν αν προχωρήσετε σε αυτή τη συναλλαγή. Πρόκειται απλώς για μια πρόβλεψη, δεν αποτελεί εγγύηση."
+    },
+    "confirmation.fee": {
+      "message": "Τέλη δικτύου"
+    },
+    "confirmation.feeError": {
+      "message": "Δεν είναι δυνατή η εκτίμηση των τελών"
+    },
+    "confirmation.from": {
+      "message": "Από"
+    },
+    "confirmation.network": {
+      "message": "Δίκτυο"
+    },
+    "confirmation.origin": {
+      "message": "Ζητήθηκε από"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "Η dApp που ζητά την υπογραφή"
+    },
+    "confirmation.requestOrigin": {
+      "message": "Ζητήθηκε από"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "Αίτημα συναλλαγής"
+    },
+    "confirmation.signIn.badAccount": {
+      "message": "Αυτός ο ιστότοπος σας ζητάει να συνδεθείτε χρησιμοποιώντας λάθος λογαριασμό."
+    },
+    "confirmation.signIn.chainId": {
+      "message": "Αναγνωριστικό αλυσίδας"
+    },
+    "confirmation.signIn.description": {
+      "message": "Ένας ιστότοπος θέλει να συνδεθείτε για να αποδείξετε ότι είστε ο κάτοχος αυτού του λογαριασμού."
+    },
+    "confirmation.signIn.expirationTime": {
+      "message": "Χρόνος λήξης"
+    },
+    "confirmation.signIn.issuedAt": {
+      "message": "Εκδόθηκε στις"
+    },
+    "confirmation.signIn.message": {
+      "message": "Μήνυμα"
+    },
+    "confirmation.signIn.notBefore": {
+      "message": "Όχι πριν από"
+    },
+    "confirmation.signIn.requestId": {
+      "message": "Αναγνωριστικό αιτήματος"
+    },
+    "confirmation.signIn.resources": {
+      "message": "Πόροι"
+    },
+    "confirmation.signIn.signingInWith": {
+      "message": "Σύνδεση με"
+    },
+    "confirmation.signIn.statement": {
+      "message": "Δήλωση"
+    },
+    "confirmation.signIn.title": {
+      "message": "Αίτημα σύνδεσης"
+    },
+    "confirmation.signIn.unknownDomain": {
+      "message": "Άγνωστος τομέας"
+    },
+    "confirmation.signIn.version": {
+      "message": "Έκδοση"
+    },
+    "confirmation.signMessage.confirmButton": {
+      "message": "Υπογραφή"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Μήνυμα"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Υπογραφή μηνύματος"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signing request"
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "Αιτία: {reason}"
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Η συναλλαγή αυτή ακυρώθηκε κατά τη διάρκεια της προσομοίωσης."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Only continue if you trust every address involved."
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "Because of an error, we couldn't check for security alerts."
+    },
+    "confirmation.to": {
+      "message": "Προς"
+    },
+    "confirmation.transaction.title": {
+      "message": "Αίτημα συναλλαγής"
+    },
+    "confirmation.transactionFee": {
+      "message": "Τέλη δικτύου"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Μάθετε περισσότερα"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Συμβουλές ασφαλείας από"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Εάν εγκρίνετε αυτό το αίτημα, ένας τρίτος που είναι γνωστός για απάτες θα πάρει όλα τα περιουσιακά σας στοιχεία."
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Πρόκειται για παραπλανητικό αίτημα"
+    },
+    "continue": {
+      "message": "Συνέχεια"
+    },
+    "error": {
+      "message": "Σφάλμα"
+    },
+    "error.0": {
+      "message": "Άκυρη μορφή"
+    },
+    "error.1000": {
+      "message": "Η επικύρωση απέτυχε"
+    },
+    "error.2000": {
+      "message": "Ο πόρος δεν βρέθηκε"
+    },
+    "error.3000": {
+      "message": "Σφάλμα σύνδεσης"
+    },
+    "error.4000": {
+      "message": "Η κατάσταση πορτοφολιού είναι κατεστραμμένη"
+    },
+    "error.5000": {
+      "message": "Σφάλμα αποθήκευσης"
+    },
+    "error.6000": {
+      "message": "Η μέθοδος δεν έχει υλοποιηθεί ή δεν υποστηρίζεται"
+    },
+    "error.7000": {
+      "message": "Άρνηση άδειας ή ανεπαρκής εξουσιοδότηση"
+    },
+    "error.8000": {
+      "message": "Σφάλμα ενέργειας χρήστη"
+    },
+    "error.9000": {
+      "message": "Κατεστραμμένη κατάσταση, η αμετάβλητη δεν τηρήθηκε ή απέτυχε η επιβεβαίωση."
+    },
+    "error.internal": {
+      "message": "Εσωτερικό σφάλμα. Παρακαλώ δοκιμάστε ξανά αργότερα ή επικοινωνήστε με την υποστήριξη"
+    },
+    "feeRate": {
+      "message": "Ρυθμός χρέωσης"
+    },
+    "feeRateTooLow": {
+      "message": "Ρυθμός χρέωσης πολύ χαμηλός"
+    },
+    "feeTooLow": {
+      "message": "Χρέωση πολύ χαμηλή"
+    },
+    "from": {
+      "message": "Από"
+    },
+    "inputTooLarge": {
+      "message": "Άκυρο ποσό: πολύ μεγάλο"
+    },
+    "insufficientFunds": {
+      "message": "Ανεπαρκή κεφάλαια για κάλυψη ποσού συν χρέωση"
+    },
+    "invalidBase58PayloadLength": {
+      "message": "Άκυρη διεύθυνση Bitcoin: άκυρο μήκος"
+    },
+    "invalidCharacter": {
+      "message": "Άκυρο ποσό: άκυρος χαρακτήρας"
+    },
+    "invalidLegacyPrefix": {
+      "message": "Άκυρη διεύθυνση Bitcoin: άκυρο legacy prefix"
+    },
+    "legacyAddressTooLong": {
+      "message": "Άκυρη διεύθυνση Bitcoin"
+    },
+    "max": {
+      "message": "Μέγ"
+    },
+    "minutes": {
+      "message": "λεπτά"
+    },
+    "missingDigits": {
+      "message": "Άκυρο ποσό: λείπουν ψηφία"
+    },
+    "network": {
+      "message": "Δίκτυο"
+    },
+    "networkFee": {
+      "message": "Χρέωση δικτύου"
+    },
+    "networkFeeTooltip": {
+      "message": "Η συνολική χρέωση δικτύου"
+    },
+    "networkValidation": {
+      "message": "Άκυρη διεύθυνση Bitcoin: λάθος δίκτυο"
+    },
+    "noRecipients": {
+      "message": "Λείπουν παραλήπτες"
+    },
+    "noUtxosSelected": {
+      "message": "Αποτυχία κατασκευής συναλλαγής: λείπουν UTXOs"
+    },
+    "outOfRange": {
+      "message": "Άκυρο ποσό: εκτός εμβέλειας"
+    },
+    "outputBelowDustLimit": {
+      "message": "Ποσό κάτω από το όριο dust"
+    },
+    "psbt": {
+      "message": "Άκυρο PSBT"
+    },
+    "recipient": {
+      "message": "Παραλήπτης"
+    },
+    "recipientPlaceholder": {
+      "message": "Εισαγάγετε διεύθυνση παραλήπτη"
+    },
+    "review": {
+      "message": "Επανεξέταση"
+    },
+    "reviewTransactionWarning": {
+      "message": "Ελέγξτε τη συναλλαγή πριν προχωρήσετε"
+    },
+    "send": {
+      "message": "Αποστολή"
+    },
+    "send.amountField": {
+      "message": "Ποσό"
+    },
+    "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+      "message": "Το ποσό πρέπει να είναι μεγαλύτερο από {minimumValue}"
+    },
+    "send.amountRequiredError": {
+      "message": "Απαιτείται το ποσό"
+    },
+    "send.balance": {
+      "message": "Υπόλοιπο"
+    },
+    "send.cancelButton": {
+      "message": "Άκυρο"
+    },
+    "send.confirmation.cancelButton": {
+      "message": "Άκυρο"
+    },
+    "send.confirmation.fee": {
+      "message": "Τέλη δικτύου"
+    },
+    "send.confirmation.from": {
+      "message": "Από"
+    },
+    "send.confirmation.network": {
+      "message": "Δίκτυο"
+    },
+    "send.confirmation.recipient": {
+      "message": "Παραλήπτης"
+    },
+    "send.confirmation.sendButton": {
+      "message": "Αποστολή"
+    },
+    "send.confirmation.title": {
+      "message": "Επανέλεγχος"
+    },
+    "send.confirmation.transactionSpeed": {
+      "message": "Ταχύτητα συναλλαγών"
+    },
+    "send.confirmation.viewTransaction": {
+      "message": "Προβολή συναλλαγών"
+    },
+    "send.continueButton": {
+      "message": "Συνέχεια"
+    },
+    "send.fromField": {
+      "message": "Από"
+    },
+    "send.fromRequiredError": {
+      "message": "Απαιτείται ο λογαριασμός"
+    },
+    "send.insufficientBalance": {
+      "message": "Ανεπαρκές υπόλοιπο"
+    },
+    "send.insuffientSolToCoverFee": {
+      "message": "Ανεπαρκές υπόλοιπο στη Solana (SOL) για την κάλυψη των τελών συναλλαγής"
+    },
+    "send.maxButton": {
+      "message": "Μεγ"
+    },
+    "send.selectedTokenPriceNotAvailable": {
+      "message": "Οι τιμές των tokens σε {currency} δεν είναι προς το παρόν διαθέσιμες. Μπορείτε ακόμα να στείλετε tokens."
+    },
+    "send.send-pending.subtitle": {
+      "message": "Η συναλλαγή σας υποβλήθηκε."
+    },
+    "send.send-pending.title": {
+      "message": "Αποστολή..."
+    },
+    "send.simulationMessageAPIError": {
+      "message": "Συνεχίστε μόνο αν εμπιστεύεστε κάθε διεύθυνση που εμπλέκεται."
+    },
+    "send.simulationMessageError": {
+      "message": "Η συναλλαγή αυτή ακυρώθηκε κατά τη διάρκεια της προσομοίωσης."
+    },
+    "send.simulationTitleAPIError": {
+      "message": "Λόγω κάποιου σφάλματος, δεν μπορέσαμε να ελέγξουμε για ειδοποιήσεις ασφαλείας."
+    },
+    "send.simulationTitleError": {
+      "message": "Η προσομοίωση της συναλλαγής απέτυχε"
+    },
+    "send.title": {
+      "message": "Αποστολή"
+    },
+    "send.toField": {
+      "message": "Προς"
+    },
+    "send.toInvalidError": {
+      "message": "Μη έγκυρη διεύθυνση Solana"
+    },
+    "send.toPlaceholder": {
+      "message": "Εισάγετε τη δημόσια διεύθυνση"
+    },
+    "send.toRequiredError": {
+      "message": "Απαιτείται η διεύθυνση"
+    },
+    "send.transaction-failure.subtitle": {
+      "message": "Δεν είναι δυνατή η αποστολή {amount} {tokenSymbol}"
+    },
+    "send.transaction-failure.title": {
+      "message": "Η συναλλαγή απέτυχε"
+    },
+    "send.transaction-success.subtitle": {
+      "message": "{amount} {tokenSymbol} εστάλη με επιτυχία"
+    },
+    "send.transaction-success.title": {
+      "message": "Εστάλη"
+    },
+    "sending": {
+      "message": "Αποστολή"
+    },
+    "toAddress": {
+      "message": "Προς"
+    },
+    "tooPrecise": {
+      "message": "Άκυρο ποσό: πολύ ακριβές"
+    },
+    "total": {
+      "message": "Σύνολο"
+    },
+    "transactionScan.errors.accountAlreadyInUse": {
+      "message": "Υπάρχει ήδη ένας λογαριασμός με την ίδια διεύθυνση."
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Ανεπαρκή κεφάλαια"
+    },
+    "transactionScan.errors.insufficientSol": {
+      "message": "Ο λογαριασμός δεν διαθέτει αρκετά SOL για να εκτελέσει την ενέργεια."
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Μη έγκυρη διεύθυνση"
+    },
+    "transactionScan.errors.slippageToleranceExceeded": {
+      "message": "Η συναλλαγή ακυρώθηκε επειδή ξεπεράστηκε το όριο αποδεκτής απόκλισης."
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred."
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Μη υποστηριζόμενη μέθοδος"
+    },
+    "transactionSpeed": {
+      "message": "Ταχύτητα συναλλαγής"
+    },
+    "transactionSpeedTooltip": {
+      "message": "Ο εκτιμώμενος χρόνος της συναλλαγής"
+    },
+    "unexpected": {
+      "message": "Προέκυψε ένα απροσδόκητο σφάλμα"
+    },
+    "unknownError": {
+      "message": "Προέκυψε ένα άγνωστο σφάλμα"
+    },
+    "unknownUtxo": {
+      "message": "Αποτυχία κατασκευής συναλλαγής: άγνωστο UTXO"
+    },
+    "witnessProgram": {
+      "message": "Άκυρη διεύθυνση Bitcoin: πρόγραμμα witness"
+    },
+    "witnessVersion": {
+      "message": "Άκυρη διεύθυνση Bitcoin: έκδοση witness"
+    }
+  }
+}

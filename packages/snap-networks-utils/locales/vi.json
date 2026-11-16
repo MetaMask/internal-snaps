@@ -1,0 +1,356 @@
+{
+  "locale": "vi",
+  "messages": {
+    "amount": {
+      "message": "Số tiền"
+    },
+    "balance": {
+      "message": "Số dư"
+    },
+    "cancel": {
+      "message": "Hủy"
+    },
+    "confirmation.account": {
+      "message": "Tài khoản"
+    },
+    "confirmation.advanced.data": {
+      "message": "Dữ liệu"
+    },
+    "confirmation.advanced.hide": {
+      "message": "Ẩn nâng cao"
+    },
+    "confirmation.advanced.programId": {
+      "message": "ID chương trình"
+    },
+    "confirmation.advanced.show": {
+      "message": "Hiển thị nâng cao"
+    },
+    "confirmation.advanced.unknownInstruction": {
+      "message": "Không xác định"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Băng thông đã sử dụng"
+    },
+    "confirmation.cancelButton": {
+      "message": "Hủy"
+    },
+    "confirmation.confirmButton": {
+      "message": "Xác nhận"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "Thay đổi ước tính"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Không có thay đổi"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Không có sẵn"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Bạn nhận được"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Bạn gửi"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Thay đổi ước tính"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Thay đổi ước tính là những gì có thể xảy ra nếu bạn thực hiện giao dịch này. Đây chỉ là dự đoán, không phải là đảm bảo."
+    },
+    "confirmation.fee": {
+      "message": "Phí mạng"
+    },
+    "confirmation.feeError": {
+      "message": "Không thể ước tính phí"
+    },
+    "confirmation.from": {
+      "message": "Từ"
+    },
+    "confirmation.network": {
+      "message": "Mạng"
+    },
+    "confirmation.origin": {
+      "message": "Yêu cầu từ"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "DApp yêu cầu chữ ký"
+    },
+    "confirmation.requestOrigin": {
+      "message": "Yêu cầu từ"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "Yêu cầu giao dịch"
+    },
+    "confirmation.signIn.badAccount": {
+      "message": "Trang web này yêu cầu bạn đăng nhập bằng tài khoản không đúng."
+    },
+    "confirmation.signIn.chainId": {
+      "message": "ID Chuỗi"
+    },
+    "confirmation.signIn.description": {
+      "message": "Trang web muốn bạn đăng nhập để chứng minh bạn sở hữu tài khoản này."
+    },
+    "confirmation.signIn.expirationTime": {
+      "message": "Thời gian hết hạn"
+    },
+    "confirmation.signIn.issuedAt": {
+      "message": "Phát hành vào"
+    },
+    "confirmation.signIn.message": {
+      "message": "Tin nhắn"
+    },
+    "confirmation.signIn.nonce": {
+      "message": "Số Nonce"
+    },
+    "confirmation.signIn.notBefore": {
+      "message": "Không trước"
+    },
+    "confirmation.signIn.requestId": {
+      "message": "ID yêu cầu"
+    },
+    "confirmation.signIn.resources": {
+      "message": "Tài nguyên"
+    },
+    "confirmation.signIn.signingInWith": {
+      "message": "Đăng nhập bằng"
+    },
+    "confirmation.signIn.statement": {
+      "message": "Tuyên bố"
+    },
+    "confirmation.signIn.title": {
+      "message": "Yêu cầu đăng nhập"
+    },
+    "confirmation.signIn.unknownDomain": {
+      "message": "Miền không xác định"
+    },
+    "confirmation.signIn.version": {
+      "message": "Phiên bản"
+    },
+    "confirmation.signMessage.confirmButton": {
+      "message": "Ký"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Tin nhắn"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Ký tin nhắn"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signing request"
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "Lý do: {reason}"
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Giao dịch này đã được hoàn lại trong quá trình mô phỏng."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Chỉ tiếp tục nếu bạn tin tưởng mọi địa chỉ liên quan."
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "Do lỗi, chúng tôi không thể kiểm tra cảnh báo bảo mật."
+    },
+    "confirmation.to": {
+      "message": "Đến"
+    },
+    "confirmation.transaction.title": {
+      "message": "Yêu cầu giao dịch"
+    },
+    "confirmation.transactionFee": {
+      "message": "Phí mạng"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Tìm hiểu thêm"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Lời khuyên bảo mật bởi"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Nếu bạn chấp thuận yêu cầu này, một bên thứ ba nổi tiếng là lừa đảo sẽ lấy hết tài sản của bạn."
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Đây là một yêu cầu lừa đảo"
+    },
+    "error": {
+      "message": "Lỗi"
+    },
+    "error.internal": {
+      "message": "Lỗi nội bộ. Vui lòng thử lại sau hoặc liên hệ hỗ trợ"
+    },
+    "from": {
+      "message": "Từ"
+    },
+    "max": {
+      "message": "Tối đa"
+    },
+    "network": {
+      "message": "Mạng"
+    },
+    "networkFee": {
+      "message": "Network Fee"
+    },
+    "recipient": {
+      "message": "Người nhận"
+    },
+    "review": {
+      "message": "Xem lại"
+    },
+    "reviewTransactionWarning": {
+      "message": "Xem lại giao dịch trước khi tiếp tục"
+    },
+    "send": {
+      "message": "Gửi"
+    },
+    "send.amountField": {
+      "message": "Số lượng"
+    },
+    "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+      "message": "Số lượng phải lớn hơn {minimumValue}"
+    },
+    "send.amountRequiredError": {
+      "message": "Bắt buộc nhập số lượng"
+    },
+    "send.balance": {
+      "message": "Số dư"
+    },
+    "send.cancelButton": {
+      "message": "Hủy"
+    },
+    "send.confirmation.cancelButton": {
+      "message": "Hủy"
+    },
+    "send.confirmation.fee": {
+      "message": "Phí mạng"
+    },
+    "send.confirmation.from": {
+      "message": "Từ"
+    },
+    "send.confirmation.network": {
+      "message": "Mạng"
+    },
+    "send.confirmation.recipient": {
+      "message": "Người nhận"
+    },
+    "send.confirmation.sendButton": {
+      "message": "Gửi"
+    },
+    "send.confirmation.title": {
+      "message": "Xem lại"
+    },
+    "send.confirmation.transactionSpeed": {
+      "message": "Tốc độ giao dịch"
+    },
+    "send.confirmation.viewTransaction": {
+      "message": "Xem giao dịch"
+    },
+    "send.continueButton": {
+      "message": "Tiếp tục"
+    },
+    "send.fromField": {
+      "message": "Từ"
+    },
+    "send.fromRequiredError": {
+      "message": "Bắt buộc nhập tài khoản"
+    },
+    "send.insufficientBalance": {
+      "message": "Không đủ số dư"
+    },
+    "send.insuffientSolToCoverFee": {
+      "message": "Số dư SOL không đủ để thanh toán phí giao dịch"
+    },
+    "send.maxButton": {
+      "message": "Tối đa"
+    },
+    "send.selectedTokenPriceNotAvailable": {
+      "message": "Giá cho token này bằng {currency} hiện không có sẵn. Bạn vẫn có thể gửi token."
+    },
+    "send.send-pending.subtitle": {
+      "message": "Giao dịch của bạn đã được gửi."
+    },
+    "send.send-pending.title": {
+      "message": "Đang gửi..."
+    },
+    "send.simulationMessageAPIError": {
+      "message": "Chỉ tiếp tục nếu bạn tin tưởng mọi địa chỉ liên quan."
+    },
+    "send.simulationMessageError": {
+      "message": "Giao dịch này đã được hoàn lại trong quá trình mô phỏng."
+    },
+    "send.simulationTitleAPIError": {
+      "message": "Đã xảy ra lỗi, do đó chúng tôi không thể kiểm tra các cảnh báo bảo mật."
+    },
+    "send.simulationTitleError": {
+      "message": "Mô phỏng giao dịch không thành công"
+    },
+    "send.title": {
+      "message": "Gửi"
+    },
+    "send.toField": {
+      "message": "Đến"
+    },
+    "send.toInvalidError": {
+      "message": "Địa chỉ Solana không hợp lệ"
+    },
+    "send.toPlaceholder": {
+      "message": "Nhập địa chỉ công khai"
+    },
+    "send.toRequiredError": {
+      "message": "Bắt buộc nhập địa chỉ gửi đến"
+    },
+    "send.transaction-failure.subtitle": {
+      "message": "Không thể gửi {amount} {tokenSymbol}"
+    },
+    "send.transaction-failure.title": {
+      "message": "Giao dịch không thành công"
+    },
+    "send.transaction-success.subtitle": {
+      "message": "{amount} {tokenSymbol} đã được gửi thành công"
+    },
+    "send.transaction-success.title": {
+      "message": "Đã gửi"
+    },
+    "sending": {
+      "message": "Đang gửi"
+    },
+    "toAddress": {
+      "message": "To Address"
+    },
+    "total": {
+      "message": "Tổng"
+    },
+    "transactionScan.errors.accountAlreadyInUse": {
+      "message": "Đã tồn tại tài khoản với cùng địa chỉ này."
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Số dư không đủ"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Không đủ tiền"
+    },
+    "transactionScan.errors.insufficientSol": {
+      "message": "Tài khoản không có đủ SOL để thực hiện tác vụ."
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Địa chỉ không hợp lệ"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Giao dịch không hợp lệ"
+    },
+    "transactionScan.errors.slippageToleranceExceeded": {
+      "message": "Giao dịch đã được hoàn tác vì vượt quá ngưỡng trượt giá cho phép."
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred."
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Phương thức không được hỗ trợ"
+    },
+    "transactionSpeed": {
+      "message": "Tốc độ giao dịch"
+    },
+    "transactionSpeedTooltip": {
+      "message": "Thời gian giao dịch ước tính"
+    }
+  }
+}

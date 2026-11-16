@@ -52,7 +52,7 @@ describe('MaliciousAcknowledgementScreen', () => {
     const banner = find(screen, isBanner);
     expect(banner).toMatchObject({
       severity: 'danger',
-      title: 'Malicious request',
+      title: 'High-risk request',
     });
   });
 

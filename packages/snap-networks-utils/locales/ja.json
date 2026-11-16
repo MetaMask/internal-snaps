@@ -1,0 +1,482 @@
+{
+  "locale": "ja",
+  "messages": {
+    "MmssingNonWitnessUtxo": {
+      "message": "トランザクションの構築に失敗: non-witness UTXO が不足しています"
+    },
+    "amount": {
+      "message": "金額"
+    },
+    "asset": {
+      "message": "資産"
+    },
+    "balance": {
+      "message": "残高"
+    },
+    "base58": {
+      "message": "無効な Bitcoin アドレス"
+    },
+    "bech32": {
+      "message": "無効な Bitcoin アドレス"
+    },
+    "cancel": {
+      "message": "キャンセル"
+    },
+    "clear": {
+      "message": "クリア"
+    },
+    "confirmation.account": {
+      "message": "アカウント"
+    },
+    "confirmation.advanced.data": {
+      "message": "データ"
+    },
+    "confirmation.advanced.hide": {
+      "message": "高度な設定を非表示"
+    },
+    "confirmation.advanced.programId": {
+      "message": "プログラムID"
+    },
+    "confirmation.advanced.show": {
+      "message": "高度な設定を表示"
+    },
+    "confirmation.advanced.unknownInstruction": {
+      "message": "不明"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "消費された帯域幅"
+    },
+    "confirmation.cancelButton": {
+      "message": "キャンセル"
+    },
+    "confirmation.confirmButton": {
+      "message": "確定"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "予測される増減額"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "変化はありません"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "利用できません"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "受取額"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "送金額"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "予測される増減額"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "予測される増減額は、このトランザクションを実行すると発生する可能性がある増減額です。これは単に予測に過ぎず、保証されたものではありません。"
+    },
+    "confirmation.fee": {
+      "message": "ネットワーク手数料"
+    },
+    "confirmation.feeError": {
+      "message": "手数料を見積もれません"
+    },
+    "confirmation.from": {
+      "message": "送信元"
+    },
+    "confirmation.network": {
+      "message": "ネットワーク"
+    },
+    "confirmation.origin": {
+      "message": "要求元"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "署名をリクエストしている dApp"
+    },
+    "confirmation.requestOrigin": {
+      "message": "要求元"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "トランザクションリクエスト"
+    },
+    "confirmation.signIn.badAccount": {
+      "message": "このサイトは正しくないアカウントでのサインインを求めています。"
+    },
+    "confirmation.signIn.chainId": {
+      "message": "チェーンID"
+    },
+    "confirmation.signIn.description": {
+      "message": "このアカウントの所有者であることを証明するために、サイトがサインインを求めています。"
+    },
+    "confirmation.signIn.expirationTime": {
+      "message": "有効期限"
+    },
+    "confirmation.signIn.issuedAt": {
+      "message": "発行日時"
+    },
+    "confirmation.signIn.message": {
+      "message": "メッセージ"
+    },
+    "confirmation.signIn.nonce": {
+      "message": "ナンス"
+    },
+    "confirmation.signIn.notBefore": {
+      "message": "以前ではない"
+    },
+    "confirmation.signIn.requestId": {
+      "message": "要求ID"
+    },
+    "confirmation.signIn.resources": {
+      "message": "リソース"
+    },
+    "confirmation.signIn.signingInWith": {
+      "message": "サインイン方法"
+    },
+    "confirmation.signIn.statement": {
+      "message": "声明"
+    },
+    "confirmation.signIn.title": {
+      "message": "サインイン要求"
+    },
+    "confirmation.signIn.unknownDomain": {
+      "message": "不明なドメイン"
+    },
+    "confirmation.signIn.version": {
+      "message": "バージョン"
+    },
+    "confirmation.signMessage.confirmButton": {
+      "message": "署名"
+    },
+    "confirmation.signMessage.message": {
+      "message": "メッセージ"
+    },
+    "confirmation.signMessage.title": {
+      "message": "メッセージに署名"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signing request"
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "理由: {reason}"
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "このトランザクションはシミュレーション中に取り消されました。"
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "関係するすべてのアドレスを信頼できる場合にのみ続行してください。"
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "エラーのため、セキュリティアラートを確認できませんでした。"
+    },
+    "confirmation.to": {
+      "message": "宛先"
+    },
+    "confirmation.transaction.title": {
+      "message": "トランザクションリクエスト"
+    },
+    "confirmation.transactionFee": {
+      "message": "ネットワーク手数料"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "詳細"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "セキュリティアドバイスの提供元:"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "このリクエストを承認すると、詐欺が判明している第三者に資産をすべて奪われます。"
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "これは虚偽のリクエストです"
+    },
+    "continue": {
+      "message": "続ける"
+    },
+    "error": {
+      "message": "エラー"
+    },
+    "error.0": {
+      "message": "無効な形式"
+    },
+    "error.1000": {
+      "message": "検証に失敗しました"
+    },
+    "error.2000": {
+      "message": "リソースが見つかりません"
+    },
+    "error.3000": {
+      "message": "接続エラー"
+    },
+    "error.4000": {
+      "message": "ウォレット状態が破損しています"
+    },
+    "error.5000": {
+      "message": "ストレージエラー"
+    },
+    "error.6000": {
+      "message": "メソッドが実装されていないかサポートされていません"
+    },
+    "error.7000": {
+      "message": "権限が拒否されたか十分な認証がありません"
+    },
+    "error.8000": {
+      "message": "ユーザーアクションエラー"
+    },
+    "error.9000": {
+      "message": "破損した状態、不変条件が守られていないかアサーションに失敗しました。"
+    },
+    "error.internal": {
+      "message": "内部エラー。後ほどお試しくださいまたはサポートにご連絡ください"
+    },
+    "feeRate": {
+      "message": "手数料率"
+    },
+    "feeRateTooLow": {
+      "message": "手数料率が低すぎます"
+    },
+    "feeTooLow": {
+      "message": "手数料が低すぎます"
+    },
+    "from": {
+      "message": "送金元"
+    },
+    "inputTooLarge": {
+      "message": "無効な金額: 大きすぎる"
+    },
+    "insufficientFunds": {
+      "message": "金額プラス手数料をカバーするのに資金が不足しています"
+    },
+    "invalidBase58PayloadLength": {
+      "message": "無効な Bitcoin アドレス: 無効な長さ"
+    },
+    "invalidCharacter": {
+      "message": "無効な金額: 無効な文字"
+    },
+    "invalidLegacyPrefix": {
+      "message": "無効な Bitcoin アドレス: 無効な legacy プレフィックス"
+    },
+    "legacyAddressTooLong": {
+      "message": "無効な Bitcoin アドレス"
+    },
+    "max": {
+      "message": "最大"
+    },
+    "minutes": {
+      "message": "分"
+    },
+    "missingDigits": {
+      "message": "無効な金額: 桁が不足"
+    },
+    "network": {
+      "message": "ネットワーク"
+    },
+    "networkFee": {
+      "message": "ネットワーク手数料"
+    },
+    "networkFeeTooltip": {
+      "message": "総ネットワーク手数料"
+    },
+    "networkValidation": {
+      "message": "無効な Bitcoin アドレス: 間違ったネットワーク"
+    },
+    "noRecipients": {
+      "message": "受取人が不足しています"
+    },
+    "noUtxosSelected": {
+      "message": "トランザクションの構築に失敗: UTXO が不足しています"
+    },
+    "outOfRange": {
+      "message": "無効な金額: 範囲外"
+    },
+    "outputBelowDustLimit": {
+      "message": "金額がダスト制限以下です"
+    },
+    "psbt": {
+      "message": "無効な PSBT"
+    },
+    "recipient": {
+      "message": "受取人"
+    },
+    "recipientPlaceholder": {
+      "message": "受信アドレスを入力"
+    },
+    "review": {
+      "message": "レビュー"
+    },
+    "reviewTransactionWarning": {
+      "message": "進める前にトランザクションを確認してください"
+    },
+    "send": {
+      "message": "送信"
+    },
+    "send.amountField": {
+      "message": "金額"
+    },
+    "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+      "message": "金額は{minimumValue}より大きくする必要があります"
+    },
+    "send.amountRequiredError": {
+      "message": "金額が必要です"
+    },
+    "send.assetField": {
+      "message": "トークン"
+    },
+    "send.balance": {
+      "message": "残高"
+    },
+    "send.cancelButton": {
+      "message": "キャンセル"
+    },
+    "send.confirmation.cancelButton": {
+      "message": "キャンセル"
+    },
+    "send.confirmation.fee": {
+      "message": "ネットワーク手数料"
+    },
+    "send.confirmation.from": {
+      "message": "送り元"
+    },
+    "send.confirmation.network": {
+      "message": "ネットワーク"
+    },
+    "send.confirmation.recipient": {
+      "message": "受取人"
+    },
+    "send.confirmation.sendButton": {
+      "message": "送金"
+    },
+    "send.confirmation.title": {
+      "message": "確認"
+    },
+    "send.confirmation.transactionSpeed": {
+      "message": "トランザクションの速度"
+    },
+    "send.confirmation.viewTransaction": {
+      "message": "トランザクションを表示"
+    },
+    "send.continueButton": {
+      "message": "続行"
+    },
+    "send.fromField": {
+      "message": "送り元"
+    },
+    "send.fromRequiredError": {
+      "message": "アカウントが必要です"
+    },
+    "send.insufficientBalance": {
+      "message": "残高が不十分です"
+    },
+    "send.insuffientSolToCoverFee": {
+      "message": "トランザクション手数料の支払いに十分なSOL残高がありません"
+    },
+    "send.maxButton": {
+      "message": "最大"
+    },
+    "send.selectedTokenPriceNotAvailable": {
+      "message": "{currency}でのトークンの価格は現在利用できません。トークンの送金は可能です。"
+    },
+    "send.send-pending.subtitle": {
+      "message": "トランザクションが送信されました。"
+    },
+    "send.send-pending.title": {
+      "message": "送信中..."
+    },
+    "send.simulationMessageAPIError": {
+      "message": "関係するすべてのアドレスを信頼できる場合のみ続行してください。"
+    },
+    "send.simulationMessageError": {
+      "message": "このトランザクションはシミュレーション中に取り消されました。"
+    },
+    "send.simulationTitleAPIError": {
+      "message": "エラーのため、セキュリティアラートを確認できませんでした。"
+    },
+    "send.simulationTitleError": {
+      "message": "トランザクションのシミュレーションに失敗しました"
+    },
+    "send.title": {
+      "message": "送金"
+    },
+    "send.toField": {
+      "message": "送り先"
+    },
+    "send.toInvalidError": {
+      "message": "Solanaアドレスが無効です"
+    },
+    "send.toPlaceholder": {
+      "message": "パブリックアドレスを入力してください"
+    },
+    "send.toRequiredError": {
+      "message": "送り先のアドレスが必要です"
+    },
+    "send.transaction-failure.subtitle": {
+      "message": "{amount} {tokenSymbol}を送金できません"
+    },
+    "send.transaction-failure.title": {
+      "message": "トランザクションに失敗しました"
+    },
+    "send.transaction-success.subtitle": {
+      "message": "{amount} {tokenSymbol}が送金されました"
+    },
+    "send.transaction-success.title": {
+      "message": "送信完了"
+    },
+    "sending": {
+      "message": "送信中"
+    },
+    "toAddress": {
+      "message": "宛先"
+    },
+    "tooPrecise": {
+      "message": "無効な金額: 精度が高すぎる"
+    },
+    "total": {
+      "message": "合計"
+    },
+    "transactionScan.errors.accountAlreadyInUse": {
+      "message": "同じアドレスのアカウントがすでに存在します."
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "残高不足"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "資金不足"
+    },
+    "transactionScan.errors.insufficientSol": {
+      "message": "アカウントには、この操作を実行するのに十分なSOLがありません."
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "無効なアドレス"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "無効なトランザクション"
+    },
+    "transactionScan.errors.slippageToleranceExceeded": {
+      "message": "スリッページの許容範囲を超えたため、トランザクションが取り消されました。"
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred."
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "サポートされていないメソッド"
+    },
+    "transactionSpeed": {
+      "message": "トランザクション速度"
+    },
+    "transactionSpeedTooltip": {
+      "message": "トランザクションの予想時間"
+    },
+    "unexpected": {
+      "message": "予期せぬエラーが発生しました"
+    },
+    "unknownError": {
+      "message": "不明なエラーが発生しました"
+    },
+    "unknownUtxo": {
+      "message": "トランザクションの構築に失敗: 不明な UTXO"
+    },
+    "witnessProgram": {
+      "message": "無効な Bitcoin アドレス: witness プログラム"
+    },
+    "witnessVersion": {
+      "message": "無効な Bitcoin アドレス: witness バージョン"
+    }
+  }
+}
