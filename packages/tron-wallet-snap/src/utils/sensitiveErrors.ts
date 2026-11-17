@@ -1,6 +1,26 @@
 import { isSnapRpcError } from '@metamask/snap-networks-utils';
+import { isObject } from '@metamask/utils';
 
 export { isSnapRpcError };
+
+/**
+ * Reads a string field off a caught value without trusting its shape.
+ *
+ * @param value - The caught value.
+ * @param property - The field to read.
+ * @returns The field value, or `undefined` when it is absent or not a string.
+ */
+function readErrorField(
+  value: unknown,
+  property: 'message' | 'stack',
+): string | undefined {
+  if (!isObject(value)) {
+    return undefined;
+  }
+
+  const field = value[property];
+  return typeof field === 'string' ? field : undefined;
+}
 
 /**
  * Sanitizes error messages that may contain sensitive cryptographic information.
@@ -9,11 +29,9 @@ export { isSnapRpcError };
  * @param error - The error to sanitize.
  * @returns A sanitized error with generic message if sensitive info detected.
  */
-// TODO: Replace `any` with type
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function sanitizeSensitiveError(error: any): Error {
-  const message = error?.message?.toLowerCase() ?? '';
-  const stack = error?.stack?.toLowerCase() ?? '';
+export function sanitizeSensitiveError(error: unknown): Error {
+  const message = readErrorField(error, 'message')?.toLowerCase() ?? '';
+  const stack = readErrorField(error, 'stack')?.toLowerCase() ?? '';
 
   const sensitiveKeywords = [
     'private',
@@ -28,7 +46,6 @@ export function sanitizeSensitiveError(error: any): Error {
   ];
 
   const containsSensitiveInfo = sensitiveKeywords.some(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (keyword) => message.includes(keyword) || stack.includes(keyword),
   );
 
@@ -43,5 +60,7 @@ export function sanitizeSensitiveError(error: any): Error {
     return sanitizedError;
   }
 
-  return error;
+  // Values without sensitive keywords are rethrown untouched, including
+  // non-`Error` throwables.
+  return error as Error;
 }

@@ -198,8 +198,10 @@ export class SnapAssetsAdapter {
     ]);
 
     const isInactiveAccount = tronAccountInfoRequest.status === 'rejected';
-    if (isInactiveAccount) {
-      const { reason } = tronAccountInfoRequest;
+    if (tronAccountInfoRequest.status === 'rejected') {
+      // `PromiseRejectedResult['reason']` is `any`; the snap only needs to know
+      // whether it is the account-not-found error.
+      const reason: unknown = tronAccountInfoRequest.reason;
       if (!(reason instanceof TrongridAccountNotFoundError)) {
         throw new AssetFetchError('Failed to fetch account info', {
           cause: reason,
@@ -215,7 +217,7 @@ export class SnapAssetsAdapter {
     const trc20BalancesFallback = isInactiveAccount
       ? await this.#trongridApiClient
           .getTrc20BalancesByAddress(scope, account.address)
-          .catch(async (error) => {
+          .catch(async (error: unknown) => {
             await this.#snapClient.trackError(
               new Error('Failed to fetch TRC20 balances for inactive account', {
                 cause: error,
