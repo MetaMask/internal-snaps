@@ -854,9 +854,8 @@ export class AccountUseCases {
   async signProofOfOwnershipMessages(
     requests: SignProofOfOwnershipMessageBatchRequest[],
   ): Promise<SignProofOfOwnershipMessageBatchResult[]> {
-    const results: SignProofOfOwnershipMessageBatchResult[] = new Array(
-      requests.length,
-    );
+    const results: SignProofOfOwnershipMessageBatchResult[] =
+      new Array<SignProofOfOwnershipMessageBatchResult>(requests.length);
     const requestsByParentPath = new Map<
       string,
       {

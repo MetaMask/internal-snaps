@@ -10,6 +10,7 @@ import {
   SnapError,
   getErrorMessage,
 } from '@metamask/snaps-sdk';
+import type { Json } from '@metamask/utils';
 import { StructError } from 'superstruct';
 
 import type { Translator, Logger, SnapClient } from '../entities';
@@ -109,9 +110,12 @@ export class HandlerMiddleware {
       } else {
         if (error instanceof StructError) {
           const errMsg = messages['error.0']?.message ?? 'Invalid format';
+          // `StructError` declares an `any` index signature, so the payload is
+          // narrowed to the type accepted by the error wrapper.
+          const structData = error.data as Record<string, Json> | undefined;
           throw new InvalidInputError(
             `${errMsg}: ${error.message}`,
-            error.data,
+            structData,
           );
         }
         // Unknown error type — wrap in SnapError to preserve the original

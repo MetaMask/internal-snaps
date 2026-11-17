@@ -1,6 +1,4 @@
-/**
- * @vitest-environment node
- */
+// @vitest-environment node
 
 import { BalanceStruct } from '@metamask/keyring-api';
 import { assert } from '@metamask/superstruct';
