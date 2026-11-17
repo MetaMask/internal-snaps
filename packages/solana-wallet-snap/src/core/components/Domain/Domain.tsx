@@ -1,15 +1,21 @@
-import type { SnapComponent } from '@metamask/snaps-sdk/jsx';
+import type { SnapComponent, SnapElement } from '@metamask/snaps-sdk/jsx';
 import { Box, Link } from '@metamask/snaps-sdk/jsx';
 
 import type { Network } from '../../constants/solana';
 import { getSolanaExplorerUrl } from '../../utils/getSolanaExplorerUrl';
 
-export const Domain: SnapComponent<{
+type DomainProps = {
   domain: string;
   scope: Network;
   address: string;
-}> = ({ domain, scope, address }) => {
-  return (
+};
+
+export const Domain: SnapComponent<DomainProps> = ({
+  domain,
+  scope,
+  address,
+}) =>
+  (
     <Box direction="horizontal" alignment="center">
       {/* TODO: Bring it back when there is a smaller avatar option */}
       {/* <Avatar size="sm" address={addressToCaip10(scope, address)} /> */}
@@ -17,5 +23,4 @@ export const Domain: SnapComponent<{
         {domain}
       </Link>
     </Box>
-  );
-};
+  ) as SnapElement<DomainProps>;

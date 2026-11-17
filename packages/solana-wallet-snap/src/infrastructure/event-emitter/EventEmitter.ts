@@ -1,6 +1,10 @@
 import type { Logger } from '@metamask/snap-networks-utils';
 
-type Listener = (data?: any) => Promise<void>;
+/**
+ * A listener for an event. The payload type is erased when the listener is
+ * registered, since listeners are only keyed by event name.
+ */
+type Listener<Data = unknown> = (data: Data) => Promise<void>;
 
 /**
  * The EventEmitter class is a simple event emitter that allows to register listeners / callbacks for events and emit events.
@@ -30,14 +34,16 @@ export class EventEmitter {
    * @param event - The event to listen to.
    * @param listener - The listener to call when the event is emitted.
    */
-  on(event: string, listener: Listener) {
+  on<Data>(event: string, listener: Listener<Data>): void {
     this.#logger.info(`Adding listener for event ${event}`);
 
     if (!this.#listeners.has(event)) {
       this.#listeners.set(event, new Set());
     }
 
-    this.#listeners.get(event)?.add(listener);
+    // The payload type is erased here because listeners are stored per event
+    // name, not per payload type.
+    this.#listeners.get(event)?.add(listener as Listener);
   }
 
   /**
@@ -46,7 +52,7 @@ export class EventEmitter {
    * @param event - The event to remove the listener for.
    * @param listener - The listener to remove.
    */
-  off(event: string, listener: Listener) {
+  off(event: string, listener: Listener): void {
     this.#logger.info(`Removing listener for event ${event}`);
 
     const listeners = this.#listeners.get(event);
@@ -68,7 +74,7 @@ export class EventEmitter {
    * @param event - The event to emit.
    * @param data - The data to pass to the listeners.
    */
-  async emitSync(event: string, data?: any): Promise<void> {
+  async emitSync(event: string, data?: unknown): Promise<void> {
     this.#logger.info(`Emitting event ${event}`);
     const listeners = this.#listeners.get(event);
 
@@ -85,7 +91,7 @@ export class EventEmitter {
    *
    * @param event - The event to remove the listeners for. If not provided, all listeners will be removed.
    */
-  removeAllListeners(event?: string) {
+  removeAllListeners(event?: string): void {
     if (event) {
       this.#logger.info(`Removing all listeners for event ${event}`);
       this.#listeners.delete(event);

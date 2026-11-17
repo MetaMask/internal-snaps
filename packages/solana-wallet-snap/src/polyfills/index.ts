@@ -5,7 +5,7 @@ import { install as installQueueMicrotaskPolyfill } from './queue-microtask';
 /**
  * Installs all polyfills.
  */
-export function installPolyfills() {
+export function installPolyfills(): void {
   installDOMExceptionPolyfill();
   installEd25519Polyfill();
   installQueueMicrotaskPolyfill();

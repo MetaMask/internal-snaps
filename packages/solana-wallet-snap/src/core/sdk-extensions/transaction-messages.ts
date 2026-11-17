@@ -11,6 +11,7 @@ import {
 } from '@solana-program/compute-budget';
 import type {
   Address,
+  ExcludeTransactionMessageLifetime,
   Instruction,
   Rpc,
   SimulateTransactionApi,
@@ -80,7 +81,10 @@ export const setTransactionMessageLifetimeUsingBlockhashIfMissing = <
 >(
   blockhashLifetimeConstraint: TransactionMessageWithBlockhashLifetime['lifetimeConstraint'],
   transaction: TTransaction,
-) =>
+):
+  | (TTransaction & TransactionMessageWithBlockhashLifetime)
+  | (ExcludeTransactionMessageLifetime<TTransaction> &
+      TransactionMessageWithBlockhashLifetime) =>
   isTransactionMessageWithBlockhashLifetime(transaction)
     ? transaction
     : setTransactionMessageLifetimeUsingBlockhash(
@@ -94,7 +98,9 @@ export const setTransactionMessageLifetimeUsingBlockhashIfMissing = <
  * @param instruction - The instruction to check.
  * @returns A predicate function that checks if an instruction is a compute unit price instruction.
  */
-export const isComputeUnitPriceInstruction = (instruction: Instruction) =>
+export const isComputeUnitPriceInstruction = (
+  instruction: Instruction,
+): boolean =>
   instruction.programAddress === COMPUTE_BUDGET_PROGRAM_ADDRESS &&
   identifyComputeBudgetInstruction({
     data: new Uint8Array(), // Provide a default value for instruction.data it can be undefined
@@ -147,7 +153,9 @@ export const setComputeUnitPriceInstructionIfMissing = <
  * @param instruction - The instruction to check.
  * @returns A predicate function that checks if an instruction is a compute unit limit instruction.
  */
-export const isComputeUnitLimitInstruction = (instruction: Instruction) =>
+export const isComputeUnitLimitInstruction = (
+  instruction: Instruction,
+): boolean =>
   instruction.programAddress === COMPUTE_BUDGET_PROGRAM_ADDRESS &&
   identifyComputeBudgetInstruction({
     data: new Uint8Array(), // Provide a default value for instruction.data it can be undefined
@@ -281,7 +289,7 @@ export const estimateAndOverrideComputeUnitLimit = async <
         ),
       ],
     };
-  } catch (error) {
+  } catch {
     // If the estimate fails, return the original transaction message unchanged.
     return transactionMessage;
   }

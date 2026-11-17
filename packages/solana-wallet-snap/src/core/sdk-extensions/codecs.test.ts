@@ -3,7 +3,7 @@ import {
   getCompiledTransactionMessageEncoder,
   pipe,
 } from '@solana/kit';
-import type { TransactionMessageBytes } from '@solana/kit';
+import type { Transaction, TransactionMessageBytes } from '@solana/kit';
 import type { GetMultipleAccountsApi, Rpc } from '@solana/kit';
 
 import { MOCK_EXECUTION_SCENARIOS } from '../services/signer/mocks/scenarios';
@@ -63,7 +63,9 @@ describe('codecs', () => {
 
     describe('fromTransactionToBase64String', () => {
       it('encodes a transaction to a base64 string', () => {
-        const result = fromTransactionToBase64String(signedTransaction);
+        const result = fromTransactionToBase64String(
+          signedTransaction as Transaction,
+        );
 
         expect(result).toStrictEqual(signedTransactionBase64Encoded);
       });

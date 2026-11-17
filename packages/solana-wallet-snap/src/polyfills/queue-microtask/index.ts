@@ -1,12 +1,14 @@
-const queueMicrotask = async (callback: () => void) =>
-  Promise.resolve().then(callback);
+const queueMicrotaskPolyfill = async (callback: () => void): Promise<void> => {
+  await Promise.resolve();
+  callback();
+};
 
 /**
  * Adds support for the window#queueMicrotask() function.
  */
-export function install() {
+export function install(): void {
   Object.defineProperty(globalThis, 'queueMicrotask', {
-    value: queueMicrotask,
+    value: queueMicrotaskPolyfill,
     writable: true,
     configurable: true,
     enumerable: true,
