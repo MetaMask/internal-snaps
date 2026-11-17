@@ -1,8 +1,4 @@
-import {
-  createSnapErrorHandling,
-  isReportedFetchPolicyError,
-} from '@metamask/snap-networks-utils';
-import { UserRejectedRequestError } from '@metamask/snaps-sdk';
+import { createSnapErrorHandling } from '@metamask/snap-networks-utils';
 
 import logger from './logger';
 import { getSnapProvider } from './snap';
@@ -14,7 +10,4 @@ export const { trackError, withCatchAndThrowSnapError } =
   createSnapErrorHandling({
     getSnapProvider,
     logError: logger.error.bind(logger),
-    shouldTrack: (error) =>
-      !(error instanceof UserRejectedRequestError) &&
-      !isReportedFetchPolicyError(error),
   });
