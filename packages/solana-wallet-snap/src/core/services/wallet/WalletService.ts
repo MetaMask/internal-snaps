@@ -463,7 +463,8 @@ export class WalletService {
   ): Promise<SolanaSignMessageBatchResult[]> {
     this.#logger.info(`Signing message batch for ${requests.length} requests`);
 
-    const results: SolanaSignMessageBatchResult[] = new Array(requests.length);
+    const results: SolanaSignMessageBatchResult[] =
+      new Array<SolanaSignMessageBatchResult>(requests.length);
     const requestsByEntropySource = new Map<
       string,
       { index: number; request: SolanaSignMessageBatchRequest }[]

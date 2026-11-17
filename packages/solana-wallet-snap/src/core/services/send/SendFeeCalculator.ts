@@ -1,6 +1,6 @@
 import type { Lamports } from '@solana/kit';
 import { lamports, pipe } from '@solana/kit';
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 
 import { MICRO_LAMPORTS_PER_LAMPORTS } from '../../constants/solana';
 import type { ISendTransactionBuilder } from './ISendTransactionBuilder';

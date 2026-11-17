@@ -109,15 +109,9 @@ describe('ConfirmationHandler', () => {
     mockRenderConfirmTransactionRequest = vi.spyOn(
       ConfirmTransactionRequestRender,
       'render',
-    ) as unknown as Mock;
-    mockRenderConfirmSignMessage = vi.spyOn(
-      ConfirmSignMessageRender,
-      'render',
-    ) as unknown as Mock;
-    mockRenderConfirmSignIn = vi.spyOn(
-      ConfirmSignInRender,
-      'render',
-    ) as unknown as Mock;
+    );
+    mockRenderConfirmSignMessage = vi.spyOn(ConfirmSignMessageRender, 'render');
+    mockRenderConfirmSignIn = vi.spyOn(ConfirmSignInRender, 'render');
     mockSnapRequest.mockResolvedValue(undefined);
     confirmationHandler = new ConfirmationHandler();
   });

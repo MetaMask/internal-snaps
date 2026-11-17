@@ -118,7 +118,7 @@ export class TransactionScanService extends BaseTransactionScanService {
 
       this.logger.info('Scanning transaction');
 
-      const result =
+      const result: unknown =
         await this.securityAlertsApiClient.scanTransaction(requestBody);
 
       assert(result, SecurityAlertResponseStruct, 'Solana scan response body');

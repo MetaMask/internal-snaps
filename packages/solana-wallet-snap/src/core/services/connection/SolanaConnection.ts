@@ -41,6 +41,17 @@ type JsonParsedAccountResult<TData extends object> =
   | (MaybeEncodedAccount<Address> & Serializable);
 
 /**
+ * The raw result of the SDK's `fetchJsonParsedAccount`, which decorates the
+ * parsed account data with the parsed account meta.
+ */
+type FetchedJsonParsedAccount<TData extends object> =
+  | MaybeAccount<
+      TData & { parsedAccountMeta?: { program: string; type?: string } },
+      Address
+    >
+  | MaybeEncodedAccount<Address>;
+
+/**
  * The SolanaConnection class is responsible for managing the connections to the Solana networks.
  */
 export class SolanaConnection {
@@ -122,21 +133,23 @@ export class SolanaConnection {
      *
      * This wrapper is used instead of directly caching the SDK's fetchJsonParsedAccount function
      * to ensure that only simple arguments are used, as these arguments form the cache key.
+     *
+     * @param _address - The address of the account to fetch.
+     * @param _caip2Id - The network on which the account is fetched.
+     * @param _config - The configuration for the request.
+     * @returns The JSON-parsed account, or the encoded account if it cannot be parsed.
      */
-
     const internal = async (
       _address: string,
       _caip2Id: Network,
       _config?: FetchAccountConfig,
-    ) => {
+    ): Promise<FetchedJsonParsedAccount<TData>> => {
       const rpc = this.getRpc(_caip2Id);
-      return fetchJsonParsedAccount(rpc, asAddress(_address), _config);
+      return fetchJsonParsedAccount<TData>(rpc, asAddress(_address), _config);
     };
 
     if (options?.skipCache) {
-      return internal(address, caip2Id, config) as Promise<
-        MaybeAccount<TData, Address> | MaybeEncodedAccount<Address>
-      >;
+      return internal(address, caip2Id, config);
     }
 
     // Create a cached version of the function.

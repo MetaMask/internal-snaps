@@ -463,7 +463,7 @@ describe('TransactionScan', () => {
       ).mockResolvedValue({
         status: 'SUCCESS',
         result: { simulation: {}, validation: { result_type: 'Benign' } },
-      } as SecurityAlertSimulationValidationResponse);
+      });
 
       const result = await transactionScanService.scanTransaction({
         method: 'method',
@@ -544,7 +544,7 @@ describe('TransactionScan', () => {
         'scanTransaction',
       ).mockResolvedValue({
         status: 'SUCCESS',
-      } as SecurityAlertSimulationValidationResponse);
+      });
 
       await transactionScanService.scanTransaction({
         method: 'signAndSendTransaction',
@@ -574,7 +574,7 @@ describe('TransactionScan', () => {
         'scanTransaction',
       ).mockResolvedValue({
         status: 'SUCCESS',
-      } as SecurityAlertSimulationValidationResponse);
+      });
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -597,9 +597,7 @@ describe('TransactionScan', () => {
       vi.spyOn(
         mockSecurityAlertsApiClient,
         'scanTransaction',
-      ).mockResolvedValue(
-        null as unknown as SecurityAlertSimulationValidationResponse,
-      );
+      ).mockResolvedValue(null);
 
       const result = await transactionScanService.scanTransaction({
         method: 'method',
@@ -653,7 +651,7 @@ describe('TransactionScan', () => {
             },
           },
         },
-      } as unknown as SecurityAlertSimulationValidationResponse);
+      });
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -741,7 +739,7 @@ describe('TransactionScan', () => {
             },
           },
         },
-      } as unknown as SecurityAlertSimulationValidationResponse);
+      });
 
       const result = await transactionScanService.scanTransaction({
         method: 'method',
@@ -903,7 +901,7 @@ describe('TransactionScan', () => {
             },
           },
         },
-      } as unknown as SecurityAlertSimulationValidationResponse);
+      });
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -997,7 +995,7 @@ describe('TransactionScan', () => {
             features: [],
           },
         },
-      } as unknown as SecurityAlertSimulationValidationResponse);
+      });
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -1042,7 +1040,7 @@ describe('TransactionScan', () => {
             },
           },
         },
-      } as unknown as SecurityAlertSimulationValidationResponse);
+      });
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -1134,7 +1132,7 @@ describe('TransactionScan', () => {
             },
           },
         },
-      } as unknown as SecurityAlertSimulationValidationResponse);
+      });
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -1185,7 +1183,7 @@ describe('TransactionScan', () => {
             },
           },
         },
-      } as unknown as SecurityAlertSimulationValidationResponse);
+      });
 
       await transactionScanService.scanTransaction({
         method: 'method',
@@ -1235,7 +1233,7 @@ describe('TransactionScan', () => {
             },
           },
         },
-      } as unknown as SecurityAlertSimulationValidationResponse);
+      });
 
       await transactionScanService.scanTransaction({
         method: 'method',

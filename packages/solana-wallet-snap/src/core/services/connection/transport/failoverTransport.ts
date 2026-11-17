@@ -93,7 +93,9 @@ export const createFailoverTransport =
         );
         const isLastTransport = index === transportCount - 1;
         logger.error(
-          `[🚌 FailoverTransport] Transport failed (URL: ${currentUrl}): ${error}. ${
+          `[🚌 FailoverTransport] Transport failed (URL: ${currentUrl}): ${String(
+            error,
+          )}. ${
             isLastTransport
               ? 'No more transports to try.'
               : 'Trying next transport...'

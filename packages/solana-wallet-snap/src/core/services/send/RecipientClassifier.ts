@@ -57,7 +57,7 @@ export class RecipientClassifier {
 
     try {
       assertAccountExists(recipientInfo);
-    } catch (error) {
+    } catch {
       // The account doesn't exist yet. The blockchain will create it as a system account.
       return { type: 'SYSTEM' };
     }
