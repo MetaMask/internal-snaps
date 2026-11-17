@@ -80,7 +80,7 @@ describe('TransactionsService', () => {
     const snap = {
       request: vi.fn(),
     };
-    (globalThis as any).snap = snap;
+    (globalThis as unknown as { snap: typeof snap }).snap = snap;
   });
 
   describe('fetchBySignature', () => {
@@ -226,18 +226,26 @@ describe('TransactionsService', () => {
       const ata = '9wt9PfjPD3JCy5r7o4K1cTGiuTG7fq2pQhdDCdQALKjg';
       const nonAta = '7Gg2Y8vCj3v5nQj5xFfC3uT7wJ9sN4mK2pL8rH6dQ1eA';
       const signature = MOCK_GET_SIGNATURES_FOR_ADDRESS[0]!;
+      // Only the non-ATA account has a transaction, the ATA one has none.
+      const signaturesByAccount = new Map<string, unknown[]>([
+        [ata, []],
+        [nonAta, [{ ...signature, signature: 'non-ata-signature' }]],
+      ]);
       const getSignaturesForAddress = vi.fn((address: string) => ({
-        send: vi.fn().mockResolvedValue(
-          address === nonAta
-            ? [
-                {
-                  ...signature,
-                  signature: 'non-ata-signature',
-                },
-              ]
-            : [],
-        ),
+        send: vi.fn().mockResolvedValue(signaturesByAccount.get(address)),
       }));
+
+      // Only the main token program owns token accounts for this asset.
+      const tokenAccountsByProgram = new Map<string, unknown[]>([
+        [
+          TOKEN_PROGRAM_ADDRESS,
+          [
+            { ...MOCK_TOKEN_ACCOUNT_RESPONSE, pubkey: asAddress(ata) },
+            { ...MOCK_TOKEN_ACCOUNT_RESPONSE, pubkey: asAddress(nonAta) },
+          ],
+        ],
+        [TOKEN_2022_PROGRAM_ADDRESS, []],
+      ]);
 
       vi.spyOn(mockAccountsService, 'getAll').mockResolvedValue([
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
@@ -248,19 +256,7 @@ describe('TransactionsService', () => {
         getTokenAccountsByOwner: vi.fn(
           (_owner: string, filter: { programId: string }) => ({
             send: vi.fn().mockResolvedValue({
-              value:
-                filter.programId === TOKEN_PROGRAM_ADDRESS
-                  ? [
-                      {
-                        ...MOCK_TOKEN_ACCOUNT_RESPONSE,
-                        pubkey: asAddress(ata),
-                      },
-                      {
-                        ...MOCK_TOKEN_ACCOUNT_RESPONSE,
-                        pubkey: asAddress(nonAta),
-                      },
-                    ]
-                  : [],
+              value: tokenAccountsByProgram.get(filter.programId),
             }),
           }),
         ),
@@ -296,6 +292,24 @@ describe('TransactionsService', () => {
       const getSignaturesForAddress = vi.fn().mockReturnValue({
         send: vi.fn().mockResolvedValue([]),
       });
+      // The main token program answers, the Token-2022 one rejects.
+      const sendByProgram = new Map<string, ReturnType<typeof vi.fn>>([
+        [
+          TOKEN_PROGRAM_ADDRESS,
+          vi.fn().mockResolvedValue({
+            value: [
+              {
+                ...MOCK_TOKEN_ACCOUNT_RESPONSE,
+                pubkey: asAddress(tokenAccount),
+              },
+            ],
+          }),
+        ],
+        [
+          TOKEN_2022_PROGRAM_ADDRESS,
+          vi.fn().mockRejectedValue(new Error('Token-2022 failed')),
+        ],
+      ]);
 
       vi.spyOn(mockAccountsService, 'getAll').mockResolvedValue([
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
@@ -305,17 +319,7 @@ describe('TransactionsService', () => {
       vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
         getTokenAccountsByOwner: vi.fn(
           (_owner: string, filter: { programId: string }) => ({
-            send:
-              filter.programId === TOKEN_PROGRAM_ADDRESS
-                ? vi.fn().mockResolvedValue({
-                    value: [
-                      {
-                        ...MOCK_TOKEN_ACCOUNT_RESPONSE,
-                        pubkey: asAddress(tokenAccount),
-                      },
-                    ],
-                  })
-                : vi.fn().mockRejectedValue(new Error('Token-2022 failed')),
+            send: sendByProgram.get(filter.programId),
           }),
         ),
         getSignaturesForAddress,
@@ -342,18 +346,23 @@ describe('TransactionsService', () => {
         uiAmount: '0.000001',
       };
       const token2022Account = '7Gg2Y8vCj3v5nQj5xFfC3uT7wJ9sN4mK2pL8rH6dQ1eA';
+      // Only the Token-2022 program owns a token account for this asset.
+      const tokenAccountsByProgram = new Map<string, unknown[]>([
+        [
+          TOKEN_2022_PROGRAM_ADDRESS,
+          [
+            {
+              ...MOCK_TOKEN_ACCOUNT_RESPONSE,
+              pubkey: asAddress(token2022Account),
+            },
+          ],
+        ],
+        [TOKEN_PROGRAM_ADDRESS, []],
+      ]);
       const getTokenAccountsByOwner = vi.fn(
         (_owner: string, filter: { programId: string }) => ({
           send: vi.fn().mockResolvedValue({
-            value:
-              filter.programId === TOKEN_2022_PROGRAM_ADDRESS
-                ? [
-                    {
-                      ...MOCK_TOKEN_ACCOUNT_RESPONSE,
-                      pubkey: asAddress(token2022Account),
-                    },
-                  ]
-                : [],
+            value: tokenAccountsByProgram.get(filter.programId),
           }),
         }),
       );

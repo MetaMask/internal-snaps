@@ -8,6 +8,7 @@ import { EXPECTED_SWAP_USDC_TO_JUP_DATA } from '../test/mocks/transactions-data/
 import type { SolanaTransaction } from '../types/solana';
 import { FeeCalculatorUnsupportedInputTypeError } from './errors';
 import { FeeCalculator } from './FeeCalculator';
+import type { NormalizableInput } from './normalizers/types';
 
 describe('FeeCalculator', () => {
   describe('calculateFee', () => {
@@ -320,7 +321,9 @@ describe('FeeCalculator', () => {
 
     describe('when the input is an invalid type', () => {
       it('throws error for unsupported input type', () => {
-        const invalidInput = { invalid: 'data' } as any;
+        const invalidInput = {
+          invalid: 'data',
+        } as unknown as NormalizableInput;
 
         expect(() => FeeCalculator.calculateFee(invalidInput)).toThrow(
           FeeCalculatorUnsupportedInputTypeError,

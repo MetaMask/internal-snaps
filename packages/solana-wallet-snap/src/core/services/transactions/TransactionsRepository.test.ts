@@ -24,7 +24,7 @@ describe('TransactionsRepository', () => {
     signature: string,
     status: TransactionStatus = TransactionStatus.Confirmed,
     timestamp = 1234567890,
-  ) =>
+  ): Transaction =>
     ({
       account: accountId,
       id: signature,
