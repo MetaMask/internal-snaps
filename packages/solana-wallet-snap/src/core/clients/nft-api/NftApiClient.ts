@@ -97,7 +97,7 @@ export class NftApiClient {
     };
   }
 
-  async #listAddressSolanaNfts_INTERNAL(address: string) {
+  async #listAddressSolanaNfts_INTERNAL(address: string): Promise<Balance[]> {
     let allItems: Balance[] = [];
     let currentCursor: string | undefined;
 
@@ -120,7 +120,7 @@ export class NftApiClient {
     return allItems;
   }
 
-  async listAddressSolanaNfts(address: string) {
+  async listAddressSolanaNfts(address: string): Promise<Balance[]> {
     return useCache(
       this.#listAddressSolanaNfts_INTERNAL.bind(this),
       this.#cache,
@@ -206,7 +206,7 @@ export class NftApiClient {
     };
   }
 
-  async #getNftMetadata_INTERNAL(tokenAddress: string) {
+  async #getNftMetadata_INTERNAL(tokenAddress: string): Promise<Nft | null> {
     try {
       const url = buildUrl({
         baseUrl: this.#baseUrl,
@@ -225,14 +225,14 @@ export class NftApiClient {
     }
   }
 
-  async getNftMetadata(tokenAddress: string) {
+  async getNftMetadata(tokenAddress: string): Promise<Nft | null> {
     return useCache(this.#getNftMetadata_INTERNAL.bind(this), this.#cache, {
       functionName: 'NftApiClient:getNftMetadata',
       ttlMilliseconds: this.#cacheTtlsMilliseconds.getNftMetadata,
     })(tokenAddress);
   }
 
-  async getNftsMetadata(tokenAddresses: string[]) {
+  async getNftsMetadata(tokenAddresses: string[]): Promise<(Nft | null)[]> {
     const nftsMetadata = await Promise.all(
       tokenAddresses.map(async (tokenAddress) =>
         this.getNftMetadata(tokenAddress),

@@ -1,4 +1,4 @@
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 
 import { LAMPORTS_PER_SOL } from '../constants/solana';
 

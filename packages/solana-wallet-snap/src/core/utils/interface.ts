@@ -229,7 +229,7 @@ export async function scheduleBackgroundEvent({
   method: ScheduleBackgroundEventMethod;
   params?: Record<string, Json>;
   duration: string;
-}) {
+}): Promise<string> {
   return await snap.request({
     method: 'snap_scheduleBackgroundEvent',
     params: {
@@ -259,7 +259,7 @@ export async function listEntropySources(): Promise<EntropySource[]> {
  * @param name - The name of the trace.
  * @returns A promise that resolves to a string.
  */
-export async function startTrace(name: string) {
+export async function startTrace(name: string): Promise<number | null> {
   try {
     const result = await snap.request({
       method: 'snap_startTrace',
@@ -268,7 +268,7 @@ export async function startTrace(name: string) {
       },
     });
     return result as number;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -279,7 +279,7 @@ export async function startTrace(name: string) {
  * @param name - The name of the trace.
  * @returns A promise that resolves to a string.
  */
-export async function endTrace(name: string) {
+export async function endTrace(name: string): Promise<null> {
   try {
     return await snap.request({
       method: 'snap_endTrace',
@@ -287,7 +287,7 @@ export async function endTrace(name: string) {
         name,
       },
     });
-  } catch (error) {
+  } catch {
     return null;
   }
 }

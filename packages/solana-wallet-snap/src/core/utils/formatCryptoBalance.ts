@@ -1,4 +1,4 @@
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 
 import logger from './logger';
 
@@ -40,7 +40,7 @@ function formatAmount(locale: string, value: number | BigNumber): string {
 export function formatCryptoBalance(
   amount: number | string | BigNumber,
   locale: string,
-) {
+): string {
   const [localeCode] = locale.split('_');
 
   try {

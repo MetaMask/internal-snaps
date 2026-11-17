@@ -16,19 +16,24 @@ export const PromiseAny = async <TReturn>(
     }
 
     let rejectedCount = 0;
-    const errors: any[] = [];
+    const errors: unknown[] = [];
 
     promises.forEach((promise, index) => {
-      Promise.resolve(promise).then(
-        (value: TReturn) => resolve(value),
-        (error) => {
-          errors[index] = error;
-          rejectedCount += 1;
-          if (rejectedCount === promises.length) {
-            reject(new AggregateError(errors, 'All promises rejected'));
-          }
-        },
-      );
+      Promise.resolve(promise)
+        .then(
+          (value: TReturn) => resolve(value),
+          (error) => {
+            errors[index] = error;
+            rejectedCount += 1;
+            if (rejectedCount === promises.length) {
+              reject(new AggregateError(errors, 'All promises rejected'));
+            }
+          },
+        )
+        .catch(() => {
+          // Both settlement paths are handled above, so the chain never
+          // rejects. This catch only marks the chain as handled.
+        });
     });
   });
 };

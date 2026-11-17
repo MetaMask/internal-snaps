@@ -12,7 +12,7 @@ import type { ConfigProvider } from '../../services/config';
 import { fetchPolicyReporting } from '../../utils/analytics';
 import { MOCK_SPOT_PRICES } from './mocks/spot-prices';
 import { PriceApiClient } from './PriceApiClient';
-import type { SpotPrices, VsCurrencyParam } from './types';
+import type { SpotPrices } from './types';
 
 describe('PriceApiClient', () => {
   let mockFetch: Mock;
