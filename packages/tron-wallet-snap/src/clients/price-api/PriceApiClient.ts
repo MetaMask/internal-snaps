@@ -110,7 +110,7 @@ export class PriceApiClient {
             this.#fetch,
           );
 
-          const spotPrices = JSON.parse(responseBody);
+          const spotPrices: unknown = JSON.parse(responseBody);
           assert(spotPrices, SpotPricesStruct);
 
           return spotPrices;
