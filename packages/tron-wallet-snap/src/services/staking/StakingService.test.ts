@@ -1,6 +1,6 @@
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
-import type { Mocked } from 'vitest';
+import type { Mocked, MockedFunction } from 'vitest';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
@@ -13,9 +13,59 @@ import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
 import { trxToSun } from '../../utils/conversion';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AccountsService } from '../accounts/AccountsService';
+import type { StakedCaipAssetType } from '../assets/types';
 import type { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
 import type { TransactionWithMetadata } from '../transaction-expiration-refresher/types';
 import { StakingService } from './StakingService';
+
+type MockBroadcastResult = {
+  result: boolean;
+  txid?: string;
+  message?: string;
+};
+
+type MockSignedTransaction = TransactionWithMetadata & {
+  signature: string[];
+};
+
+type MockTronWeb = {
+  transactionBuilder: {
+    freezeBalanceV2: MockedFunction<
+      (
+        amountInSun: number,
+        purpose: 'BANDWIDTH' | 'ENERGY',
+        address: string,
+      ) => Promise<TransactionWithMetadata>
+    >;
+    unfreezeBalanceV2: MockedFunction<
+      (
+        amountInSun: number,
+        purpose: 'BANDWIDTH' | 'ENERGY',
+        address: string,
+      ) => Promise<TransactionWithMetadata>
+    >;
+    vote: MockedFunction<
+      (
+        votes: Record<string, number>,
+        address: string,
+      ) => Promise<TransactionWithMetadata>
+    >;
+    withdrawExpireUnfreeze: MockedFunction<
+      (address: string) => Promise<TransactionWithMetadata>
+    >;
+    withdrawBlockRewards: MockedFunction<
+      (address: string) => Promise<TransactionWithMetadata>
+    >;
+  };
+  trx: {
+    sign: MockedFunction<
+      (transaction: TransactionWithMetadata) => Promise<MockSignedTransaction>
+    >;
+    sendRawTransaction: MockedFunction<
+      (transaction: MockSignedTransaction) => Promise<MockBroadcastResult>
+    >;
+  };
+};
 
 describe('StakingService', () => {
   let stakingService: StakingService;
@@ -23,7 +73,7 @@ describe('StakingService', () => {
   let mockTronWebFactory: Mocked<TronWebFactory>;
   let mockSnapClient: Mocked<SnapClient>;
   let mockTransactionExpirationRefresherService: Mocked<TransactionExpirationRefresherService>;
-  let mockTronWeb: any;
+  let mockTronWeb: MockTronWeb;
 
   const mockAccount: ExtendedKeyringAccount = {
     id: 'test-account-id',
@@ -123,7 +173,10 @@ describe('StakingService', () => {
     mockTransactionExpirationRefresherService = {
       ensureFreshMetadata: vi
         .fn()
-        .mockImplementation(async ({ transaction }) => transaction),
+        .mockImplementation(
+          async ({ transaction }: { transaction: TransactionWithMetadata }) =>
+            transaction,
+        ),
     } as unknown as Mocked<TransactionExpirationRefresherService>;
 
     stakingService = new StakingService({
@@ -375,7 +428,7 @@ describe('StakingService', () => {
 
         await stakingService.stake({
           account: mockAccount,
-          assetId: testCase.assetId as any,
+          assetId: testCase.assetId,
           amount: BigNumber(1000000),
           purpose: 'BANDWIDTH',
         });
@@ -423,7 +476,7 @@ describe('StakingService', () => {
 
       await stakingService.stake({
         account: customAccount,
-        assetId: KnownCaip19Id.TrxMainnet as any,
+        assetId: KnownCaip19Id.TrxMainnet,
         amount: BigNumber(1000000),
         purpose: 'BANDWIDTH',
       });
@@ -563,7 +616,7 @@ describe('StakingService', () => {
 
         await stakingService.unstake({
           account: mockAccount,
-          assetId: testCase.assetId as any,
+          assetId: testCase.assetId,
           amount: BigNumber(1000000),
         });
 
@@ -603,7 +656,7 @@ describe('StakingService', () => {
 
         await stakingService.unstake({
           account: mockAccount,
-          assetId: testCase.assetId as any,
+          assetId: testCase.assetId,
           amount: BigNumber(2000000),
         });
 
@@ -623,7 +676,8 @@ describe('StakingService', () => {
     });
 
     it('throws error for invalid asset ID', async () => {
-      const invalidAssetId = 'tron:728126428/slip44:invalid' as any;
+      const invalidAssetId =
+        'tron:728126428/slip44:invalid' as unknown as StakedCaipAssetType;
       const amount = BigNumber(1000000);
 
       await expect(
@@ -644,7 +698,7 @@ describe('StakingService', () => {
 
       await stakingService.unstake({
         account: customAccount,
-        assetId: KnownCaip19Id.TrxStakedForBandwidthMainnet as any,
+        assetId: KnownCaip19Id.TrxStakedForBandwidthMainnet,
         amount: BigNumber(1000000),
       });
 
