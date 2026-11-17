@@ -1,7 +1,8 @@
 import { SnapError } from '@metamask/snaps-sdk';
+import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 import { TronWeb } from 'tronweb';
-import type { Mocked } from 'vitest';
+import type { Mock, Mocked, MockedFunction } from 'vitest';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Network } from '../../constants';
@@ -12,7 +13,30 @@ import {
 } from '../../handlers/keyring/keyring-types';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AccountsService } from '../accounts/AccountsService';
+import type { TransactionWithMetadata } from '../transaction-expiration-refresher/types';
 import { WalletService } from './WalletService';
+
+type MockTronWeb = {
+  trx: {
+    signMessageV2: MockedFunction<
+      (message: string, privateKey?: string) => string
+    >;
+    getCurrentBlock: Mock;
+    getBlockByNumber: Mock;
+    sign: MockedFunction<
+      (transaction: TransactionWithMetadata) => Promise<{ signature: string[] }>
+    >;
+  };
+  utils: {
+    deserializeTx: { deserializeTransaction: Mock };
+    transaction: {
+      txJsonToPb: MockedFunction<(transaction: unknown) => unknown>;
+      txPbToRawDataHex: Mock;
+      txPbToTxID: Mock;
+    };
+  };
+  isAddress: MockedFunction<(address: string) => boolean>;
+};
 
 const MOCK_BLOCK_TIMESTAMP = 1_700_000_000_000;
 
@@ -90,7 +114,7 @@ describe('WalletService', () => {
     methods: ['signMessage', 'signTransaction'],
     type: 'tron:eoa',
     scopes: [Network.Mainnet, Network.Shasta],
-    entropySource: 'entropy-source-1' as any,
+    entropySource: 'entropy-source-1',
     derivationPath: "m/44'/195'/0'/0/0",
     index: 0,
   };
@@ -98,7 +122,7 @@ describe('WalletService', () => {
   let walletService: WalletService;
   let mockAccountsService: Mocked<AccountsService>;
   let mockTronWebFactory: Mocked<TronWebFactory>;
-  let mockTronWeb: any;
+  let mockTronWeb: MockTronWeb;
 
   beforeEach(() => {
     mockTronWeb = {
@@ -139,7 +163,9 @@ describe('WalletService', () => {
           }),
         },
         transaction: {
-          txJsonToPb: vi.fn().mockImplementation((transaction) => transaction),
+          txJsonToPb: vi
+            .fn()
+            .mockImplementation((transaction: unknown) => transaction),
           txPbToRawDataHex: vi.fn().mockReturnValue('refreshed-raw-data-hex'),
           txPbToTxID: vi.fn().mockReturnValue('0xrefreshed-tx-id'),
         },
@@ -149,11 +175,11 @@ describe('WalletService', () => {
 
     mockAccountsService = {
       deriveTronKeypair: vi.fn().mockResolvedValue(mockTronKeypair),
-    } as any;
+    } as unknown as Mocked<AccountsService>;
 
     mockTronWebFactory = {
       createClient: vi.fn().mockReturnValue(mockTronWeb),
-    } as any;
+    } as unknown as Mocked<TronWebFactory>;
 
     walletService = new WalletService({
       logger: mockLogger,
@@ -207,7 +233,7 @@ describe('WalletService', () => {
         walletService.handleKeyringRequest({
           account: mockAccount,
           scope: Network.Mainnet,
-          method: 'unsupportedMethod' as any,
+          method: 'unsupportedMethod' as unknown as TronMultichainMethod,
           params: {},
         }),
       ).rejects.toThrow(SnapError);
@@ -215,9 +241,7 @@ describe('WalletService', () => {
 
     it('handles user rejection errors', async () => {
       mockTronWeb.trx.signMessageV2.mockImplementation(() => {
-        const error: any = new Error('User rejected');
-        error.code = 4100;
-        throw error;
+        throw Object.assign(new Error('User rejected'), { code: 4100 });
       });
 
       await expect(
@@ -391,7 +415,8 @@ describe('WalletService', () => {
         },
       });
 
-      const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0];
+      const signedTransaction = mockTronWeb.trx.sign.mock
+        .calls[0]?.[0] as TransactionWithMetadata;
 
       // The payload signed is exactly the one submitted by the dApp.
       expect(signedTransaction.raw_data).toStrictEqual(deserializedRawData);
@@ -713,7 +738,7 @@ describe('WalletService', () => {
         jsonrpc: '2.0' as const,
         id: 1,
         params: { address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8' },
-      } as any;
+      } as unknown as JsonRpcRequest;
 
       await expect(
         walletService.resolveAccountAddress(keyringAccounts, scope, request),
