@@ -2046,40 +2046,9 @@
       "count": 4
     }
   },
-  "packages/tron-wallet-snap/src/handlers/clientRequest/clientRequest.test.ts": {
-    "typescript/no-explicit-any": {
-      "count": 15
-    },
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 22
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 9
-    },
-    "typescript/no-unsafe-return": {
-      "count": 4
-    }
-  },
   "packages/tron-wallet-snap/src/handlers/clientRequest/clientRequest.ts": {
     "typescript/no-unsafe-assignment": {
       "count": 2
-    }
-  },
-  "packages/tron-wallet-snap/src/handlers/cronjob/cronjob.test.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 4
-    },
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 5
-    },
-    "typescript/no-unsafe-argument": {
-      "count": 1
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 1
-    },
-    "typescript/no-unsafe-return": {
-      "count": 3
     }
   },
   "packages/tron-wallet-snap/src/index.test.ts": {

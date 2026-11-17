@@ -1,9 +1,6 @@
 {
   "locale": "de",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "Überprüfen Sie die Transaktion, bevor Sie fortfahren"
-    },
     "from": {
       "message": "Von"
     },
@@ -58,9 +55,6 @@
     "asset": {
       "message": "Asset"
     },
-    "sending": {
-      "message": "Wird gesendet"
-    },
     "max": {
       "message": "Max"
     },
@@ -100,7 +94,7 @@
     "unknownUtxo": {
       "message": "Transaktion konnte nicht erstellt werden: unbekannter UTXO"
     },
-    "MmssingNonWitnessUtxo": {
+    "missingNonWitnessUtxo": {
       "message": "Transaktion konnte nicht erstellt werden: fehlender Non-Witness UTXO"
     },
     "base58": {

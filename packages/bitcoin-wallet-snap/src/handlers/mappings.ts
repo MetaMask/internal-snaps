@@ -30,7 +30,7 @@ export type TransactionFee = {
   asset: TransactionAmount;
 };
 
-export type TransactionAmount = {
+type TransactionAmount = {
   amount: string;
   fungible: true;
   unit: string;
@@ -247,7 +247,7 @@ export function mapToTransaction(
  * will see the standard shape, while consumers that opt in can read the flag
  * to decide whether to trust the txid before block confirmation.
  */
-export type KeyringTransactionWithMalleability = KeyringTransaction & {
+type KeyringTransactionWithMalleability = KeyringTransaction & {
   canBeMalleable: boolean;
 };
 
