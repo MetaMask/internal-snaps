@@ -2,13 +2,18 @@ import type { Amount, WalletTx } from '@metamask/bitcoindevkit';
 import { TransactionType } from '@metamask/keyring-api';
 import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
-import { State, SynchronizationError } from '@metamask/snap-networks-utils';
+import {
+  BrokenCircuitError,
+  State,
+  SynchronizationError,
+} from '@metamask/snap-networks-utils';
 import type { IStateManager } from '@metamask/snap-networks-utils';
 import type { Json, SnapsProvider, JsonRpcRequest } from '@metamask/snaps-sdk';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import snapManifest from '../../snap.manifest.json';
+import { ExternalServiceError } from '../entities';
 import type {
   BitcoinAccount,
   Logger,
@@ -206,6 +211,25 @@ describe('CronHandler', () => {
       expect(
         mockSnapClient.emitAccountBalancesUpdatedEvent,
       ).toHaveBeenCalledWith([mockAccounts[0]]);
+    });
+
+    it('does not report failures a fetch policy already reported', async () => {
+      (getSelectedAccounts as Mock).mockResolvedValue([
+        'account-1',
+        'account-2',
+      ]);
+      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockAccountUseCases.synchronize.mockRejectedValue(
+        new ExternalServiceError(
+          'Failed to synchronize account',
+          {},
+          new BrokenCircuitError(),
+        ),
+      );
+
+      await handler.route(request);
+
+      expect(mockSnapClient.emitTrackingError).not.toHaveBeenCalled();
     });
 
     it('reports every failed account with its reason when several fail', async () => {

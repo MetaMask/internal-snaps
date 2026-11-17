@@ -37,10 +37,10 @@ export default mergeConfig(
       coverage: {
         exclude: ['src/utils/logger.ts'],
         thresholds: {
-          branches: 79.04,
-          functions: 69.25,
-          lines: 86.8,
-          statements: 86.77,
+          branches: 79.09,
+          functions: 69.34,
+          lines: 86.83,
+          statements: 86.8,
         },
       },
     },

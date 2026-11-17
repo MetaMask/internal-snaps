@@ -1,7 +1,8 @@
+import { BrokenCircuitError } from '@metamask/snap-networks-utils';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import type { Mock, Mocked } from 'vitest';
 
-import { UserActionError } from '../entities';
+import { ExternalServiceError, UserActionError } from '../entities';
 import { shouldTrackError, trackError } from './errors';
 import logger from './logger';
 
@@ -33,6 +34,19 @@ describe('errors', () => {
 
     it('returns false for UserRejectedRequestError', () => {
       expect(shouldTrackError(new UserRejectedRequestError())).toBe(false);
+    });
+
+    it('returns false for errors a fetch policy already reported', () => {
+      expect(shouldTrackError(new BrokenCircuitError())).toBe(false);
+      expect(
+        shouldTrackError(
+          new ExternalServiceError(
+            'Failed to synchronize account',
+            {},
+            new BrokenCircuitError(),
+          ),
+        ),
+      ).toBe(false);
     });
 
     it('returns true for other errors', () => {

@@ -3,7 +3,7 @@ import {
   DEFAULT_METAMASK_ORIGIN,
   InFlightCoalescer,
   SynchronizationError,
-  getSyncFailuresFromSettledResult,
+  getUnreportedSyncFailures,
 } from '@metamask/snap-networks-utils';
 import type { IStateManager } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
@@ -99,7 +99,7 @@ export class CronHandler {
     accountIds: string[],
   ): Promise<void> {
     try {
-      const failures = getSyncFailuresFromSettledResult(results, accountIds);
+      const failures = getUnreportedSyncFailures(results, accountIds);
 
       if (failures.length === 0) {
         return;
