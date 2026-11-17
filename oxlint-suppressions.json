@@ -1828,11 +1828,6 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/clients/price-api/PriceApiClient.test.ts": {
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 2
-    }
-  },
   "packages/tron-wallet-snap/src/clients/price-api/PriceApiClient.ts": {
     "typescript/no-unsafe-assignment": {
       "count": 1
@@ -1868,24 +1863,9 @@
       "count": 2
     }
   },
-  "packages/tron-wallet-snap/src/index.test.ts": {
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 2
-    }
-  },
-  "packages/tron-wallet-snap/src/services/accounts/AccountsService.test.ts": {
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/services/accounts/AccountsService.ts": {
     "typescript/no-unsafe-assignment": {
       "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/src/services/assets/AssetsRepository.test.ts": {
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 3
     }
   },
   "packages/tron-wallet-snap/src/services/assets/AssetsService.test.ts": {
@@ -1893,18 +1873,8 @@
       "count": 4
     }
   },
-  "packages/tron-wallet-snap/src/services/assets/adapters/CoreAssetsAdapter.test.ts": {
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/services/assets/adapters/SnapAssetsAdapter.ts": {
     "typescript/no-unsafe-assignment": {
-      "count": 2
-    }
-  },
-  "packages/tron-wallet-snap/src/services/confirmation/ConfirmationHandler.test.ts": {
-    "typescript/no-unnecessary-type-assertion": {
       "count": 2
     }
   },
@@ -2007,19 +1977,9 @@
       "count": 2
     }
   },
-  "packages/tron-wallet-snap/src/services/transactions/TransactionsService.test.ts": {
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 6
-    }
-  },
   "packages/tron-wallet-snap/src/services/transactions/TransactionsService.ts": {
     "typescript/no-unsafe-member-access": {
       "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/src/services/transactions/utils/isSpam.test.ts": {
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 5
     }
   },
   "packages/tron-wallet-snap/src/services/wallet/WalletService.test.ts": {
@@ -2153,11 +2113,6 @@
     },
     "typescript/no-unsafe-return": {
       "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/src/utils/transactionStatus.test.ts": {
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 3
     }
   },
   "packages/tron-wallet-snap/src/validation/transaction.ts": {
