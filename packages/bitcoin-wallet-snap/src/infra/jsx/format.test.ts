@@ -1,5 +1,5 @@
 import { CurrencyUnit } from '../../entities';
-import { displayAmount, displayOrigin } from './format';
+import { displayAmount, displayOrigin, errorCodeToLabel } from './format';
 
 describe('displayAmount', () => {
   it('displays one satoshi as a plain decimal', () => {
@@ -8,6 +8,16 @@ describe('displayAmount', () => {
 
   it('preserves the currency suffix', () => {
     expect(displayAmount(77n, CurrencyUnit.Bitcoin)).toBe('0.00000077 BTC');
+  });
+});
+
+describe('errorCodeToLabel', () => {
+  it('returns the camelCased label of a known BDK error code', () => {
+    expect(errorCodeToLabel(7)).toBe('feeTooLow');
+  });
+
+  it('falls back to the unknown error label for an unmapped code', () => {
+    expect(errorCodeToLabel(999_999)).toBe('unknownError');
   });
 });
 
