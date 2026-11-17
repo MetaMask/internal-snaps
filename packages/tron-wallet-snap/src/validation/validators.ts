@@ -19,10 +19,8 @@ export function validateRequest<Params, TStruct extends Struct<any>>(
 ): asserts requestParams is Infer<TStruct> {
   try {
     assert(requestParams, struct);
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (validationError: any) {
-    throw new InvalidParamsError(validationError.message);
+  } catch (validationError) {
+    throw new InvalidParamsError((validationError as Error).message);
   }
 }
 

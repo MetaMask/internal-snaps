@@ -144,7 +144,7 @@ describe('TronWebFactory', () => {
       });
       const signedTransaction = { txID: 'signed-transaction' };
       const sendRawTransaction = vi
-        .fn()
+        .fn<(transaction: { txID: string }) => Promise<{ result: boolean }>>()
         .mockRejectedValueOnce(
           Object.assign(new Error('unavailable'), {
             response: { status: 503 },
@@ -181,7 +181,13 @@ describe('TronWebFactory', () => {
       });
       const signedTransaction = { txID: 'signed-transaction' };
       const sendRawTransaction = vi
-        .fn()
+        .fn<
+          (transaction: { txID: string }) => Promise<{
+            code?: string;
+            message?: string;
+            result: boolean;
+          }>
+        >()
         .mockResolvedValueOnce({
           code: 'SERVER_BUSY',
           message: 'Server busy',
