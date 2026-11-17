@@ -10,6 +10,21 @@ import type { TokenHelper } from '../../assets/TokenHelper';
 import { TransactionMapper } from '../TransactionMapper';
 import { isSpam } from './isSpam';
 
+/**
+ * Narrows away the `null` case of a mapped transaction, so the tests below do
+ * not need conditionals of their own.
+ *
+ * @param value - The value to check.
+ * @returns The value, typed without `null` or `undefined`.
+ */
+const assertDefined = <Value>(value: Value | null | undefined): Value => {
+  if (value === null || value === undefined) {
+    throw new Error('Expected the mapped transaction to be defined');
+  }
+
+  return value;
+};
+
 describe('isSpam', () => {
   const scope = Network.Mainnet;
   let transactionMapper: TransactionMapper;
@@ -36,15 +51,13 @@ describe('isSpam', () => {
       address: asAddress('DAXnAudMEqiD1sS1rFn4ds3pdybRYJd9J58PqCncVVqS'),
     };
 
-    const transaction = await transactionMapper.mapRpcTransaction(
-      EXPECTED_SPAM_TRANSACTION_DATA,
-      account,
-      scope,
+    const transaction = assertDefined(
+      await transactionMapper.mapRpcTransaction(
+        EXPECTED_SPAM_TRANSACTION_DATA,
+        account,
+        scope,
+      ),
     );
-
-    if (!transaction) {
-      throw new Error('Transaction is null');
-    }
 
     const result = isSpam(transaction, account);
 
@@ -57,15 +70,13 @@ describe('isSpam', () => {
       address: asAddress('FQT9SSwEZ6UUQxsmTzgt5JzjrS4M5zm13M1QiYF8TEo6'),
     };
 
-    const transaction = await transactionMapper.mapRpcTransaction(
-      EXPECTED_SPAM_TRANSACTION_DATA_2,
-      account,
-      scope,
+    const transaction = assertDefined(
+      await transactionMapper.mapRpcTransaction(
+        EXPECTED_SPAM_TRANSACTION_DATA_2,
+        account,
+        scope,
+      ),
     );
-
-    if (!transaction) {
-      throw new Error('Transaction is null');
-    }
 
     const result = isSpam(transaction, account);
 
