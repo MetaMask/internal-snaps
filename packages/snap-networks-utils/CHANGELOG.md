@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0]
+
 ### Uncategorized
 
 - chore(lint): replace `eslint` with `oxlint` ([#596](https://github.com/MetaMask/internal-snaps/pull/596))
@@ -135,7 +137,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement `AssetsProvider` ([#82](https://github.com/MetaMask/internal-snaps/pull/82))
 - Initial package release ([#79](https://github.com/MetaMask/internal-snaps/pull/79))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.2.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.3.0...HEAD
+[3.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.2.0...@metamask/snap-networks-utils@3.3.0
 [3.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.1.0...@metamask/snap-networks-utils@3.2.0
 [3.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.0.0...@metamask/snap-networks-utils@3.1.0
 [3.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@2.0.0...@metamask/snap-networks-utils@3.0.0

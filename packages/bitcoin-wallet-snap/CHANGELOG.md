@@ -7,15 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- chore(bitcoin): clean up integration test suppressions ([#638](https://github.com/MetaMask/internal-snaps/pull/638))
-- perf(bitcoin): speed up integration tests ([#584](https://github.com/MetaMask/internal-snaps/pull/584))
-- chore(lint): replace `eslint` with `oxlint` ([#596](https://github.com/MetaMask/internal-snaps/pull/596))
-- chore: add shared vitest config + update `create-package` to use vitest ([#580](https://github.com/MetaMask/internal-snaps/pull/580))
-- Release 23.0.0 ([#577](https://github.com/MetaMask/internal-snaps/pull/577))
-- chore(bitcoin): vitest ([#573](https://github.com/MetaMask/internal-snaps/pull/573))
-
 ### Changed
 
 - `onAmountInput` now estimates the send fee and rejects amounts that cannot cover it, including when `toAddress` is omitted ([#586](https://github.com/MetaMask/internal-snaps/pull/586))
