@@ -1,11 +1,15 @@
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
-import { getBase64Codec, getUtf8Codec } from '@solana/kit';
+import { getBase64Codec } from '@solana/kit';
 
 import type { SolanaKeyringRequest } from '../../../../core/handlers/onKeyringRequest/structs';
 import { SolanaSignMessageRequestStruct } from '../../../../core/services/wallet/structs';
 import { SOL_IMAGE_SVG } from '../../../../core/test/mocks/solana-image-svg';
 import { FALLBACK_LANGUAGE } from '../../../../core/utils/i18n';
+import {
+  assertIsNotTransactionMessage,
+  formatMessageForDisplay,
+} from '../../../../core/utils/signMessage';
 import {
   createInterface,
   getPreferences,
@@ -35,8 +39,9 @@ export async function render(
     origin,
   } = request;
 
-  const messageBytes = getBase64Codec().encode(messageBase64);
-  const messageUtf8 = getUtf8Codec().decode(messageBytes);
+  const messageBytes = new Uint8Array(getBase64Codec().encode(messageBase64));
+  assertIsNotTransactionMessage(messageBytes);
+  const displayedMessage = formatMessageForDisplay(messageBytes);
 
   const [locale, accountDomain] = await Promise.all([
     getPreferences()
@@ -47,7 +52,7 @@ export async function render(
 
   const id = await createInterface(
     <ConfirmSignMessage
-      message={messageUtf8}
+      {...displayedMessage}
       account={account}
       accountDomain={accountDomain}
       scope={scope}
