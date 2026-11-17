@@ -113,7 +113,11 @@ describe('transaction metadata', () => {
         deserializeTransaction: vi.fn(),
       },
       transaction: {
-        txJsonToPb: vi.fn().mockImplementation((transaction) => transaction),
+        txJsonToPb: vi
+          .fn()
+          .mockImplementation(
+            (transaction: TronwebTypes.Transaction) => transaction,
+          ),
         txPbToRawDataHex: vi.fn().mockReturnValue('refreshed-raw-data-hex'),
         txPbToTxID: vi.fn().mockReturnValue('0xrefreshed-tx-id'),
       },
@@ -291,8 +295,8 @@ describe('transaction metadata', () => {
     expect(transaction.raw_data_hex).toBe(originalTransaction.raw_data_hex);
     expect(transaction.txID).toBe(originalTransaction.txID);
     expect(tronWeb.trx.getBlockByNumber).not.toHaveBeenCalled();
-    const serializedTransaction =
-      tronWeb.utils.transaction.txJsonToPb.mock.calls[0]?.[0];
+    const serializedTransaction = tronWeb.utils.transaction.txJsonToPb.mock
+      .calls[0]?.[0] as TronwebTypes.Transaction;
     expect(serializedTransaction).not.toBe(transaction);
     expect(serializedTransaction.raw_data.ref_block_bytes).toBe(
       result.raw_data.ref_block_bytes,

@@ -39,7 +39,7 @@ describe('TransactionMapper', () => {
           internal_transactions?: TransactionInfo['internal_transactions'];
         }
       ).internal_transactions ?? [],
-  } as TransactionInfo;
+  };
 
   describe('mapTransaction', () => {
     describe('TransferContract (Native TRX transfers)', () => {
@@ -545,8 +545,8 @@ describe('TransactionMapper', () => {
   describe('Staking (Freeze/Unfreeze)', () => {
     it('should map FreezeBalanceV2Contract (stake) as send with staked asset', () => {
       const native = nativeTransferMock as TransactionInfo;
-      const ownerHex = (native.raw_data.contract?.[0] as any)?.parameter?.value
-        ?.owner_address;
+      const ownerHex =
+        native.raw_data.contract?.[0]?.parameter?.value?.owner_address;
 
       const freezeTx = {
         ret: [{ contractRet: 'SUCCESS', fee: 200000 }], // 0.2 TRX
@@ -617,8 +617,8 @@ describe('TransactionMapper', () => {
 
     it('should map UnfreezeBalanceV2Contract (unstake) as receive with staked asset', () => {
       const native = nativeTransferMock as TransactionInfo;
-      const ownerHex = (native.raw_data.contract?.[0] as any)?.parameter?.value
-        ?.owner_address;
+      const ownerHex =
+        native.raw_data.contract?.[0]?.parameter?.value?.owner_address;
 
       const unfreezeTx = {
         ret: [{ contractRet: 'SUCCESS', fee: 150000 }], // 0.15 TRX
@@ -731,7 +731,7 @@ describe('TransactionMapper', () => {
         raw_data: {
           contract: undefined,
         },
-      } as any;
+      } as unknown as TransactionInfo;
 
       const result = TransactionMapper.mapTransaction({
         scope: Network.Mainnet,
@@ -755,7 +755,7 @@ describe('TransactionMapper', () => {
             },
           ],
         },
-      } as any;
+      } as unknown as TransactionInfo;
 
       const result = TransactionMapper.mapTransaction({
         scope: Network.Mainnet,
@@ -851,7 +851,7 @@ describe('TransactionMapper', () => {
 
   describe('Swap Transactions', () => {
     it('maps a TRX → TRC20 swap transaction correctly', () => {
-      const swapTx = swapTransactionMock as unknown as TransactionInfo;
+      const swapTx = swapTransactionMock;
       const trc20Transfers =
         swapContractInfoMock.data as unknown as ContractTransactionInfo[];
 
@@ -875,7 +875,7 @@ describe('TransactionMapper', () => {
     it('maps a TRC20 ↔ TRC20 swap transaction correctly', () => {
       const mockTrc20Swap = {
         ...swapTransactionMock,
-      } as unknown as TransactionInfo;
+      };
 
       const trc20Transfers: ContractTransactionInfo[] = [
         {
@@ -926,7 +926,7 @@ describe('TransactionMapper', () => {
     it('ignores approval events when mapping TRC20 swap transfers', () => {
       const mockTrc20Swap = {
         ...swapTransactionMock,
-      } as unknown as TransactionInfo;
+      };
 
       const trc20Transfers: ContractTransactionInfo[] = [
         {
@@ -1065,7 +1065,7 @@ describe('TransactionMapper', () => {
     it('does not detect a swap when sending and receiving the same token (send to self)', () => {
       const mockTx = {
         ...swapTransactionMock,
-      } as unknown as TransactionInfo;
+      };
 
       const trc20Transfers: ContractTransactionInfo[] = [
         {
