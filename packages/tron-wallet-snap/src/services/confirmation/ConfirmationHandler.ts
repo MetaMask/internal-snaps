@@ -102,7 +102,7 @@ export class ConfirmationHandler {
     const { method } = request.request;
 
     // Handle different request types
-    switch (method as TronMultichainMethod) {
+    switch (method) {
       case TronMultichainMethod.SignMessage: {
         return this.#handleSignMessageRequest(request, account);
       }
@@ -111,7 +111,7 @@ export class ConfirmationHandler {
       }
       default:
         this.#logger.warn('Unhandled keyring request method', { method });
-        throw new Error(`Unhandled keyring request method: ${method}`);
+        throw new Error(`Unhandled keyring request method: ${String(method)}`);
     }
   }
 

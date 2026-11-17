@@ -229,17 +229,10 @@ describe('CoreAssetsAdapter', () => {
           id: NILE_ASSET_ID,
           chainId: Network.Nile,
         });
-        mockAssetsProvider.getAccountAssetsByScope.mockImplementation(
-          async (scope: `${string}:${string}`) => {
-            if (scope === Network.Mainnet) {
-              return { [MAINNET_ASSET_ID]: mainnetAsset };
-            }
-            if (scope === Network.Nile) {
-              return { [NILE_ASSET_ID]: nileAsset };
-            }
-            return {};
-          },
-        );
+        mockAssetsProvider.getAccountAssetsByScope
+          .mockResolvedValueOnce({ [MAINNET_ASSET_ID]: mainnetAsset })
+          .mockResolvedValueOnce({ [NILE_ASSET_ID]: nileAsset })
+          .mockResolvedValueOnce({});
 
         const assets = await adapter.getAccountAssets(ACCOUNT_ID);
 
@@ -267,14 +260,9 @@ describe('CoreAssetsAdapter', () => {
 
     it('rejects when any scope request fails', async () => {
       await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
-        mockAssetsProvider.getAccountAssetsByScope.mockImplementation(
-          async (scope: `${string}:${string}`) => {
-            if (scope === Network.Nile) {
-              throw new Error('nile failed');
-            }
-            return {};
-          },
-        );
+        mockAssetsProvider.getAccountAssetsByScope
+          .mockResolvedValueOnce({})
+          .mockRejectedValueOnce(new Error('nile failed'));
 
         await expect(adapter.getAccountAssets(ACCOUNT_ID)).rejects.toThrow(
           'nile failed',

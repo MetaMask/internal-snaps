@@ -247,9 +247,12 @@ export async function render(
       }
     }
 
-    // A local TAPOS expiry takes precedence over any remote scan result.
+    // Preserve the security verdict while replacing the simulation result.
     if (securityScanEnabled && (await checkTransactionExpiration())) {
-      scan = EXPIRED_TRANSACTION_SCAN;
+      scan = {
+        ...EXPIRED_TRANSACTION_SCAN,
+        validation: scan?.validation ?? { type: 'Error', reason: null },
+      };
     }
 
     context.scan = scan;

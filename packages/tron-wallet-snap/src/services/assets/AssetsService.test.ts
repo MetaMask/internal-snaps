@@ -64,7 +64,7 @@ function createMessengerCallMock(
       case 'AssetsController:getAssets':
         return getAssets(...args);
       default:
-        return undefined;
+        throw new Error(`Unexpected action: ${String(actionType)}`);
     }
   };
 }

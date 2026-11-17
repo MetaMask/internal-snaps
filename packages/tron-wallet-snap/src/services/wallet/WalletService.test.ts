@@ -33,7 +33,10 @@ function createBlock({
   number: number;
   timestamp: number;
   hashSegment?: string;
-}) {
+}): {
+  blockID: string;
+  block_header: { raw_data: { number: number; timestamp: number } };
+} {
   return {
     blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
 
@@ -46,7 +49,7 @@ function createBlock({
   };
 }
 
-const getRefBlockBytes = (number: number) =>
+const getRefBlockBytes = (number: number): string =>
   number.toString(16).slice(-4).padStart(4, '0');
 
 /**

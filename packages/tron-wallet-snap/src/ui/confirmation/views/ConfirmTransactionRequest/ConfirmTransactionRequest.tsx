@@ -1,6 +1,5 @@
 import {
   ActionHeader,
-  TransactionAlert,
   ConfirmationFooter,
   MaliciousAcknowledgementFormNames,
   MaliciousAcknowledgementScreen,
@@ -27,7 +26,7 @@ import { getExplorerUrl } from '../../../../utils/getExplorerUrl';
 import { i18n } from '../../../../utils/i18n';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { Fees } from '../../components/Fees';
-import { getTransactionAlertProps } from '../../utils/getTransactionAlertProps';
+import { TransactionBanners } from '../../components/TransactionBanners';
 import { isTransactionConfirmationBlocked } from '../../utils/isTransactionConfirmationBlocked';
 import { ConfirmSignAndSendTransactionFormNames } from './events';
 import type { ConfirmTransactionRequestContext } from './types';
@@ -104,16 +103,11 @@ export const ConfirmTransactionRequest = ({
   return (
     <Container>
       <Box>
-        {/* Security Alert */}
-        {preferences.useSecurityAlerts || scan?.error ? (
-          <TransactionAlert
-            {...getTransactionAlertProps({
-              preferences,
-              scan,
-              scanFetchStatus,
-            })}
-          />
-        ) : null}
+        <TransactionBanners
+          preferences={preferences}
+          scan={scan}
+          scanFetchStatus={scanFetchStatus}
+        />
 
         {/* Header */}
         <ActionHeader title={translate('confirmation.transaction.title')} />

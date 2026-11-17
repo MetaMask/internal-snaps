@@ -82,7 +82,7 @@ type InterfaceContext =
 
 const MOCK_BLOCK_TIMESTAMP = 1_700_000_000_000;
 
-const getRefBlockBytes = (number: number) =>
+const getRefBlockBytes = (number: number): string =>
   number.toString(16).slice(-4).padStart(4, '0');
 
 const createBlock = ({
@@ -93,7 +93,10 @@ const createBlock = ({
   number: number;
   timestamp: number;
   hashSegment?: string;
-}) => ({
+}): {
+  blockID: string;
+  block_header: { raw_data: { number: number; timestamp: number } };
+} => ({
   blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
 
   block_header: {
@@ -1121,15 +1124,20 @@ describe('CronHandler', () => {
           transactionExpired: true,
         },
         async ({ cronHandler, mockSnapClient, mockTransactionScanService }) => {
+          mockTransactionScanService.scanTransaction.mockResolvedValue({
+            status: 'SUCCESS',
+            simulationStatus: SimulationStatus.Completed,
+            estimatedChanges: { assets: [] },
+            validation: { type: 'Malicious', reason: null },
+            error: null,
+          });
           await cronHandler.refreshSignTransaction();
 
           const finalUpdateCall = mockSnapClient.updateInterface.mock.calls[1];
           const finalContext =
             finalUpdateCall?.[2] as ConfirmSignTransactionContext;
 
-          // A benign security scan is overridden by the local TAPOS-expiry
-          // detection: an expired transaction won't broadcast regardless of the
-          // contract simulation result.
+          // Expiry replaces the simulation result while preserving the verdict.
           expect(mockTransactionScanService.scanTransaction).toHaveBeenCalled();
           expect(finalContext.scan?.simulationStatus).toBe(
             SimulationStatus.Failed,
@@ -1137,6 +1145,7 @@ describe('CronHandler', () => {
           expect(finalContext.scan?.error?.type).toBe(
             'TransactionTaposExpired',
           );
+          expect(finalContext.scan?.validation.type).toBe('Malicious');
           expect(finalContext.scanFetchStatus).toBe(FetchStatus.Fetched);
         },
       );
@@ -1186,6 +1195,10 @@ describe('CronHandler', () => {
           expect(finalContext.scan?.error?.type).toBe(
             'TransactionTaposExpired',
           );
+          expect(finalContext.scan?.validation).toStrictEqual({
+            type: 'Error',
+            reason: null,
+          });
           expect(finalContext.scanFetchStatus).toBe(FetchStatus.Fetched);
         },
       );

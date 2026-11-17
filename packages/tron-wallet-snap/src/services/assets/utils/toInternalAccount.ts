@@ -30,5 +30,5 @@ export function toInternalAccount(account: KeyringAccount): GetAssetsAccount {
         type: 'Snap Keyring',
       },
     },
-  } as GetAssetsAccount;
+  };
 }

@@ -368,9 +368,7 @@ export class TransactionMapper {
       id: trongridTransaction.txID,
       from: [
         {
-          // TODO: Replace `any` with type
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          address: from as any,
+          address: from,
           asset: {
             unit: tronAsset.symbol,
             type: tronAsset.id,
@@ -472,9 +470,7 @@ export class TransactionMapper {
       id: trongridTransaction.txID,
       from: [
         {
-          // TODO: Replace `any` with type
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          address: from as any,
+          address: from,
           asset: {
             unit: symbol,
             type: `${scope}/trc10:${assetName}`,

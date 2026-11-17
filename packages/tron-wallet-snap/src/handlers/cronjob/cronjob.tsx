@@ -288,9 +288,7 @@ export class CronHandler {
         `Fetching fresh prices for ${uniqueAssetCaipIds.length} assets`,
       );
       const prices = await this.#priceApiClient.getMultipleSpotPrices(
-        // TODO: Replace `any` with type
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        uniqueAssetCaipIds as any,
+        uniqueAssetCaipIds,
         interfaceContext.preferences.currency,
       );
 
@@ -669,7 +667,10 @@ export class CronHandler {
             );
 
           if (expired) {
-            scan = EXPIRED_TRANSACTION_SCAN;
+            scan = {
+              ...EXPIRED_TRANSACTION_SCAN,
+              validation: scan?.validation ?? { type: 'Error', reason: null },
+            };
             scanFetchStatus = FetchStatus.Fetched;
           }
         } catch (error) {

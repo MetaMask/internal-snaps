@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-export type TrongridApiResponse<T> = {
-  data: T;
+export type TrongridApiResponse<TData> = {
+  data: TData;
   success: boolean;
   meta: {
     at: number;

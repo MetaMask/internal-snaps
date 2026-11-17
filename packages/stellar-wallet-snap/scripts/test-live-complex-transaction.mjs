@@ -41,7 +41,7 @@
  * Teardown restores it.
  *
  * Cases that need an id or an ephemeral key (claimable, offers, sponsored
- * accounts) save it in scripts/.horizon-fixture-state.mjson. That file is
+ * accounts) save it in scripts/.horizon-fixture-state.json. That file is
  * gitignored. Run teardown to roll the case back.
  */
 
@@ -265,6 +265,38 @@ async function ensureTrustlineIfNeeded(binding, asset, submit, label) {
   binding.account = await server.loadAccount(binding.keypair.publicKey());
 }
 
+function recallOptional(caseName) {
+  return readStateFile()[caseName] ?? null;
+}
+
+/**
+ * Removes a trustline this setup created. A balance blocks removal, because
+ * that balance was not part of the starting state this helper can safely drop.
+ *
+ * @param {AccountBinding} binding - Account that holds the trustline.
+ * @param {import('@stellar/stellar-sdk').Asset} asset - Trustline to remove.
+ * @param {CaseHelpers['submit']} submit - Submits the changeTrust transaction.
+ * @param {string} label - Account name used in the log line.
+ */
+async function removeTrustlineIfEmpty(binding, asset, submit, label) {
+  binding.account = await server.loadAccount(binding.keypair.publicKey());
+  const line = findTrustline(binding.account, asset);
+  if (!line.exists) {
+    return;
+  }
+  if (Number(line.balance) > 0) {
+    console.log(
+      `  skip remove ${assetLabel(asset)}: balance ${line.balance} (send it away first)`,
+    );
+    return;
+  }
+  await submit({
+    label: `${label}: remove ${assetLabel(asset)} trustline added by setup`,
+    signer: binding.keypair,
+    operations: [Operation.changeTrust({ asset, limit: '0' })],
+  });
+}
+
 function assertSpendable(binding, asset, amount) {
   if (isIssuer(binding, asset)) {
     return;
@@ -296,9 +328,18 @@ async function runBalanceMoveSetup({
 }) {
   const dest2 = account2.keypair.publicKey();
   const label = assetLabel(asset);
+  const account2Added =
+    !asset.isNative() && !findTrustline(account2.account, asset).exists;
+  if (!asset.isNative() && !isIssuer(account1, asset)) {
+    const account1Line = findTrustline(account1.account, asset);
+    if (!account1Line.exists) {
+      throw new Error(
+        `account1 has no trustline for ${label}; enable it before setup`,
+      );
+    }
+  }
 
   await ensureTrustlineIfNeeded(account2, asset, submit, 'account2');
-  await ensureTrustlineIfNeeded(account1, asset, submit, 'account1');
   account1.account = await server.loadAccount(account1.keypair.publicKey());
   assertSpendable(account1, asset, amount);
 
@@ -319,7 +360,7 @@ async function runBalanceMoveSetup({
 
   if (DRY_RUN) {
     console.log('  DRY_RUN: skip claimClaimableBalance');
-    return;
+    return { account2Added };
   }
 
   const claimableBalanceId = await claimableBalanceIdFromTx(tx1.hash);
@@ -334,6 +375,7 @@ async function runBalanceMoveSetup({
       }),
     ],
   });
+  return { account2Added };
 }
 
 async function runBalanceMoveTeardown({
@@ -342,12 +384,13 @@ async function runBalanceMoveTeardown({
   submit,
   asset,
   amount,
+  account2Added = false,
 }) {
   const label = assetLabel(asset);
   const dest1 = account1.keypair.publicKey();
+  const returned = trimDecimal(Number(amount) * 4);
 
   if (asset.isNative()) {
-    const returned = String(Number(amount) * 4);
     await submit({
       label: `account2: return ${returned} ${label} (4× ${amount})`,
       signer: account2.keypair,
@@ -359,21 +402,30 @@ async function runBalanceMoveTeardown({
   account2.account = await server.loadAccount(account2.keypair.publicKey());
   const line = findTrustline(account2.account, asset);
   if (!line.exists) {
-    console.log(`  account2 has no ${label} trustline; nothing to remove`);
+    console.log(`  account2 has no ${label} trustline; nothing to return`);
     return;
   }
-
-  const operations = [];
-  if (Number(line.balance) > 0) {
-    operations.push(paymentOp(dest1, asset, line.balance));
+  if (Number(line.balance) + 1e-7 < Number(returned)) {
+    throw new Error(
+      `account2 ${label} balance ${line.balance} < ${returned} to return (4× ${amount})`,
+    );
   }
-  operations.push(Operation.changeTrust({ asset, limit: '0' }));
+
+  const leftover = Number(line.balance) - Number(returned);
+  const operations = [paymentOp(dest1, asset, returned)];
+  const removeAddedLine = account2Added && leftover <= 1e-7;
+  if (removeAddedLine) {
+    operations.push(Operation.changeTrust({ asset, limit: '0' }));
+  } else if (account2Added) {
+    console.log(
+      `  skip remove ${label}: ${trimDecimal(leftover)} remains after returning ${returned}`,
+    );
+  }
 
   await submit({
-    label:
-      Number(line.balance) > 0
-        ? `account2: send remaining ${line.balance} ${label} to account1, then remove trustline`
-        : `account2: remove ${label} trustline (balance already 0)`,
+    label: removeAddedLine
+      ? `account2: return ${returned} ${label}, then remove the trustline setup added`
+      : `account2: return ${returned} ${label} (4× ${amount})`,
     signer: account2.keypair,
     operations,
   });
@@ -392,7 +444,7 @@ async function claimableBalanceIdFromTx(hash) {
   return created.balance_id;
 }
 
-const STATE_PATH = new URL('./.horizon-fixture-state.mjson', import.meta.url);
+const STATE_PATH = new URL('./.horizon-fixture-state.json', import.meta.url);
 
 function readStateFile() {
   try {
@@ -446,7 +498,7 @@ function requireAccount(binding, label) {
 }
 
 /**
- * @param {AccountBinding | undefined} binding
+ * @param {AccountBinding | undefined} binding - Sponsored account, when its secret is set.
  * @returns {asserts binding is AccountBinding}
  */
 function requireSponsoredAccount(binding) {
@@ -523,7 +575,7 @@ async function restingOfferIdFromTx(hash) {
 }
 
 /**
- * @param {string} offerId
+ * @param {string} offerId - Horizon offer id.
  * @returns {Promise<import('@stellar/stellar-sdk').Horizon.ServerApi.OfferRecord | null>}
  */
 async function loadOfferIfExists(offerId) {
@@ -538,7 +590,7 @@ async function loadOfferIfExists(offerId) {
 }
 
 /**
- * @param {{ asset_type: string, asset_code?: string, asset_issuer?: string }} asset
+ * @param {{ asset_type: string, asset_code?: string, asset_issuer?: string }} asset - Horizon asset row from an offer.
  * @returns {import('@stellar/stellar-sdk').Asset}
  */
 function horizonAsset(asset) {
@@ -633,28 +685,35 @@ const CASES = {
   test1: {
     description: `Account 1: payment (XLM → account 2) + changeTrust enable ${TRUSTLINE_ASSET.getCode()} in one tx`,
     async setup({ account1, account2 }, { submit }) {
+      const addedTrustline = !findTrustline(account1.account, TRUSTLINE_ASSET)
+        .exists;
+      const operations = [nativePayment(account2.keypair.publicKey())];
+      if (addedTrustline) {
+        operations.push(Operation.changeTrust({ asset: TRUSTLINE_ASSET }));
+      }
       await submit({
-        label: `account1 payment + enable ${assetLabel(TRUSTLINE_ASSET)}`,
+        label: `account1 payment${addedTrustline ? ` + enable ${assetLabel(TRUSTLINE_ASSET)}` : ''}`,
         signer: account1.keypair,
-        operations: [
-          nativePayment(account2.keypair.publicKey()),
-          Operation.changeTrust({ asset: TRUSTLINE_ASSET }),
-        ],
+        operations,
       });
+      remember('test1', { addedTrustline });
     },
     async teardown({ account1, account2 }, { submit }) {
+      const prior = recallOptional('test1');
       await submit({
         label: 'account2 return XLM',
         signer: account2.keypair,
         operations: [nativePayment(account1.keypair.publicKey())],
       });
-      await submit({
-        label: `account1 remove ${assetLabel(TRUSTLINE_ASSET)} trustline`,
-        signer: account1.keypair,
-        operations: [
-          Operation.changeTrust({ asset: TRUSTLINE_ASSET, limit: '0' }),
-        ],
-      });
+      if (prior?.addedTrustline) {
+        await removeTrustlineIfEmpty(
+          account1,
+          TRUSTLINE_ASSET,
+          submit,
+          'account1',
+        );
+      }
+      forget('test1');
     },
   },
 
@@ -684,29 +743,32 @@ const CASES = {
 
   /**
    * Same balance ops as `balance-move`, using a classic trustline asset.
-   * Adds changeTrust first if a side is missing the line. Account 1 must already
-   * hold at least 4× TRUSTLINE_AMOUNT (unless it is the issuer).
-   * Teardown sweeps account2's remaining token to account1 in the same tx as
-   * changeTrust limit=0 (Stellar requires a 0 balance to drop a trustline).
-   * Account 1 keeps the tokens, so its trustline is left in place.
+   * Adds account 2's trustline when it is missing. Account 1 must already hold
+   * the line and at least 4× TRUSTLINE_AMOUNT (unless it is the issuer).
+   * Teardown returns that 4× amount. It removes account 2's line only when
+   * setup created it and the balance is back to 0.
    */
   'balance-move-trustline': {
     description: `same as balance-move for ${TRUSTLINE_ASSET.getCode()} trustline token`,
     async setup(accounts, helpers) {
-      await runBalanceMoveSetup({
+      const { account2Added } = await runBalanceMoveSetup({
         ...accounts,
         ...helpers,
         asset: TRUSTLINE_ASSET,
         amount: TRUSTLINE_AMOUNT,
       });
+      remember('balance-move-trustline', { account2Added });
     },
     async teardown(accounts, helpers) {
+      const prior = recallOptional('balance-move-trustline');
       await runBalanceMoveTeardown({
         ...accounts,
         ...helpers,
         asset: TRUSTLINE_ASSET,
         amount: TRUSTLINE_AMOUNT,
+        account2Added: Boolean(prior?.account2Added),
       });
+      forget('balance-move-trustline');
     },
   },
 
@@ -716,6 +778,8 @@ const CASES = {
    * - update TRUSTLINE_ASSET limit (non-zero) on account 1
    * - account 1 sponsors account 2 creating a PYUSD trustline
    *
+   * Teardown removes an empty EURC line, removes an empty TRUSTLINE_ASSET
+   * line, and removes the sponsored PYUSD line. A line with a balance is left.
    * Does not toggle `authorized` (issuer-only).
    */
   'trustline-metadata': {
@@ -766,6 +830,12 @@ const CASES = {
         Operation.endSponsoringFutureReserves({ source: dest2 }),
       );
 
+      remember('trustline-metadata', {
+        eurcExisted: eurcLine.exists,
+        heldExisted: heldLine.exists,
+        heldLimit: heldLine.exists ? heldLine.limit : null,
+      });
+
       await submit({
         label: `account1+2: add EURC, ${assetLabel(
           TRUSTLINE_ASSET,
@@ -779,26 +849,48 @@ const CASES = {
       account1.account = await server.loadAccount(account1.keypair.publicKey());
       account2.account = await server.loadAccount(account2.keypair.publicKey());
 
+      const prior = recallOptional('trustline-metadata');
+      const eurcAdded = prior ? !prior.eurcExisted : true;
+      const heldAdded = prior ? !prior.heldExisted : true;
       const account1Ops = [];
       const eurcLine = findTrustline(account1.account, EURC);
-      if (eurcLine.exists && Number(eurcLine.balance) > 0) {
+      if (eurcAdded && eurcLine.exists && Number(eurcLine.balance) > 0) {
         console.log(
           `  skip remove EURC: balance ${eurcLine.balance} (send it away first)`,
         );
-      } else if (eurcLine.exists) {
+      } else if (eurcAdded && eurcLine.exists) {
         account1Ops.push(Operation.changeTrust({ asset: EURC, limit: '0' }));
       }
 
       const heldLine = findTrustline(account1.account, TRUSTLINE_ASSET);
-      if (heldLine.exists) {
-        account1Ops.push(Operation.changeTrust({ asset: TRUSTLINE_ASSET }));
+      const heldLabel = assetLabel(TRUSTLINE_ASSET);
+      if (heldAdded && heldLine.exists && Number(heldLine.balance) > 0) {
+        console.log(
+          `  skip remove ${heldLabel}: balance ${heldLine.balance} (send it away first)`,
+        );
+      } else if (heldAdded && heldLine.exists) {
+        account1Ops.push(
+          Operation.changeTrust({ asset: TRUSTLINE_ASSET, limit: '0' }),
+        );
+      } else if (
+        !heldAdded &&
+        heldLine.exists &&
+        prior?.heldLimit &&
+        String(heldLine.limit) !== String(prior.heldLimit)
+      ) {
+        account1Ops.push(
+          Operation.changeTrust({
+            asset: TRUSTLINE_ASSET,
+            limit: prior.heldLimit,
+          }),
+        );
       }
 
       if (account1Ops.length > 0) {
         await submit({
-          label: `account1: remove EURC if empty, restore ${assetLabel(
-            TRUSTLINE_ASSET,
-          )} limit to max`,
+          label: heldAdded
+            ? `account1: remove empty EURC and ${heldLabel} trustlines added by setup`
+            : `account1: remove empty EURC added by setup and restore ${heldLabel} limit`,
           signer: account1.keypair,
           operations: account1Ops,
         });
@@ -806,6 +898,7 @@ const CASES = {
 
       const pyusdLine = findTrustline(account2.account, PYUSD);
       if (!pyusdLine.exists) {
+        forget('trustline-metadata');
         return;
       }
 
@@ -830,6 +923,7 @@ const CASES = {
         signer: account2.keypair,
         operations: pyusdOps,
       });
+      forget('trustline-metadata');
     },
   },
 
@@ -976,6 +1070,8 @@ const CASES = {
           )} and cannot receive it`,
         );
       }
+      const account2Added = !findTrustline(account2.account, TRUSTLINE_ASSET)
+        .exists;
       await ensureTrustlineIfNeeded(
         account2,
         TRUSTLINE_ASSET,
@@ -1007,10 +1103,10 @@ const CASES = {
       console.log(
         `  account2 received ${received} ${assetLabel(TRUSTLINE_ASSET)}`,
       );
-      remember('path-payment', { received });
+      remember('path-payment', { received, account2Added });
     },
     async teardown({ account1, account2 }, { submit }) {
-      const { received } = recall('path-payment');
+      const { received, account2Added } = recall('path-payment');
       await submit({
         label: `account2 path-swap ${received} ${assetLabel(
           TRUSTLINE_ASSET,
@@ -1025,6 +1121,14 @@ const CASES = {
           ),
         ],
       });
+      if (account2Added) {
+        await removeTrustlineIfEmpty(
+          account2,
+          TRUSTLINE_ASSET,
+          submit,
+          'account2',
+        );
+      }
       forget('path-payment');
     },
   },
@@ -1032,7 +1136,8 @@ const CASES = {
   /**
    * Setup locks an asset in a claimable balance and stops.
    * Optional argv asset id; omitted means XLM.
-   * Teardown is account 2 claiming it.
+   * Teardown claims it, returns that amount to account 1, and removes a
+   * trustline this setup added once its balance is back to 0.
    */
   claimable: {
     description: `account1 locks ${XLM_AMOUNT} of an asset (default XLM; optional asset id) as a claimable balance for account2; teardown claims it`,
@@ -1053,6 +1158,8 @@ const CASES = {
           );
         }
       }
+      const account2Added =
+        !asset.isNative() && !findTrustline(account2.account, asset).exists;
       await ensureTrustlineIfNeeded(account2, asset, submit, 'account2');
       const tx = await submit({
         label: `account1 createClaimableBalance ${amount} ${label} for account2`,
@@ -1075,15 +1182,33 @@ const CASES = {
       }
       const balanceId = await claimableBalanceIdFromTx(tx.hash);
       console.log(`  claimable ${balanceId}`);
-      remember('claimable', { balanceId });
+      remember('claimable', {
+        balanceId,
+        account2Added,
+        assetId: process.argv[4] ?? 'native',
+        amount,
+      });
     },
-    async teardown({ account2 }, { submit }) {
-      const { balanceId } = recall('claimable');
+    async teardown({ account1, account2 }, { submit }) {
+      const saved = recall('claimable');
+      const asset = assetFromOptionalId(saved.assetId);
       await submit({
         label: 'account2 claimClaimableBalance',
         signer: account2.keypair,
-        operations: [Operation.claimClaimableBalance({ balanceId })],
+        operations: [
+          Operation.claimClaimableBalance({ balanceId: saved.balanceId }),
+        ],
       });
+      await submit({
+        label: `account2 return ${saved.amount} ${assetLabel(asset)} to account1`,
+        signer: account2.keypair,
+        operations: [
+          paymentOp(account1.keypair.publicKey(), asset, saved.amount),
+        ],
+      });
+      if (saved.account2Added) {
+        await removeTrustlineIfEmpty(account2, asset, submit, 'account2');
+      }
       forget('claimable');
     },
   },
@@ -1305,11 +1430,13 @@ const CASES = {
 
   /**
    * One transaction pays XLM to two existing addresses.
-   * Both addresses are required. There is no sponsorship and no rollback.
+   * Both addresses are required. Teardown returns each payment from a fixture
+   * key (account 1, account 2, or the sponsored account).
    */
   'two-receivers': {
     description: `one tx: account1 pays ${XLM_AMOUNT} XLM to two addresses (setup two-receivers <address> <address>)`,
-    async setup({ account1 }, { submit }) {
+    async setup(accounts, { submit }) {
+      const { account1 } = accounts;
       requireAccount(account1, 'account1');
       const [receiver1, receiver2] = [process.argv[4], process.argv[5]];
       if (!receiver1 || !receiver2) {
@@ -1330,6 +1457,8 @@ const CASES = {
       if (!onChain2) {
         throw new Error(`${receiver2} is not on chain`);
       }
+      bindingForAddress(accounts, receiver1);
+      bindingForAddress(accounts, receiver2);
       assertBalanceAtLeast(
         account1,
         Asset.native(),
@@ -1340,11 +1469,25 @@ const CASES = {
         signer: account1.keypair,
         operations: [nativePayment(receiver1), nativePayment(receiver2)],
       });
+      remember('two-receivers', {
+        receiver1,
+        receiver2,
+        amount: XLM_AMOUNT,
+      });
     },
-    async teardown() {
-      throw new Error(
-        'two-receivers does not roll back. The payments went to the addresses you passed.',
-      );
+    async teardown(accounts, { submit }) {
+      const { receiver1, receiver2, amount } = recall('two-receivers');
+      for (const address of [receiver1, receiver2]) {
+        const binding = bindingForAddress(accounts, address);
+        await submit({
+          label: `${address} returns ${amount} XLM to account1`,
+          signer: binding.keypair,
+          operations: [
+            nativePayment(accounts.account1.keypair.publicKey(), amount),
+          ],
+        });
+      }
+      forget('two-receivers');
     },
   },
 
@@ -1445,8 +1588,8 @@ const CASES = {
   /**
    * Sells XLM into the best bid for the trustline asset so the offer fills.
    * An unfilled remainder is left on the book and its offer id is saved.
-   * Teardown path-swaps the received tokens back to XLM and keeps that id.
-   * `offer-fill-cancel` cancels the remainder when it is still open.
+   * Teardown path-swaps the received tokens back to XLM, cancels a leftover
+   * offer, and removes an AQUA trustline this setup added.
    */
   'offer-fill': {
     description: `account1 sells XLM into the best ${TRUSTLINE_ASSET.getCode()} bid; teardown swaps it back`,
@@ -1460,7 +1603,8 @@ const CASES = {
         );
       }
       const line = findTrustline(account1.account, TRUSTLINE_ASSET);
-      if (!line.exists) {
+      const account1Added = !line.exists;
+      if (account1Added) {
         await ensureTrustlineIfNeeded(
           account1,
           TRUSTLINE_ASSET,
@@ -1502,6 +1646,7 @@ const CASES = {
       console.log(`  filled ${received} ${assetLabel(TRUSTLINE_ASSET)}`);
       remember('offer-fill', {
         received,
+        account1Added,
         ...(leftover ? { offerId } : {}),
       });
     },
@@ -1524,8 +1669,30 @@ const CASES = {
         });
       }
       if (saved.offerId) {
-        remember('offer-fill', { offerId: saved.offerId });
-        return;
+        const leftover = await loadOfferIfExists(saved.offerId);
+        if (leftover) {
+          await submit({
+            label: `account1 cancel leftover offer ${saved.offerId}`,
+            signer: account1.keypair,
+            operations: [
+              Operation.manageSellOffer({
+                selling: horizonAsset(leftover.selling),
+                buying: horizonAsset(leftover.buying),
+                amount: '0',
+                price: leftover.price,
+                offerId: saved.offerId,
+              }),
+            ],
+          });
+        }
+      }
+      if (saved.account1Added) {
+        await removeTrustlineIfEmpty(
+          account1,
+          TRUSTLINE_ASSET,
+          submit,
+          'account1',
+        );
       }
       forget('offer-fill');
     },
@@ -1632,10 +1799,13 @@ const CASES = {
         signer: account1.keypair,
         operations,
       });
-      remember('liquidity-pool', { poolId: pool.poolId });
+      remember('liquidity-pool', {
+        poolId: pool.poolId,
+        createdShareLine: !existing.exists,
+      });
     },
     async teardown({ account1 }, { submit }) {
-      const { poolId } = recall('liquidity-pool');
+      const { poolId, createdShareLine } = recall('liquidity-pool');
       const pool = constantProductPool();
       if (pool.poolId !== poolId) {
         throw new Error(
@@ -1660,11 +1830,21 @@ const CASES = {
           }),
         );
       }
-      operations.push(
-        Operation.changeTrust({ asset: pool.poolAsset, limit: '0' }),
-      );
+      if (createdShareLine !== false) {
+        operations.push(
+          Operation.changeTrust({ asset: pool.poolAsset, limit: '0' }),
+        );
+      }
+      if (operations.length === 0) {
+        console.log('  pool share line was already empty; leaving it');
+        forget('liquidity-pool');
+        return;
+      }
       await submit({
-        label: 'account1 withdraw pool shares and remove the trustline',
+        label:
+          createdShareLine === false
+            ? 'account1 withdraw pool shares added by setup'
+            : 'account1 withdraw pool shares and remove the trustline setup added',
         signer: account1.keypair,
         operations,
       });
@@ -1925,7 +2105,7 @@ async function confirmMainnet(command, caseName, description) {
 }
 
 /**
- * @param {PlannedTx} plan
+ * @param {PlannedTx} plan - Transaction to build, sign, and submit.
  * @returns {Promise<SubmitResult>}
  */
 async function submitPlan(plan) {
@@ -1956,8 +2136,8 @@ async function submitPlan(plan) {
 }
 
 /**
- * @param {import('@stellar/stellar-sdk').Transaction} inner
- * @param {import('@stellar/stellar-sdk').Keypair} feeSource
+ * @param {import('@stellar/stellar-sdk').Transaction} inner - Transaction whose fee another account pays.
+ * @param {import('@stellar/stellar-sdk').Keypair} feeSource - Key that pays the fee.
  * @returns {import('@stellar/stellar-sdk').FeeBumpTransaction}
  */
 function wrapFeeBump(inner, feeSource) {
@@ -2011,8 +2191,8 @@ function assetFromOptionalId(assetId) {
 }
 
 /**
- * @param {Accounts} accounts
- * @param {string} address
+ * @param {Accounts} accounts - Fixture accounts loaded from the environment.
+ * @param {string} address - Stellar G address to match.
  * @returns {AccountBinding}
  */
 function bindingForAddress(accounts, address) {
@@ -2033,10 +2213,10 @@ function bindingForAddress(accounts, address) {
 /**
  * Submits changeTrust limit 0. Does not move a remaining balance.
  *
- * @param {object} params
- * @param {Accounts} params.accounts
- * @param {string} params.accountAddress
- * @param {string} params.assetId
+ * @param {object} params - Removal arguments.
+ * @param {Accounts} params.accounts - Fixture accounts loaded from the environment.
+ * @param {string} params.accountAddress - Account whose trustline is removed.
+ * @param {string} params.assetId - Asset id, `CODE-ISSUER` or `stellar:pubnet/asset:CODE-ISSUER`.
  */
 async function removeTrustline({ accounts, accountAddress, assetId }) {
   const binding = bindingForAddress(accounts, accountAddress);

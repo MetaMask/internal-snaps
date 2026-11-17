@@ -1,6 +1,5 @@
 import {
   ActionHeader,
-  TransactionAlert,
   ConfirmationFooter,
   MaliciousAcknowledgementFormNames,
   MaliciousAcknowledgementScreen,
@@ -9,7 +8,6 @@ import {
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
-  Banner,
   Box,
   Container,
   Icon,
@@ -26,7 +24,7 @@ import { formatOrigin } from '../../../../utils/formatOrigin';
 import { i18n } from '../../../../utils/i18n';
 import { EstimatedChanges } from '../../components/EstimatedChanges/EstimatedChanges';
 import { Fees } from '../../components/Fees';
-import { getTransactionAlertProps } from '../../utils/getTransactionAlertProps';
+import { TransactionBanners } from '../../components/TransactionBanners';
 import { isTransactionConfirmationBlocked } from '../../utils/isTransactionConfirmationBlocked';
 import { ConfirmSignTransactionFormNames } from './events';
 import type { ConfirmSignTransactionContext } from './types';
@@ -108,28 +106,12 @@ export const ConfirmSignTransaction = ({
   return (
     <Container>
       <Box>
-        {isInsufficientBalance ? (
-          <Banner
-            title={translate('transactionScan.errors.insufficientFunds')}
-            severity="danger"
-          >
-            <SnapText>{null}</SnapText>
-          </Banner>
-        ) : null}
-
-        {/* Security Alert / expiry banner.
-            Rendered when security alerts are enabled, or whenever a scan error
-            (e.g. the locally-detected TAPOS-expired case) is present, so the
-            expiry warning surfaces even with security alerts turned off. */}
-        {preferences.useSecurityAlerts || scan?.error ? (
-          <TransactionAlert
-            {...getTransactionAlertProps({
-              preferences,
-              scan,
-              scanFetchStatus,
-            })}
-          />
-        ) : null}
+        <TransactionBanners
+          preferences={preferences}
+          scan={scan}
+          scanFetchStatus={scanFetchStatus}
+          isInsufficientBalance={isInsufficientBalance}
+        />
 
         {/* Header */}
         <ActionHeader title={translate('confirmation.signTransaction.title')} />
