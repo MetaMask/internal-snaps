@@ -1,4 +1,5 @@
 /* eslint-disable no-restricted-globals */
+import { hasProperty } from '@metamask/utils';
 import * as ed from '@noble/ed25519';
 
 import { bufferSourceAsUint8Array } from './utils/buffer-source-as-uint8-array';
@@ -35,7 +36,7 @@ const ED25519_PKCS8_HEADER = [
  * @param input - The Uint8Array to convert.
  * @returns The base64 string with URL-safe characters.
  */
-export function toBase64(input: Uint8Array) {
+export function toBase64(input: Uint8Array): string {
   return Buffer.from(input)
     .toString('base64')
     .replace(/\+/gu, '-')
@@ -49,7 +50,7 @@ export function toBase64(input: Uint8Array) {
  * @param b64u - The base64 string with URL-safe characters.
  * @returns The Uint8Array.
  */
-export function toBuffer(b64u: string) {
+export function toBuffer(b64u: string): Uint8Array {
   const a = b64u.replace(/-/gu, '+').replace(/_/gu, '/');
   const b = new Uint8Array(Buffer.from(a, 'base64'));
 
@@ -63,7 +64,10 @@ export function toBuffer(b64u: string) {
  * @param key - The key to export.
  * @returns The exported key data.
  */
-export async function exportKey(format: KeyFormat | string, key: CryptoKey) {
+export async function exportKey(
+  format: KeyFormat | string,
+  key: CryptoKey,
+): Promise<ArrayBuffer | JsonWebKey> {
   if (!key.extractable) {
     throw new DOMException('key is not extractable', 'InvalidAccessException');
   }
@@ -188,7 +192,7 @@ export async function importKey(
   _algorithm: AlgorithmIdentifier | KeyAlgorithm,
   extractable: boolean,
   keyUsages: KeyUsage[],
-) {
+): Promise<CryptoKey> {
   const usages = Array.from(keyUsages);
 
   switch (format) {
@@ -235,7 +239,7 @@ export async function importKey(
         throw new DOMException('Invalid Ed25519 JWK', 'DataError');
       }
 
-      const type = 'd' in jwk ? 'private' : 'public';
+      const type = hasProperty(jwk, 'd') ? 'private' : 'public';
 
       if (type === 'public' && !jwk.x) {
         throw new DOMException(

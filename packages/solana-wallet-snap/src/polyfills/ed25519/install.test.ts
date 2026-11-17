@@ -17,6 +17,8 @@ const PKCS8_KEY = new Uint8Array([
 
 const PUBLIC_KEY_HEX =
   '0xea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c';
+const PRIVATE_KEY_B64U = 'BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc';
+const PUBLIC_KEY_B64U = '6kpsY-KcUgq-9VB7Ey7F-ZVHdq6-vnuSQh7qaRRG0iw';
 const MESSAGE = new TextEncoder().encode('hello solana');
 const SIGNATURE_HEX =
   '0x9091b5d70d7c5b015eef7e8133db6c8aa5460f416024e4fac7bde7f1970a71f8257e2f6b6801f3f659817e6e9fbe013f624b72bd62277a42e4ca309737a0b301';
@@ -177,5 +179,52 @@ describe('install', () => {
     );
 
     expect(key).toBeInstanceOf(globalThis.CryptoKey);
+  });
+
+  it('imports JWK keys with the polyfill', async () => {
+    Object.defineProperty(globalThis.crypto.subtle, 'importKey', {
+      configurable: true,
+      writable: true,
+      value: async () => {
+        throw new Error('Unsupported algorithm');
+      },
+    });
+
+    install();
+
+    const privateKey = await globalThis.crypto.subtle.importKey(
+      'jwk',
+      {
+        kty: 'OKP',
+        crv: 'Ed25519',
+        d: PRIVATE_KEY_B64U,
+        x: PUBLIC_KEY_B64U,
+      },
+      ED25519_ALGORITHM,
+      false,
+      ['sign'],
+    );
+
+    expect(privateKey).not.toBeInstanceOf(globalThis.CryptoKey);
+    expect(privateKey.type).toBe('private');
+    expect(privateKey.usages).toStrictEqual(['sign']);
+
+    const publicKey = await globalThis.crypto.subtle.importKey(
+      'jwk',
+      { kty: 'OKP', crv: 'Ed25519', x: PUBLIC_KEY_B64U },
+      ED25519_ALGORITHM,
+      true,
+      ['verify'],
+    );
+
+    expect(publicKey).not.toBeInstanceOf(globalThis.CryptoKey);
+    expect(publicKey.type).toBe('public');
+    expect(publicKey.usages).toStrictEqual(['verify']);
+
+    expect(
+      new Uint8Array(
+        await globalThis.crypto.subtle.exportKey('raw', publicKey),
+      ),
+    ).toStrictEqual(hexToBytes(PUBLIC_KEY_HEX));
   });
 });

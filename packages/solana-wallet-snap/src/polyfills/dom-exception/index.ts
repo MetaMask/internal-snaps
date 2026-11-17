@@ -1,7 +1,7 @@
 /**
  * Adds support for the DOMException object.
  */
-export function install() {
+export function install(): void {
   Object.defineProperty(globalThis, 'DOMException', {
     value: Error,
     writable: true,

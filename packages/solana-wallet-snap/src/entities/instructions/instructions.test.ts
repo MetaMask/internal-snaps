@@ -17,15 +17,48 @@ import {
   toIInstruction,
 } from './instructions';
 
+const ASSOCIATED_TOKEN_PROGRAM_ADDRESS =
+  'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
+
+/**
+ * Checks whether an instruction is an associated token account creation that
+ * uses accounts loaded from an address lookup table.
+ *
+ * @param accountKeys - The account keys inlined in the transaction message.
+ * @param instruction - The instruction to check.
+ * @returns Whether the instruction creates an associated token account.
+ */
+const isCreateAssociatedTokenInstruction = (
+  accountKeys: readonly string[],
+  instruction: { programIdIndex: number; accounts: readonly number[] },
+): boolean =>
+  accountKeys[instruction.programIdIndex] ===
+    ASSOCIATED_TOKEN_PROGRAM_ADDRESS &&
+  instruction.accounts.some((index) => index >= accountKeys.length);
+
 describe('toIInstruction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
   });
 
-  it.each(['legacy', 0, 1] as const)(
-    'preserves inline account order for version %s',
-    (version) => {
+  it.each([
+    { version: 'legacy' as const, messageExtras: {} },
+    { version: 0 as const, messageExtras: {} },
+    {
+      version: 1 as const,
+      messageExtras: {
+        transactionConfig: {
+          computeUnitLimit: 30_000,
+          heapSize: null,
+          loadedAccountsDataSizeLimit: 200_000,
+          priorityFee: null,
+        },
+      },
+    },
+  ])(
+    'preserves inline account order for version $version',
+    ({ version, messageExtras }) => {
       const feePayer = address('11111111111111111111111111111112');
       const readonlySigner = address('11111111111111111111111111111113');
       const writableAccount = address('11111111111111111111111111111114');
@@ -60,14 +93,7 @@ describe('toIInstruction', () => {
             ],
             instructions: [instruction],
             recentBlockhash: original.transaction.message.recentBlockhash,
-            ...(version === 1 && {
-              transactionConfig: {
-                computeUnitLimit: 30_000,
-                heapSize: null,
-                loadedAccountsDataSizeLimit: 200_000,
-                priorityFee: null,
-              },
-            }),
+            ...messageExtras,
           },
         },
       };
@@ -95,15 +121,13 @@ describe('toIInstruction', () => {
     'parses account creation using lookup table accounts in a %s',
     (_, transaction) => {
       const { accountKeys, instructions } = transaction.transaction.message;
-      const accountCreationInstruction = instructions.find(
-        (instruction) =>
-          accountKeys[instruction.programIdIndex] ===
-            'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL' &&
-          instruction.accounts.some((index) => index >= accountKeys.length),
+      const accountCreationInstruction = instructions.find((instruction) =>
+        isCreateAssociatedTokenInstruction(accountKeys, instruction),
       );
-      if (!accountCreationInstruction) {
-        throw new Error('Fixture must contain an associated token instruction');
-      }
+      assert(
+        accountCreationInstruction,
+        'Fixture must contain an associated token instruction',
+      );
 
       const converted = toIInstruction(accountCreationInstruction, transaction);
 
@@ -118,8 +142,9 @@ describe('toIInstruction', () => {
   it('resolves writable and readonly lookup addresses in account index order', () => {
     const transaction = EXPECTED_SWAP_SOL_TO_OBRIC_DATA;
     const { accountKeys } = transaction.transaction.message;
-    const { writable = [], readonly = [] } =
-      transaction.meta?.loadedAddresses ?? {};
+    const loadedAddresses = transaction.meta?.loadedAddresses;
+    assert(loadedAddresses, 'Fixture must contain loaded addresses');
+    const { writable, readonly } = loadedAddresses;
     const writableIndex = accountKeys.length;
     const readonlyIndex = writableIndex + writable.length;
     const [originalInstruction] = transaction.transaction.message.instructions;

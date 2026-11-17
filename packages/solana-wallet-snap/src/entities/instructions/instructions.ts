@@ -1,4 +1,5 @@
 import type { Infer } from '@metamask/superstruct';
+import { hasProperty } from '@metamask/utils';
 import {
   COMPUTE_BUDGET_PROGRAM_ADDRESS,
   ComputeBudgetInstruction,
@@ -163,6 +164,8 @@ import type {
   InstructionWithData,
   ReadonlyUint8Array,
   Address,
+  Transaction,
+  TransactionMessage,
 } from '@solana/kit';
 
 import {
@@ -189,7 +192,7 @@ import {
  * @param data - The instruction data to truncate.
  * @returns The truncated instruction data.
  */
-export function truncateInstructionData(data: string) {
+export function truncateInstructionData(data: string): string {
   if (data.length > 12) {
     return `${data.slice(0, 5)}...${data.slice(-5)}`;
   }
@@ -531,6 +534,25 @@ const programAddressToParsingConfig: Record<
 };
 
 /**
+ * Gets the parsing config for a program address, if instructions of that
+ * program can be parsed.
+ *
+ * @param programAddress - The program address to look up.
+ * @returns The parsing config, or `undefined` if the program is unsupported.
+ */
+const getParsingConfig = (
+  programAddress: Address,
+): ParsingConfig<InstructionType> | undefined => {
+  // The config is keyed by branded addresses, which TypeScript cannot use as an
+  // index signature, so the lookup goes through a plain string map.
+  const configs: Record<
+    string,
+    ParsingConfig<InstructionType>
+  > = programAddressToParsingConfig;
+  return configs[programAddress];
+};
+
+/**
  * Parses a generic instruction, returning the parsed instruction if it's supported,
  * or the original non-parsed instruction if it's not.
  *
@@ -585,9 +607,7 @@ export const parseInstruction = (
   };
 
   try {
-    const parsingConfig: ParsingConfig<InstructionType> =
-      // @ts-expect-error - we check if parsingConfig exists right after
-      programAddressToParsingConfig[programAddress];
+    const parsingConfig = getParsingConfig(programAddress);
 
     if (!parsingConfig) {
       // Unsupported programs are expected, so return Unknown without reporting an error to Sentry.
@@ -629,6 +649,18 @@ export const parseInstruction = (
 };
 
 /**
+ * Checks whether a decoded base64 string is a full transaction, as opposed to a
+ * bare transaction message.
+ *
+ * @param transactionOrTransactionMessage - The decoded value to check.
+ * @returns Whether the value is a transaction.
+ */
+const isTransaction = (
+  transactionOrTransactionMessage: Transaction | TransactionMessage,
+): transactionOrTransactionMessage is Transaction =>
+  hasProperty(transactionOrTransactionMessage, 'messageBytes');
+
+/**
  * Extracts the instructions from a base64 string, adapting the logic depending on whether
  * the string represents a transaction or a transaction message.
  *
@@ -647,13 +679,12 @@ export const extractInstructionsFromUnknownBase64String = async (
       rpc,
     );
 
-  const transactionMessage =
-    'instructions' in transactionOrTransactionMessage
-      ? transactionOrTransactionMessage
-      : await fromBytesToCompilableTransactionMessage(
-          transactionOrTransactionMessage.messageBytes,
-          rpc,
-        );
+  const transactionMessage = isTransaction(transactionOrTransactionMessage)
+    ? await fromBytesToCompilableTransactionMessage(
+        transactionOrTransactionMessage.messageBytes,
+        rpc,
+      )
+    : transactionOrTransactionMessage;
 
   const { instructions } = transactionMessage;
   return instructions.map(parseInstruction);
@@ -679,7 +710,7 @@ export const toIInstruction = (
   ];
 
   // Keep lookup table accounts so instruction parsers receive the complete account list.
-  const isInAccountKeys = (accountIndex: number) =>
+  const isInAccountKeys = (accountIndex: number): boolean =>
     accountIndex < accountKeys.length;
 
   // Build the accounts array
