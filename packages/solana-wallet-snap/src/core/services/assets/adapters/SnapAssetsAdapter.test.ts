@@ -3,6 +3,7 @@ import {
   InMemoryCache,
   SynchronizationError,
 } from '@metamask/snap-networks-utils';
+import { assert } from '@metamask/utils';
 import { cloneDeep } from 'lodash';
 import type { Mock } from 'vitest';
 
@@ -134,9 +135,7 @@ describe('SnapAssetsAdapter', () => {
 
       const [firstTokenAccount] =
         MOCK_SOLANA_RPC_GET_TOKEN_ACCOUNTS_BY_OWNER_RESPONSE.result.value;
-      if (!firstTokenAccount) {
-        throw new Error('Missing token account fixture');
-      }
+      assert(firstTokenAccount, 'Missing token account fixture');
       const secondTokenAccount = cloneDeep(firstTokenAccount);
       secondTokenAccount.pubkey =
         '7Gg2Y8vCj3v5nQj5xFfC3uT7wJ9sN4mK2pL8rH6dQ1eA';

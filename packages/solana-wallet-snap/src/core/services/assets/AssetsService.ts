@@ -160,7 +160,7 @@ export class AssetsService {
 
       return Object.fromEntries(
         assetIds.map((assetId, index) => [assetId, assets[index] ?? null]),
-      ) as Record<CaipAssetType, AssetEntity | null>;
+      );
     }
 
     return this.#snapAdapter.getAccountAssetsByIDs(accountId, assetIds);

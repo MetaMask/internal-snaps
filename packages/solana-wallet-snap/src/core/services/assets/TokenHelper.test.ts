@@ -1,4 +1,4 @@
-import type { Mint } from '@solana-program/token-2022';
+import type { Extension, Mint } from '@solana-program/token-2022';
 import type { Account, Address } from '@solana/kit';
 import { lamports } from '@solana/kit';
 import { cloneDeep } from 'lodash';
@@ -128,7 +128,7 @@ describe('TokenHelper', () => {
     });
 
     describe('when the extension is InterestBearingConfig', () => {
-      let extension: any;
+      let extension: Extract<Extension, { __kind: 'InterestBearingConfig' }>;
 
       beforeEach(() => {
         const nowInSeconds = Math.floor(Date.now() / 1000);
