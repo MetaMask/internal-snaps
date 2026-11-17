@@ -170,6 +170,20 @@ function buildMockState(): MockState {
   };
 }
 
+/**
+ * Narrows a possibly-missing value, throwing when it is absent.
+ *
+ * @param value - The value to check.
+ * @param message - The message to throw when the value is missing.
+ * @returns The value, narrowed to exclude `undefined`.
+ */
+function required<Value>(value: Value | undefined, message: string): Value {
+  if (value === undefined) {
+    throw new Error(message);
+  }
+  return value;
+}
+
 // ---------------------------------------------------------------------------
 // Factory function
 // ---------------------------------------------------------------------------
@@ -365,7 +379,7 @@ describe('ConfirmTransactionRequest render', () => {
         expect(mockSnapClient.updateInterface).toHaveBeenCalled();
 
         const updateCall = mockSnapClient.updateInterface.mock.calls[0];
-        const contextArg = updateCall?.[2] as any;
+        const contextArg = updateCall?.[2];
         expect(contextArg?.scanFetchStatus).toBe(FetchStatus.Error);
         expect(contextArg?.scan).toBeNull();
       },
@@ -453,11 +467,14 @@ describe('ConfirmTransactionRequest render', () => {
 
       await callRender({ transactionRawData: trc20RawData });
 
-      const callArgs = mockTransactionScanService.scanTransaction.mock
-        .calls[0]?.[0] as any;
-      const rawData = callArgs?.transactionRawData;
+      const callArgs =
+        mockTransactionScanService.scanTransaction.mock.calls[0]?.[0];
+      const rawData = required(
+        callArgs?.transactionRawData,
+        'The scan service did not receive the raw transaction data.',
+      );
 
-      expect(rawData?.contract[0]?.type).toBe('TriggerSmartContract');
+      expect(rawData.contract[0]?.type).toBe('TriggerSmartContract');
 
       const scanParams = extractScanParametersFromTransactionData(rawData);
       expect(scanParams?.data).toBeDefined();
