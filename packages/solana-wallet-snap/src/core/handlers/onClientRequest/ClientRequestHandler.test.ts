@@ -3,6 +3,10 @@ import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import { getBase64Codec, getUtf8Codec, pipe } from '@solana/kit';
+import type {
+  TransactionMessage,
+  TransactionMessageWithFeePayer,
+} from '@solana/kit';
 import * as SolanaKit from '@solana/kit';
 import type { Mocked } from 'vitest';
 
@@ -34,7 +38,7 @@ describe('ClientRequestHandler', () => {
       signatures: {},
     } as never);
     vi.spyOn(Codecs, 'fromTransactionToBase64String').mockReturnValue(
-      'mockBase64Transaction' as never,
+      'mockBase64Transaction',
     );
     // Create mock keyring
     mockAccountsService = {
@@ -1164,7 +1168,7 @@ describe('ClientRequestHandler', () => {
 
       // Mock the approve token service to return a transaction message
       mockApproveTokenService.buildApprovalTransactionMessage.mockResolvedValue(
-        {} as any,
+        {} as TransactionMessage & TransactionMessageWithFeePayer,
       );
 
       vi.spyOn(mockAccountsService, 'findById').mockResolvedValue(

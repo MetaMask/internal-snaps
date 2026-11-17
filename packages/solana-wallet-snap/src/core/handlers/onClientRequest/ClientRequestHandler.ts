@@ -578,9 +578,9 @@ export class ClientRequestHandler {
     const accountsById = new Map(
       accounts.map((account) => [account.id.toLowerCase(), account]),
     );
-    const results: SignProofOfOwnershipBatchResponse['results'] = new Array(
-      items.length,
-    );
+    const results: SignProofOfOwnershipBatchResponse['results'] = new Array<
+      SignProofOfOwnershipBatchResponse['results'][number]
+    >(items.length);
     const signingRequestsMetadata: {
       index: number;
       accountId: string;
