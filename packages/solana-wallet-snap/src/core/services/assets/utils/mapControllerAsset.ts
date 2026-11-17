@@ -1,7 +1,7 @@
 import type { Asset } from '@metamask/assets-controller';
 import { parseCaipAssetType } from '@metamask/utils';
 
-import type { AssetEntity, TokenAsset } from '../../../../entities';
+import type { AssetEntity } from '../../../../entities';
 import { assertSupportedNetwork } from '../../../constants/solana';
 import type {
   NativeCaipAssetType,
@@ -58,7 +58,7 @@ export function mapControllerAsset(
       decimals,
       rawAmount: toRawAmount(amount, decimals),
       uiAmount: amount,
-    } as TokenAsset;
+    };
   }
 
   throw new Error(`Unsupported Solana asset namespace: "${assetNamespace}"`);
