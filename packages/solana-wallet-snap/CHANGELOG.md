@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add MetaMask-client-only Pack Partner purchase and buyback signing with exact USDC/asset intent checks, verified provider presignatures, mandatory simulation and capped fees for either payer. Network profiles enable purchases on mainnet/devnet, four reviewed NFT standards on mainnet, and Bubblegum V2 buybacks on devnet; absent profiles fail closed.
 - Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for SOL and SPL assets. SOL leaves the rent-exempt minimum and the fee. SPL requires SOL to cover the fee, the rent-exempt minimum, and the recipient ATA rent unless `toAddress` shows the recipient ATA already exists, and the result is `0` when no amount can pass ([#585](https://github.com/MetaMask/internal-snaps/pull/585)).
 - `onAmountInput` now accepts an optional `toAddress` parameter for the shared client request shape ([#589](https://github.com/MetaMask/internal-snaps/pull/589)).
 - `onAmountInput` now uses `toAddress` to decide whether the recipient ATA rent applies, and returns `Invalid` for unsupported recipients or token accounts for another mint ([#585](https://github.com/MetaMask/internal-snaps/pull/585)).
