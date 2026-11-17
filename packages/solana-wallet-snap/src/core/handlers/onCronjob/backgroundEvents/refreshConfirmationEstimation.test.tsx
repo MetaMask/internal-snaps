@@ -3,6 +3,7 @@ import {
   DEFAULT_METAMASK_ORIGIN,
   serialize,
 } from '@metamask/snap-networks-utils';
+import type { Serializable } from '@metamask/snap-networks-utils';
 import * as SnapNetworks from '@metamask/snap-networks-utils';
 import type { JsonRpcParams, JsonRpcRequest } from '@metamask/utils';
 import type { Mock } from 'vitest';
@@ -27,7 +28,17 @@ import {
 import * as SnapInterface from '../../../utils/interface';
 import { refreshConfirmationEstimation } from './refreshConfirmationEstimation';
 
-const setupTest = () => {
+type MockInterfaceContext = {
+  account: { address: string };
+  transaction: string;
+  scope: Network;
+  method: SolMethod;
+  origin: string;
+  preferences: { simulateOnChainActions: boolean };
+  scanFetchStatus: string;
+};
+
+const setupTest = (): MockInterfaceContext => {
   vi.clearAllMocks();
   vi.spyOn(BlockhashExpired, 'isTransactionBlockhashExpired').mockResolvedValue(
     false,
@@ -43,9 +54,9 @@ const setupTest = () => {
   vi.spyOn(
     ConfirmTransactionRequestView,
     'ConfirmTransactionRequest',
-  ).mockReturnValue(null as never);
+  ).mockReturnValue(null);
 
-  const interfaceContext = {
+  const interfaceContext: MockInterfaceContext = {
     account: {
       address: 'BLw3RweJmfbTapJRgnPRvd962YDjFYAnVGd1p5hmZ5tP',
     },
@@ -64,7 +75,9 @@ const setupTest = () => {
   });
   (getInterfaceContext as Mock).mockResolvedValue(interfaceContext);
   (updateInterface as Mock).mockResolvedValue(undefined);
-  (serialize as Mock).mockImplementation((value) => value);
+  (serialize as Mock).mockImplementation(
+    (value: Serializable): Serializable => value,
+  );
   vi.mocked(isTransactionBlockhashExpired).mockResolvedValue(false);
 
   return interfaceContext;

@@ -2,7 +2,7 @@ import {
   DEFAULT_METAMASK_ORIGIN,
   serialize,
 } from '@metamask/snap-networks-utils';
-import type { OnCronjobHandler } from '@metamask/snaps-sdk';
+import type { OnCronjobHandler, ComponentOrElement } from '@metamask/snaps-sdk';
 
 import { ConfirmTransactionRequest } from '../../../../features/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
 import type { ConfirmTransactionRequestContext } from '../../../../features/confirmation/views/ConfirmTransactionRequest/types';
@@ -22,6 +22,27 @@ import {
 } from '../../../utils/interface';
 import baseLogger from '../../../utils/logger';
 import { ScheduleBackgroundEventMethod } from './ScheduleBackgroundEventMethod';
+
+/**
+ * Renders the confirmation view for the given context.
+ *
+ * The view receives the serialized context, since that is what the interface
+ * stores. Both the context and the element are asserted: `serialize` returns
+ * JSON, and the Snaps JSX runtime does not expose a precise element type.
+ *
+ * @param context - The confirmation context to render.
+ * @returns The confirmation view element.
+ */
+const renderConfirmationView = (
+  context: ConfirmTransactionRequestContext,
+): ComponentOrElement =>
+  (
+    <ConfirmTransactionRequest
+      context={
+        serialize(context) as unknown as ConfirmTransactionRequestContext
+      }
+    />
+  ) as ComponentOrElement;
 
 export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
   const logger = baseLogger.withPrefix('[refreshConfirmationEstimation]');
@@ -82,9 +103,7 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
 
       await updateInterface(
         confirmationInterfaceId,
-        <ConfirmTransactionRequest
-          context={serialize(fetchingConfirmationContext) as any}
-        />,
+        renderConfirmationView(fetchingConfirmationContext),
         fetchingConfirmationContext,
       );
     } else {
@@ -134,9 +153,7 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
 
     await updateInterface(
       confirmationInterfaceId,
-      <ConfirmTransactionRequest
-        context={serialize(updatedInterfaceContext) as any}
-      />,
+      renderConfirmationView(updatedInterfaceContext),
       updatedInterfaceContext,
     );
 
@@ -173,9 +190,7 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
 
     await updateInterface(
       confirmationInterfaceId,
-      <ConfirmTransactionRequest
-        context={serialize(fetchingConfirmationContext) as any}
-      />,
+      renderConfirmationView(fetchingConfirmationContext),
       fetchingConfirmationContext,
     );
 
