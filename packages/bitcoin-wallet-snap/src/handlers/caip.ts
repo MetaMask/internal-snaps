@@ -8,8 +8,14 @@ const reverseMapping = <
   To extends string | number | symbol,
 >(
   map: Record<From, To>,
-): Record<To, From> =>
-  Object.fromEntries(Object.entries(map).map(([from, to]) => [to, from]));
+): Record<To, From> => {
+  const reversed = {} as Record<To, From>;
+  // `Object.keys` widens the keys of a `Record` to `string`, hence the cast.
+  for (const from of Object.keys(map) as From[]) {
+    reversed[map[from]] = from;
+  }
+  return reversed;
+};
 
 export const scopeToNetwork: Record<BtcScope, Network> = {
   [BtcScope.Mainnet]: 'bitcoin',

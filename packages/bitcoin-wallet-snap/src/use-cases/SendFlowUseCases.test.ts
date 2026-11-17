@@ -1,6 +1,8 @@
 import type {
+  Balance,
   FeeEstimates,
   Network,
+  ScriptBuf,
   Transaction,
 } from '@metamask/bitcoindevkit';
 import { Psbt, Address, Amount } from '@metamask/bitcoindevkit';
@@ -817,7 +819,7 @@ describe('SendFlowUseCases', () => {
 
     it('sets account from state on Account', async () => {
       const accountId = 'myAccount2';
-      mockAccount.publicAddress.toString = () => 'myAddress2';
+      mockAccount.publicAddress.toString = (): string => 'myAddress2';
       mockAccountRepository.get.mockResolvedValue({
         ...mockAccount,
         id: accountId,
@@ -1110,11 +1112,11 @@ describe('SendFlowUseCases', () => {
       mockSnapClient.displayUserPrompt.mockResolvedValue(true);
       mockAccountUseCases.signPsbt.mockResolvedValue({
         psbt: mockSignedPsbt,
-      } as any);
+      } as unknown as Awaited<ReturnType<AccountUseCases['signPsbt']>>);
       (Psbt.from_string as Mock).mockReturnValue(mockSignedPsbt);
       mockRatesClient.spotPrices.mockResolvedValue({
         price: { value: 50000, currency: 'usd' },
-      } as any);
+      } as unknown as SpotPrice);
     });
 
     it('builds and confirms a regular send transaction', async () => {
@@ -1154,7 +1156,7 @@ describe('SendFlowUseCases', () => {
     });
 
     it('marks the recipient as isMine when the address belongs to the account', async () => {
-      const recipientScript = {} as any;
+      const recipientScript = mock<ScriptBuf>();
       (Address.from_string as Mock).mockReturnValue({
         script_pubkey: recipientScript,
       });
@@ -1191,7 +1193,7 @@ describe('SendFlowUseCases', () => {
       balanceAmount.to_sat.mockReturnValue(BigInt(10000));
       mockAccount.balance = {
         trusted_spendable: balanceAmount,
-      } as any;
+      } as unknown as Balance;
 
       await useCases.confirmSendFlow(mockAccount, amount, toAddress);
 
@@ -1330,7 +1332,7 @@ describe('SendFlowUseCases', () => {
     it('handles missing exchange rate gracefully', async () => {
       mockRatesClient.spotPrices.mockResolvedValue({
         price: undefined,
-      } as any);
+      } as unknown as SpotPrice);
 
       await useCases.confirmSendFlow(mockAccount, amount, toAddress);
 

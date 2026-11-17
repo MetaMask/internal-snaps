@@ -3,6 +3,7 @@ import type {
   Json,
   UserInputEvent,
 } from '@metamask/snaps-sdk';
+import { hasProperty } from '@metamask/utils';
 
 import type { ReviewTransactionContext, SendFormContext } from '../entities';
 import {
@@ -71,6 +72,6 @@ export class UserInputHandler {
   }
 
   #hasValue(event: UserInputEvent): event is InputChangeEvent {
-    return 'value' in event;
+    return hasProperty(event, 'value');
   }
 }
