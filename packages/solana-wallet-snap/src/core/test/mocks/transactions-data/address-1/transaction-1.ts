@@ -2,7 +2,6 @@ import type {
   Base58EncodedBytes,
   Blockhash,
   Lamports,
-  Slot,
   StringifiedBigInt,
   StringifiedNumber,
   UnixTimestamp,
