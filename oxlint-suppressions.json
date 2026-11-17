@@ -1,70 +1,12 @@
 {
-  "packages/bitcoin-wallet-snap/src/handlers/CronHandler.test.ts": {
-    "typescript/no-unsafe-return": {
-      "count": 1
-    },
-    "vitest/no-conditional-in-test": {
-      "count": 2
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/handlers/HandlerMiddleware.test.ts": {
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 1
-    }
-  },
   "packages/bitcoin-wallet-snap/src/handlers/HandlerMiddleware.ts": {
     "typescript/no-unsafe-argument": {
-      "count": 1
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/handlers/KeyringHandler.test.ts": {
-    "id-length": {
-      "count": 1
-    },
-    "typescript/explicit-function-return-type": {
-      "count": 1
-    },
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 1
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 2
-    },
-    "typescript/no-unsafe-return": {
-      "count": 4
-    },
-    "vitest/no-conditional-in-test": {
-      "count": 1
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/handlers/RpcHandler.test.ts": {
-    "typescript/explicit-function-return-type": {
-      "count": 2
-    },
-    "typescript/no-explicit-any": {
-      "count": 12
-    },
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 10
-    },
-    "typescript/no-unsafe-argument": {
-      "count": 2
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 1
-    },
-    "typescript/no-unsafe-return": {
       "count": 1
     }
   },
   "packages/bitcoin-wallet-snap/src/handlers/RpcHandler.ts": {
     "typescript/no-unsafe-assignment": {
       "count": 1
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/handlers/UserInputHandler.test.ts": {
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 2
     }
   },
   "packages/bitcoin-wallet-snap/src/handlers/UserInputHandler.ts": {
@@ -77,28 +19,9 @@
       "count": 1
     }
   },
-  "packages/bitcoin-wallet-snap/src/handlers/mappings.test.ts": {
-    "typescript/explicit-function-return-type": {
-      "count": 3
-    },
-    "typescript/no-explicit-any": {
-      "count": 17
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 8
-    },
-    "typescript/no-unsafe-return": {
-      "count": 9
-    }
-  },
   "packages/bitcoin-wallet-snap/src/handlers/mappings.ts": {
     "typescript/no-unnecessary-type-assertion": {
       "count": 1
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/handlers/validation.test.ts": {
-    "typescript/explicit-function-return-type": {
-      "count": 2
     }
   },
   "packages/bitcoin-wallet-snap/src/infra/EsploraClientAdapter.test.ts": {

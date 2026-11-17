@@ -1,4 +1,3 @@
-import type { UserInputEvent } from '@metamask/snaps-sdk';
 import { UserInputEventType } from '@metamask/snaps-sdk';
 import { mock } from 'vitest-mock-extended';
 
@@ -30,7 +29,7 @@ describe('UserInputHandler', () => {
       await expect(
         handler.route(
           'interface-id',
-          { type: UserInputEventType.ButtonClickEvent } as UserInputEvent,
+          { type: UserInputEventType.ButtonClickEvent },
           null,
         ),
       ).rejects.toThrow('Missing context');
@@ -40,7 +39,7 @@ describe('UserInputHandler', () => {
       await expect(
         handler.route(
           'interface-id',
-          { type: UserInputEventType.ButtonClickEvent } as UserInputEvent,
+          { type: UserInputEventType.ButtonClickEvent },
           mockContext,
         ),
       ).rejects.toThrow('Missing event name');

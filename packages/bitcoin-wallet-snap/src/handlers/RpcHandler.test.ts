@@ -1,5 +1,5 @@
 import { Psbt, Address, Amount } from '@metamask/bitcoindevkit';
-import type { Transaction, Txid } from '@metamask/bitcoindevkit';
+import type { Balance, Transaction, Txid } from '@metamask/bitcoindevkit';
 import type { Transaction as KeyringTransaction } from '@metamask/keyring-api';
 import { BtcScope, FeeType, TransactionType } from '@metamask/keyring-api';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
@@ -52,7 +52,7 @@ describe('RpcHandler', () => {
     vi.mocked(Address.from_string).mockImplementation(
       (address: string, _: string) => {
         if (validAddresses.includes(address)) {
-          return { toString: () => address } as any;
+          return { toString: () => address } as unknown as Address;
         }
         throw new Error(`Invalid address: ${address}`);
       },
@@ -115,7 +115,7 @@ describe('RpcHandler', () => {
           params: {
             accountId: 'e36749ce-7c63-41df-b23c-6446c69b8e96',
             // Missing 'value' field
-          } as any,
+          },
         };
 
         await expect(
@@ -131,7 +131,7 @@ describe('RpcHandler', () => {
           params: {
             value: 'bcrt1qjtgffm20l9vu6a7gacxvpu2ej4kdcsgcgnly6t',
             // Missing 'accountId' field
-          } as any,
+          },
         };
 
         await expect(
@@ -231,7 +231,7 @@ describe('RpcHandler', () => {
             value: '1.5',
             accountId: 'e36749ce-7c63-41df-b23c-6446c69b8e96',
             // Missing 'assetId' field
-          } as any,
+          },
         };
 
         await expect(
@@ -270,7 +270,7 @@ describe('RpcHandler', () => {
           params: {
             address: 'bcrt1qjtgffm20l9vu6a7gacxvpu2ej4kdcsgcgnly6t',
             // Missing 'message' and 'signature'
-          } as any,
+          },
         };
 
         await expect(
@@ -576,9 +576,9 @@ describe('RpcHandler', () => {
   });
 
   describe('onAddressInput', () => {
-    const mockBitcoinAccount = {
+    const mockBitcoinAccount = mock<BitcoinAccount>({
       network: 'bitcoin',
-    };
+    });
 
     const validAddressRequest: JsonRpcRequest = {
       id: 1,
@@ -591,7 +591,7 @@ describe('RpcHandler', () => {
     };
 
     beforeEach(() => {
-      mockAccountsUseCases.get.mockResolvedValue(mockBitcoinAccount as any);
+      mockAccountsUseCases.get.mockResolvedValue(mockBitcoinAccount);
     });
 
     it('validates a correct address', async () => {
@@ -639,19 +639,21 @@ describe('RpcHandler', () => {
       mockTrustedSpendable.to_sat.mockReturnValue(BigInt(150_000_000));
       mockTrustedSpendable.to_btc.mockReturnValue(1.5);
 
-      const mockAmountAccount = {
+      const mockAmountAccount = mock<BitcoinAccount>({
         network: 'bitcoin',
         addressType: 'p2wpkh',
         balance: {
           trusted_spendable: mockTrustedSpendable,
-        },
-      };
-      mockAccountsUseCases.get.mockResolvedValue(mockAmountAccount as any);
+        } as unknown as Balance,
+      });
+      mockAccountsUseCases.get.mockResolvedValue(mockAmountAccount);
       mockSendFlowUseCases.buildProbePsbt.mockResolvedValue(mockPsbt);
 
-      (Amount.from_btc as Mock).mockImplementation((btc) => ({
-        to_sat: () => BigInt(Math.round(btc * 100_000_000)),
-      }));
+      (Amount.from_btc as Mock).mockImplementation(
+        (btc): { to_sat: () => bigint } => ({
+          to_sat: () => BigInt(Math.round(btc * 100_000_000)),
+        }),
+      );
     });
 
     it('validates a correct amount within balance', async () => {
@@ -1054,15 +1056,17 @@ describe('RpcHandler', () => {
       mockBalanceAmount.to_btc.mockReturnValue(1);
       mockAccount.balance = {
         trusted_spendable: mockBalanceAmount,
-      } as any;
+      } as unknown as Balance;
 
       mockAccountsUseCases.get.mockResolvedValue(mockAccount);
       mockSendFlowUseCases.confirmSendFlow.mockResolvedValue(mockTransaction);
 
       // mock Amount.from_btc to return an object with to_sat method
-      (Amount.from_btc as Mock).mockImplementation((btc) => ({
-        to_sat: () => BigInt(Math.round(btc * 100_000_000)),
-      }));
+      (Amount.from_btc as Mock).mockImplementation(
+        (btc): { to_sat: () => bigint } => ({
+          to_sat: () => BigInt(Math.round(btc * 100_000_000)),
+        }),
+      );
 
       // we mock the mapping function since we don't care about the result structure here
       // it is tested in mappings.test.ts
@@ -1098,7 +1102,7 @@ describe('RpcHandler', () => {
 
       const result = await handler.route(origin, validRequest);
 
-      expect((result as any).canBeMalleable).toBe(true);
+      expect(result).toMatchObject({ canBeMalleable: true });
     });
 
     it('handles different amounts and addresses', async () => {
@@ -1163,7 +1167,7 @@ describe('RpcHandler', () => {
           toAddress: 'bc1qux9xtsj6mr4un7yg9kgd7tv8kndvlhv2gv5yc8',
           amount: '0.0001',
           assetId: Caip19Asset.Bitcoin,
-        } as any,
+        },
       };
 
       await expect(handler.route(origin, missingFieldRequest)).rejects.toThrow(
@@ -1249,7 +1253,7 @@ describe('RpcHandler', () => {
       const smallBalanceAccount = mock<BitcoinAccount>();
       smallBalanceAccount.id = validAccountId;
       smallBalanceAccount.network = 'bitcoin';
-      smallBalanceAccount.balance = mockBalance as any;
+      smallBalanceAccount.balance = mockBalance as unknown as Balance;
 
       mockAccountsUseCases.get.mockResolvedValue(smallBalanceAccount);
 
@@ -1298,7 +1302,7 @@ describe('RpcHandler', () => {
       const smallBalanceAccount = mock<BitcoinAccount>();
       smallBalanceAccount.id = validAccountId;
       smallBalanceAccount.network = 'bitcoin';
-      smallBalanceAccount.balance = mockBalance as any;
+      smallBalanceAccount.balance = mockBalance as unknown as Balance;
 
       mockAccountsUseCases.get.mockResolvedValue(smallBalanceAccount);
 
@@ -1349,7 +1353,7 @@ describe('RpcHandler', () => {
       );
 
       const signMessageSpy = mockAccountsUseCases.signMessage.mockResolvedValue(
-        'mock-signature-base64' as never,
+        'mock-signature-base64',
       );
 
       const request: JsonRpcRequest = {
@@ -1456,7 +1460,7 @@ describe('RpcHandler', () => {
     it('signs the proof message and returns the BIP-322 signature', async () => {
       mockAccountsUseCases.get.mockResolvedValue(mockBitcoinAccount);
       const signMessageSpy = mockAccountsUseCases.signMessage.mockResolvedValue(
-        'mock-bip322-signature' as never,
+        'mock-bip322-signature',
       );
 
       const message = `metamask:proof-of-ownership:${nonce}:${accountAddress}`;
@@ -1479,7 +1483,7 @@ describe('RpcHandler', () => {
     it('canonicalizes mixed-case bech32 addresses before validating and comparing', async () => {
       mockAccountsUseCases.get.mockResolvedValue(mockBitcoinAccount);
       mockAccountsUseCases.signMessage.mockResolvedValue(
-        'mock-bip322-signature' as never,
+        'mock-bip322-signature',
       );
 
       const uppercased = accountAddress.toUpperCase();
@@ -1551,7 +1555,7 @@ describe('RpcHandler', () => {
     it('propagates errors from the signer', async () => {
       mockAccountsUseCases.get.mockResolvedValue(mockBitcoinAccount);
       mockAccountsUseCases.signMessage.mockRejectedValue(
-        new Error('signer unavailable') as never,
+        new Error('signer unavailable'),
       );
 
       const message = `metamask:proof-of-ownership:${nonce}:${accountAddress}`;
@@ -1567,7 +1571,7 @@ describe('RpcHandler', () => {
         id: secondAccountId,
         publicAddress: {
           toString: () => secondAccountAddress,
-        } as never,
+        },
         network: 'bitcoin',
       });
 

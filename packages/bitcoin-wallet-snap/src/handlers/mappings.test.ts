@@ -67,7 +67,7 @@ describe('mapPsbtToTransaction', () => {
    * @param outputs - Array of transaction outputs.
    * @returns A mocked Transaction object.
    */
-  function createMockTransaction(txid: string, outputs: TxOut[]) {
+  function createMockTransaction(txid: string, outputs: TxOut[]): Transaction {
     const mockTxid = mock<Txid>();
     vi.spyOn(mockTxid, 'toString').mockReturnValue(txid);
 
@@ -83,7 +83,7 @@ describe('mapPsbtToTransaction', () => {
    * @param satoshis - The amount in satoshis.
    * @returns A mocked TxOut object.
    */
-  function createMockOutput(satoshis: number) {
+  function createMockOutput(satoshis: number): TxOut {
     const mockAmount = mock<Amount>();
     mockAmount.to_sat.mockReturnValue(BigInt(satoshis));
     mockAmount.to_btc.mockReturnValue(satoshis / 100_000_000);
@@ -109,7 +109,7 @@ describe('mapPsbtToTransaction', () => {
     network: 'bitcoin' | 'testnet' = 'bitcoin',
     feeSatoshis = 500,
     addressType: 'p2pkh' | 'p2sh' | 'p2wpkh' | 'p2wsh' | 'p2tr' = 'p2wpkh',
-  ) {
+  ): MockProxy<BitcoinAccount> {
     const mockFeeAmount = mock<Amount>();
     mockFeeAmount.to_sat.mockReturnValue(BigInt(feeSatoshis));
     mockFeeAmount.to_btc.mockReturnValue(feeSatoshis / 100_000_000);
@@ -135,7 +135,7 @@ describe('mapPsbtToTransaction', () => {
       () =>
         ({
           toString: () => 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-        }) as any,
+        }) as unknown as Address,
     );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -189,7 +189,7 @@ describe('mapPsbtToTransaction', () => {
       () =>
         ({
           toString: () => '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-        }) as any,
+        }) as unknown as Address,
     );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -207,7 +207,7 @@ describe('mapPsbtToTransaction', () => {
       () =>
         ({
           toString: () => '3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy',
-        }) as any,
+        }) as unknown as Address,
     );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -234,7 +234,7 @@ describe('mapPsbtToTransaction', () => {
       () =>
         ({
           toString: () => 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-        }) as any,
+        }) as unknown as Address,
     );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -246,7 +246,7 @@ describe('mapPsbtToTransaction', () => {
     );
     const asset = result.to[0]?.asset;
     expect(asset?.fungible).toBe(true);
-    expect((asset as any).amount).toBe('0.0001');
+    expect((asset as { amount?: string }).amount).toBe('0.0001');
   });
 
   it('keeps a self-send recipient output that is owned by the account', () => {
@@ -297,7 +297,7 @@ describe('mapPsbtToTransaction', () => {
         ({
           toString: () =>
             'tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7',
-        }) as any,
+        }) as unknown as Address,
     );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -306,14 +306,16 @@ describe('mapPsbtToTransaction', () => {
 
     const recipientAsset = result.to[0]?.asset;
     expect(recipientAsset?.fungible).toBe(true);
-    expect((recipientAsset as any).unit).toBe('tBTC');
-    expect((recipientAsset as any).type).toBe(Caip19Asset.Testnet);
+    expect((recipientAsset as { unit?: string }).unit).toBe('tBTC');
+    expect((recipientAsset as { type?: Caip19Asset }).type).toBe(
+      Caip19Asset.Testnet,
+    );
 
     const feeAsset = result.fees[0]?.asset;
     expect(feeAsset?.fungible).toBe(true);
-    expect((feeAsset as any).unit).toBe('tBTC');
-    expect((feeAsset as any).type).toBe(Caip19Asset.Testnet);
-    expect((feeAsset as any).amount).toBe('0.000003');
+    expect((feeAsset as { unit?: string }).unit).toBe('tBTC');
+    expect((feeAsset as { type?: Caip19Asset }).type).toBe(Caip19Asset.Testnet);
+    expect((feeAsset as { amount?: string }).amount).toBe('0.000003');
   });
 
   it('includes multiple recipients', () => {
@@ -329,19 +331,22 @@ describe('mapPsbtToTransaction', () => {
 
     vi.mocked(Address.from_script)
       .mockImplementationOnce(
-        () => ({ toString: () => '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa' }) as any,
+        () =>
+          ({
+            toString: () => '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
+          }) as unknown as Address,
       )
       .mockImplementationOnce(
         () =>
           ({
             toString: () => 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-          }) as any,
+          }) as unknown as Address,
       )
       .mockImplementationOnce(
         () =>
           ({
             toString: () => 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
-          }) as any,
+          }) as unknown as Address,
       );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -361,7 +366,7 @@ describe('mapPsbtToTransaction', () => {
       expect(recipient).toBeDefined();
       const asset = recipient?.asset;
       expect(asset?.fungible).toBe(true);
-      expect((asset as any).amount).toBe(amounts[index]);
+      expect((asset as { amount?: string }).amount).toBe(amounts[index]);
     });
   });
 
@@ -388,7 +393,7 @@ describe('mapPsbtToTransaction', () => {
     const transaction = createMockTransaction('fee123', [output]);
 
     vi.mocked(Address.from_script).mockImplementationOnce(
-      () => ({ toString: () => 'bc1qtest' }) as any,
+      () => ({ toString: () => 'bc1qtest' }) as unknown as Address,
     );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -396,7 +401,7 @@ describe('mapPsbtToTransaction', () => {
     expect(account.calculateFee).toHaveBeenCalledWith(transaction);
     const feeAsset = result.fees[0]?.asset;
     expect(feeAsset?.fungible).toBe(true);
-    expect((feeAsset as any).amount).toBe('0.000025'); // 2500 sats = 0.000025 BTC
+    expect((feeAsset as { amount?: string }).amount).toBe('0.000025'); // 2500 sats = 0.000025 BTC
   });
 });
 
