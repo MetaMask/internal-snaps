@@ -40,11 +40,11 @@ import type { KeyringRequestHandler } from './KeyringRequestHandler';
  * Narrows `T | undefined` after `expect(value).toBeDefined()` for use in tests.
  *
  * @param value - Possibly undefined value.
- * @returns The same value narrowed to `T`.
+ * @returns The same value narrowed to `TValue`.
  */
-function expectDefined<T>(value: T | undefined): T {
+function expectDefined<TValue>(value: TValue | undefined): TValue {
   expect(value).toBeDefined();
-  return value as T;
+  return value as TValue;
 }
 
 describe('KeyringHandler', () => {
@@ -199,7 +199,9 @@ describe('KeyringHandler', () => {
       });
 
       expect(mockAccounts.createMany).toHaveBeenCalledWith(
-        [10, 11, 12].map((index) => expect.objectContaining({ index })),
+        [10, 11, 12].map((index): unknown =>
+          expect.objectContaining({ index }),
+        ),
       );
     });
 
@@ -215,7 +217,7 @@ describe('KeyringHandler', () => {
 
       expect(mockAccounts.createMany).toHaveBeenCalledTimes(1);
       expect(mockAccounts.createMany).toHaveBeenCalledWith(
-        indices.map((index) => expect.objectContaining({ index })),
+        indices.map((index): unknown => expect.objectContaining({ index })),
       );
       expect(result).toHaveLength(100);
       expect(mnemonicGroupIndex(expectDefined(result[0]))).toBe(0);
@@ -242,7 +244,7 @@ describe('KeyringHandler', () => {
       const handlerNonSegwit = new KeyringHandler(
         mockKeyringRequest,
         mockAccounts,
-        'p2tr' as AddressType,
+        'p2tr',
         mockSnapClient,
         mockLogger,
       );
@@ -298,7 +300,7 @@ describe('KeyringHandler', () => {
 
       expect(mockAccounts.createMany).toHaveBeenCalledTimes(1);
       expect(mockAccounts.createMany).toHaveBeenCalledWith(
-        Array.from({ length: 101 }, (_, index) =>
+        Array.from({ length: 101 }, (_, index): unknown =>
           expect.objectContaining({ index }),
         ),
       );
@@ -494,9 +496,12 @@ describe('KeyringHandler', () => {
           scopes.splice(0, scopes.length, ...originalScopes);
         });
 
-        it.each([true, false])(
+        it.each<[boolean, number]>([
+          [true, 2],
+          [false, 1],
+        ])(
           'creates active scopes in a single batch (testnet active: %s)',
-          async (testnetActive) => {
+          async (testnetActive, persistedCount) => {
             mockAccounts.discover
               .mockResolvedValueOnce(buildDiscoveredAccount(true))
               .mockResolvedValueOnce(buildDiscoveredAccount(testnetActive))
@@ -507,9 +512,10 @@ describe('KeyringHandler', () => {
             testnetAccount.id = 'testnet-id';
             testnetAccount.network = 'testnet';
             testnetAccount.derivationPath = ['myEntropy', "84'", "1'", "0'"];
-            const persistedAccounts = testnetActive
-              ? [mainnetAccount, testnetAccount]
-              : [mainnetAccount];
+            const persistedAccounts = [mainnetAccount, testnetAccount].slice(
+              0,
+              persistedCount,
+            );
             mockAccounts.createMany.mockResolvedValue(persistedAccounts);
 
             const result = await handler.createAccounts({
@@ -686,9 +692,9 @@ describe('KeyringHandler', () => {
         throw new Error('encoding failed: privatekey=SENSITIVE');
       });
 
-      const error = await handler
+      const error = (await handler
         .exportAccount(accountId)
-        .catch((caughtError) => caughtError);
+        .catch((caughtError: Error) => caughtError)) as Error;
       // The SnapError message must not contain the sensitive encoding error
       expect(error.message).not.toContain('SENSITIVE');
       expect(error.message).toContain('exporting account');
@@ -1015,7 +1021,7 @@ describe('KeyringHandler', () => {
       const id = 'some-id';
 
       mockAccount.sentAndReceived.mockReturnValueOnce([
-        { ...mockAmount, to_btc: () => 0 },
+        { ...mockAmount, to_btc: (): number => 0 },
         mockAmount,
       ]);
       mockAccount.isMine.mockReturnValueOnce(true);

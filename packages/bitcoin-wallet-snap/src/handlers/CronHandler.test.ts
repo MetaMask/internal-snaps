@@ -19,6 +19,18 @@ import type {
 import type { SendFlowUseCases, AccountUseCases } from '../use-cases';
 import { CronHandler, CronMethod } from './CronHandler';
 
+/**
+ * Round-trips a stored state value through JSON, mirroring what
+ * `snap_getState` returns to the snap.
+ *
+ * @param value - The stored value, if the key exists.
+ * @returns A JSON copy of the value, or `null` when the key is absent.
+ */
+function toJsonState(value: Json | undefined): Json {
+  const parsed: Json = JSON.parse(JSON.stringify(value ?? null));
+  return parsed;
+}
+
 describe('CronHandler', () => {
   const mockSendFlowUseCases = mock<SendFlowUseCases>();
   const mockAccountUseCases = mock<AccountUseCases>();
@@ -684,16 +696,22 @@ describe('CronHandler', () => {
           }: {
             method: 'snap_getState' | 'snap_setState';
             params: { key: string; value: Json; encrypted: boolean };
-          }) => {
-            if (method === 'snap_getState') {
-              const value = JSON.parse(
-                JSON.stringify(stored[params.key] ?? null),
-              );
-              await Promise.resolve();
-              return value;
-            }
-            stored[params.key] = params.value;
-            return null;
+          }): Promise<Json> => {
+            const handled: Record<
+              'snap_getState' | 'snap_setState',
+              () => Promise<Json>
+            > = {
+              snap_getState: async () => {
+                const value: Json = toJsonState(stored[params.key]);
+                await Promise.resolve();
+                return value;
+              },
+              snap_setState: async () => {
+                stored[params.key] = params.value;
+                return null;
+              },
+            };
+            return handled[method]();
           },
         );
         Object.defineProperty(globalThis, 'snap', {
