@@ -11,7 +11,7 @@ import type {
 import { AccountCreationType, TrxAccountType } from '@metamask/keyring-api';
 import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import type { Logger } from '@metamask/snap-networks-utils';
-import { LogLevel } from '@metamask/snap-networks-utils';
+import { BrokenCircuitError, LogLevel } from '@metamask/snap-networks-utils';
 import type { MockedFunction, Mocked, Mock } from 'vitest';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
@@ -22,6 +22,7 @@ import { createTronBip44KeypairDeriver } from '../../utils/deriveTronFromCoinTyp
 import * as Errors from '../../utils/errors';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsService } from '../assets/AssetsService';
+import { AssetFetchError } from '../assets/errors';
 import type { Config } from '../config/ConfigProvider';
 import type { TransactionsService } from '../transactions/TransactionsService';
 import type { AccountsRepository } from './AccountsRepository';
@@ -1176,6 +1177,38 @@ describe('AccountsService', () => {
           expect(mockAssetsService.saveManyAndEmit).toHaveBeenCalledWith(
             healthyAssets,
           );
+        },
+      );
+    });
+
+    it('does not report failures the fetch policy already reported', async () => {
+      const account: TronKeyringAccount = {
+        id: 'sync-circuit-open-id',
+        address: 'TSyncCircuitOpen1234567890123',
+        type: TrxAccountType.Eoa,
+        options: {},
+        methods: [],
+        scopes: [],
+        entropySource: 'e1',
+        derivationPath: "m/44'/195'/0'/0/0",
+        index: 0,
+      };
+
+      await withAccountsService(
+        async ({ accountsService, mockConfigProvider, mockAssetsService }) => {
+          mockConfigProvider.config = {
+            ...MOCK_CONFIG,
+            activeNetworks: [Network.Mainnet],
+          };
+          mockAssetsService.fetchAccountAssets.mockRejectedValue(
+            new AssetFetchError('Failed to fetch account info', {
+              cause: new BrokenCircuitError(),
+            }),
+          );
+
+          await accountsService.synchronize([account]);
+
+          expect(Errors.trackError).not.toHaveBeenCalled();
         },
       );
     });

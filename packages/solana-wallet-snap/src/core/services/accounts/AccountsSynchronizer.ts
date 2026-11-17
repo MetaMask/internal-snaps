@@ -2,13 +2,14 @@ import type { Transaction } from '@metamask/keyring-api';
 import {
   InFlightCoalescer,
   SynchronizationError,
+  getUnreportedSyncFailures,
 } from '@metamask/snap-networks-utils';
 import type {
   ExtendedKeyringAccount,
   Logger,
 } from '@metamask/snap-networks-utils';
 
-import { getUnreportedSyncFailures, trackError } from '../../utils/errors';
+import { trackError } from '../../utils/errors';
 import type { AssetsService } from '../assets/AssetsService';
 import type { TransactionsService } from '../transactions';
 import type { AccountsService } from './AccountsService';

@@ -1,9 +1,11 @@
+import * as snapNetworksUtils from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import type { Mock } from 'vitest';
 
 import { KnownCaip19Id, Network, Networks } from '../../constants';
 import type { TokenCaipAssetType } from '../../services/assets/types';
 import type { ConfigProvider } from '../../services/config';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import { mockLogger } from '../../utils/mockLogger';
 import { TokenApiClient } from './TokenApiClient';
 
@@ -74,6 +76,22 @@ describe('TokenApiClient', () => {
         expect(
           () => new TokenApiClient(invalidConfigProvider, mockFetch, logger),
         ).toThrow('Invalid URL format');
+      });
+    });
+
+    it('reports outages through the fetch policy', async () => {
+      const createFetchPolicySpy = vi.spyOn(
+        snapNetworksUtils,
+        'createFetchPolicy',
+      );
+
+      await withTokenApiClient(() => {
+        expect(createFetchPolicySpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            service: 'token_api',
+            ...fetchPolicyReporting,
+          }),
+        );
       });
     });
   });
