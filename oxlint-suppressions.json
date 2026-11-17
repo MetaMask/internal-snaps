@@ -2171,23 +2171,6 @@
       "count": 3
     }
   },
-  "packages/tron-wallet-snap/src/services/send/SendService.test.ts": {
-    "typescript/no-explicit-any": {
-      "count": 15
-    },
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 10
-    },
-    "typescript/no-unsafe-call": {
-      "count": 50
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 96
-    },
-    "typescript/no-unsafe-return": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/services/send/SendService.ts": {
     "typescript/no-unsafe-assignment": {
       "count": 1
