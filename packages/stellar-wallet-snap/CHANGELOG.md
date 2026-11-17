@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Report Horizon, Stellar RPC, Price API, Token API and Security Alerts API outages through the shared fetch policy ([#614](https://github.com/MetaMask/internal-snaps/pull/614))
+- Report Horizon, Stellar RPC, Price API, Token API and Security Alerts API outages through the shared fetch policy ([#642](https://github.com/MetaMask/internal-snaps/pull/642))
   - Outages send the "Snap Service Degraded" and "Snap Service Unavailable" Segment events.
   - Stellar RPC, Price API, Token API and Security Alerts API calls that use up their retries are reported to Sentry once, sanitised, and callers no longer report them again.
   - Horizon keeps its current Sentry reporting, because the Stellar SDK rethrows Horizon read failures as new errors that callers can't recognise as already reported.
