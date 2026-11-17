@@ -19,7 +19,7 @@ export const scopeToNetwork: Record<BtcScope, Network> = {
   [BtcScope.Regtest]: 'regtest',
 };
 
-export const caipToAddressType: Record<BtcAccountType, AddressType> = {
+const caipToAddressType: Record<BtcAccountType, AddressType> = {
   [BtcAccountType.P2pkh]: 'p2pkh',
   [BtcAccountType.P2sh]: 'p2sh',
   [BtcAccountType.P2wpkh]: 'p2wpkh',
