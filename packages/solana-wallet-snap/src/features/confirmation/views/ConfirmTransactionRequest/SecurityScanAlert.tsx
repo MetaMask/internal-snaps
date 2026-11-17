@@ -35,10 +35,12 @@ export const SecurityScanAlert = ({
 
   const isFetching = scanFetchStatus === 'fetching';
   // The security check is unavailable when the scan request failed or the
-  // security scan itself failed. Execution failures are shown by
-  // TransactionFailureAlert, so they never stand in for this notice.
+  // security scan itself failed. A kept malicious verdict takes priority, so a
+  // failed background refresh never downgrades it. Execution failures are shown
+  // by TransactionFailureAlert, so they never stand in for this notice.
   const unavailable =
-    scanFetchStatus === 'error' || Boolean(scan?.validationError);
+    (scanFetchStatus === 'error' || Boolean(scan?.validationError)) &&
+    scan?.validation?.type !== 'Malicious';
 
   if (!isFetching && preferences.useSecurityAlerts && unavailable) {
     return (
