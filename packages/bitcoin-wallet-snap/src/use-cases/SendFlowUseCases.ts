@@ -188,6 +188,9 @@ export class SendFlowUseCases {
   /**
    * Builds a PSBT to probe whether the amount plus fee can be funded.
    *
+   * Always adds the amount as a recipient, even when it equals the balance, so
+   * the probe prices the same transaction that validation accepts.
+   *
    * @param account - The account sending the funds.
    * @param amount - The amount to send, in BTC units.
    * @param toAddress - The destination, when it is already known.
@@ -208,6 +211,7 @@ export class SendFlowUseCases {
       account,
       amountInSats,
       recipient,
+      { drain: false },
     );
     return psbt;
   }
@@ -216,6 +220,7 @@ export class SendFlowUseCases {
     account: BitcoinAccount,
     amountInSats: bigint,
     recipient: string,
+    { drain = true }: { drain?: boolean } = {},
   ): Promise<{ psbt: Psbt; feeRate: number }> {
     const feeRate = await this.#getFeeRate(account.network);
     const frozenUTXOs = await this.#accountRepository.getFrozenUTXOs(
@@ -224,7 +229,7 @@ export class SendFlowUseCases {
 
     const builder = account.buildTx().feeRate(feeRate).unspendable(frozenUTXOs);
 
-    if (amountInSats === account.balance.trusted_spendable.to_sat()) {
+    if (drain && amountInSats === account.balance.trusted_spendable.to_sat()) {
       builder.drainWallet().drainTo(recipient);
     } else {
       builder.addRecipient(amountInSats.toString(), recipient);

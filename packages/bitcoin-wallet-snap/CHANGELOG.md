@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `onAmountInput` now rejects the full spendable balance unless the amount covers the fee, matching `getMaxSendableAmount`; amount probes no longer drain the wallet ([#645](https://github.com/MetaMask/internal-snaps/pull/645))
 - `onAmountInput` now estimates the send fee and rejects amounts that cannot cover it, including when `toAddress` is omitted ([#586](https://github.com/MetaMask/internal-snaps/pull/586))
 
 ### Removed

@@ -191,24 +191,29 @@ describe('SendFlowUseCases', () => {
       expect(probeTxBuilder.finish).toHaveBeenCalled();
     });
 
-    it('drains to the recipient when the amount equals the balance', async () => {
+    it('adds the full balance as a recipient instead of draining', async () => {
       (mockFeeEstimates.get as Mock).mockReturnValue(7);
 
       await useCases.buildProbePsbt(probeAccount, '0.0002', 'recipientAddress');
 
-      expect(probeTxBuilder.drainWallet).toHaveBeenCalled();
-      expect(probeTxBuilder.drainTo).toHaveBeenCalledWith('recipientAddress');
-      expect(probeTxBuilder.addRecipient).not.toHaveBeenCalled();
+      expect(probeTxBuilder.addRecipient).toHaveBeenCalledWith(
+        '20000',
+        'recipientAddress',
+      );
+      expect(probeTxBuilder.drainWallet).not.toHaveBeenCalled();
+      expect(probeTxBuilder.drainTo).not.toHaveBeenCalled();
     });
 
-    it('drains to the account address when no recipient is known', async () => {
+    it('adds the full balance to the account address when no recipient is known', async () => {
       (mockFeeEstimates.get as Mock).mockReturnValue(7);
 
       await useCases.buildProbePsbt(probeAccount, '0.0002');
 
-      expect(probeTxBuilder.drainWallet).toHaveBeenCalled();
-      expect(probeTxBuilder.drainTo).toHaveBeenCalledWith('myAddress');
-      expect(probeTxBuilder.addRecipient).not.toHaveBeenCalled();
+      expect(probeTxBuilder.addRecipient).toHaveBeenCalledWith(
+        '20000',
+        'myAddress',
+      );
+      expect(probeTxBuilder.drainWallet).not.toHaveBeenCalled();
     });
 
     it('uses the account address when no recipient is known', async () => {
