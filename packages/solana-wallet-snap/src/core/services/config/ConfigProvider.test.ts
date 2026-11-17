@@ -168,13 +168,14 @@ describe('ConfigProvider', () => {
   it('splits comma-separated RPC URL lists', () => {
     const { config } = new ConfigProvider({
       ...FULL_ENVIRONMENT,
-      networks: FULL_ENVIRONMENT.networks.map((network, index) => ({
-        ...network,
-        rpcUrls:
-          index === 0
-            ? 'https://rpc-one.com,https://rpc-two.com'
-            : network.rpcUrls,
-      })),
+      networks: [
+        {
+          ...Networks[Network.Mainnet],
+          rpcUrls: 'https://rpc-one.com,https://rpc-two.com',
+          webSocketUrl: 'wss://api.mainnet-beta.solana.com',
+        },
+        ...FULL_ENVIRONMENT.networks.slice(1),
+      ],
     });
 
     expect(config.networks[0]?.rpcUrls).toStrictEqual([

@@ -11,10 +11,9 @@ import { mockLogger } from '../../__mocks__/logger';
 import { createFailoverTransport } from './failoverTransport';
 import { createPolicyTransport } from './policyTransport';
 
-const request = (method: string): Parameters<RpcTransport>[0] =>
-  ({
-    payload: { id: 1, jsonrpc: '2.0', method },
-  }) as Parameters<RpcTransport>[0];
+const request = (method: string): Parameters<RpcTransport>[0] => ({
+  payload: { id: 1, jsonrpc: '2.0', method },
+});
 
 describe('createPolicyTransport', () => {
   const policy: FetchPolicy = {
@@ -322,7 +321,7 @@ describe('createPolicyTransport', () => {
       });
       const rejection = pending.then(
         () => undefined,
-        (error) => error,
+        (error: unknown) => error,
       );
 
       await vi.advanceTimersByTimeAsync(0);

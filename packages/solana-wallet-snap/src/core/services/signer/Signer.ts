@@ -3,6 +3,7 @@ import type {
   Logger,
 } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
+import { hasProperty } from '@metamask/utils';
 import type {
   TransactionMessage,
   Transaction,
@@ -38,6 +39,18 @@ import type { Base64Struct } from '../../validation/structs';
 import type { SolanaConnection } from '../connection';
 
 type TransactionSource = 'dapp' | 'metamask';
+
+/**
+ * Checks whether a decoded value is a transaction message rather than a
+ * transaction. Transaction messages are the only decoded value that carry an
+ * `instructions` property.
+ *
+ * @param value - The decoded transaction or transaction message.
+ * @returns Whether the value is a transaction message.
+ */
+const isTransactionMessageValue = (
+  value: Transaction | TransactionMessage,
+): value is TransactionMessage => hasProperty(value, 'instructions');
 
 /**
  * Signer class for signing transactions and transaction messages.
@@ -104,7 +117,7 @@ export class Signer {
       );
 
     // It's a transaction message, add all missing fields, then partially sign it.
-    if ('instructions' in transactionMessageOrTransaction) {
+    if (isTransactionMessageValue(transactionMessageOrTransaction)) {
       return this.#prepareAndPartiallySignTransactionMessage(
         transactionMessageOrTransaction,
         account,
@@ -246,7 +259,7 @@ export class Signer {
   async #partiallySignTransaction(
     transaction: Transaction,
     account: ExtendedKeyringAccount,
-  ) {
+  ): Promise<Transaction> {
     const { privateKeyBytes } = await deriveSolanaKeypair({
       entropySource: account.entropySource,
       derivationPath: account.derivationPath,

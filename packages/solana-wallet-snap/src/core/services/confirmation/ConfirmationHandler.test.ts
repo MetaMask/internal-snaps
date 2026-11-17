@@ -109,15 +109,9 @@ describe('ConfirmationHandler', () => {
     mockRenderConfirmTransactionRequest = vi.spyOn(
       ConfirmTransactionRequestRender,
       'render',
-    ) as unknown as Mock;
-    mockRenderConfirmSignMessage = vi.spyOn(
-      ConfirmSignMessageRender,
-      'render',
-    ) as unknown as Mock;
-    mockRenderConfirmSignIn = vi.spyOn(
-      ConfirmSignInRender,
-      'render',
-    ) as unknown as Mock;
+    );
+    mockRenderConfirmSignMessage = vi.spyOn(ConfirmSignMessageRender, 'render');
+    mockRenderConfirmSignIn = vi.spyOn(ConfirmSignInRender, 'render');
     mockSnapRequest.mockResolvedValue(undefined);
     confirmationHandler = new ConfirmationHandler();
   });
@@ -205,9 +199,7 @@ describe('ConfirmationHandler', () => {
     it.each([undefined, null])(
       'schedules Rejected when the dialog resolves to %p',
       async (dialogResult) => {
-        mockRenderConfirmTransactionRequest.mockResolvedValue(
-          dialogResult as unknown as boolean,
-        );
+        mockRenderConfirmTransactionRequest.mockResolvedValue(dialogResult);
 
         const isConfirmed = await confirmationHandler.handleKeyringRequest(
           request,

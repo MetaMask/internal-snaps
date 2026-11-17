@@ -1,3 +1,4 @@
+import { hasProperty } from '@metamask/utils';
 import { createDefaultRpcTransport } from '@solana/kit';
 import type { RpcTransport } from '@solana/kit';
 
@@ -41,7 +42,13 @@ export const createToggleInfuraBigtableLookupsTransport = (
     ...args: Parameters<RpcTransport>
   ): Promise<TResponse> => {
     const { payload } = args[0];
-    const { method } = payload as any;
+    const method =
+      typeof payload === 'object' &&
+      payload !== null &&
+      hasProperty(payload, 'method') &&
+      typeof payload.method === 'string'
+        ? payload.method
+        : 'unknown';
     const shouldEnableBigtableLookups =
       METHODS_THAT_NEED_BIGTABLE_LOOKUPS.includes(method);
 

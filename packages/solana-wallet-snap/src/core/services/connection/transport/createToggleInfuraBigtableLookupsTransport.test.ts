@@ -12,12 +12,14 @@ describe('createToggleInfuraBigtableLookupsTransport', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(SolanaKit, 'createDefaultRpcTransport');
-    (createDefaultRpcTransport as Mock).mockImplementation(({ headers }) => {
-      if (headers?.['x-bigtable'] === 'disabled') {
-        return mockTransportWithBigtableDisabled;
-      }
-      return mockTransportWithBigtableEnabled;
-    });
+    (createDefaultRpcTransport as Mock).mockImplementation(
+      ({ headers }: { headers?: Record<string, string> }) => {
+        if (headers?.['x-bigtable'] === 'disabled') {
+          return mockTransportWithBigtableDisabled;
+        }
+        return mockTransportWithBigtableEnabled;
+      },
+    );
   });
 
   it('creates transports with correct configurations', () => {

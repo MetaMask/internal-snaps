@@ -48,7 +48,7 @@ export class ConfirmationHandler {
       case SolMethod.SignIn:
         return this.#handleConfirmSignIn(request, account);
       default:
-        throw new Error(`Unsupported method: ${method}`);
+        throw new Error(`Unsupported method: ${String(method)}`);
     }
   }
 

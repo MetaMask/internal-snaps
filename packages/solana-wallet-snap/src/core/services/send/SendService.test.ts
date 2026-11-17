@@ -40,6 +40,8 @@ import type {
   OnConfirmSendRequest,
 } from './types';
 
+type MockRpc = ReturnType<SolanaConnection['getRpc']>;
+
 describe('SendService', () => {
   let sendService: SendService;
   let mockConnection: SolanaConnection;
@@ -93,7 +95,7 @@ describe('SendService', () => {
               lamports(dataLength === 0n ? 1000000n : 2000000n),
             ),
         })),
-    } as any);
+    } as unknown as MockRpc);
 
     mockKeyring = {
       getAccountOrThrow: vi.fn().mockResolvedValue(mockAccount),
@@ -105,7 +107,7 @@ describe('SendService', () => {
     } as unknown as RecipientClassifier;
 
     mockSendSolBuilder = {
-      buildTransactionMessage: vi.fn().mockResolvedValue({} as any),
+      buildTransactionMessage: vi.fn().mockResolvedValue({}),
       getComputeUnitLimit: vi.fn().mockReturnValue(200000),
       getComputeUnitPriceMicroLamportsPerComputeUnit: vi
         .fn()
@@ -113,7 +115,7 @@ describe('SendService', () => {
     } as unknown as SendSolBuilder;
 
     mockSendSplTokenBuilder = {
-      buildTransactionMessage: vi.fn().mockResolvedValue({} as any),
+      buildTransactionMessage: vi.fn().mockResolvedValue({}),
       getComputeUnitLimit: vi.fn().mockReturnValue(200000),
       getComputeUnitPriceMicroLamportsPerComputeUnit: vi
         .fn()
@@ -267,7 +269,7 @@ describe('SendService', () => {
     });
 
     it('handles null/undefined address', async () => {
-      const value = null as any;
+      const value = null as unknown as string;
       const scope = Network.Mainnet;
 
       const result = await sendService.onAddressInput(value, scope);
@@ -324,7 +326,7 @@ describe('SendService', () => {
                 lamports(dataLength === 0n ? 1000000n : 2000000n),
               ),
           })),
-      } as any);
+      } as unknown as MockRpc);
     });
 
     it('validates valid native SOL amount successfully', async () => {
@@ -735,7 +737,7 @@ describe('SendService', () => {
         getMinimumBalanceForRentExemption: vi.fn().mockReturnValue({
           send: vi.fn().mockRejectedValue(error),
         }),
-      } as any);
+      } as unknown as MockRpc);
 
       await expect(sendService.onAmountInput(mockRequest)).rejects.toThrow(
         'RPC connection failed',

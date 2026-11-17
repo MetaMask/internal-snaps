@@ -8,16 +8,20 @@ import { mockLogger } from '../__mocks__/logger';
 import type { SolanaConnection } from '../connection/SolanaConnection';
 import { NameResolutionService } from './NameResolutionService';
 
+type MockRpc = ReturnType<SolanaConnection['getRpc']>;
+
 describe('NameResolutionService', () => {
   let nameResolutionService: NameResolutionService;
   let mockConnection: Mocked<SolanaConnection>;
-  let mockRpc: any;
+  let mockRpc: MockRpc;
 
   beforeEach(() => {
     // Reset all mocks
     vi.clearAllMocks();
     vi.spyOn(SnsSdk, 'resolve');
     vi.spyOn(SnsSdk, 'getPrimaryDomain');
+
+    mockRpc = {} as unknown as MockRpc;
 
     // Create mock connection
     mockConnection = {
@@ -100,7 +104,6 @@ describe('NameResolutionService', () => {
 
   describe('resolveAddress', () => {
     const mockAddress = '11111111111111111111111111111111';
-    const mockResolvedAddress = '22222222222222222222222222222222';
     const mockDomain = 'example';
     const mockNetwork = Network.Mainnet;
 
