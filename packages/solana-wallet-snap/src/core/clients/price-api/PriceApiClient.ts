@@ -115,7 +115,7 @@ export class PriceApiClient {
             this.#fetch,
           );
 
-          const spotPrices = JSON.parse(body);
+          const spotPrices: unknown = JSON.parse(body);
           assert(spotPrices, SpotPricesStruct);
 
           return spotPrices;
@@ -163,11 +163,11 @@ export class PriceApiClient {
     const cacheKeyPrefix = 'PriceApiClient:getMultipleSpotPrices';
 
     // Shorthand method to generate the cache key
-    const toCacheKey = (tokenCaipAssetType: CaipAssetType) =>
+    const toCacheKey = (tokenCaipAssetType: CaipAssetType): string =>
       `${cacheKeyPrefix}:${tokenCaipAssetType}:${vsCurrency}`;
 
     // Parses back the cache key
-    const parseCacheKey = (key: string) => {
+    const parseCacheKey = (key: string): RegExpMatchArray => {
       const regex = new RegExp(`^${cacheKeyPrefix}:(.+):(.+)$`, 'u');
       const match = key.match(regex);
 

@@ -21,8 +21,8 @@ describe('sanitize', () => {
 
     it('handles edge cases', () => {
       expect(sanitizeForSignInMessage('')).toBe('');
-      expect(sanitizeForSignInMessage(null as any)).toBe('');
-      expect(sanitizeForSignInMessage(undefined as any)).toBe('');
+      expect(sanitizeForSignInMessage(null as unknown as string)).toBe('');
+      expect(sanitizeForSignInMessage(undefined as unknown as string)).toBe('');
     });
   });
 
@@ -47,8 +47,8 @@ describe('sanitize', () => {
     });
 
     it('handles edge cases', () => {
-      expect(sanitizeDomain(null as any)).toBe('');
-      expect(sanitizeDomain(undefined as any)).toBe('');
+      expect(sanitizeDomain(null as unknown as string)).toBe('');
+      expect(sanitizeDomain(undefined as unknown as string)).toBe('');
     });
   });
 
@@ -81,8 +81,8 @@ describe('sanitize', () => {
     });
 
     it('handles edge cases', () => {
-      expect(sanitizeSolanaAddress(null as any)).toBe('');
-      expect(sanitizeSolanaAddress(undefined as any)).toBe('');
+      expect(sanitizeSolanaAddress(null as unknown as string)).toBe('');
+      expect(sanitizeSolanaAddress(undefined as unknown as string)).toBe('');
     });
   });
 
@@ -111,8 +111,8 @@ describe('sanitize', () => {
     });
 
     it('handles edge cases', () => {
-      expect(sanitizeTimestamp(null as any)).toBe('');
-      expect(sanitizeTimestamp(undefined as any)).toBe('');
+      expect(sanitizeTimestamp(null as unknown as string)).toBe('');
+      expect(sanitizeTimestamp(undefined as unknown as string)).toBe('');
     });
   });
 
@@ -154,8 +154,10 @@ describe('sanitize', () => {
 
     it('handles edge cases', () => {
       expect(sanitizeResources([])).toStrictEqual([]);
-      expect(sanitizeResources(null as any)).toStrictEqual([]);
-      expect(sanitizeResources(undefined as any)).toStrictEqual([]);
+      expect(sanitizeResources(null as unknown as string[])).toStrictEqual([]);
+      expect(sanitizeResources(undefined as unknown as string[])).toStrictEqual(
+        [],
+      );
     });
   });
 });

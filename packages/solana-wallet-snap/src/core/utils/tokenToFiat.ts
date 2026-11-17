@@ -1,4 +1,4 @@
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 
 /**
  * Converts a token amount to fiat currency using the provided conversion rate.
@@ -7,7 +7,10 @@ import BigNumber from 'bignumber.js';
  * @param rateConversion - The conversion rate from token to fiat.
  * @returns The fiat value of the token amount.
  */
-export function tokenToFiat(tokenAmount: string, rateConversion: number) {
+export function tokenToFiat(
+  tokenAmount: string,
+  rateConversion: number,
+): string {
   const bigAmount = new BigNumber(tokenAmount);
   return bigAmount.multipliedBy(rateConversion).toString();
 }

@@ -1,5 +1,6 @@
 import { BrokenCircuitError } from '@metamask/snap-networks-utils';
 import { SnapError, UserRejectedRequestError } from '@metamask/snaps-sdk';
+import type { Mock, MockedObject } from 'vitest';
 
 import {
   getUnreportedSyncFailures,
@@ -8,11 +9,14 @@ import {
 } from './errors';
 import logger from './logger';
 
-const setupTest = () => {
+const setupTest = (): {
+  mockSnapRequest: Mock;
+  mockLogger: MockedObject<typeof logger>;
+} => {
   vi.clearAllMocks();
 
   const mockSnapRequest = vi.fn();
-  (globalThis as any).snap = {
+  (globalThis as unknown as { snap: unknown }).snap = {
     request: mockSnapRequest,
   };
 

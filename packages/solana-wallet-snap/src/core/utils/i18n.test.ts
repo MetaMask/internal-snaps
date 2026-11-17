@@ -1,3 +1,4 @@
+import type { Locale, LocalizedMessage } from './i18n';
 import { i18n, locales } from './i18n';
 
 describe('i18n', () => {
@@ -17,14 +18,14 @@ describe('i18n', () => {
   });
 
   it('falls back to the default language if the preferred locale is not available', () => {
-    const translate = i18n('fr' as any);
+    const translate = i18n('fr' as unknown as Locale);
     const message = translate('send.balance');
     expect(message).toBe(locales.en['send.balance'].message);
   });
 
   it('returns the key for a non-existent key', () => {
     const translate = i18n('en');
-    const message = translate('nonExistentKey' as any);
+    const message = translate('nonExistentKey' as unknown as LocalizedMessage);
     expect(message).toBe('nonExistentKey');
   });
 });
