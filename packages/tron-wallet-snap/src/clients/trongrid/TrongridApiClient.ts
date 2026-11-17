@@ -17,6 +17,7 @@ import { assert } from '@metamask/superstruct';
 
 import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import logger, { noOpLogger } from '../../utils/logger';
 import type { TronHttpClient } from '../tron-http/TronHttpClient';
 import type { ChainParameter } from '../tron-http/types';
@@ -125,6 +126,7 @@ export class TrongridApiClient {
           service: 'trongrid',
           chainIdCaip: network,
           logger: clientLogger,
+          ...fetchPolicyReporting,
         }),
       ]),
     );

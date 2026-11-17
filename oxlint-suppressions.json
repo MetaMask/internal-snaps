@@ -2026,14 +2026,6 @@
       "count": 5
     }
   },
-  "packages/tron-wallet-snap/src/clients/snap/SnapClient.test.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/clients/snap/SnapClient.ts": {
     "typescript/no-unsafe-assignment": {
       "count": 2
@@ -2054,45 +2046,9 @@
       "count": 4
     }
   },
-  "packages/tron-wallet-snap/src/clients/tronweb/TronWebFactory.test.ts": {
-    "typescript/no-unsafe-return": {
-      "count": 2
-    }
-  },
-  "packages/tron-wallet-snap/src/handlers/clientRequest/clientRequest.test.ts": {
-    "typescript/no-explicit-any": {
-      "count": 15
-    },
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 22
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 9
-    },
-    "typescript/no-unsafe-return": {
-      "count": 4
-    }
-  },
   "packages/tron-wallet-snap/src/handlers/clientRequest/clientRequest.ts": {
     "typescript/no-unsafe-assignment": {
       "count": 2
-    }
-  },
-  "packages/tron-wallet-snap/src/handlers/cronjob/cronjob.test.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 4
-    },
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 5
-    },
-    "typescript/no-unsafe-argument": {
-      "count": 1
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 1
-    },
-    "typescript/no-unsafe-return": {
-      "count": 3
     }
   },
   "packages/tron-wallet-snap/src/index.test.ts": {
@@ -2116,12 +2072,6 @@
     }
   },
   "packages/tron-wallet-snap/src/services/assets/AssetsService.test.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 1
-    },
     "typescript/no-unsafe-return": {
       "count": 4
     }
@@ -2193,14 +2143,6 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/services/send/TransactionExpirationRefresherService.test.ts": {
-    "typescript/no-unsafe-member-access": {
-      "count": 2
-    },
-    "typescript/no-unsafe-return": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/services/staking/StakingService.test.ts": {
     "typescript/no-explicit-any": {
       "count": 7
@@ -2229,17 +2171,6 @@
     },
     "typescript/no-unsafe-assignment": {
       "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/src/services/transactions/TransactionsMapper.test.ts": {
-    "typescript/no-explicit-any": {
-      "count": 4
-    },
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 5
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 2
     }
   },
   "packages/tron-wallet-snap/src/services/transactions/TransactionsMapper.ts": {
@@ -2314,22 +2245,8 @@
     }
   },
   "packages/tron-wallet-snap/src/ui/confirmation/components/Fees.tsx": {
-    "typescript/no-unsafe-argument": {
-      "count": 1
-    },
-    "typescript/no-unsafe-assignment": {
-      "count": 1
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 1
-    },
     "typescript/no-unsafe-return": {
       "count": 2
-    }
-  },
-  "packages/tron-wallet-snap/src/ui/confirmation/utils/getErrorMessage.ts": {
-    "typescript/no-unsafe-argument": {
-      "count": 1
     }
   },
   "packages/tron-wallet-snap/src/ui/confirmation/utils/getIconUrlForKnownAsset.ts": {
@@ -2383,11 +2300,6 @@
       "count": 12
     }
   },
-  "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmSignTransaction/render.tsx": {
-    "typescript/no-unsafe-argument": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest.tsx": {
     "typescript/no-unsafe-assignment": {
       "count": 2
@@ -2431,25 +2343,9 @@
       "count": 3
     }
   },
-  "packages/tron-wallet-snap/src/validation/transaction.test.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/validation/transaction.ts": {
     "internal-snaps/no-in-operator": {
       "count": 2
-    }
-  },
-  "packages/tron-wallet-snap/src/validation/validators.ts": {
-    "typescript/no-unsafe-argument": {
-      "count": 1
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 1
     }
   },
   "scripts/create-package/cli.test.ts": {

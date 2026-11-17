@@ -1,5 +1,28 @@
+import { BdkErrorCode } from '@metamask/bitcoindevkit';
+
+import enMessages from '../../../locales/en.json';
 import { CurrencyUnit } from '../../entities';
-import { displayAmount, displayOrigin } from './format';
+import { displayAmount, displayOrigin, errorCodeToLabel } from './format';
+
+describe('errorCodeToLabel', () => {
+  it('lowercases the first letter of the BdkErrorCode name', () => {
+    expect(errorCodeToLabel(BdkErrorCode.FeeTooLow)).toBe('feeTooLow');
+  });
+
+  it('falls back to the unknownError label for unknown codes', () => {
+    expect(errorCodeToLabel(999999)).toBe('unknownError');
+  });
+
+  it('has an English translation for every BdkErrorCode label', () => {
+    const translationKeys = new Set(Object.keys(enMessages.messages));
+    for (const name of Object.keys(BdkErrorCode).filter((key) =>
+      Number.isNaN(Number(key)),
+    )) {
+      const code = BdkErrorCode[name as keyof typeof BdkErrorCode];
+      expect(translationKeys).toContain(errorCodeToLabel(code));
+    }
+  });
+});
 
 describe('displayAmount', () => {
   it('displays one satoshi as a plain decimal', () => {

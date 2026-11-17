@@ -158,7 +158,7 @@ function getProofSigningChildPath(account: BitcoinAccount): string[] {
  * account is P2WPKH. Callers building collaborative transactions must compute
  * malleability per-input.
  */
-export type BroadcastResult = {
+type BroadcastResult = {
   txid: Txid;
   canBeMalleable: boolean;
 };

@@ -40,7 +40,7 @@ type MockState = {
   setKeyWith: Mock;
 };
 
-(global as any).snap = {};
+vi.stubGlobal('snap', {});
 
 const TRON_FLAG_KEY = SNAPS_ASSETS_MIGRATION_FLAG_KEYS.tron;
 
