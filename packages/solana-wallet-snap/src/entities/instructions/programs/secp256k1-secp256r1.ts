@@ -45,12 +45,12 @@ export const identifySecp256Instruction = (
         data: ReadonlyUint8Array;
       }
     | ReadonlyUint8Array,
-) => Secp256Instruction.Verify;
+): Secp256Instruction => Secp256Instruction.Verify;
 
-export const isSecp256k1Instruction = (instruction: Instruction) =>
+export const isSecp256k1Instruction = (instruction: Instruction): boolean =>
   instruction.programAddress === SECP256K1_PROGRAM_ADDRESS;
 
-export const isSecp256r1Instruction = (instruction: Instruction) =>
+export const isSecp256r1Instruction = (instruction: Instruction): boolean =>
   instruction.programAddress === SECP256R1_PROGRAM_ADDRESS;
 
 type Secp256InstructionData = {
@@ -73,7 +73,9 @@ export type ParsedSecp256Instruction = {
   instructionType: typeof Secp256Instruction.Verify;
 } & ParsedVerifySecp256Instruction;
 
-export const parseVerifySecp256Instruction = (instruction: Instruction) => {
+export const parseVerifySecp256Instruction = (
+  instruction: Instruction,
+): ParsedVerifySecp256Instruction => {
   return {
     programAddress: instruction.programAddress,
     data: getSecp256InstructionCodec().decode(

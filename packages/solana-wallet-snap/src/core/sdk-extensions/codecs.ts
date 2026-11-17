@@ -122,7 +122,7 @@ export const fromBase64StringCompiledMessageToTransaction = async (
 
   const signerAccounts = compiledTransactionMessage.staticAccounts
     .slice(0, compiledTransactionMessage.header.numSignerAccounts)
-    .map((address) => [address, null]);
+    .map((address) => [address, null] as const);
 
   const signatures = Object.fromEntries(signerAccounts);
 
