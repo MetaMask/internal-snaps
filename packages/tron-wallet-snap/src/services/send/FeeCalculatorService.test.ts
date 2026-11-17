@@ -11,7 +11,6 @@ import {
   TrongridRateLimitError,
 } from '../../clients/trongrid/errors';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
-import type { TronAccount } from '../../clients/trongrid/types';
 import { Network, ZERO } from '../../constants';
 import { mockLogger } from '../../utils/mockLogger';
 import nativeTransferMock from '../transactions/mocks/trongrid/account-transactions/native-transfer.json';
@@ -87,6 +86,10 @@ const createLargeTransaction = (dataLength = 2000): Transaction => {
     throw new Error('Expected the TRC20 fixture to contain a contract.');
   }
 
+  // Narrow the union member so the overridden `data` field is allowed.
+  const contractValue = contract.parameter
+    .value as TronwebTypes.TriggerSmartContract;
+
   return {
     ...baseTransaction,
     raw_data: {
@@ -95,11 +98,11 @@ const createLargeTransaction = (dataLength = 2000): Transaction => {
         {
           ...contract,
           parameter: {
-            ...contract?.parameter,
+            ...contract.parameter,
             value: {
-              ...contract?.parameter.value,
+              ...contractValue,
               data: largeData,
-            } as TronwebTypes.TriggerSmartContract,
+            },
           },
         },
       ],
@@ -258,7 +261,7 @@ describe('FeeCalculatorService', () => {
           trongridApiClient.getAccountInfoByAddress.mockResolvedValue({
             address: 'TExistingActiveAddress123456789012',
             balance: 1000000,
-          } as TronAccount);
+          });
 
           const fee = await feeCalculatorService.getAccountActivationFee({
             scope: Network.Mainnet,
@@ -1273,7 +1276,7 @@ describe('FeeCalculatorService', () => {
             trongridApiClient.getAccountInfoByAddress.mockResolvedValue({
               address: 'TExistingActiveAddress123456789012',
               balance: 1000000,
-            } as TronAccount);
+            });
 
             const transaction = getTransactionExample('native');
             const availableEnergy = ZERO;

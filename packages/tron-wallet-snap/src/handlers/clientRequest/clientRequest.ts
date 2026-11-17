@@ -1514,9 +1514,7 @@ export class ClientRequestHandler {
       getUniqueAccountIds(items),
     );
     const accountsById = getAccountsByNormalizedId(accounts);
-    const results: SignProofOfOwnershipBatchResponse['results'] = new Array(
-      items.length,
-    );
+    const results = new Array<BatchSigningResult>(items.length);
     const signingRequests: SigningRequest[] = [];
     const accountsToDerive: TronKeyringAccount[] = [];
 

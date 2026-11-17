@@ -240,7 +240,7 @@ export class AccountsService {
   async deriveTronKeypairs(
     accounts: TronKeyringAccount[],
   ): Promise<DerivedTronKeypairBatchResult[]> {
-    const results: DerivedTronKeypairBatchResult[] = new Array(accounts.length);
+    const results = new Array<DerivedTronKeypairBatchResult>(accounts.length);
     const accountsByEntropySource = new Map<
       EntropySourceId,
       { index: number; account: TronKeyringAccount }[]

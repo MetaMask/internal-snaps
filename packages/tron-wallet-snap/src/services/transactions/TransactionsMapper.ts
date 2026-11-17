@@ -175,8 +175,8 @@ export class TransactionMapper {
     } = Networks[network];
 
     // Base TRX fee calculation
-    const transactionFeeInSun = transactionInfo.ret.reduce(
-      (total, result) => total + (result.fee || 0),
+    const transactionFeeInSun = (transactionInfo.ret ?? []).reduce(
+      (total, result) => total + (result.fee ?? 0),
       0,
     );
     const transactionFee = sunToTrx(transactionFeeInSun).toNumber();
@@ -199,8 +199,8 @@ export class TransactionMapper {
     };
 
     setFeeIfPresent(transactionFee, tronAsset);
-    setFeeIfPresent(transactionInfo.net_usage, bandwidthAsset);
-    setFeeIfPresent(transactionInfo.energy_usage, energyAsset);
+    setFeeIfPresent(transactionInfo.net_usage ?? 0, bandwidthAsset);
+    setFeeIfPresent(transactionInfo.energy_usage ?? 0, energyAsset);
 
     return fees;
   }
