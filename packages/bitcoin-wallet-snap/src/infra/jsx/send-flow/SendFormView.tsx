@@ -22,14 +22,14 @@ export const SendFormView: SnapComponent<SendFormViewProps> = ({
   context,
   messages,
 }) => {
-  const t = translate(messages);
+  const tr = translate(messages);
   const { errors } = context;
 
   return (
     <Container>
       <Box>
         <HeadingWithReturn
-          heading={t('send')}
+          heading={tr('send')}
           returnButtonName={SendFormEvent.Cancel}
         />
 
@@ -38,9 +38,9 @@ export const SendFormView: SnapComponent<SendFormViewProps> = ({
         {errors.tx && (
           <Box>
             <Box>{null}</Box>
-            <Banner title={t('error')} severity="warning">
+            <Banner title={tr('error')} severity="warning">
               <SnapText size="sm">
-                {t(errorCodeToLabel(errors.tx.code))}
+                {tr(errorCodeToLabel(errors.tx.code))}
               </SnapText>
             </Banner>
           </Box>
@@ -49,7 +49,7 @@ export const SendFormView: SnapComponent<SendFormViewProps> = ({
 
       <Footer>
         <Button name={SendFormEvent.Confirm} disabled={!context.fee}>
-          {t('continue')}
+          {tr('continue')}
         </Button>
       </Footer>
     </Container>

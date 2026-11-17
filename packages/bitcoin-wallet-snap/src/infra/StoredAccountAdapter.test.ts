@@ -52,9 +52,16 @@ describe('StoredAccountAdapter', () => {
     });
 
     it('names the account in the error data', () => {
-      expect(() => adapter().isChange(mockScript)).toThrow(
-        expect.objectContaining({ data: { id: mockId } }),
-      );
+      let thrown: unknown = null;
+
+      try {
+        adapter().isChange(mockScript);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(WalletError);
+      expect(thrown).toHaveProperty('data', { id: mockId });
     });
   });
 

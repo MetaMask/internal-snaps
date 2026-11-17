@@ -538,7 +538,7 @@ describe('JSXConfirmationRepository', () => {
     it('handles PSBT without fee information gracefully', async () => {
       const psbtNoFee = mock<Psbt>({
         toString: () => 'psbt-no-fee',
-        fee_amount: () => undefined as unknown as Amount,
+        fee_amount: () => undefined,
         unsigned_tx: mock<Transaction>({
           output: [],
           input: [],

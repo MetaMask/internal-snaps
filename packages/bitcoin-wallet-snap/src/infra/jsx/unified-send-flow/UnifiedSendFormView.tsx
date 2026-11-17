@@ -35,7 +35,7 @@ export const UnifiedSendFormView: SnapComponent<UnifiedSendFormViewProps> = ({
   context,
   messages,
 }) => {
-  const t = translate(messages);
+  const tr = translate(messages);
   const {
     amount,
     exchangeRate,
@@ -57,18 +57,18 @@ export const UnifiedSendFormView: SnapComponent<UnifiedSendFormViewProps> = ({
         <Box alignment="center" center>
           <Box>{null}</Box>
           <Heading size="lg">
-            {t('confirmation.signAndSendTransaction.title')}
+            {tr('confirmation.signAndSendTransaction.title')}
           </Heading>
           <Box>{null}</Box>
         </Box>
 
         {isMine ? (
           <Banner
-            title={t('confirmation.signAndSendTransaction.selfSend.title')}
+            title={tr('confirmation.signAndSendTransaction.selfSend.title')}
             severity="warning"
           >
             <SnapText>
-              {t('confirmation.signAndSendTransaction.selfSend.description')}
+              {tr('confirmation.signAndSendTransaction.selfSend.description')}
             </SnapText>
           </Banner>
         ) : null}
@@ -76,12 +76,12 @@ export const UnifiedSendFormView: SnapComponent<UnifiedSendFormViewProps> = ({
         <Section>
           <Box>
             <SnapText fontWeight="medium" color="alternative">
-              {t('confirmation.estimatedChanges')}
+              {tr('confirmation.estimatedChanges')}
             </SnapText>
           </Box>
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
-              {t('confirmation.estimatedChanges.send')}
+              {tr('confirmation.estimatedChanges.send')}
             </SnapText>
             <Box direction="vertical" crossAlignment="end">
               <Box direction="horizontal" center>
@@ -101,14 +101,14 @@ export const UnifiedSendFormView: SnapComponent<UnifiedSendFormViewProps> = ({
         <Section>
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
-              {t('confirmation.requestOrigin')}
+              {tr('confirmation.requestOrigin')}
             </SnapText>
             <SnapText>{origin ?? 'MetaMask'}</SnapText>
           </Box>
           <Box>{null}</Box>
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
-              {t('from')}
+              {tr('from')}
             </SnapText>
             {isValidSnapLinkProtocol(explorerUrl) ? (
               <Link href={displayExplorerUrl(explorerUrl, from)}>
@@ -121,7 +121,7 @@ export const UnifiedSendFormView: SnapComponent<UnifiedSendFormViewProps> = ({
           <Box>{null}</Box>
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
-              {t('toAddress')}
+              {tr('toAddress')}
             </SnapText>
             {isValidSnapLinkProtocol(explorerUrl) ? (
               <Link href={displayExplorerUrl(explorerUrl, recipient)}>
@@ -144,7 +144,7 @@ export const UnifiedSendFormView: SnapComponent<UnifiedSendFormViewProps> = ({
           <Box>{null}</Box>
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
-              {t('network')}
+              {tr('network')}
             </SnapText>
             <Box direction="horizontal" center>
               <AssetIconInline network={network} variant="network" />
@@ -154,7 +154,7 @@ export const UnifiedSendFormView: SnapComponent<UnifiedSendFormViewProps> = ({
           <Box>{null}</Box>
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
-              {t('networkFee')}
+              {tr('networkFee')}
             </SnapText>
             <Box direction="horizontal" alignment="center">
               <SnapText color="muted">
@@ -167,9 +167,9 @@ export const UnifiedSendFormView: SnapComponent<UnifiedSendFormViewProps> = ({
       </Box>
 
       <Footer>
-        <Button name={ConfirmationEvent.Cancel}>{t('cancel')}</Button>
+        <Button name={ConfirmationEvent.Cancel}>{tr('cancel')}</Button>
         <Button name={ConfirmationEvent.Confirm}>
-          {t('confirmation.confirmButton')}
+          {tr('confirmation.confirmButton')}
         </Button>
       </Footer>
     </Container>

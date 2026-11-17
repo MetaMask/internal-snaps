@@ -539,6 +539,18 @@ describe('EsploraClientAdapter', () => {
       return response;
     };
 
+    /**
+     * Maps a request URL to the JSON body the mocked Esplora REST API returns
+     * for it. The block-list endpoint needs the genesis block, every other
+     * endpoint is happy with an empty result.
+     *
+     * @param url - The requested URL.
+     * @param blocksBody - The JSON body of the block-list endpoint.
+     * @returns The JSON body to respond with.
+     */
+    const esploraBodyForUrl = (url: string, blocksBody: string): string =>
+      url.endsWith('/blocks') ? blocksBody : '[]';
+
     it('retries real WASM Reqwest and 503 errors on getFeeEstimates, and does not retry decode or 400 errors', async () => {
       const adapter = createRealAdapter();
       mockFetch
@@ -594,16 +606,18 @@ describe('EsploraClientAdapter', () => {
       const expectedTxid = transaction.compute_txid().toString();
       const postedBodies: string[] = [];
 
-      mockFetch.mockImplementation(async (input: Request) => {
-        postedBodies.push(await input.text());
-        if (postedBodies.length === 1) {
+      mockFetch
+        .mockImplementationOnce(async (input: Request) => {
+          postedBodies.push(await input.text());
           return wasmResponse(503, 'Service Unavailable');
-        }
-        return wasmResponse(
-          400,
-          'sendrawtransaction RPC error: {"code":-27,"message":"Transaction already in block chain"}',
-        );
-      });
+        })
+        .mockImplementationOnce(async (input: Request) => {
+          postedBodies.push(await input.text());
+          return wasmResponse(
+            400,
+            'sendrawtransaction RPC error: {"code":-27,"message":"Transaction already in block chain"}',
+          );
+        });
 
       await adapter.broadcast('bitcoin', transaction);
 
@@ -663,24 +677,27 @@ describe('EsploraClientAdapter', () => {
         },
       ]);
 
-      let callCount = 0;
-      mockFetch.mockImplementation(async (input: Request) => {
-        callCount += 1;
-        if (callCount === 1) {
-          return wasmResponse(503, 'Service Unavailable', input.url);
-        }
-        return wasmResponse(
-          200,
-          input.url.endsWith('/blocks') ? genesisBlock : '[]',
-          input.url,
+      const blocksUrl = 'https://bitcoin.example/blocks';
+
+      mockFetch
+        .mockResolvedValueOnce(
+          wasmResponse(503, 'Service Unavailable', blocksUrl),
+        )
+        .mockImplementation(async (input: Request) =>
+          wasmResponse(
+            200,
+            esploraBodyForUrl(input.url, genesisBlock),
+            input.url,
+          ),
         );
-      });
 
       await adapter.fullScan(account, 'discovery');
       expect(fullScanRequests).toBe(2);
       expect(appliedUpdates).toBe(1);
 
-      callCount = 0;
+      mockFetch.mockResolvedValueOnce(
+        wasmResponse(503, 'Service Unavailable', blocksUrl),
+      );
       await adapter.sync(account);
       expect(syncRequests).toBe(2);
       expect(appliedUpdates).toBe(2);
