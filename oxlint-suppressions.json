@@ -101,6 +101,14 @@
       "count": 2
     }
   },
+  "packages/bitcoin-wallet-snap/src/infra/LocalTranslatorAdapter.ts": {
+    "typescript/no-unsafe-assignment": {
+      "count": 1
+    },
+    "typescript/no-unsafe-member-access": {
+      "count": 1
+    }
+  },
   "packages/bitcoin-wallet-snap/src/infra/jsx/components/AssetIcon.tsx": {
     "typescript/no-unsafe-return": {
       "count": 1
