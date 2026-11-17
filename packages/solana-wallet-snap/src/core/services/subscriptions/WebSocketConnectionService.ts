@@ -278,7 +278,7 @@ export class WebSocketConnectionService {
         await this.#handleDisconnected(event);
         break;
       default:
-        this.#logger.warn(`Unknown connection event type: ${type}`);
+        this.#logger.warn(`Unknown connection event type: ${String(type)}`);
     }
   }
 

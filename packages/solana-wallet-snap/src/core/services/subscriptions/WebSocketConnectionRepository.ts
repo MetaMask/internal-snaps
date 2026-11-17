@@ -92,7 +92,7 @@ export class WebSocketConnectionRepository {
    *
    * @param id - The ID of the connection to close.
    */
-  async delete(id: string) {
+  async delete(id: string): Promise<void> {
     await snap.request({
       method: 'snap_closeWebSocket',
       params: { id },

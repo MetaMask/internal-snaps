@@ -212,9 +212,7 @@ export class SignatureMonitor {
             accountType: account.type,
             chainIdCaip: transaction.chain,
             transactionStatus: transaction.status,
-            transactionType:
-              transactionType ??
-              (transaction.type as TransactionType | undefined),
+            transactionType: transactionType ?? transaction.type,
             ...securityProperties,
           });
           break;

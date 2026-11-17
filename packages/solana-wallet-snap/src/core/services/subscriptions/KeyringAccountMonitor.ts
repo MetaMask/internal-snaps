@@ -175,7 +175,7 @@ export class KeyringAccountMonitor {
         this.#accountsSynchronizer.synchronize(accounts);
 
       const promises = accounts.flatMap((account) => {
-        const shouldMonitorOnNetwork = (network: Network) =>
+        const shouldMonitorOnNetwork = (network: Network): boolean =>
           account.scopes.includes(network);
 
         // Monitor native assets

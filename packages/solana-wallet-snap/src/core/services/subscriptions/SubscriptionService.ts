@@ -1,7 +1,7 @@
 import type { Logger } from '@metamask/snap-networks-utils';
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { WebSocketEvent } from '@metamask/snaps-sdk';
-import { isJsonRpcFailure } from '@metamask/utils';
+import { hasProperty, isJsonRpcFailure } from '@metamask/utils';
 import type { JsonRpcFailure } from '@metamask/utils';
 import type { JsonRpcRequest } from '@metamask/utils';
 
@@ -22,6 +22,16 @@ import { SUPPORTED_NETWORKS } from '../config/ConfigProvider';
 import { parseWebSocketMessage } from './parseWebSocketMessage';
 import type { SubscriptionRepository } from './SubscriptionRepository';
 import type { WebSocketConnectionService } from './WebSocketConnectionService';
+
+/**
+ * A notification handler widened to the signature used for dispatch. Handlers are
+ * registered per method, so the notification type always matches the handler's own
+ * parameter type.
+ */
+type DispatchableNotificationHandler = (
+  notification: Notification,
+  subscription: Subscription,
+) => Promise<void>;
 
 /**
  * Allows subscribing / unsubscribing from real-time notifications from the Solana blockchain using the [RPC WebSocket API](https://solana.com/docs/rpc/websocket).
@@ -177,7 +187,9 @@ export class SubscriptionService {
 
     const connection = await this.#connectionService.findByNetwork(network);
 
-    const sendSubscriptionMessage = async (_connectionId: string) => {
+    const sendSubscriptionMessage = async (
+      _connectionId: string,
+    ): Promise<void> => {
       const message: JsonRpcRequest = {
         jsonrpc: '2.0',
         id,
@@ -294,7 +306,10 @@ export class SubscriptionService {
     if (handlers && handlers.size > 0) {
       const results = await Promise.allSettled(
         Array.from(handlers).map(async (handler) =>
-          handler(notification as any, subscription),
+          (handler as DispatchableNotificationHandler)(
+            notification,
+            subscription,
+          ),
         ),
       );
 
@@ -339,13 +354,13 @@ export class SubscriptionService {
    * @returns True if the message is a subscription confirmation, false otherwise.
    */
   #isSubscriptionConfirmation(
-    message: any,
+    message: object,
   ): message is SubscriptionConfirmation {
     return (
-      'jsonrpc' in message &&
+      hasProperty(message, 'jsonrpc') &&
       message.jsonrpc === '2.0' &&
-      'id' in message &&
-      'result' in message &&
+      hasProperty(message, 'id') &&
+      hasProperty(message, 'result') &&
       typeof message.result === 'number'
     );
   }
@@ -357,12 +372,12 @@ export class SubscriptionService {
    * @returns True if the message is a unsubscription confirmation, false otherwise.
    */
   #isUnsubscriptionConfirmation(
-    message: any,
+    message: object,
   ): message is UnsubscriptionConfirmation {
     return (
-      'jsonrpc' in message &&
-      'id' in message &&
-      'result' in message &&
+      hasProperty(message, 'jsonrpc') &&
+      hasProperty(message, 'id') &&
+      hasProperty(message, 'result') &&
       message.result === true
     );
   }
@@ -450,7 +465,7 @@ export class SubscriptionService {
    * @param response - The response to handle.
    */
   async #handleFailure(response: JsonRpcFailure): Promise<void> {
-    if ('id' in response && response.id !== undefined) {
+    if (hasProperty(response, 'id') && response.id !== undefined) {
       // This is a response to a specific subscription request, expect the error to be related to a pending subscription.
       const subscription = await this.#subscriptionRepository.getById(
         String(response.id),
@@ -517,7 +532,7 @@ export class SubscriptionService {
    * @param obj - The object to stringify deterministically.
    * @returns A deterministic JSON string representation.
    */
-  #deterministicStringify(obj: any): string {
+  #deterministicStringify(obj: unknown): string {
     if (obj === null || obj === undefined) {
       return JSON.stringify(obj);
     }
@@ -528,14 +543,15 @@ export class SubscriptionService {
 
     if (Array.isArray(obj)) {
       return `[${obj
-        .map((item) => this.#deterministicStringify(item))
+        .map((item: unknown) => this.#deterministicStringify(item))
         .join(',')}]`;
     }
 
     // For objects, sort keys and recursively stringify values
-    const sortedKeys = Object.keys(obj).sort((a, b) => a.localeCompare(b));
+    const record = obj as Record<string, unknown>;
+    const sortedKeys = Object.keys(record).sort((a, b) => a.localeCompare(b));
     const pairs = sortedKeys.map((key) => {
-      const value = this.#deterministicStringify(obj[key]);
+      const value = this.#deterministicStringify(record[key]);
       return `"${key}":${value}`;
     });
 
@@ -578,7 +594,9 @@ export class SubscriptionService {
       await this.#subscriptionRepository.getAll()
     )
       .filter((subscription) => subscription.network === network)
-      .filter(SubscriptionService.#isNotExpired);
+      .filter((subscription) =>
+        SubscriptionService.#isNotExpired(subscription),
+      );
 
     const ids = subscriptionsThisNetwork.map((subscription) => subscription.id);
     await this.#subscriptionRepository.deleteMany(ids);
@@ -601,8 +619,8 @@ export class SubscriptionService {
 
     const subscriptions = await this.#subscriptionRepository.getAll();
 
-    const expiredSubscriptions = subscriptions.filter(
-      SubscriptionService.#isExpired,
+    const expiredSubscriptions = subscriptions.filter((subscription) =>
+      SubscriptionService.#isExpired(subscription),
     );
 
     await Promise.allSettled(

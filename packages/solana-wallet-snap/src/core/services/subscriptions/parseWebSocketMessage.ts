@@ -1,4 +1,5 @@
 import type { WebSocketMessage } from '@metamask/snaps-sdk';
+import { hasProperty } from '@metamask/utils';
 
 /**
  * A message that we receive from the RPC WebSocket server after a subscription is confirmed.
@@ -17,10 +18,10 @@ export const parseWebSocketMessage = <TNotification>(
   event: WebSocketMessage,
 ): JsonRpcWebSocketMessage<TNotification> => {
   const { data } = event;
-  let jsonParsed: any;
+  let jsonParsed: unknown;
 
   // Handle SIP-20 message format
-  if (data && typeof data === 'object' && 'type' in data) {
+  if (data && typeof data === 'object' && hasProperty(data, 'type')) {
     // This is already a SIP-20 formatted message data
     if (data.type === 'text') {
       jsonParsed =
@@ -40,5 +41,5 @@ export const parseWebSocketMessage = <TNotification>(
     jsonParsed = typeof data === 'string' ? JSON.parse(data) : data;
   }
 
-  return jsonParsed;
+  return jsonParsed as JsonRpcWebSocketMessage<TNotification>;
 };
