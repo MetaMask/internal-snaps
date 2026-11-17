@@ -59,7 +59,13 @@ const createPassThroughTransactionExpirationRefresherService =
           transaction: TransactionType;
         }) => transaction,
       ),
-      ensureFreshRawData: vi.fn(async ({ rawData }) => rawData),
+      ensureFreshRawData: vi.fn(
+        async <RawDataType extends TransactionRawData>({
+          rawData,
+        }: {
+          rawData: RawDataType;
+        }) => rawData,
+      ),
     }) as unknown as TransactionExpirationRefresherService;
 
 /**
@@ -121,21 +127,20 @@ const createMockTronWeb = (): MockTronWeb => ({
   utils: {
     deserializeTx: { deserializeTransaction: vi.fn() },
     transaction: {
-      txJsonToPb: vi.fn((transaction) => transaction),
+      txJsonToPb: vi.fn((transaction: TronwebTypes.Transaction) => transaction),
       txPbToRawDataHex: vi.fn().mockReturnValue('1234567890abcdef'),
       txPbToTxID: vi.fn().mockReturnValue('mock-tx-id'),
     },
   },
   transactionBuilder: {
-    freezeBalanceV2:
-      vi.fn() as MockTronWeb['transactionBuilder']['freezeBalanceV2'],
+    freezeBalanceV2: vi.fn<TronWeb['transactionBuilder']['freezeBalanceV2']>(),
   },
 });
 
 const createMockTronWebFactory = (
   mockTronWeb: MockTronWeb,
 ): MockTronWebFactory => ({
-  createClient: vi.fn().mockReturnValue(mockTronWeb as unknown as TronWeb),
+  createClient: vi.fn().mockReturnValue(mockTronWeb),
   executeBroadcast: vi.fn(
     async (_scope: Network, broadcast: () => Promise<unknown>) => broadcast(),
   ),
@@ -417,7 +422,7 @@ describe('ClientRequestHandler', () => {
             txid: 'test-tx-id',
           });
 
-          const result = await handler.handle(request as JsonRpcRequest);
+          const result = await handler.handle(request);
 
           expect(result).toStrictEqual({
             transactionId: 'test-tx-id',
@@ -511,10 +516,12 @@ describe('ClientRequestHandler', () => {
             mockRawData,
           );
           mockTronWeb.trx.getCurrentBlock.mockResolvedValue(currentBlock);
-          mockTronWeb.trx.sign.mockImplementation(async (transaction: any) => ({
-            ...transaction,
-            signature: ['test-signature'],
-          }));
+          mockTronWeb.trx.sign.mockImplementation(
+            async (transaction: TronwebTypes.Transaction) => ({
+              ...transaction,
+              signature: ['test-signature'],
+            }),
+          );
           mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
             result: true,
             txid: 'broadcast-tx-id',
@@ -527,9 +534,11 @@ describe('ClientRequestHandler', () => {
               }),
           });
 
-          await refreshedHandler.handle(request as JsonRpcRequest);
+          await refreshedHandler.handle(request);
 
-          const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0];
+          const [signedTransaction] = mockTronWeb.trx.sign.mock.calls[0] as [
+            TronwebTypes.SignedTransaction,
+          ];
           expect(signedTransaction.raw_data).not.toBe(mockRawData);
           expect(signedTransaction.raw_data.ref_block_bytes).toBe(
             getRefBlockBytes(200_000),
@@ -614,16 +623,18 @@ describe('ClientRequestHandler', () => {
           mockTransactionExpirationRefresherService.ensureFreshMetadata.mockResolvedValue(
             freshTransaction,
           );
-          mockTronWeb.trx.sign.mockImplementation(async (transaction: any) => ({
-            ...transaction,
-            signature: ['test-signature'],
-          }));
+          mockTronWeb.trx.sign.mockImplementation(
+            async (transaction: TronwebTypes.Transaction) => ({
+              ...transaction,
+              signature: ['test-signature'],
+            }),
+          );
           mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
             result: true,
             txid: 'broadcast-tx-id',
           });
 
-          await handler.handle(request as JsonRpcRequest);
+          await handler.handle(request);
 
           expect(
             mockTransactionExpirationRefresherService.ensureFreshMetadata,
@@ -759,7 +770,7 @@ describe('ClientRequestHandler', () => {
           mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
 
           // Execute
-          const result = await handler.handle(request as JsonRpcRequest);
+          const result = await handler.handle(request);
 
           // Verify - no signing needed for fee computation
           expect(mockAccountsService.findByIdOrThrow).toHaveBeenCalledWith(
@@ -895,7 +906,7 @@ describe('ClientRequestHandler', () => {
           ];
           mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
 
-          const result = await handler.handle(request as JsonRpcRequest);
+          const result = await handler.handle(request);
 
           expect(result).toStrictEqual(feeResult);
           // computeFee receives unsigned transaction (no signature field)
@@ -999,7 +1010,7 @@ describe('ClientRequestHandler', () => {
           ];
           mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
 
-          const result = await handler.handle(request as JsonRpcRequest);
+          const result = await handler.handle(request);
 
           expect(result).toStrictEqual(feeResult);
           expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
@@ -1132,12 +1143,12 @@ describe('ClientRequestHandler', () => {
               address: TEST_ADDRESS,
               entropySource: 'test-entropy',
               derivationPath: [],
-            } as any);
+            });
 
             // Mock keypair derivation
             mockAccountsService.deriveTronKeypair.mockResolvedValue({
               privateKeyHex: TEST_PRIVATE_KEY,
-            } as any);
+            });
 
             // Mock message signing
             mockTronWeb.trx.signMessageV2.mockReturnValue(mockSignature);
@@ -1417,7 +1428,7 @@ describe('ClientRequestHandler', () => {
             address: TEST_ADDRESS,
             entropySource: 'test-entropy',
             derivationPath: [],
-          } as any);
+          });
 
           await expect(
             handler.handle(buildRequest(buildProofMessage(otherAddress))),
@@ -1807,7 +1818,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
           ],
         });
 
-        const result = await handler.handle(request as JsonRpcRequest);
+        const result = await handler.handle(request);
 
         expect(result).toStrictEqual({ transactionId });
       },
@@ -1848,7 +1859,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
         mockAccountsService.deriveTronKeypair.mockResolvedValue({
           privateKeyHex: 'test-private-key',
           address: CORRECT_OWNER_ADDRESS_BASE58,
-        } as Awaited<ReturnType<AccountsService['deriveTronKeypair']>>);
+        });
         mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
           contract: [
             {
@@ -1877,7 +1888,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
           )
           .mockResolvedValue({ result: true, txid: transactionId });
 
-        await handler.handle(request as JsonRpcRequest);
+        await handler.handle(request);
 
         expect(mockTronWeb.trx.sign).toHaveBeenCalledTimes(1);
         expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledTimes(2);
@@ -1927,7 +1938,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
         mockAccountsService.deriveTronKeypair.mockResolvedValue({
           privateKeyHex: 'test-private-key',
           address: CORRECT_OWNER_ADDRESS_BASE58,
-        } as Awaited<ReturnType<AccountsService['deriveTronKeypair']>>);
+        });
         mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
           contract: [
             {
@@ -1944,7 +1955,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
           result: false,
         });
 
-        const result = await handler.handle(request as JsonRpcRequest);
+        const result = await handler.handle(request);
         const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0] as {
           txID: string;
         };
@@ -2015,7 +2026,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
           ],
         });
 
-        await handler.handle(request as JsonRpcRequest);
+        await handler.handle(request);
 
         expect(
           mockAnalyticsService.trackTransactionSubmitted,
@@ -2120,7 +2131,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
             },
           );
 
-          await handler.handle(request as JsonRpcRequest);
+          await handler.handle(request);
 
           expect(
             mockAnalyticsService.trackTransactionSubmitted,
@@ -2199,7 +2210,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
           ],
         });
 
-        await handler.handle(request as JsonRpcRequest);
+        await handler.handle(request);
 
         expect(
           mockAnalyticsService.trackTransactionSubmitted,
@@ -2875,8 +2886,9 @@ describe('ClientRequestHandler - onAmountInput', () => {
 
         await handler.handle(request);
 
-        const calledAmount = mockSendService.buildTransaction.mock.calls[0]?.[0]
-          ?.amount as BigNumber;
+        const [buildTransactionParams] = mockSendService.buildTransaction.mock
+          .calls[0] as [Parameters<SendService['buildTransaction']>[0]];
+        const calledAmount = buildTransactionParams.amount;
 
         // Must be a BigNumber, not a number — prevents IEEE 754 precision loss
         expect(calledAmount).toBeInstanceOf(BigNumber);
@@ -3051,7 +3063,7 @@ describe('ClientRequestHandler - computeStakeFee', () => {
           address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
           entropySource: 'test-entropy',
           derivationPath: [],
-        } as any);
+        });
 
         const builtTransaction = {
           txID: 'stake-tx-id',
@@ -3073,11 +3085,11 @@ describe('ClientRequestHandler - computeStakeFee', () => {
         // Mock native balance and resources (local state reads)
         mockAssetsService.getAccountAssetByID.mockResolvedValue({
           uiAmount: '100',
-        } as unknown as AssetEntity);
+        });
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
           { rawAmount: '5000' }, // Bandwidth
           { rawAmount: '100000' }, // Energy
-        ] as unknown as AssetEntity[]);
+        ]);
 
         const feeResult = [
           {
@@ -3092,7 +3104,7 @@ describe('ClientRequestHandler - computeStakeFee', () => {
         ];
         mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
 
-        const result = await handler.handle(request as JsonRpcRequest);
+        const result = await handler.handle(request);
 
         expect(mockAccountsService.findByIdOrThrow).toHaveBeenCalledWith(
           TEST_ACCOUNT_ID,
@@ -3153,14 +3165,14 @@ describe('ClientRequestHandler - computeStakeFee', () => {
           address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
           entropySource: 'test-entropy',
           derivationPath: [],
-        } as any);
+        });
 
         // Account has only 5 TRX
         mockAssetsService.getAccountAssetByID.mockResolvedValue({
           uiAmount: '5',
-        } as unknown as AssetEntity);
+        });
 
-        const result = await handler.handle(request as JsonRpcRequest);
+        const result = await handler.handle(request);
 
         expect(result).toStrictEqual({
           valid: false,
@@ -3914,7 +3926,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           entropySource: 'test-entropy',
           derivationPath: [],
           type: 'tron:basic',
-        } as any);
+        });
 
         // Mock asset found
         const mockAsset = {
@@ -3931,7 +3943,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         // validateSend returns insufficient balance
         mockSendService.validateSend.mockResolvedValue({
           valid: false,
-          errorCode: 'InsufficientBalance' as any,
+          errorCode: 'InsufficientBalance',
         });
 
         const result = await handler.handle(request);
@@ -3986,7 +3998,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           entropySource: 'test-entropy',
           derivationPath: [],
           type: 'tron:basic',
-        } as any);
+        });
 
         const mockAsset = {
           assetType: Networks[scope].nativeToken.id,
@@ -4002,7 +4014,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         // validateSend returns insufficient balance to cover fee
         mockSendService.validateSend.mockResolvedValue({
           valid: false,
-          errorCode: 'InsufficientBalanceToCoverFee' as any,
+          errorCode: 'InsufficientBalanceToCoverFee',
         });
 
         const result = await handler.handle(request);
@@ -4050,7 +4062,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           derivationPath: [],
           type: 'tron:basic',
         };
-        mockAccountsService.findById.mockResolvedValue(mockAccount as any);
+        mockAccountsService.findById.mockResolvedValue(mockAccount);
 
         const mockAsset = {
           assetType: Networks[scope].nativeToken.id,
@@ -4067,7 +4079,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           mockAsset,
           { rawAmount: '1000' }, // Bandwidth
           { rawAmount: '50000' }, // Energy
-        ] as any);
+        ]);
 
         const mockTransaction = {
           txID: 'test-tx-id',
@@ -4079,7 +4091,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         mockSendService.buildTransaction.mockResolvedValue(mockTransaction);
         const freshTransactionRawData = { expiration: 1_700_000_060_000 };
         mockTransactionExpirationRefresherService.ensureFreshRawData.mockResolvedValue(
-          freshTransactionRawData as unknown as TransactionRawData,
+          freshTransactionRawData,
         );
 
         const mockFees = [
@@ -4104,7 +4116,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         mockSendService.signAndSendTransaction.mockResolvedValue({
           result: true,
           txid: 'broadcast-tx-id',
-        } as TronwebTypes.BroadcastReturn<any>);
+        });
 
         const result = await handler.handle(request);
 
@@ -4153,8 +4165,9 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         });
 
         // buildTransaction must receive a BigNumber to preserve decimal precision
-        const calledAmount = mockSendService.buildTransaction.mock.calls[0]?.[0]
-          ?.amount as BigNumber;
+        const [buildTransactionParams] = mockSendService.buildTransaction.mock
+          .calls[0] as [Parameters<SendService['buildTransaction']>[0]];
+        const calledAmount = buildTransactionParams.amount;
         expect(calledAmount).toBeInstanceOf(BigNumber);
         expect(calledAmount.toString()).toBe('10');
       },
@@ -4217,7 +4230,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           entropySource: 'test-entropy',
           derivationPath: [],
           type: 'tron:basic',
-        } as any);
+        });
 
         // Asset not found
         mockAssetsService.fetchAccountAssetsByIDs.mockResolvedValue([
