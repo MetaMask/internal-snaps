@@ -1,7 +1,6 @@
 import type {
   Address,
   Base58EncodedBytes,
-  Slot,
   StringifiedBigInt,
   StringifiedNumber,
   UnixTimestamp,

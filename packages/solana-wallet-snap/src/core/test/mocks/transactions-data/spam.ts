@@ -2,7 +2,6 @@ import type {
   Address,
   Base58EncodedBytes,
   Lamports,
-  TransactionVersion,
   UnixTimestamp,
 } from '@solana/kit';
 import { address, blockhash, lamports } from '@solana/kit';
