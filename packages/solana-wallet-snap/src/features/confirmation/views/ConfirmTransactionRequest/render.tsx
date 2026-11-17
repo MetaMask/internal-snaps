@@ -1,5 +1,6 @@
 import { SolMethod } from '@metamask/keyring-api';
 import type { SecurityAlertsScanOption } from '@metamask/snap-networks-utils';
+import type { DialogResult } from '@metamask/snaps-sdk';
 
 import { Network, Networks } from '../../../../core/constants/solana';
 import { FeeCalculator } from '../../../../core/fees';
@@ -110,7 +111,7 @@ async function getFeePayment(
  */
 export async function render(
   incomingContext: ConfirmTransactionRequestContext,
-) {
+): Promise<DialogResult> {
   /**
    * First render:
    * - Get preferences

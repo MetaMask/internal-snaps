@@ -1,6 +1,8 @@
-import type { KeyringRequest } from '@metamask/keyring-api';
 import { KeyringRpcMethod, SolMethod } from '@metamask/keyring-api';
 import { installSnap } from '@metamask/snaps-jest';
+import type { ComponentOrElement, DialogResult } from '@metamask/snaps-sdk';
+import type { Request, Response } from 'express';
+import type { Mock } from 'vitest';
 
 import { MOCK_SPOT_PRICES } from '../../../../core/clients/price-api/mocks/spot-prices';
 import { KnownCaip19Id, Network } from '../../../../core/constants/solana';
@@ -62,13 +64,16 @@ describe('render', () => {
     it.skip('renders the confirmation dialog', async () => {
       const { mockResolvedResult, server } = mockSolanaRpc;
 
-      server?.get(`/v3/spot-prices`, (_: any, res: any) => {
+      server?.get(`/v3/spot-prices`, (_request: Request, res: Response) => {
         return res.json(mockSpotPrices);
       });
 
-      server?.post(`/solana/message/scan`, (_: any, res: any) => {
-        return res.json(MOCK_SECURITY_ALERTS_API_SCAN_TRANSACTIONS_RESPONSE);
-      });
+      server?.post(
+        `/solana/message/scan`,
+        (_request: Request, res: Response) => {
+          return res.json(MOCK_SECURITY_ALERTS_API_SCAN_TRANSACTIONS_RESPONSE);
+        },
+      );
 
       const initialState = {
         keyringAccounts: {
@@ -134,10 +139,10 @@ describe('render', () => {
       const response = onKeyringRequest({
         origin: TEST_ORIGIN,
         method: KeyringRpcMethod.SubmitRequest,
-        params: request as unknown as KeyringRequest,
+        params: request,
       });
 
-      const screen1BeforeUpdate = await (response as any).getInterface();
+      const screen1BeforeUpdate = await response.getInterface();
 
       /**
        * Second render:
@@ -152,7 +157,7 @@ describe('render', () => {
        */
       await screen1BeforeUpdate.waitForUpdate();
 
-      const screen1 = await (response as any).getInterface();
+      const screen1 = await response.getInterface();
 
       expect(screen1).toRender(
         <ConfirmTransactionRequest context={mockConfirmationContext} />,
@@ -234,10 +239,10 @@ describe('render', () => {
       const response = onKeyringRequest({
         origin: TEST_ORIGIN,
         method: KeyringRpcMethod.SubmitRequest,
-        params: request as unknown as KeyringRequest,
+        params: request,
       });
 
-      const screen1BeforeUpdate = await (response as any).getInterface();
+      const screen1BeforeUpdate = await response.getInterface();
 
       /**
        * Second render:
@@ -252,7 +257,7 @@ describe('render', () => {
        */
       await screen1BeforeUpdate.waitForUpdate();
 
-      const screen1 = await (response as any).getInterface();
+      const screen1 = await response.getInterface();
 
       const mockContext: ConfirmTransactionRequestContext = {
         ...mockConfirmationContext,
@@ -277,8 +282,29 @@ describe('render', () => {
   });
 });
 
+type UpdateInterfaceMock = Mock<
+  (
+    id: string,
+    content: ComponentOrElement,
+    context: ConfirmTransactionRequestContext,
+  ) => Promise<void>
+>;
+
+type SetupTestResult = {
+  render: (context: ConfirmTransactionRequestContext) => Promise<DialogResult>;
+  trackError: Mock;
+  calculateFee: Mock;
+  extractDestinationAddress: Mock;
+  analyzeFeePayment: Mock;
+  extractInstructionsFromUnknownBase64String: Mock;
+  updateInterface: UpdateInterfaceMock;
+  nameResolutionService: { resolveAddress: Mock };
+  priceApiClient: { getMultipleSpotPrices: Mock };
+  transactionScanService: { scanTransaction: Mock };
+};
+
 describe('render tracking', () => {
-  const setupTest = async () => {
+  const setupTest = async (): Promise<SetupTestResult> => {
     const trackError = vi.fn().mockResolvedValue('tracked-error-id');
     const calculateFee = vi.fn().mockReturnValue({
       totalFee: 5000n,
@@ -292,7 +318,15 @@ describe('render tracking', () => {
       simulateOnChainActions: true,
     });
     const showDialog = vi.fn().mockResolvedValue('dialog-result');
-    const updateInterface = vi.fn().mockResolvedValue(undefined);
+    const updateInterface: UpdateInterfaceMock = vi
+      .fn<
+        (
+          id: string,
+          content: ComponentOrElement,
+          context: ConfirmTransactionRequestContext,
+        ) => Promise<void>
+      >()
+      .mockResolvedValue(undefined);
     const extractInstructionsFromUnknownBase64String = vi
       .fn()
       .mockResolvedValue([{}]);
@@ -328,7 +362,7 @@ describe('render tracking', () => {
       updateInterface,
     }));
     vi.doMock('./ConfirmTransactionRequest', () => ({
-      ConfirmTransactionRequest: () => null,
+      ConfirmTransactionRequest: (): null => null,
     }));
     vi.doMock('../../../../entities', () => ({
       extractInstructionsFromUnknownBase64String,
@@ -355,7 +389,7 @@ describe('render tracking', () => {
       transactionScanService,
     }));
 
-    (globalThis as any).snap = {
+    (globalThis as { snap?: unknown }).snap = {
       request: vi.fn().mockResolvedValue(undefined),
     };
 
@@ -413,17 +447,17 @@ describe('render tracking', () => {
     transactionScanService.scanTransaction.mockRejectedValue(scanError);
     analyzeFeePayment.mockRejectedValue(feePaymentError);
 
-    await expect(
-      render({
-        method: SolMethod.SignAndSendTransaction,
-        scope: Network.Mainnet,
-        transaction: 'transaction',
-        account: {
-          address: 'BLw3RweJmfbTapJRgnPRvd962YDjFYAnVGd1p5hmZ5tP',
-        },
-        origin: 'https://metamask.io',
-      } as unknown as ConfirmTransactionRequestContext),
-    ).resolves.toBe('dialog-result');
+    const dialogResult = await render({
+      method: SolMethod.SignAndSendTransaction,
+      scope: Network.Mainnet,
+      transaction: 'transaction',
+      account: {
+        address: 'BLw3RweJmfbTapJRgnPRvd962YDjFYAnVGd1p5hmZ5tP',
+      },
+      origin: 'https://metamask.io',
+    } as unknown as ConfirmTransactionRequestContext);
+
+    expect(dialogResult).toBe('dialog-result');
 
     expect(trackError).toHaveBeenCalledWith(destinationExtractError);
     expect(trackError).toHaveBeenCalledWith(pricesError);
@@ -473,7 +507,7 @@ describe('render tracking', () => {
 
     // The analysis owns the verdict, so its result is used as it comes.
     const contextAfterFee = updateInterface.mock.calls[0]?.[2];
-    expect(contextAfterFee.feePayment).toStrictEqual({
+    expect(contextAfterFee?.feePayment).toStrictEqual({
       feePayer: 'CDg3bPoM21fSXEzrXWHWyJR33JHX6xaYboq5p7s4uo48',
       paidBy: 'sponsor',
       userCost: 'free',

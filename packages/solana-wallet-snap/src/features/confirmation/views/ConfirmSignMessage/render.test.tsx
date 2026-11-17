@@ -1,4 +1,3 @@
-import type { KeyringRequest } from '@metamask/keyring-api';
 import { KeyringRpcMethod } from '@metamask/keyring-api';
 import { installSnap } from '@metamask/snaps-jest';
 
@@ -62,10 +61,10 @@ describe('render', () => {
     const response = onKeyringRequest({
       origin: TEST_ORIGIN,
       method: KeyringRpcMethod.SubmitRequest,
-      params: request as unknown as KeyringRequest,
+      params: request,
     });
 
-    const screen = await (response as any).getInterface();
+    const screen = await response.getInterface();
 
     expect(screen).toRender(
       <ConfirmSignMessage

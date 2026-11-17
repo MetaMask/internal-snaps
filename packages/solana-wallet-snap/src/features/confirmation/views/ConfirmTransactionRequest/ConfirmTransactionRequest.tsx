@@ -1,4 +1,5 @@
 import { ActionHeader, TransactionAlert } from '@metamask/snap-networks-utils';
+import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import { Box, Button, Container, Footer } from '@metamask/snaps-sdk/jsx';
 
 import { Networks } from '../../../../core/constants/solana';
@@ -14,7 +15,7 @@ export const ConfirmTransactionRequest = ({
   context,
 }: {
   context: ConfirmTransactionRequestContext;
-}) => {
+}): ComponentOrElement => {
   const translate = i18n(context.preferences.locale);
 
   const feeInSol = context.feeEstimatedInSol;
