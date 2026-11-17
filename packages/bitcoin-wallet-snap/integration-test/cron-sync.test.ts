@@ -7,6 +7,7 @@ import {
 } from '@metamask/keyring-api';
 import type { Snap } from '@metamask/snaps-jest';
 import { installSnap } from '@metamask/snaps-jest';
+import { hasProperty } from '@metamask/utils';
 
 import { TrackingSnapEvent } from '../src/entities';
 import { BlockchainTestUtils } from './blockchain-utils';
@@ -48,8 +49,6 @@ describe('CronHandler', () => {
       if (request.method === 'snap_scheduleBackgroundEvent') {
         return 'mock-event-id';
       }
-
-      return undefined;
     });
   });
 
@@ -74,7 +73,7 @@ describe('CronHandler', () => {
     });
 
     expect(createResponse.response).toBeDefined();
-    expect('result' in createResponse.response).toBe(true);
+    expect(hasProperty(createResponse.response, 'result')).toBe(true);
 
     const account = (createResponse.response as { result: KeyringAccount[] })
       .result[0] as KeyringAccount;
