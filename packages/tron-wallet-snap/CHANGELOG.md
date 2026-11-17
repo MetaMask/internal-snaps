@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- chore(tron): drop redundant type assertions in some tests ([#622](https://github.com/MetaMask/internal-snaps/pull/622))
+- chore(tron): type remaining Tron client/UI `any` leaks ([#628](https://github.com/MetaMask/internal-snaps/pull/628))
+- chore(tron): type `cronjob` and `clientRequest` handlers' test fixtures ([#627](https://github.com/MetaMask/internal-snaps/pull/627))
+- chore(tron-wallet-snap): drop redundant type assertions ([#613](https://github.com/MetaMask/internal-snaps/pull/613))
+- chore(tron-wallet-snap): clean up test-related Oxlint suppressions ([#611](https://github.com/MetaMask/internal-snaps/pull/611))
+- perf(tron): hash transaction ids with native sha256 ([#599](https://github.com/MetaMask/internal-snaps/pull/599))
+- chore(lint): replace `eslint` with `oxlint` ([#596](https://github.com/MetaMask/internal-snaps/pull/596))
+- chore: update eslint rule with `metamask/eslint-config-vitest` ([#581](https://github.com/MetaMask/internal-snaps/pull/581))
+- chore: add shared vitest config + update `create-package` to use vitest ([#580](https://github.com/MetaMask/internal-snaps/pull/580))
+
 ### Added
 
 - Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for TRX and TRC-20 assets. The maximum leaves enough TRX for the network fees and account activation (native sends) or the transfer fee (TRC-20), and the destination is conservatively assumed unactivated when omitted ([#555](https://github.com/MetaMask/internal-snaps/pull/555))

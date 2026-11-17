@@ -7,11 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- chore(solana): type the Solana test infrastructure ([#630](https://github.com/MetaMask/internal-snaps/pull/630))
+- feat(tron): fetch policy observability ([#607](https://github.com/MetaMask/internal-snaps/pull/607))
+- chore(lint): replace `eslint` with `oxlint` ([#596](https://github.com/MetaMask/internal-snaps/pull/596))
+- chore: update eslint rule with `metamask/eslint-config-vitest` ([#581](https://github.com/MetaMask/internal-snaps/pull/581))
+- chore: add shared vitest config + update `create-package` to use vitest ([#580](https://github.com/MetaMask/internal-snaps/pull/580))
+- Release 23.0.0 ([#577](https://github.com/MetaMask/internal-snaps/pull/577))
+- chore(solana): vitest ([#564](https://github.com/MetaMask/internal-snaps/pull/564))
+
 ### Added
 
-- Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for SOL and SPL assets. SOL leaves the rent-exempt minimum and the fee. SPL requires SOL to cover the fee, the rent-exempt minimum, and the recipient ATA rent unless `toAddress` shows the recipient ATA already exists, and the result is `0` when no amount can pass ([#585](https://github.com/MetaMask/internal-snaps/pull/585)).
-- `onAmountInput` now accepts an optional `toAddress` parameter for the shared client request shape ([#589](https://github.com/MetaMask/internal-snaps/pull/589)).
-- `onAmountInput` now uses `toAddress` to decide whether the recipient ATA rent applies, and returns `Invalid` for unsupported recipients or token accounts for another mint ([#585](https://github.com/MetaMask/internal-snaps/pull/585)).
+- Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for SOL and SPL assets. SOL leaves the rent-exempt minimum and the fee. SPL requires SOL to cover the fee, the rent-exempt minimum, and the recipient ATA rent unless `toAddress` shows the recipient ATA already exists, and the result is `0` when no amount can pass. ([#585](https://github.com/MetaMask/internal-snaps/pull/585))
+- `onAmountInput` now accepts an optional `toAddress` parameter for the shared client request shape. ([#589](https://github.com/MetaMask/internal-snaps/pull/589))
+- `onAmountInput` now uses `toAddress` to decide whether the recipient ATA rent applies, and returns `Invalid` for unsupported recipients or token accounts for another mint. ([#585](https://github.com/MetaMask/internal-snaps/pull/585))
 - Show who pays the network fee on transaction confirmations, and whether a sponsored transaction is free for the user ([#595](https://github.com/MetaMask/internal-snaps/pull/595))
   - When another account pays the fee, the confirmation shows the sponsor and a "You pay" row: "Free" only when no instruction charges the user, otherwise the account rent and payments to the sponsor the user covers
   - Shows "Can't confirm" instead of "Free" when it can't rule out other costs, for example when the simulation fails
