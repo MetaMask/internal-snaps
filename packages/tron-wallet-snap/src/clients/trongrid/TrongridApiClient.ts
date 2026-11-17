@@ -13,6 +13,7 @@ import type {
   ResultWithExpiry,
   Serializable,
 } from '@metamask/snap-networks-utils';
+import type { Infer } from '@metamask/superstruct';
 import { assert } from '@metamask/superstruct';
 
 import { Network } from '../../constants';
@@ -25,19 +26,32 @@ import {
   TrongridAccountNotFoundError,
 } from './errors';
 import {
-  ContractTransactionInfoStruct,
-  Trc20BalanceStruct,
-  TransactionInfoStruct,
-  TronAccountStruct,
+  TrongridAccountResponseStruct,
   TrongridApiMetaStruct,
+  TrongridContractTransactionInfoResponseStruct,
+  TrongridTransactionInfoResponseStruct,
+  TrongridTrc20BalanceResponseStruct,
 } from './structs';
 import type {
   ContractTransactionInfo,
   Trc20Balance,
   TransactionInfo,
   TronAccount,
-  TrongridApiResponse,
 } from './types';
+
+/**
+ * Envelope every TronGrid endpoint wraps its payload in.
+ *
+ * `meta` and `data` are optional because error responses omit them, and the
+ * declared entry types (`TronAccount`, `TransactionInfo`, …) describe the whole
+ * payload while the structs validate the fields the snap reads — so a response
+ * validated by `assert` is read through this envelope type.
+ */
+type TrongridResponseEnvelope<TData> = {
+  success: boolean;
+  meta?: Infer<typeof TrongridApiMetaStruct>;
+  data?: TData;
+};
 
 /**
  * Function name used for the `useCacheUntil` cache key for `getChainParameters`.
@@ -195,22 +209,21 @@ export class TrongridApiClient {
 
     const response = await this.#fetch(scope, url, headers);
 
-    const rawData: TrongridApiResponse<TronAccount[]> = JSON.parse(response);
+    const parsed: unknown = JSON.parse(response);
+    assert(parsed, TrongridAccountResponseStruct, 'TronGrid account response');
+    const rawData = parsed as TrongridResponseEnvelope<TronAccount[]>;
 
     // Validate API response structure
-    if (typeof rawData.success !== 'boolean' || !rawData.success) {
+    if (!rawData.success) {
       throw new Error('API request failed');
     }
     assert(rawData.meta, TrongridApiMetaStruct);
 
-    const account = rawData?.data?.[0];
+    const account = rawData.data?.[0];
 
     if (!account) {
       throw new TrongridAccountNotFoundError();
     }
-
-    // Validate account data schema
-    assert(account, TronAccountStruct);
 
     return account;
   }
@@ -249,22 +262,22 @@ export class TrongridApiClient {
 
     const response = await this.#fetch(scope, url, headers);
 
-    const rawData: TrongridApiResponse<TransactionInfo[]> =
-      JSON.parse(response);
+    const parsed: unknown = JSON.parse(response);
+    assert(
+      parsed,
+      TrongridTransactionInfoResponseStruct,
+      'TronGrid transaction response',
+    );
+    const rawData = parsed as TrongridResponseEnvelope<TransactionInfo[]>;
 
     // Validate API response structure
-    if (typeof rawData.success !== 'boolean' || !rawData.success) {
+    if (!rawData.success) {
       throw new Error('API request failed');
     }
     assert(rawData.meta, TrongridApiMetaStruct);
 
     if (!rawData.data) {
       throw new Error('API request failed');
-    }
-
-    // Validate each transaction info
-    for (const txInfo of rawData.data) {
-      assert(txInfo, TransactionInfoStruct);
     }
 
     return rawData.data;
@@ -296,22 +309,21 @@ export class TrongridApiClient {
 
     const response = await this.#fetch(scope, url, headers);
 
-    const rawData: TrongridApiResponse<ContractTransactionInfo[]> =
-      JSON.parse(response);
+    const rawData: unknown = JSON.parse(response);
+    assert(
+      rawData,
+      TrongridContractTransactionInfoResponseStruct,
+      'TronGrid contract transaction response',
+    );
 
     // Validate API response structure
-    if (typeof rawData.success !== 'boolean' || !rawData.success) {
+    if (!rawData.success) {
       throw new Error('API request failed');
     }
     assert(rawData.meta, TrongridApiMetaStruct);
 
     if (!rawData.data) {
       throw new Error('API request failed');
-    }
-
-    // Validate each contract transaction info
-    for (const txInfo of rawData.data) {
-      assert(txInfo, ContractTransactionInfoStruct);
     }
 
     return rawData.data;
@@ -344,21 +356,21 @@ export class TrongridApiClient {
 
     const response = await this.#fetch(scope, url, headers);
 
-    const rawData: TrongridApiResponse<Trc20Balance[]> = JSON.parse(response);
+    const rawData: unknown = JSON.parse(response);
+    assert(
+      rawData,
+      TrongridTrc20BalanceResponseStruct,
+      'TronGrid TRC20 balance response',
+    );
 
     // Validate API response structure
-    if (typeof rawData.success !== 'boolean' || !rawData.success) {
+    if (!rawData.success) {
       throw new Error('API request failed');
     }
     assert(rawData.meta, TrongridApiMetaStruct);
 
     if (!rawData.data) {
       return [];
-    }
-
-    // Validate each TRC20 balance entry
-    for (const balance of rawData.data) {
-      assert(balance, Trc20BalanceStruct);
     }
 
     return rawData.data;

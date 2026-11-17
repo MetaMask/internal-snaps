@@ -203,23 +203,27 @@ export const TrongridApiMetaStruct = type({
   page_size: min(number(), 0),
 });
 
-// Pre-built response structs for common use cases
+/**
+ * Response envelopes for each endpoint. `meta` and `data` stay optional because
+ * error responses omit them, and `data` entries are validated by the entry
+ * structs so the snap never reads an unvalidated field.
+ */
 export const TrongridAccountResponseStruct = type({
-  data: array(TronAccountStruct),
+  data: optional(array(TronAccountStruct)),
   success: boolean(),
-  meta: TrongridApiMetaStruct,
+  meta: optional(TrongridApiMetaStruct),
 });
 
 export const TrongridTransactionInfoResponseStruct = type({
-  data: array(TransactionInfoStruct),
+  data: optional(array(TransactionInfoStruct)),
   success: boolean(),
-  meta: TrongridApiMetaStruct,
+  meta: optional(TrongridApiMetaStruct),
 });
 
 export const TrongridContractTransactionInfoResponseStruct = type({
-  data: array(ContractTransactionInfoStruct),
+  data: optional(array(ContractTransactionInfoStruct)),
   success: boolean(),
-  meta: TrongridApiMetaStruct,
+  meta: optional(TrongridApiMetaStruct),
 });
 
 // --------------------------------------------------------------------------
@@ -232,11 +236,8 @@ export const TrongridContractTransactionInfoResponseStruct = type({
  */
 export const Trc20BalanceStruct = record(string(), string());
 
-/**
- * Struct for validating the TRC20 balance API response.
- */
 export const TrongridTrc20BalanceResponseStruct = type({
-  data: array(Trc20BalanceStruct),
+  data: optional(array(Trc20BalanceStruct)),
   success: boolean(),
-  meta: TrongridApiMetaStruct,
+  meta: optional(TrongridApiMetaStruct),
 });
