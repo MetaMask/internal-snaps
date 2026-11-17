@@ -3,9 +3,7 @@ import {
   BrokenCircuitError,
   createSnapErrorHandling,
   FetchPolicyErrorName,
-  isReportedFetchPolicyError,
 } from '@metamask/snap-networks-utils';
-import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 import type { Struct } from '@metamask/superstruct';
 import { assert, enums, object, type } from '@metamask/superstruct';
 
@@ -310,7 +308,4 @@ export const { trackError, withCatchAndThrowSnapError } =
   createSnapErrorHandling({
     getSnapProvider,
     logError: logger.error.bind(logger),
-    shouldTrack: (error) =>
-      !(error instanceof UserRejectedRequestError) &&
-      !isReportedFetchPolicyError(error),
   });

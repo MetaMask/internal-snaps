@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Change the default `shouldTrack` of `createTrackError` and `createSnapErrorHandling` to also skip errors a fetch policy already reported (`isReportedFetchPolicyError`) ([#642](https://github.com/MetaMask/internal-snaps/pull/642))
 - Change `requiresMaliciousAcknowledgement` to accept the security-alerts preference and verdict, treating a missing preference as disabled, and allow `TransactionAlert` callers to select the unavailable-scan banner severity ([#578](https://github.com/MetaMask/internal-snaps/pull/578))
 
 ### Fixed

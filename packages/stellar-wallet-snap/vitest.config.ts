@@ -45,8 +45,8 @@ export default mergeConfig(
           'src/shims/eventsource.ts',
         ],
         thresholds: {
-          branches: 77.84,
-          functions: 87.38,
+          branches: 77.83,
+          functions: 87.36,
           lines: 88.42,
           statements: 88.38,
         },
