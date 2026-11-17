@@ -685,7 +685,11 @@ describe('RpcHandler', () => {
       });
     });
 
-    it('accepts the full balance as a drain amount', async () => {
+    it('rejects the full balance because the fee cannot be covered', async () => {
+      mockSendFlowUseCases.buildProbePsbt.mockRejectedValue(
+        new Error('Insufficient funds: 150000000 sat available'),
+      );
+
       const drainRequest: JsonRpcRequest = {
         id: 1,
         jsonrpc: '2.0',
@@ -704,7 +708,10 @@ describe('RpcHandler', () => {
         '1.5',
         undefined,
       );
-      expect(result).toStrictEqual({ valid: true, errors: [] });
+      expect(result).toStrictEqual({
+        valid: false,
+        errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
+      });
     });
 
     it('passes a provided toAddress to the fee check', async () => {
@@ -905,6 +912,31 @@ describe('RpcHandler', () => {
         undefined,
       );
       expect(result).toStrictEqual({ amount: '1.4999' });
+    });
+
+    it('returns an amount that onAmountInput accepts', async () => {
+      mockFundableUpTo(spendableSats - feeSats);
+      const createAmountRequest = (value: string): JsonRpcRequest => ({
+        id: 2,
+        jsonrpc: '2.0',
+        method: RpcMethod.OnAmountInput,
+        params: { value, accountId: validAccountId, assetId },
+      });
+
+      const { amount } = (await handler.route(origin, createRequest())) as {
+        amount: string;
+      };
+      const accepted = await handler.route(origin, createAmountRequest(amount));
+      const rejected = await handler.route(
+        origin,
+        createAmountRequest('1.49990001'),
+      );
+
+      expect(accepted).toStrictEqual({ valid: true, errors: [] });
+      expect(rejected).toStrictEqual({
+        valid: false,
+        errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
+      });
     });
 
     it('returns 0 when no amount covers the fee', async () => {
