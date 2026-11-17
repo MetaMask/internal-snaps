@@ -14,6 +14,7 @@ import {
 } from '../../../../core/utils/interface';
 import * as SnapInterface from '../../../../core/utils/interface';
 import { state } from '../../../../snapContext';
+import * as ConfirmTransactionRequestView from './ConfirmTransactionRequest';
 import { ConfirmSignAndSendTransactionFormNames } from './events';
 import { eventHandlers } from './events';
 import type { ConfirmTransactionRequestContext } from './types';
@@ -97,6 +98,37 @@ describe('confirm transaction request events', () => {
     vi.spyOn(SnapInterface, 'resolveInterface').mockResolvedValue(null);
     vi.spyOn(SnapInterface, 'updateInterface').mockResolvedValue(null);
     vi.spyOn(state, 'deleteKey').mockResolvedValue(undefined);
+  });
+
+  describe('advanced view', () => {
+    it('renders the view from a serialized context so bigint instruction data can display', async () => {
+      const renderView = vi
+        .spyOn(ConfirmTransactionRequestView, 'ConfirmTransactionRequest')
+        .mockReturnValue(null);
+
+      await runEvent(
+        ConfirmSignAndSendTransactionFormNames.ShowAdvanced,
+        buttonEvent(ConfirmSignAndSendTransactionFormNames.ShowAdvanced),
+        {
+          ...baseContext,
+          advanced: {
+            shown: false,
+            instructions: [
+              { type: 'TokenTransfer', parsed: { data: { amount: 1000n } } },
+            ] as unknown as ConfirmTransactionRequestContext['advanced']['instructions'],
+          },
+        },
+      );
+
+      const props = renderView.mock.calls.at(-1)?.[0] as {
+        context: ConfirmTransactionRequestContext;
+      };
+      expect(props.context.advanced.shown).toBe(true);
+      expect(props.context.advanced.instructions[0]).toMatchObject({
+        parsed: { data: { amount: { __type: 'bigint', value: '1000' } } },
+      });
+      renderView.mockRestore();
+    });
   });
 
   describe('malicious acknowledgement', () => {

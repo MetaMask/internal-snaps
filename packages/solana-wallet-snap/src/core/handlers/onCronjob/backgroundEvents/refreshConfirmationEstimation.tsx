@@ -1,11 +1,9 @@
-import {
-  DEFAULT_METAMASK_ORIGIN,
-  serialize,
-} from '@metamask/snap-networks-utils';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { OnCronjobHandler } from '@metamask/snaps-sdk';
 
 import { ConfirmTransactionRequest } from '../../../../features/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
 import type { ConfirmTransactionRequestContext } from '../../../../features/confirmation/views/ConfirmTransactionRequest/types';
+import { toUiContext } from '../../../../features/confirmation/views/ConfirmTransactionRequest/utils';
 import {
   connection,
   state,
@@ -14,6 +12,7 @@ import {
 import type { UnencryptedStateValue } from '../../../services/state/stateTypes';
 import { EXPIRED_TRANSACTION_SCAN } from '../../../services/transaction-scan/buildExpiredScanResult';
 import { isTransactionBlockhashExpired } from '../../../services/transaction-scan/isTransactionBlockhashExpired';
+import type { TransactionScanResult } from '../../../services/transaction-scan/types';
 import { trackError } from '../../../utils/errors';
 import {
   CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME,
@@ -23,6 +22,28 @@ import {
 } from '../../../utils/interface';
 import baseLogger from '../../../utils/logger';
 import { ScheduleBackgroundEventMethod } from './ScheduleBackgroundEventMethod';
+
+/**
+ * Returns the scan to store after a refresh. The simulation data always comes
+ * from the refresh, but a refresh without a validation verdict keeps the latest
+ * verdict, so a known malicious verdict is not lost.
+ *
+ * @param latestScan - The scan stored before this refresh.
+ * @param refreshedScan - The scan produced by this refresh.
+ * @returns The scan to store.
+ */
+function keepKnownVerdict(
+  latestScan: TransactionScanResult | null,
+  refreshedScan: TransactionScanResult,
+): TransactionScanResult {
+  const knownValidation = latestScan?.validation;
+
+  if (!refreshedScan.validation?.type && knownValidation?.type) {
+    return { ...refreshedScan, validation: knownValidation };
+  }
+
+  return refreshedScan;
+}
 
 export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
   const logger = baseLogger.withPrefix('[refreshConfirmationEstimation]');
@@ -74,34 +95,9 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
     const shouldSkipBlockhashCheck =
       interfaceContext.origin === DEFAULT_METAMASK_ORIGIN;
 
-    // Blockhash-only refreshes must not show the scan-in-progress state. The
-    // latest context is read under the lock, so this update cannot overwrite an
-    // acknowledgement or Back update made since the refresh started.
-    if (shouldScan) {
-      await withInterfaceLock(confirmationInterfaceId, async () => {
-        const latestInterfaceContext =
-          await getInterfaceContext<ConfirmTransactionRequestContext>(
-            confirmationInterfaceId,
-          );
-
-        if (!latestInterfaceContext) {
-          return;
-        }
-
-        const fetchingConfirmationContext = {
-          ...latestInterfaceContext,
-          scanFetchStatus: 'fetching',
-        } as ConfirmTransactionRequestContext;
-
-        await updateInterface(
-          confirmationInterfaceId,
-          <ConfirmTransactionRequest
-            context={serialize(fetchingConfirmationContext) as any}
-          />,
-          fetchingConfirmationContext,
-        );
-      });
-    } else {
+    // Background refreshes never set `fetching`. Only the initial load does, so
+    // Confirm and an open acknowledgement stay usable while a refresh runs.
+    if (!shouldScan) {
       logger.info(`Transaction simulation is disabled in preferences`);
     }
 
@@ -149,11 +145,12 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
         const transactionExpired =
           isExpired || latestInterfaceContext.transactionExpired === true;
 
-        // Keep the latest scan unless this refresh produced one. Local expiry
-        // takes precedence, so its blocking state stays in place.
+        // Keep the latest scan unless this refresh produced one. A failed refresh
+        // returns null, so it keeps the latest scan too. Local expiry takes
+        // precedence, so its blocking state stays in place.
         let updatedScan = latestInterfaceContext.scan;
-        if (scan !== undefined) {
-          updatedScan = scan;
+        if (scan) {
+          updatedScan = keepKnownVerdict(latestInterfaceContext.scan, scan);
         }
         if (transactionExpired) {
           updatedScan = EXPIRED_TRANSACTION_SCAN;
@@ -173,7 +170,7 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
         await updateInterface(
           confirmationInterfaceId,
           <ConfirmTransactionRequest
-            context={serialize(updatedInterfaceContext) as any}
+            context={toUiContext(updatedInterfaceContext)}
           />,
           updatedInterfaceContext,
         );
@@ -216,7 +213,7 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
           return false;
         }
 
-        const fetchingConfirmationContext = {
+        const rolledBackConfirmationContext = {
           ...fetchedInterfaceContext,
           scanFetchStatus: 'fetched',
         } as ConfirmTransactionRequestContext;
@@ -224,9 +221,9 @@ export const refreshConfirmationEstimation: OnCronjobHandler = async () => {
         await updateInterface(
           confirmationInterfaceId,
           <ConfirmTransactionRequest
-            context={serialize(fetchingConfirmationContext) as any}
+            context={toUiContext(rolledBackConfirmationContext)}
           />,
-          fetchingConfirmationContext,
+          rolledBackConfirmationContext,
         );
 
         return true;

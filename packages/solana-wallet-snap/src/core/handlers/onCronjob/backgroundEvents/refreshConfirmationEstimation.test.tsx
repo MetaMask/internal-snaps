@@ -147,6 +147,82 @@ describe('refreshConfirmationEstimation', () => {
     );
   });
 
+  it('keeps the known verdict when a background refresh fails', async () => {
+    const interfaceContext = setupTest();
+    const maliciousScan = {
+      status: 'SUCCESS',
+      estimatedChanges: { assets: [] },
+      validation: { type: 'Malicious', reason: null },
+      error: null,
+      validationError: null,
+    };
+    (getInterfaceContext as Mock).mockResolvedValue({
+      ...interfaceContext,
+      scan: maliciousScan,
+    });
+    (transactionScanService.scanTransaction as Mock).mockResolvedValue(null);
+
+    await refreshConfirmationEstimation({
+      request: {} as JsonRpcRequest<JsonRpcParams>,
+    });
+
+    expect(updateInterface).toHaveBeenLastCalledWith(
+      'interface-id',
+      null,
+      expect.objectContaining({
+        scan: maliciousScan,
+        scanFetchStatus: 'fetched',
+      }),
+    );
+  });
+
+  it('keeps the known verdict when a refresh has none, and updates the simulation', async () => {
+    const interfaceContext = setupTest();
+    const maliciousScan = {
+      status: 'SUCCESS',
+      estimatedChanges: { assets: [] },
+      validation: { type: 'Malicious', reason: null },
+      error: null,
+      validationError: null,
+    };
+    const refreshedAssets = [
+      {
+        type: 'out',
+        symbol: 'SOL',
+        name: 'Solana',
+        logo: null,
+        value: '1',
+        price: null,
+      },
+    ];
+    (getInterfaceContext as Mock).mockResolvedValue({
+      ...interfaceContext,
+      scan: maliciousScan,
+    });
+    (transactionScanService.scanTransaction as Mock).mockResolvedValue({
+      status: 'SUCCESS',
+      estimatedChanges: { assets: refreshedAssets },
+      validation: { type: null, reason: null },
+      error: null,
+      validationError: null,
+    });
+
+    await refreshConfirmationEstimation({
+      request: {} as JsonRpcRequest<JsonRpcParams>,
+    });
+
+    expect(updateInterface).toHaveBeenLastCalledWith(
+      'interface-id',
+      null,
+      expect.objectContaining({
+        scan: expect.objectContaining({
+          estimatedChanges: { assets: refreshedAssets },
+          validation: maliciousScan.validation,
+        }),
+      }),
+    );
+  });
+
   it('keeps acknowledgement state written while the scan is pending', async () => {
     const interfaceContext = setupTest();
     const latestContext = {
@@ -156,7 +232,6 @@ describe('refreshConfirmationEstimation', () => {
     };
     (getInterfaceContext as Mock)
       .mockResolvedValueOnce(interfaceContext) // Read when the refresh starts.
-      .mockResolvedValueOnce(interfaceContext) // Read for the fetching update.
       .mockResolvedValueOnce(latestContext); // Read before the merge.
     (transactionScanService.scanTransaction as Mock).mockResolvedValue({
       status: 'SUCCESS',
@@ -174,6 +249,29 @@ describe('refreshConfirmationEstimation', () => {
         acknowledged: true,
         scanFetchStatus: 'fetched',
       }),
+    );
+  });
+
+  it('does not set a fetching state during a background re-scan', async () => {
+    setupTest();
+    (transactionScanService.scanTransaction as Mock).mockResolvedValue({
+      status: 'SUCCESS',
+    });
+
+    await refreshConfirmationEstimation({
+      request: {} as JsonRpcRequest<JsonRpcParams>,
+    });
+
+    expect(transactionScanService.scanTransaction).toHaveBeenCalled();
+    expect(updateInterface).not.toHaveBeenCalledWith(
+      'interface-id',
+      null,
+      expect.objectContaining({ scanFetchStatus: 'fetching' }),
+    );
+    expect(updateInterface).toHaveBeenLastCalledWith(
+      'interface-id',
+      null,
+      expect.objectContaining({ scanFetchStatus: 'fetched' }),
     );
   });
 

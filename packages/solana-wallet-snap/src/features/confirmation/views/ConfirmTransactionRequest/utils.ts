@@ -1,4 +1,7 @@
+import { serialize } from '@metamask/snap-networks-utils';
+
 import type { FetchStatus } from '../../../../core/types/snap';
+import type { ConfirmTransactionRequestContext } from './types';
 
 /**
  * Single source of truth for whether the confirm action must be disabled.
@@ -27,4 +30,21 @@ export function shouldDisableConfirmation(params: {
   return (
     params.scanFetchStatus === 'fetching' || params.transactionExpired === true
   );
+}
+
+/**
+ * Converts a context to the serialized form that interface components receive.
+ *
+ * Handlers read the stored context through `getInterfaceContext`, which
+ * deserializes it, so `bigint` values in parsed instruction data come back as
+ * `bigint`. The Advanced view deserializes those values with `JSON.stringify`,
+ * which throws on `bigint`, so it must receive the serialized form.
+ *
+ * @param context - The context to convert.
+ * @returns The serialized context, typed as the context for the component props.
+ */
+export function toUiContext(
+  context: ConfirmTransactionRequestContext,
+): ConfirmTransactionRequestContext {
+  return serialize(context) as unknown as ConfirmTransactionRequestContext;
 }

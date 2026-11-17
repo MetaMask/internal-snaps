@@ -14,8 +14,8 @@ import {
 } from '../../../../core/utils/interface';
 import { state } from '../../../../snapContext';
 import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
-import type { ConfirmTransactionRequestContext } from './types';
-import { shouldDisableConfirmation } from './utils';
+import type { ConfirmTransactionRequestContext as Context } from './types';
+import { shouldDisableConfirmation, toUiContext } from './utils';
 
 /**
  * Re-renders the interface with a patched context.
@@ -26,17 +26,17 @@ import { shouldDisableConfirmation } from './utils';
  */
 async function reRender(
   id: string,
-  context: ConfirmTransactionRequestContext,
-  patch: Partial<ConfirmTransactionRequestContext>,
+  context: Context,
+  patch: Partial<Context>,
 ): Promise<void> {
-  const nextContext: ConfirmTransactionRequestContext = {
+  const nextContext: Context = {
     ...context,
     ...patch,
   };
 
   await updateInterface(
     id,
-    <ConfirmTransactionRequest context={nextContext} />,
+    <ConfirmTransactionRequest context={toUiContext(nextContext)} />,
     nextContext,
   );
 }
@@ -55,11 +55,11 @@ async function reRender(
  */
 async function updateLatestContext(
   id: string,
-  update: (context: ConfirmTransactionRequestContext) => Promise<void>,
+  update: (context: Context) => Promise<void>,
 ): Promise<void> {
   await withInterfaceLock(id, async () => {
-    const context =
-      await getInterfaceContext<ConfirmTransactionRequestContext>(id);
+    const context = await getInterfaceContext<Context>(id);
+
     if (!context) {
       return;
     }
@@ -127,8 +127,8 @@ async function onCancelButtonClick({ id }: { id: string }): Promise<void> {
  */
 async function onConfirmButtonClick({ id }: { id: string }): Promise<void> {
   await withInterfaceLock(id, async () => {
-    const context =
-      await getInterfaceContext<ConfirmTransactionRequestContext>(id);
+    const context = await getInterfaceContext<Context>(id);
+
     if (!context || shouldDisableConfirmation(context)) {
       return;
     }
@@ -206,8 +206,8 @@ async function onAcknowledgeChange({
  */
 async function onProceedButtonClick({ id }: { id: string }): Promise<void> {
   await withInterfaceLock(id, async () => {
-    const context =
-      await getInterfaceContext<ConfirmTransactionRequestContext>(id);
+    const context = await getInterfaceContext<Context>(id);
+
     if (!context?.acknowledged) {
       return;
     }
