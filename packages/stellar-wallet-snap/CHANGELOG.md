@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add the `getMaxSendableAmount` client request method, returning the maximum amount that would pass `onAmountInput` for XLM and classic assets. XLM leaves the minimum reserve and the inclusion fee, token balances require XLM to cover the fee, and the result is `0` when no amount can pass ([#594](https://github.com/MetaMask/internal-snaps/pull/594))
 
+### Changed
+
+- Report Horizon, Stellar RPC, Price API, Token API and Security Alerts API outages through the shared fetch policy ([#614](https://github.com/MetaMask/internal-snaps/pull/614))
+  - Outages send the "Snap Service Degraded" and "Snap Service Unavailable" Segment events.
+  - Stellar RPC, Price API, Token API and Security Alerts API calls that use up their retries are reported to Sentry once, sanitised, and callers no longer report them again.
+  - Horizon keeps its current Sentry reporting, because the Stellar SDK rethrows Horizon read failures as new errors that callers can't recognise as already reported.
+
 ## [2.1.0]
 
 ### Changed

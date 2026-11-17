@@ -1,6 +1,8 @@
+import * as snapNetworksUtils from '@metamask/snap-networks-utils';
 import { buildUrl } from '@metamask/snap-networks-utils';
 import type { MockedFunction } from 'vitest';
 
+import { fetchPolicyReporting } from '../../../utils/analytics';
 import {
   HttpException,
   HttpResponseException,
@@ -43,6 +45,22 @@ describe('PriceApiClient', () => {
   });
 
   const createClient = () => new PriceApiClient({ baseUrl }, mockFetch);
+
+  it('reports outages through its fetch policy', () => {
+    const createFetchPolicySpy = vi.spyOn(
+      snapNetworksUtils,
+      'createFetchPolicy',
+    );
+
+    createClient();
+
+    expect(createFetchPolicySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        service: 'price_api',
+        ...fetchPolicyReporting,
+      }),
+    );
+  });
 
   describe('getSpotPrices', () => {
     it('requests spot prices with default vsCurrency', async () => {

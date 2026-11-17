@@ -16,6 +16,7 @@ import type {
 } from '../../../api';
 import type { AnyErrorConstructor } from '../../../utils';
 import { rethrowIfInstanceElseThrow } from '../../../utils';
+import { fetchPolicyReporting } from '../../../utils/analytics';
 import {
   assertHttpRequestParams,
   assertHttpResponse,
@@ -56,6 +57,7 @@ export class TokenApiClient {
     this.#policy = createFetchPolicy({
       service: 'token_api',
       logger: _logger,
+      ...fetchPolicyReporting,
     });
   }
 
