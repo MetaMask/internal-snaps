@@ -1,6 +1,6 @@
-import type { KeyringRequest } from '@metamask/keyring-api';
 import { KeyringRpcMethod, SolMethod } from '@metamask/keyring-api';
 import { installSnap } from '@metamask/snaps-jest';
+import type { Request, Response } from 'express';
 
 import { MOCK_SPOT_PRICES } from '../../../../core/clients/price-api/mocks/spot-prices';
 import { KnownCaip19Id, Network } from '../../../../core/constants/solana';
@@ -62,13 +62,16 @@ describe('render', () => {
     it.skip('renders the confirmation dialog', async () => {
       const { mockResolvedResult, server } = mockSolanaRpc;
 
-      server?.get(`/v3/spot-prices`, (_: any, res: any) => {
+      server?.get(`/v3/spot-prices`, (_request: Request, res: Response) => {
         return res.json(mockSpotPrices);
       });
 
-      server?.post(`/solana/message/scan`, (_: any, res: any) => {
-        return res.json(MOCK_SECURITY_ALERTS_API_SCAN_TRANSACTIONS_RESPONSE);
-      });
+      server?.post(
+        `/solana/message/scan`,
+        (_request: Request, res: Response) => {
+          return res.json(MOCK_SECURITY_ALERTS_API_SCAN_TRANSACTIONS_RESPONSE);
+        },
+      );
 
       const initialState = {
         keyringAccounts: {
@@ -134,10 +137,10 @@ describe('render', () => {
       const response = onKeyringRequest({
         origin: TEST_ORIGIN,
         method: KeyringRpcMethod.SubmitRequest,
-        params: request as unknown as KeyringRequest,
+        params: request,
       });
 
-      const screen1BeforeUpdate = await (response as any).getInterface();
+      const screen1BeforeUpdate = await response.getInterface();
 
       /**
        * Second render:
@@ -152,7 +155,7 @@ describe('render', () => {
        */
       await screen1BeforeUpdate.waitForUpdate();
 
-      const screen1 = await (response as any).getInterface();
+      const screen1 = await response.getInterface();
 
       expect(screen1).toRender(
         <ConfirmTransactionRequest context={mockConfirmationContext} />,
@@ -234,10 +237,10 @@ describe('render', () => {
       const response = onKeyringRequest({
         origin: TEST_ORIGIN,
         method: KeyringRpcMethod.SubmitRequest,
-        params: request as unknown as KeyringRequest,
+        params: request,
       });
 
-      const screen1BeforeUpdate = await (response as any).getInterface();
+      const screen1BeforeUpdate = await response.getInterface();
 
       /**
        * Second render:
@@ -252,7 +255,7 @@ describe('render', () => {
        */
       await screen1BeforeUpdate.waitForUpdate();
 
-      const screen1 = await (response as any).getInterface();
+      const screen1 = await response.getInterface();
 
       const mockContext: ConfirmTransactionRequestContext = {
         ...mockConfirmationContext,

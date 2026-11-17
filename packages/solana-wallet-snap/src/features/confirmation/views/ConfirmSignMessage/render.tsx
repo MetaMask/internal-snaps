@@ -1,4 +1,5 @@
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import type { DialogResult } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { getBase64Codec, getUtf8Codec } from '@solana/kit';
 
@@ -24,7 +25,7 @@ import { ConfirmSignMessage } from './ConfirmSignMessage';
 export async function render(
   request: SolanaKeyringRequest,
   account: ExtendedKeyringAccount,
-) {
+): Promise<DialogResult> {
   assert(request.request, SolanaSignMessageRequestStruct);
 
   const {
