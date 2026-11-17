@@ -6,7 +6,7 @@ import type {
   Logger,
 } from '@metamask/snap-networks-utils';
 import { is } from '@metamask/superstruct';
-import { CaipAssetTypeStruct } from '@metamask/utils';
+import { CaipAssetTypeStruct, hasProperty } from '@metamask/utils';
 import { groupBy } from 'lodash';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
@@ -82,10 +82,14 @@ export class TransactionsService {
         tx.raw_data.contract?.[0]?.type === 'TriggerSmartContract';
       const hasEmptyInternalTransactions =
         !tx.internal_transactions || tx.internal_transactions.length === 0;
+      // `call_value` only exists on some contract parameter variants, so read it
+      // defensively instead of casting the payload to `any`.
+      const contractValue = tx.raw_data.contract?.[0]?.parameter?.value;
       const hasCallValue =
-        // TODO: Replace `any` with type
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (tx.raw_data.contract?.[0]?.parameter?.value as any)?.call_value > 0;
+        contractValue !== undefined &&
+        hasProperty(contractValue, 'call_value') &&
+        typeof contractValue.call_value === 'number' &&
+        contractValue.call_value > 0;
 
       if (
         isTriggerSmartContract &&

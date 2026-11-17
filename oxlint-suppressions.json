@@ -1875,14 +1875,6 @@
       "count": 2
     }
   },
-  "packages/tron-wallet-snap/src/services/confirmation/ConfirmationHandler.ts": {
-    "typescript/no-unsafe-argument": {
-      "count": 2
-    },
-    "typescript/no-unsafe-assignment": {
-      "count": 2
-    }
-  },
   "packages/tron-wallet-snap/src/services/send/FeeCalculatorService.test.ts": {
     "typescript/no-unnecessary-type-assertion": {
       "count": 1
@@ -1922,11 +1914,6 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/services/send/SendService.ts": {
-    "typescript/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/services/staking/StakingService.test.ts": {
     "typescript/no-explicit-any": {
       "count": 7
@@ -1944,38 +1931,11 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/services/transaction-expiration-refresher/TransactionExpirationRefresherService.ts": {
-    "typescript/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/services/transaction-scan/TransactionScanService.ts": {
     "internal-snaps/no-in-operator": {
       "count": 3
     },
     "typescript/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/src/services/transactions/TransactionsMapper.ts": {
-    "typescript/no-unsafe-argument": {
-      "count": 4
-    },
-    "typescript/no-unsafe-assignment": {
-      "count": 10
-    },
-    "typescript/no-unsafe-call": {
-      "count": 7
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 17
-    },
-    "typescript/no-unsafe-return": {
-      "count": 2
-    }
-  },
-  "packages/tron-wallet-snap/src/services/transactions/TransactionsService.ts": {
-    "typescript/no-unsafe-member-access": {
       "count": 1
     }
   },
@@ -1997,20 +1957,6 @@
     },
     "typescript/no-unsafe-return": {
       "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/src/services/wallet/WalletService.ts": {
-    "typescript/no-unsafe-argument": {
-      "count": 4
-    },
-    "typescript/no-unsafe-assignment": {
-      "count": 6
-    },
-    "typescript/no-unsafe-call": {
-      "count": 5
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 11
     }
   },
   "packages/tron-wallet-snap/src/ui/confirmation/components/EstimatedChanges/EstimatedChanges.tsx": {
