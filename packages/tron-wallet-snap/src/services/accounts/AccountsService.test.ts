@@ -356,18 +356,17 @@ describe('AccountsService', () => {
   });
 
   describe('deriveTronKeypairs', () => {
-    const createAccount = (index: number): TronKeyringAccount =>
-      ({
-        id: `account-${index}`,
-        entropySource: 'test-entropy',
-        derivationPath: AccountsService.getDefaultDerivationPath(index),
-        index,
-        address: `TAccount${index}`,
-        type: TrxAccountType.Eoa,
-        scopes: SUPPORTED_SCOPES as unknown as Network[],
-        options: {},
-        methods: ['signMessage', 'signTransaction'],
-      }) as unknown as TronKeyringAccount;
+    const createAccount = (index: number): TronKeyringAccount => ({
+      id: `account-${index}`,
+      entropySource: 'test-entropy',
+      derivationPath: AccountsService.getDefaultDerivationPath(index),
+      index,
+      address: `TAccount${index}`,
+      type: TrxAccountType.Eoa,
+      scopes: SUPPORTED_SCOPES as unknown as Network[],
+      options: {},
+      methods: ['signMessage', 'signTransaction'],
+    });
 
     it('derives multiple keypairs with one entropy fetch per entropy source', async () => {
       const coinJson = await getTronTestCoinTypeJson();

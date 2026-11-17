@@ -68,7 +68,7 @@ function createControllerAsset(options: {
       usdPrice: 0,
     },
     fiatValue: 0,
-  } as Asset;
+  };
 }
 
 /**

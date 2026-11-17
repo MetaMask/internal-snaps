@@ -15,7 +15,7 @@ import type { ConfigProvider } from '../../services/config';
 import { fetchPolicyReporting } from '../../utils/analytics';
 import { mockLogger } from '../../utils/mockLogger';
 import { PriceApiClient } from './PriceApiClient';
-import type { SpotPrices, VsCurrencyParam } from './types';
+import type { SpotPrices } from './types';
 
 type PriceApiClientSetup = {
   client: PriceApiClient;
@@ -421,7 +421,7 @@ describe('PriceApiClient', () => {
         await expect(
           client.getMultipleSpotPrices(
             [KnownCaip19Id.TrxMainnet],
-            'INVALID<script>alert(1)</script>' as VsCurrencyParam,
+            'INVALID<script>alert(1)</script>',
           ),
         ).rejects.toThrow(/Expected/u);
       });
@@ -456,7 +456,7 @@ describe('PriceApiClient', () => {
         await expect(
           client.getMultipleSpotPrices(
             [KnownCaip19Id.TrxMainnet],
-            'usd\x00\x1F' as VsCurrencyParam,
+            'usd\x00\x1F',
           ),
         ).rejects.toThrow(/Expected/u);
       });
