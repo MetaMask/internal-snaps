@@ -40,7 +40,7 @@ export const SendForm = (props: SendFormProps): JSXElement => {
     drain,
     exchangeRate,
   } = props;
-  const t = translate(messages);
+  const tr = translate(messages);
 
   const validAddress = Boolean(recipient && !errors.recipient);
   const chainId = networkToScope[network];
@@ -57,7 +57,7 @@ export const SendForm = (props: SendFormProps): JSXElement => {
 
   return (
     <Form name="sendForm">
-      <Field label={t('from')}>
+      <Field label={tr('from')}>
         <AccountSelector
           name={SendFormEvent.Account}
           chainIds={[chainId]}
@@ -72,16 +72,16 @@ export const SendForm = (props: SendFormProps): JSXElement => {
       <Box>{null}</Box>
 
       <Field
-        label={t('toAddress')}
+        label={tr('toAddress')}
         error={
           errors.recipient
-            ? t(errorCodeToLabel(errors.recipient.code))
+            ? tr(errorCodeToLabel(errors.recipient.code))
             : undefined
         }
       >
         <Input
           name={SendFormEvent.Recipient}
-          placeholder={t('recipientPlaceholder')}
+          placeholder={tr('recipientPlaceholder')}
           value={recipient ?? ''}
         />
         {Boolean(recipient) && (
@@ -100,7 +100,7 @@ export const SendForm = (props: SendFormProps): JSXElement => {
           <Box>{null}</Box>
 
           <Box direction="horizontal">
-            <Field label={t('asset')}>
+            <Field label={tr('asset')}>
               <AssetSelector
                 chainIds={[chainId]}
                 value={networkToCaip19[network]}
@@ -110,10 +110,10 @@ export const SendForm = (props: SendFormProps): JSXElement => {
             </Field>
 
             <Field
-              label={t('amount')}
+              label={tr('amount')}
               error={
                 errors.amount
-                  ? t(errorCodeToLabel(errors.amount.code))
+                  ? tr(errorCodeToLabel(errors.amount.code))
                   : undefined
               }
             >
@@ -149,16 +149,16 @@ export const SendForm = (props: SendFormProps): JSXElement => {
 
           <Box direction="horizontal" alignment={'space-between'}>
             <SnapText size="sm" color="alternative">
-              {`${t('balance')}: ${isCurrencySwapped ? displayExchangeAmount(BigInt(balance), exchangeRate) : displayAmount(BigInt(balance), currency)}`}
+              {`${tr('balance')}: ${isCurrencySwapped ? displayExchangeAmount(BigInt(balance), exchangeRate) : displayAmount(BigInt(balance), currency)}`}
             </SnapText>
 
             {drain ? (
               <Button size="sm" name={SendFormEvent.ClearAmount}>
-                {t('clear')}
+                {tr('clear')}
               </Button>
             ) : (
               <Button size="sm" name={SendFormEvent.Max}>
-                {t('max')}
+                {tr('max')}
               </Button>
             )}
           </Box>

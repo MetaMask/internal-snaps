@@ -101,35 +101,6 @@
       "count": 2
     }
   },
-  "packages/bitcoin-wallet-snap/src/infra/EsploraClientAdapter.test.ts": {
-    "vitest/no-conditional-in-test": {
-      "count": 3
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/infra/LocalTranslatorAdapter.ts": {
-    "typescript/no-unsafe-assignment": {
-      "count": 1
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 1
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/infra/SnapClientAdapter.test.ts": {
-    "typescript/explicit-function-return-type": {
-      "count": 1
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 1
-    },
-    "vitest/no-conditional-in-test": {
-      "count": 1
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/infra/StoredAccountAdapter.test.ts": {
-    "typescript/no-unsafe-argument": {
-      "count": 1
-    }
-  },
   "packages/bitcoin-wallet-snap/src/infra/jsx/components/AssetIcon.tsx": {
     "typescript/no-unsafe-return": {
       "count": 1
@@ -146,71 +117,32 @@
     }
   },
   "packages/bitcoin-wallet-snap/src/infra/jsx/components/SendForm.tsx": {
-    "id-length": {
-      "count": 1
-    },
     "typescript/no-unsafe-return": {
       "count": 1
     }
   },
   "packages/bitcoin-wallet-snap/src/infra/jsx/confirmations/SignMessageConfirmationView.tsx": {
-    "id-length": {
-      "count": 1
-    },
     "typescript/no-unsafe-return": {
       "count": 1
     }
   },
   "packages/bitcoin-wallet-snap/src/infra/jsx/confirmations/SignPsbtConfirmationView.tsx": {
-    "id-length": {
-      "count": 1
-    },
     "typescript/no-unsafe-return": {
       "count": 2
     }
   },
-  "packages/bitcoin-wallet-snap/src/infra/jsx/format.ts": {
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 1
-    }
-  },
   "packages/bitcoin-wallet-snap/src/infra/jsx/send-flow/ReviewTransactionView.tsx": {
-    "id-length": {
-      "count": 1
-    },
     "typescript/no-unsafe-return": {
       "count": 1
     }
   },
   "packages/bitcoin-wallet-snap/src/infra/jsx/send-flow/SendFormView.tsx": {
-    "id-length": {
-      "count": 1
-    },
     "typescript/no-unsafe-return": {
       "count": 1
     }
   },
   "packages/bitcoin-wallet-snap/src/infra/jsx/unified-send-flow/UnifiedSendFormView.tsx": {
-    "id-length": {
-      "count": 1
-    },
     "typescript/no-unsafe-return": {
-      "count": 1
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/store/BdkAccountRepository.test.ts": {
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 2
-    },
-    "typescript/no-unsafe-return": {
-      "count": 1
-    },
-    "vitest/no-conditional-in-test": {
-      "count": 3
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/store/JSXConfirmationRepository.test.tsx": {
-    "typescript/no-unnecessary-type-assertion": {
       "count": 1
     }
   },

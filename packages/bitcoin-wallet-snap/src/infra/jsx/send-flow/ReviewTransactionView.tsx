@@ -39,7 +39,7 @@ type ReviewTransactionViewProps = {
 export const ReviewTransactionView: SnapComponent<
   ReviewTransactionViewProps
 > = ({ context, messages }) => {
-  const t = translate(messages);
+  const tr = translate(messages);
   const { amount, exchangeRate, recipient, network, from, explorerUrl } =
     context;
 
@@ -54,7 +54,7 @@ export const ReviewTransactionView: SnapComponent<
       <Box>
         <HeadingWithReturn
           returnButtonName={ReviewTransactionEvent.HeaderBack}
-          heading={t('review')}
+          heading={tr('review')}
         />
 
         <Box alignment="center" center>
@@ -66,7 +66,7 @@ export const ReviewTransactionView: SnapComponent<
         </Box>
 
         <Section>
-          <Row label={t('from')}>
+          <Row label={tr('from')}>
             {isValidSnapLinkProtocol(explorerUrl) ? (
               <Link href={displayExplorerUrl(explorerUrl, from)}>
                 <Address address={displayCaip10(network, from)} displayName />
@@ -75,7 +75,7 @@ export const ReviewTransactionView: SnapComponent<
               <Address address={displayCaip10(network, from)} displayName />
             )}
           </Row>
-          <Row label={t('recipient')}>
+          <Row label={tr('recipient')}>
             {isValidSnapLinkProtocol(explorerUrl) ? (
               <Link href={displayExplorerUrl(explorerUrl, recipient)}>
                 <Address
@@ -94,25 +94,25 @@ export const ReviewTransactionView: SnapComponent<
 
         <Section>
           <Row
-            label={t('transactionSpeed')}
-            tooltip={t('transactionSpeedTooltip')}
+            label={tr('transactionSpeed')}
+            tooltip={tr('transactionSpeedTooltip')}
           >
             <SnapText>
-              {`${configProvider.config.targetBlocksConfirmation * BlockTime[network]} ${t(
+              {`${configProvider.config.targetBlocksConfirmation * BlockTime[network]} ${tr(
                 'minutes',
               )}`}
             </SnapText>
           </Row>
-          <Row label={t('networkFee')} tooltip={t('networkFeeTooltip')}>
+          <Row label={tr('networkFee')} tooltip={tr('networkFeeTooltip')}>
             <Value
               value={`${fee} sats`}
               extra={displayExchangeAmount(BigInt(fee), exchangeRate)}
             />
           </Row>
-          <Row label={t('feeRate')}>
+          <Row label={tr('feeRate')}>
             <SnapText>{`${feeRate} sat/vB`}</SnapText>
           </Row>
-          <Row label={t('total')}>
+          <Row label={tr('total')}>
             <Value
               value={displayAmount(total, currency)}
               extra={displayExchangeAmount(total, exchangeRate)}
@@ -123,7 +123,7 @@ export const ReviewTransactionView: SnapComponent<
 
       <Footer>
         <Button name={ReviewTransactionEvent.Send} type="submit">
-          {t('send')}
+          {tr('send')}
         </Button>
       </Footer>
     </Container>

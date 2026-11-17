@@ -70,7 +70,7 @@ function setupStateRepository(
             (current as Record<string, unknown> | undefined)?.[key],
           storage,
         );
-      const snapshot =
+      const snapshot: unknown =
         value === undefined ? null : JSON.parse(JSON.stringify(value));
       await Promise.resolve();
       return snapshot;
@@ -147,7 +147,7 @@ describe('BdkAccountRepository', () => {
     vi.spyOn(ChangeSet, 'from_json');
     vi.spyOn(Address, 'from_string');
     vi.spyOn(BitcoinDevKit, 'slip10_to_extended').mockReturnValue(
-      'mock-extended' as never,
+      'mock-extended',
     );
     vi.spyOn(BitcoinDevKit, 'xpriv_to_descriptor');
     vi.spyOn(BitcoinDevKit, 'xpub_to_descriptor');
@@ -582,7 +582,7 @@ describe('BdkAccountRepository', () => {
       segments: string[],
     ): Promise<RealSlip10Node> {
       const derivationPath: [BIP39Node, ...BIP32Node[]] = [
-        mnemonicPhraseToBytes(mnemonic) as BIP39Node,
+        mnemonicPhraseToBytes(mnemonic),
         ...segments.map((segment) => `bip32:${segment}` as BIP32Node),
       ];
 
@@ -958,7 +958,8 @@ describe('BdkAccountRepository', () => {
         repository.insertMany(accounts.slice(2)),
       ]);
 
-      expect(Object.keys(encrypted.accounts ?? {})).toStrictEqual([
+      const { accounts: storedAccounts = {} } = encrypted;
+      expect(Object.keys(storedAccounts)).toStrictEqual([
         'account-1',
         'account-2',
         'account-3',
@@ -1004,9 +1005,10 @@ describe('BdkAccountRepository', () => {
         ),
       ]);
 
-      expect(
-        JSON.parse(encrypted.accounts?.['existing-id']?.wallet ?? 'null'),
-      ).toStrictEqual(['second', 'first', 'base']);
+      expect(encrypted.accounts?.['existing-id']).toHaveProperty(
+        'wallet',
+        JSON.stringify(['second', 'first', 'base']),
+      );
     });
 
     it('preserves a concurrent wallet update while inserting a batch', async () => {
@@ -1035,9 +1037,10 @@ describe('BdkAccountRepository', () => {
         ]),
       ]);
 
-      expect(
-        JSON.parse(encrypted.accounts?.['existing-id']?.wallet ?? 'null'),
-      ).toStrictEqual(['new', 'base']);
+      expect(encrypted.accounts?.['existing-id']).toHaveProperty(
+        'wallet',
+        JSON.stringify(['new', 'base']),
+      );
       expect(encrypted.accounts).toHaveProperty('first');
       expect(encrypted.accounts).toHaveProperty('second');
     });
