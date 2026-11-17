@@ -8,6 +8,7 @@ import type {
   ConnectionRecoveryHandler,
   SignatureNotification,
   SignatureNotificationHandler,
+  SubscribeMethod,
   Subscription,
 } from '../../../entities';
 import { Network } from '../../constants/solana';
@@ -58,16 +59,24 @@ describe('SignatureMonitor', () => {
       unsubscribe: vi.fn(),
       registerNotificationHandler: vi
         .fn()
-        .mockImplementation(async (_method, _network, handler) => {
-          // This will let us capture and manually call the handler
-          notificationHandlers.push(handler);
-        }),
+        .mockImplementation(
+          async (
+            _method: SubscribeMethod,
+            _network: Network,
+            handler: SignatureNotificationHandler,
+          ) => {
+            // This will let us capture and manually call the handler
+            notificationHandlers.push(handler);
+          },
+        ),
       registerConnectionRecoveryHandler: vi
         .fn()
-        .mockImplementation(async (_network, handler) => {
-          // This will let us capture and manually call the handler
-          connectionRecoveryHandlers.push(handler);
-        }),
+        .mockImplementation(
+          async (_network: Network, handler: ConnectionRecoveryHandler) => {
+            // This will let us capture and manually call the handler
+            connectionRecoveryHandlers.push(handler);
+          },
+        ),
     } as unknown as SubscriptionService;
 
     mockAccountService = {
@@ -395,7 +404,7 @@ describe('SignatureMonitor', () => {
           value: [{ confirmationStatus: 'processed' }],
         }),
       }),
-    } as any);
+    } as unknown as ReturnType<SolanaConnection['getRpc']>);
 
     await signatureMonitor.monitor(
       signature,

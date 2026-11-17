@@ -1,4 +1,5 @@
 import type { IStateManager } from '@metamask/snap-networks-utils';
+import { hasProperty } from '@metamask/utils';
 
 import type {
   ConfirmedSubscription,
@@ -69,7 +70,7 @@ export class SubscriptionRepository {
 
     return subscriptions.find(
       (subscription) =>
-        key in subscription &&
+        hasProperty(subscription, key) &&
         subscription[key as keyof Subscription] === value,
     );
   }
