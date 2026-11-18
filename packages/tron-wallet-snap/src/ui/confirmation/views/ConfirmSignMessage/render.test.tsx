@@ -49,14 +49,27 @@ describe('ConfirmSignMessage render', () => {
     useNftDetection: true,
   };
 
-  let mockSnapClient: Mocked<SnapClient>;
+  let mockSnapClient: Mocked<
+    Pick<
+      SnapClient,
+      | 'createInterface'
+      | 'showDialog'
+      | 'updateInterface'
+      | 'getPreferences'
+      | 'scheduleBackgroundEvent'
+      | 'trackError'
+    >
+  >;
 
   beforeEach(() => {
     mockSnapClient = {
       createInterface: vi.fn().mockResolvedValue('interface-id-123'),
       showDialog: vi.fn().mockResolvedValue(true),
+      updateInterface: vi.fn(),
       getPreferences: vi.fn().mockResolvedValue(mockPreferences),
-    } as unknown as Mocked<SnapClient>;
+      scheduleBackgroundEvent: vi.fn(),
+      trackError: vi.fn(),
+    };
 
     snapContext.snapClient = mockSnapClient;
   });
@@ -145,7 +158,8 @@ describe('ConfirmSignMessage render', () => {
   it('handles missing origin gracefully', async () => {
     const request: TronWalletKeyringRequest = {
       id: '00000000-0000-4000-8000-000000000004',
-      origin: undefined as unknown as string,
+      // @ts-expect-error - exercises the renderer's missing-origin fallback.
+      origin: undefined,
       account: mockAccount.id,
       scope: Network.Mainnet,
       request: {

@@ -1,6 +1,6 @@
 import type { FeeType } from '@metamask/keyring-api';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
-import type { Types as TronwebTypes } from 'tronweb';
+import { Types as TronwebTypes } from 'tronweb';
 import type { Mocked, Mock } from 'vitest';
 
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
@@ -44,20 +44,26 @@ function toHex(str: string): string {
 }
 
 /**
- * Types a transaction `raw_data` fixture as tronweb's transaction `raw_data`.
+ * Completes a partial `raw_data` fixture with the block-reference metadata
+ * tronweb requires.
  *
- * The fixtures only populate the fields the renderer reads (`contract`), while
- * tronweb types the contract enum and the block-reference fields strictly, so
- * the fixture is asserted to the real type once here instead of at each call
- * site.
+ * The fixtures only carry the contract(s) the renderer reads, and the tests
+ * mock the services that consume the block reference, so the metadata defaults
+ * to an empty/zero reference here instead of in every fixture.
  *
- * @param rawData - The partial `raw_data` fixture.
- * @returns The same fixture typed as tronweb's transaction `raw_data`.
+ * @param rawData - The fixture, carrying only the contract(s) under test.
+ * @returns Raw transaction data with the block-reference fields defaulted.
  */
 function asRawData(
-  rawData: Record<string, unknown>,
+  rawData: Pick<TronwebTypes.Transaction['raw_data'], 'contract'>,
 ): TronwebTypes.Transaction['raw_data'] {
-  return rawData as unknown as TronwebTypes.Transaction['raw_data'];
+  return {
+    contract: rawData.contract,
+    ref_block_bytes: '',
+    ref_block_hash: '',
+    expiration: 0,
+    timestamp: 0,
+  };
 }
 
 const mockPreferences: Preferences = {
@@ -410,24 +416,25 @@ describe('ConfirmSignTransaction render', () => {
         };
 
         // Mock raw data with contract information
-        const mockRawData = {
+        const mockRawData = asRawData({
           contract: [
             {
-              type: 'TriggerSmartContract',
+              type: TronwebTypes.ContractType.TriggerSmartContract,
               parameter: {
+                type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
                 value: {
                   owner_address: '41A2155E688B2BAEBDFDACD073BA79F5B22946AACF',
 
-                  to_address: '4132F9C0C487F21716B7A8F12906B752889902655',
+                  contract_address: '4132F9C0C487F21716B7A8F12906B752889902655',
 
                   call_value: 100000,
                 },
               },
             },
           ],
-        };
+        });
 
-        await render(request, mockAccount, asRawData(mockRawData));
+        await render(request, mockAccount, mockRawData);
 
         // Verify createInterface was called
         expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
@@ -624,7 +631,8 @@ describe('ConfirmSignTransaction render', () => {
     await withSnapContext(async ({ mockSnapClient }) => {
       const request: TronWalletKeyringRequest = {
         id: '00000000-0000-4000-8000-000000000006',
-        origin: undefined as unknown as string,
+        // @ts-expect-error - exercises the renderer's missing-origin fallback.
+        origin: undefined,
         account: mockAccount.id,
         scope: Network.Mainnet,
         request: {
@@ -1083,8 +1091,9 @@ describe('ConfirmSignTransaction render', () => {
       const mockRawData = {
         contract: [
           {
-            type: 'TriggerSmartContract',
+            type: TronwebTypes.ContractType.TriggerSmartContract,
             parameter: {
+              type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
               value: {
                 owner_address: '41A2155E688B2BAEBDFDACD073BA79F5B22946AACF',
 
