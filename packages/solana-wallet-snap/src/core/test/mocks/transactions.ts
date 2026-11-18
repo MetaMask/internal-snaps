@@ -1,3 +1,8 @@
+import type { Transaction } from '@metamask/keyring-api';
+import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
+
+import { Network } from '../../constants/solana';
+
 export const MOCK_GET_SIGNATURES_FOR_ADDRESS = [
   {
     signature:
@@ -40,3 +45,26 @@ export const MOCK_GET_SIGNATURES_FOR_ADDRESS = [
       '5iFQpCwAgiXebzuKxLfhePscR9EYRvRNRSx2Mbj12ed36zNkGmQMkg7ekFXjh88R3p75D6uNK45hgRxC6FyUDnhE',
   },
 ];
+
+/**
+ * Builds a complete, valid `Transaction` for tests that only care about a
+ * subset of its fields.
+ *
+ * @param overrides - The fields to override on the default transaction.
+ * @returns A valid transaction.
+ */
+export const createMockTransaction = (
+  overrides: Partial<Transaction> = {},
+): Transaction => ({
+  type: TransactionType.Send,
+  id: 'mock-transaction-id',
+  account: 'mock-account-id',
+  chain: Network.Mainnet,
+  status: TransactionStatus.Confirmed,
+  timestamp: 1234567890,
+  from: [],
+  to: [],
+  fees: [],
+  events: [],
+  ...overrides,
+});

@@ -22,23 +22,48 @@ import type { TransactionMapper } from './TransactionMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
 import { isSpam } from './utils/isSpam';
 
+/**
+ * The subset of the Solana RPC client that {@link TransactionsService} uses.
+ *
+ * Narrowing the dependency to the methods actually used keeps the service
+ * honest about what it needs, and lets callers (and tests) provide anything
+ * that satisfies this slice instead of a full RPC client.
+ */
+export type TransactionsRpc = Pick<
+  ReturnType<SolanaConnection['getRpc']>,
+  'getSignaturesForAddress' | 'getTokenAccountsByOwner' | 'getTransaction'
+>;
+
+/**
+ * The subset of the Solana connection that {@link TransactionsService} uses.
+ */
+export type TransactionsConnection = {
+  getRpc: (network: Network) => TransactionsRpc;
+};
+
 export class TransactionsService {
-  readonly #transactionsRepository: TransactionsRepository;
+  readonly #transactionsRepository: Pick<
+    TransactionsRepository,
+    'findByAccountId' | 'getAll' | 'saveMany'
+  >;
 
-  readonly #transactionMapper: TransactionMapper;
+  readonly #transactionMapper: Pick<TransactionMapper, 'mapRpcTransaction'>;
 
-  readonly #accountsService: AccountsService;
+  readonly #accountsService: Pick<AccountsService, 'getAll'>;
 
-  readonly #assetsService: AssetsService;
+  readonly #assetsService: Pick<AssetsService, 'getAssetsMetadata'>;
 
-  readonly #connection: SolanaConnection;
+  readonly #connection: TransactionsConnection;
 
   constructor(
-    transactionsRepository: TransactionsRepository,
-    transactionMapper: TransactionMapper,
-    accountsService: AccountsService,
-    assetsService: AssetsService,
-    connection: SolanaConnection,
+    transactionsRepository: Pick<
+      TransactionsRepository,
+      'findByAccountId' | 'getAll' | 'saveMany'
+    >,
+    transactionMapper: Pick<TransactionMapper, 'mapRpcTransaction'>,
+    accountsService: Pick<AccountsService, 'getAll'>,
+    assetsService: Pick<AssetsService, 'getAssetsMetadata'>,
+    connection: TransactionsConnection,
   ) {
     this.#transactionsRepository = transactionsRepository;
     this.#transactionMapper = transactionMapper;

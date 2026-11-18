@@ -28,15 +28,15 @@ import { tokenAddressToCaip19 } from '../../utils/tokenAddressToCaip19';
 import type { AssetMetadata } from '../assets/types';
 
 export class TransactionMapper {
-  readonly #tokenHelper: TokenHelper;
+  readonly #tokenHelper: Pick<TokenHelper, 'amountToUiAmountForMint'>;
 
-  readonly #assetsService: AssetsService;
+  readonly #assetsService: Pick<AssetsService, 'getAssetsMetadata'>;
 
   readonly #logger: Logger;
 
   constructor(
-    tokenHelper: TokenHelper,
-    assetsService: AssetsService,
+    tokenHelper: Pick<TokenHelper, 'amountToUiAmountForMint'>,
+    assetsService: Pick<AssetsService, 'getAssetsMetadata'>,
     logger: Logger,
   ) {
     this.#tokenHelper = tokenHelper;
