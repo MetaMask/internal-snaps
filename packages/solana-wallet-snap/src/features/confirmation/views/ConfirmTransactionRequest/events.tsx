@@ -4,7 +4,8 @@ import {
   requiresMaliciousAcknowledgement,
   serialize,
 } from '@metamask/snap-networks-utils';
-import type { InputChangeEvent } from '@metamask/snaps-sdk';
+import type { UserInputEvent } from '@metamask/snaps-sdk';
+import { UserInputEventType } from '@metamask/snaps-sdk';
 
 import {
   CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME,
@@ -194,8 +195,12 @@ async function onAcknowledgeChange({
   event,
 }: {
   id: string;
-  event: InputChangeEvent;
+  event: UserInputEvent;
 }): Promise<void> {
+  if (event.type !== UserInputEventType.InputChangeEvent) {
+    return;
+  }
+
   const acknowledged = Boolean(event.value);
   await updateLatestContext(id, async (context) => {
     await reRender(id, context, { acknowledged });
