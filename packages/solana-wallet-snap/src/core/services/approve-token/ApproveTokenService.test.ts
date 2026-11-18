@@ -3,28 +3,21 @@ import { COMPUTE_BUDGET_PROGRAM_ADDRESS } from '@solana-program/compute-budget';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { address as asAddress, lamports } from '@solana/kit';
 import * as SolanaKit from '@solana/kit';
-import type { Mocked } from 'vitest';
+import type { Mock, Mocked } from 'vitest';
 
 import { Network } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../test/mocks/solana-keyring-accounts';
 import * as DeriveSolanaKeypair from '../../utils/deriveSolanaKeypair';
 import type { TokenHelper } from '../assets/TokenHelper';
-import type { SolanaConnection } from '../connection';
 import { ApproveTokenService } from './ApproveTokenService';
-
-type MockMintAccount = Awaited<ReturnType<SolanaConnection['fetchMint']>>;
-
-type MockLatestBlockhash = Awaited<
-  ReturnType<SolanaConnection['getLatestBlockhash']>
->;
-
-type MockJsonParsedAccount = Awaited<
-  ReturnType<SolanaConnection['fetchJsonParsedAccount']>
->;
 
 describe('ApproveTokenService', () => {
   let service: ApproveTokenService;
-  let mockConnection: Mocked<SolanaConnection>;
+  let mockConnection: {
+    fetchMint: Mock;
+    getLatestBlockhash: Mock;
+    fetchJsonParsedAccount: Mock;
+  };
   let mockTokenHelper: Mocked<TokenHelper>;
   let mockLogger: Mocked<Logger>;
 
@@ -53,7 +46,7 @@ describe('ApproveTokenService', () => {
       fetchMint: vi.fn(),
       getLatestBlockhash: vi.fn(),
       fetchJsonParsedAccount: vi.fn(),
-    } as unknown as Mocked<SolanaConnection>;
+    };
 
     mockTokenHelper = {
       uiAmountToAmountForMint: vi.fn(),
@@ -73,11 +66,11 @@ describe('ApproveTokenService', () => {
     mockConnection.fetchMint.mockResolvedValue({
       programAddress: TOKEN_PROGRAM_ADDRESS,
       data: { decimals: 6 },
-    } as unknown as MockMintAccount);
+    });
     mockConnection.getLatestBlockhash.mockResolvedValue({
       blockhash: '9999999999999999999999999999999999999999999',
       lastValidBlockHeight: 100n,
-    } as unknown as MockLatestBlockhash);
+    });
 
     mockTokenHelper.uiAmountToAmountForMint.mockResolvedValue(
       lamports(100500000n),
@@ -86,7 +79,7 @@ describe('ApproveTokenService', () => {
     // Default: ATA does not exist
     mockConnection.fetchJsonParsedAccount.mockResolvedValue({
       exists: false,
-    } as unknown as MockJsonParsedAccount);
+    });
 
     vi.clearAllMocks();
   });
@@ -163,7 +156,7 @@ describe('ApproveTokenService', () => {
         address: asAddress('11111111111111111111111111111111'),
         data: {},
         programAddress: TOKEN_PROGRAM_ADDRESS,
-      } as unknown as MockJsonParsedAccount);
+      });
 
       const transactionMessage = await service.buildApprovalTransactionMessage({
         account: MOCK_SOLANA_KEYRING_ACCOUNT_0,

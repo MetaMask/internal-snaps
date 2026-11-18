@@ -10,7 +10,7 @@ import type { Json } from '@metamask/snaps-sdk';
 import { Duration, parseCaipAssetType } from '@metamask/utils';
 import type { Extension, Mint } from '@solana-program/token-2022';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
-import type { Account, Address } from '@solana/kit';
+import type { Account, Address, Rpc, SolanaRpcApi } from '@solana/kit';
 import {
   address as asAddress,
   compileTransaction,
@@ -100,8 +100,26 @@ function getAtaDataLength(mintAccount: Account<Mint, Address>): number {
     : dataLength;
 }
 
+export type SendServiceRpc = Pick<
+  Rpc<SolanaRpcApi>,
+  'getMinimumBalanceForRentExemption'
+>;
+
+/**
+ * The subset of {@link SolanaConnection} the send service depends on.
+ *
+ * Declaring only what the service uses keeps the dependency honest for
+ * callers and lets tests supply doubles of the methods they exercise, instead
+ * of a full `SolanaConnection` with every member forcibly asserted.
+ */
+export type SendServiceConnection = {
+  getRpc: (caip2Id: Network) => SendServiceRpc;
+  fetchMint: SolanaConnection['fetchMint'];
+  fetchJsonParsedAccount: SolanaConnection['fetchJsonParsedAccount'];
+};
+
 export class SendService {
-  readonly #connection: SolanaConnection;
+  readonly #connection: SendServiceConnection;
 
   readonly #keyring: SolanaKeyring;
 
@@ -122,7 +140,7 @@ export class SendService {
   };
 
   constructor(
-    connection: SolanaConnection,
+    connection: SendServiceConnection,
     keyring: SolanaKeyring,
     logger: Logger,
     cache: ICache<Serializable>,

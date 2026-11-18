@@ -30,6 +30,7 @@ import { MOCK_MINT_ACCOUNT } from '../__mocks__/mockSolanaRpcResponses';
 import type { AssetsService } from '../assets';
 import type { SolanaConnection } from '../connection';
 import type { RecipientClassifier } from './RecipientClassifier';
+import type { SendServiceConnection } from './SendService';
 import { SendService } from './SendService';
 import type { SendSolBuilder } from './SendSolBuilder';
 import { SendSplTokenBuilder } from './SendSplTokenBuilder';
@@ -40,11 +41,9 @@ import type {
   OnConfirmSendRequest,
 } from './types';
 
-type MockRpc = ReturnType<SolanaConnection['getRpc']>;
-
 describe('SendService', () => {
   let sendService: SendService;
-  let mockConnection: SolanaConnection;
+  let mockConnection: SendServiceConnection;
   let mockKeyring: SolanaKeyring;
   let mockCache: ICache<Serializable>;
   let mockSendSolBuilder: SendSolBuilder;
@@ -95,7 +94,7 @@ describe('SendService', () => {
               lamports(dataLength === 0n ? 1000000n : 2000000n),
             ),
         })),
-    } as unknown as MockRpc);
+    });
 
     mockKeyring = {
       getAccountOrThrow: vi.fn().mockResolvedValue(mockAccount),
@@ -269,7 +268,8 @@ describe('SendService', () => {
     });
 
     it('handles null/undefined address', async () => {
-      const value = null as unknown as string;
+      // @ts-expect-error - a null address must be rejected at runtime.
+      const value: string = null;
       const scope = Network.Mainnet;
 
       const result = await sendService.onAddressInput(value, scope);
@@ -326,7 +326,7 @@ describe('SendService', () => {
                 lamports(dataLength === 0n ? 1000000n : 2000000n),
               ),
           })),
-      } as unknown as MockRpc);
+      });
     });
 
     it('validates valid native SOL amount successfully', async () => {
@@ -737,7 +737,7 @@ describe('SendService', () => {
         getMinimumBalanceForRentExemption: vi.fn().mockReturnValue({
           send: vi.fn().mockRejectedValue(error),
         }),
-      } as unknown as MockRpc);
+      });
 
       await expect(sendService.onAmountInput(mockRequest)).rejects.toThrow(
         'RPC connection failed',
@@ -919,7 +919,7 @@ describe('SendService', () => {
       });
       vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
         getMinimumBalanceForRentExemption,
-      } as never);
+      });
 
       await sendService.getMaxSendableAmount(
         createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
@@ -965,7 +965,7 @@ describe('SendService', () => {
       });
       vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
         getMinimumBalanceForRentExemption,
-      } as never);
+      });
 
       const result = await sendService.getMaxSendableAmount(
         createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
@@ -1006,7 +1006,7 @@ describe('SendService', () => {
       });
       vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
         getMinimumBalanceForRentExemption,
-      } as never);
+      });
 
       await sendService.getMaxSendableAmount(
         createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
@@ -1042,7 +1042,7 @@ describe('SendService', () => {
       });
       vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
         getMinimumBalanceForRentExemption,
-      } as never);
+      });
 
       await sendService.getMaxSendableAmount(
         createRequest(KnownCaip19Id.UsdcMainnet, toAddress),
@@ -1082,7 +1082,7 @@ describe('SendService', () => {
       });
       vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
         getMinimumBalanceForRentExemption,
-      } as never);
+      });
 
       await sendService.getMaxSendableAmount(
         createRequest(KnownCaip19Id.UsdcMainnet, toAddress),

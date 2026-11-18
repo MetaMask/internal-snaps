@@ -46,11 +46,23 @@ export type ApproveTokenParams = {
 };
 
 /**
+ * The subset of {@link SolanaConnection} this service depends on.
+ *
+ * Only the lookups performed while building the approval are declared, so the
+ * service does not claim a dependency on the rest of the connection.
+ */
+type ApproveTokenConnection = {
+  fetchMint: SolanaConnection['fetchMint'];
+  getLatestBlockhash: SolanaConnection['getLatestBlockhash'];
+  fetchJsonParsedAccount: SolanaConnection['fetchJsonParsedAccount'];
+};
+
+/**
  * Service for building SPL token approval transactions.
  * This allows a delegate to spend tokens on behalf of the token owner.
  */
 export class ApproveTokenService {
-  readonly #connection: SolanaConnection;
+  readonly #connection: ApproveTokenConnection;
 
   readonly #tokenHelper: TokenHelper;
 
@@ -66,7 +78,7 @@ export class ApproveTokenService {
   readonly #computeUnitPriceMicroLamportsPerComputeUnit = 10000n;
 
   constructor(
-    connection: SolanaConnection,
+    connection: ApproveTokenConnection,
     tokenHelper: TokenHelper,
     logger: Logger,
   ) {
