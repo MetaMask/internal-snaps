@@ -1,10 +1,7 @@
 import { EstimatedChanges as SharedEstimatedChanges } from '@metamask/snap-networks-utils';
 import type { SnapComponent } from '@metamask/snaps-sdk/jsx';
 
-import type {
-  TransactionScanEstimatedChanges,
-  TransactionScanStatus,
-} from '../../../../core/services/transaction-scan/types';
+import type { TransactionScanEstimatedChanges } from '../../../../core/services/transaction-scan/types';
 import type { FetchStatus, Preferences } from '../../../../core/types/snap';
 import { formatCryptoBalance } from '../../../../core/utils/formatCryptoBalance';
 import { formatFiat } from '../../../../core/utils/formatFiat';
@@ -12,7 +9,6 @@ import { i18n } from '../../../../core/utils/i18n';
 
 type EstimatedChangesProps = {
   changes: TransactionScanEstimatedChanges | null;
-  scanStatus: TransactionScanStatus | null;
   preferences: Preferences;
   scanFetchStatus: FetchStatus;
 };
@@ -21,7 +17,6 @@ export const EstimatedChanges: SnapComponent<EstimatedChangesProps> = ({
   changes,
   preferences,
   scanFetchStatus,
-  scanStatus,
 }) => {
   const translate = i18n(preferences.locale);
   const { locale, currency } = preferences;
@@ -49,7 +44,7 @@ export const EstimatedChanges: SnapComponent<EstimatedChangesProps> = ({
         noChanges: translate('confirmation.estimatedChanges.noChanges'),
       }}
       isFetching={scanFetchStatus === 'fetching'}
-      isUnavailable={scanFetchStatus === 'error' || scanStatus === 'ERROR'}
+      isUnavailable={scanFetchStatus === 'error' || changes === null}
     />
   );
 };

@@ -19,7 +19,6 @@ const render = (
   JSON.stringify(
     EstimatedChanges({
       changes: { assets: [sol] },
-      scanStatus: 'SUCCESS',
       scanFetchStatus: 'fetched',
       preferences,
       ...props,
@@ -57,17 +56,9 @@ describe('EstimatedChanges', () => {
     );
   });
 
-  it('renders not available when the scan result is an error', () => {
-    const serialized = render({ changes: null, scanStatus: 'ERROR' });
-
-    expect(serialized).toContain('Not available');
-    expect(serialized).not.toContain('No changes');
-  });
-
   it.each([
     { scanFetchStatus: 'fetching' },
     { scanFetchStatus: 'error' },
-    { scanStatus: 'ERROR' },
   ] as const)('keeps previously estimated rows visible for %o', (props) => {
     const serialized = render(props);
 
@@ -76,7 +67,14 @@ describe('EstimatedChanges', () => {
     expect(serialized).not.toContain('Not available');
   });
 
-  it('renders no changes when there are no estimated changes', () => {
-    expect(render({ changes: null })).toContain('No changes');
+  it('renders no changes when simulation returned an empty asset diff', () => {
+    expect(render({ changes: { assets: [] } })).toContain('No changes');
+  });
+
+  it('renders not available when simulation did not return a result', () => {
+    const serialized = render({ changes: null });
+
+    expect(serialized).toContain('Not available');
+    expect(serialized).not.toContain('No changes');
   });
 });

@@ -212,6 +212,10 @@ export async function render(incomingContext: Context) {
     simulateOnChainActions,
   } = context.preferences;
 
+  if (!useSecurityAlerts && !simulateOnChainActions) {
+    context.scanFetchStatus = 'fetched';
+  }
+
   const id = await createInterface(
     <ConfirmTransactionRequest context={context} />,
     context,
@@ -303,7 +307,7 @@ export async function render(incomingContext: Context) {
   }
 
   if (simulateOnChainActions || useSecurityAlerts) {
-    const transactionScanPromise = transactionScanService
+    await transactionScanService
       .scanTransaction({
         method: updatedContext2.method,
         accountAddress: updatedContext2.account?.address ?? '',
@@ -315,14 +319,7 @@ export async function render(incomingContext: Context) {
       .then(async (scan) => {
         updatedContext2.scan = scan;
         updatedContext2.scanFetchStatus = scan ? 'fetched' : 'error';
-      })
-      .catch(async (error) => {
-        await trackError(error);
-        updatedContext2.scan = null;
-        updatedContext2.scanFetchStatus = 'error';
       });
-
-    await Promise.all([transactionScanPromise]);
   } else {
     updatedContext2.scanFetchStatus = 'fetched';
     updatedContext2.scan = null;

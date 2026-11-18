@@ -201,7 +201,9 @@ describe('confirm transaction request events', () => {
           error: {
             type: 'simulation',
             code: 'ResultWithNegativeLamports',
+            message: null,
           },
+          validationError: null,
         },
       });
 
@@ -244,7 +246,9 @@ describe('confirm transaction request events', () => {
           error: {
             type: 'simulation',
             code: 'ResultWithNegativeLamports',
+            message: null,
           },
+          validationError: null,
         },
       });
 
