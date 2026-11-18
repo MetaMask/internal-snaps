@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `onAmountInput` now estimates the send fee and rejects amounts that cannot cover it, including when `toAddress` is omitted ([#586](https://github.com/MetaMask/internal-snaps/pull/586))
 
+### Removed
+
+- Removed the exported types `Config` and `SnapConfig`, and the `export` keyword from 38 declarations that were only used within their own module: the `CronHandler`, `RpcHandler`, and `KeyringRequestHandler` request/response types (except `SignPsbtResponse`, which remains exported), the keyring request structs composed into `BtcWalletRequestStruct`, `caipToAddressType`, the `mappings.ts` types, the JSX component prop types, `Purpose`, `Slip44`, and `BroadcastResult`. ([#610](https://github.com/MetaMask/internal-snaps/pull/610))
+
+### Fixed
+
+- BDK wallet errors now display their English message instead of a raw placeholder: renamed the mistyped `MmssingNonWitnessUtxo` locale key to `missingNonWitnessUtxo` and added the missing English messages for the `descriptor`, `policy`, `spendingPolicyRequired`, `version0`, `version1Csv`, `lockTime`, `rbfSequenceCsv`, `missingKeyOrigin`, `miniscriptPsbt`, and `unknownHrp` BDK error codes ([#610](https://github.com/MetaMask/internal-snaps/pull/610))
+
 ## [3.3.0]
 
 ### Changed

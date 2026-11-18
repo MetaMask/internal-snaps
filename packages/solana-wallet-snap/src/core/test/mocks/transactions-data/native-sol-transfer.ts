@@ -1,4 +1,4 @@
-import type { Base58EncodedBytes, Slot, UnixTimestamp } from '@solana/kit';
+import type { Base58EncodedBytes, UnixTimestamp } from '@solana/kit';
 import { address, blockhash, lamports } from '@solana/kit';
 
 import type { SolanaTransaction } from '../../../types/solana';

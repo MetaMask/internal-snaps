@@ -1,5 +1,7 @@
 /* eslint-disable vitest/prefer-strict-equal */
 
+import type { Json } from '@metamask/utils';
+
 import type { MockSolanaRpc } from './startMockSolanaRpc';
 import { startMockSolanaRpc } from './startMockSolanaRpc';
 
@@ -14,7 +16,10 @@ describe('startMockSolanaRpc', () => {
     mockSolanaRpc.shutdown();
   });
 
-  const makeRpcRequest = async (method: string, params: any[] = []) =>
+  const makeRpcRequest = async (
+    method: string,
+    params: Json[] = [],
+  ): Promise<Response> =>
     fetch('http://localhost:8899', {
       method: 'POST',
       headers: {

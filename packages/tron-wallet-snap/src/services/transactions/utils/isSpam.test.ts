@@ -406,7 +406,7 @@ describe('isSpam', () => {
         id: 'tether',
         price: 1.0,
       },
-    } as SpotPrices;
+    };
 
     describe('Spam transactions', () => {
       it('received TRC10 token with no price data', () => {
@@ -418,7 +418,7 @@ describe('isSpam', () => {
               ],
             }),
             account,
-            { spotPrices: {} as SpotPrices },
+            { spotPrices: {} },
           ),
         ).toBe(true);
       });
@@ -435,7 +435,7 @@ describe('isSpam', () => {
               ],
             }),
             account,
-            { spotPrices: {} as SpotPrices },
+            { spotPrices: {} },
           ),
         ).toBe(true);
       });
@@ -471,7 +471,7 @@ describe('isSpam', () => {
               ],
             }),
             account,
-            { spotPrices: {} as SpotPrices },
+            { spotPrices: {} },
           ),
         ).toBe(false);
       });
@@ -501,7 +501,7 @@ describe('isSpam', () => {
               to: [{ address: 'recipient', asset: spamTrc10Asset('2.2222') }],
             }),
             account,
-            { spotPrices: {} as SpotPrices },
+            { spotPrices: {} },
           ),
         ).toBe(false);
       });

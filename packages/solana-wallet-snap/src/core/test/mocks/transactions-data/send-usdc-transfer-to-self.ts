@@ -2,7 +2,6 @@ import type {
   Base58EncodedBytes,
   StringifiedBigInt,
   StringifiedNumber,
-  TransactionVersion,
   UnixTimestamp,
 } from '@solana/kit';
 import { address, blockhash, lamports } from '@solana/kit';

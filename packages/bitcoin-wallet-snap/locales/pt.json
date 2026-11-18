@@ -1,9 +1,6 @@
 {
   "locale": "pt-BR",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "Revise a transação antes de prosseguir"
-    },
     "from": {
       "message": "De"
     },
@@ -58,9 +55,6 @@
     "asset": {
       "message": "Asset"
     },
-    "sending": {
-      "message": "Enviando"
-    },
     "max": {
       "message": "Máx."
     },
@@ -100,7 +94,7 @@
     "unknownUtxo": {
       "message": "Failed to build transaction: unknown UTXO"
     },
-    "MmssingNonWitnessUtxo": {
+    "missingNonWitnessUtxo": {
       "message": "Failed to build transaction: missing non-witness UTXO"
     },
     "base58": {

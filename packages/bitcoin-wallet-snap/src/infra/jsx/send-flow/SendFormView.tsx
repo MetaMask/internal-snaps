@@ -13,7 +13,7 @@ import { SendFormEvent } from '../../../entities';
 import { HeadingWithReturn, SendForm } from '../components';
 import { errorCodeToLabel, translate } from '../format';
 
-export type SendFormViewProps = {
+type SendFormViewProps = {
   context: SendFormContext;
   messages: Messages;
 };

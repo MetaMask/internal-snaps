@@ -380,7 +380,7 @@ export type BitcoinAccountRepository = {
   getFrozenUTXOs(id: string): Promise<string[]>;
 };
 
-export const Purpose = {
+const Purpose = {
   Legacy: 44,
   Segwit: 49,
   NativeSegwit: 84,
@@ -388,14 +388,14 @@ export const Purpose = {
   Multisig: 45,
 } as const;
 
-export type Purpose = (typeof Purpose)[keyof typeof Purpose];
+type Purpose = (typeof Purpose)[keyof typeof Purpose];
 
-export const Slip44 = {
+const Slip44 = {
   Bitcoin: 0,
   Testnet: 1,
 } as const;
 
-export type Slip44 = (typeof Slip44)[keyof typeof Slip44];
+type Slip44 = (typeof Slip44)[keyof typeof Slip44];
 
 export const addressTypeToPurpose: Record<AddressType, Purpose> = {
   p2pkh: Purpose.Legacy,

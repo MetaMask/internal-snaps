@@ -6,7 +6,10 @@ import type {
   Balance,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
-import { SynchronizationError } from '@metamask/snap-networks-utils';
+import {
+  SynchronizationError,
+  getUnreportedSyncFailures,
+} from '@metamask/snap-networks-utils';
 import type {
   ExtendedKeyringAccount,
   ICache,
@@ -42,7 +45,7 @@ import type {
 } from '../../../constants/solana';
 import type { TokenAccountInfoWithJsonData } from '../../../sdk-extensions/rpc-api';
 import { useCache } from '../../../utils/caching';
-import { getUnreportedSyncFailures, trackError } from '../../../utils/errors';
+import { trackError } from '../../../utils/errors';
 import { fromTokenUnits } from '../../../utils/fromTokenUnit';
 import { getNetworkFromToken } from '../../../utils/getNetworkFromToken';
 import { tokenAddressToCaip19 } from '../../../utils/tokenAddressToCaip19';

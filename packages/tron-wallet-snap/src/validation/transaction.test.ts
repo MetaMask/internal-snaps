@@ -60,8 +60,17 @@ describe('TransactionRawDataStruct', () => {
   });
 
   it('rejects when contract parameter value is missing', () => {
-    const rawData = buildRawData();
-    (rawData.contract[0] as any).parameter.value = undefined;
+    const rawData = {
+      ...buildRawData(),
+      contract: [
+        {
+          type: TronwebTypes.ContractType.TransferContract,
+          parameter: {
+            type_url: 'type.googleapis.com/protocol.TransferContract',
+          },
+        },
+      ],
+    };
 
     expect(is(rawData, TransactionRawDataStruct)).toBe(false);
   });

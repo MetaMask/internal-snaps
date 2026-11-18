@@ -1,9 +1,6 @@
 {
   "locale": "tl",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "Suriin ang transaksyon bago magpatuloy"
-    },
     "from": {
       "message": "Mula sa"
     },
@@ -58,9 +55,6 @@
     "asset": {
       "message": "Asset"
     },
-    "sending": {
-      "message": "Ipinapadala"
-    },
     "max": {
       "message": "Max"
     },
@@ -100,7 +94,7 @@
     "unknownUtxo": {
       "message": "Failed to build transaction: unknown UTXO"
     },
-    "MmssingNonWitnessUtxo": {
+    "missingNonWitnessUtxo": {
       "message": "Failed to build transaction: missing non-witness UTXO"
     },
     "base58": {
