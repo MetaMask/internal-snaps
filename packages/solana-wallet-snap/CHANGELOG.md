@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Require risk acknowledgement before confirming Solana transactions flagged as malicious. Confirm opens a danger-styled acknowledgement screen, and proceeding requires checking the risk checkbox ([#615](https://github.com/MetaMask/internal-snaps/pull/615)).
+
 ## [7.4.0]
 
 ### Added
