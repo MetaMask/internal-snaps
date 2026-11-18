@@ -27,8 +27,11 @@ import { ScheduleBackgroundEventMethod } from './ScheduleBackgroundEventMethod';
  * Renders the confirmation view for the given context.
  *
  * The view receives the serialized context, since that is what the interface
- * stores. Both the context and the element are asserted: `serialize` returns
- * JSON, and the Snaps JSX runtime does not expose a precise element type.
+ * element may hold: `serialize` returns `Json`, and the serialized context
+ * keeps the shape of the context (only leaf values become tagged markers), so
+ * it is asserted back to the context type — the same pair `createInterface`
+ * and `updateInterface` use. The element itself is asserted because the Snaps
+ * JSX runtime does not expose a precise element type.
  *
  * @param context - The confirmation context to render.
  * @returns The confirmation view element.
@@ -38,9 +41,7 @@ const renderConfirmationView = (
 ): ComponentOrElement =>
   (
     <ConfirmTransactionRequest
-      context={
-        serialize(context) as unknown as ConfirmTransactionRequestContext
-      }
+      context={serialize(context) as ConfirmTransactionRequestContext}
     />
   ) as ComponentOrElement;
 

@@ -541,7 +541,11 @@ export class SolanaKeyring implements KeyringSnapRpc {
     );
 
     if (!isConfirmed) {
-      throw new UserRejectedRequestError() as unknown as Error;
+      // oxlint's `only-throw-error` reads the declared type, not the class
+      // hierarchy, so annotate the thrown error instead of asserting it.
+      const userRejectedError: Error = new UserRejectedRequestError();
+
+      throw userRejectedError;
     }
 
     switch (method) {
@@ -573,10 +577,13 @@ export class SolanaKeyring implements KeyringSnapRpc {
       }
       case SolMethod.SignIn:
         return this.#walletService.signIn(account, params);
-      default:
-        throw new MethodNotFoundError(
+      default: {
+        const unsupportedMethodError: Error = new MethodNotFoundError(
           `Unsupported method: ${String(method)}`,
-        ) as unknown as Error;
+        );
+
+        throw unsupportedMethodError;
+      }
     }
   }
 
@@ -756,9 +763,11 @@ export class SolanaKeyring implements KeyringSnapRpc {
       (await this.#listAccounts()).map((account) => account.id),
     );
     if (!accountIds.every((id) => existingIds.has(id))) {
-      throw new InvalidParamsError(
+      const invalidAccountIdsError: Error = new InvalidParamsError(
         'Account IDs were not part of existing accounts.',
-      ) as unknown as Error;
+      );
+
+      throw invalidAccountIdsError;
     }
 
     await this.#keyringAccountMonitor.setMonitoredAccounts(accountIds);

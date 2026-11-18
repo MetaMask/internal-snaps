@@ -80,11 +80,15 @@ export const {
     const handler = onRpcRequestHandlers[method];
 
     if (!handler) {
-      throw new MethodNotFoundError(
+      // oxlint's `only-throw-error` reads the declared type, not the class
+      // hierarchy, so annotate the thrown error instead of asserting it.
+      const unknownRpcMethodError: Error = new MethodNotFoundError(
         `RpcRequest method ${method} not found. Available methods: ${Object.keys(
           onRpcRequestHandlers,
         ).toString()}`,
-      ) as unknown as Error;
+      );
+
+      throw unknownRpcMethodError;
     }
 
     const result = await handler({ origin, originMetadata, request });
@@ -132,14 +136,14 @@ export const {
 
     // The handlers declare only the arguments they use, so the map is typed
     // with the full set of arguments that `onUserInput` receives.
-    const uiEventHandlers = {
+    const uiEventHandlers: Record<
+      string,
+      (args: UiEventHandlersArgs) => Promise<void>
+    > = {
       ...confirmSignAndSendTransactionEvents,
       ...confirmSignMessageEvents,
       ...confirmSignInEvents,
-    } as unknown as Record<
-      string,
-      (args: UiEventHandlersArgs) => Promise<void>
-    >;
+    };
 
     const handler = uiEventHandlers[event.name];
 
@@ -180,9 +184,11 @@ export const {
       ];
 
     if (!handler) {
-      throw new MethodNotFoundError(
+      const unknownCronjobMethodError: Error = new MethodNotFoundError(
         `Cronjob / ScheduleBackgroundEvent method ${method} not found. Available methods: ${validMethods.toString()}`,
-      ) as unknown as Error;
+      );
+
+      throw unknownCronjobMethodError;
     }
 
     const result = await handler({ request });
