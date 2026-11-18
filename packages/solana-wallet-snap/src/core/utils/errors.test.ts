@@ -12,9 +12,9 @@ const setupTest = (): {
   vi.clearAllMocks();
 
   const mockSnapRequest = vi.fn();
-  (globalThis as unknown as { snap: unknown }).snap = {
+  vi.stubGlobal('snap', {
     request: mockSnapRequest,
-  };
+  });
 
   return { mockSnapRequest, mockLogger: vi.mocked(logger) };
 };
