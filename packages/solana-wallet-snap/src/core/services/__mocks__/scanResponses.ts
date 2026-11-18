@@ -1,4 +1,7 @@
-import type { TransactionScanResult } from '../transaction-scan/types';
+import type {
+  TransactionScanAssetChange,
+  TransactionScanResult,
+} from '../transaction-scan/types';
 
 export const MOCK_SECURITY_ALERTS_API_SCAN_TRANSACTIONS_RESPONSE = {
   encoding: 'base58',
@@ -400,7 +403,11 @@ export const MOCK_SECURITY_ALERTS_API_SCAN_TRANSACTIONS_RESPONSE = {
   request_id: 'b731c628-e699-4a71-8a58-d2b578369a44',
 };
 
-export const MOCK_SCAN_TRANSACTION_RESPONSE: TransactionScanResult = {
+export const MOCK_SCAN_TRANSACTION_RESPONSE: TransactionScanResult & {
+  estimatedChanges: {
+    assets: (TransactionScanAssetChange & { imageSvg: string })[];
+  };
+} = {
   status: 'SUCCESS',
   estimatedChanges: {
     assets: [
@@ -438,4 +445,4 @@ export const MOCK_SCAN_TRANSACTION_RESPONSE: TransactionScanResult = {
   },
   validation: { type: 'Benign', reason: 'exposure_farming' },
   error: null,
-} as any;
+};

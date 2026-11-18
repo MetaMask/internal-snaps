@@ -1,7 +1,7 @@
 import type { SnapComponent } from '@metamask/snaps-sdk/jsx';
 import { Box, Button, Heading, Icon } from '@metamask/snaps-sdk/jsx';
 
-export type HeadingWithReturnProps = {
+type HeadingWithReturnProps = {
   heading: string;
   returnButtonName: string;
 };

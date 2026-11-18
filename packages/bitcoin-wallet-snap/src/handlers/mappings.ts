@@ -30,7 +30,7 @@ export type TransactionFee = {
   asset: TransactionAmount;
 };
 
-export type TransactionAmount = {
+type TransactionAmount = {
   amount: string;
   fungible: true;
   unit: string;
@@ -246,6 +246,10 @@ export function mapToTransaction(
  * `canBeMalleable`; consumers (extension, dApp) that ignore unknown fields
  * will see the standard shape, while consumers that opt in can read the flag
  * to decide whether to trust the txid before block confirmation.
+ */
+/**
+ * The keyring transaction shape returned by `mapPsbtToTransaction`, which adds
+ * the `canBeMalleable` flag the confirmation views read.
  */
 export type KeyringTransactionWithMalleability = KeyringTransaction & {
   canBeMalleable: boolean;

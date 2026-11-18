@@ -32,23 +32,23 @@ export type SignPsbtResponse = {
   canBeMalleable?: boolean;
 };
 
-export type ComputeFeeResponse = {
+type ComputeFeeResponse = {
   // Fee in satoshis
   fee: string;
 };
 
-export type BroadcastPsbtResponse = {
+type BroadcastPsbtResponse = {
   txid: string;
   // True if the source account's address type allows third-party txid
   // malleation before confirmation (currently only legacy P2PKH).
   canBeMalleable: boolean;
 };
 
-export type FillPsbtResponse = {
+type FillPsbtResponse = {
   psbt: string;
 };
 
-export type SignMessageResponse = {
+type SignMessageResponse = {
   signature: string;
 };
 
