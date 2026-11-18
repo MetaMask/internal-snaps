@@ -17,8 +17,8 @@ import * as Errors from '../../utils/errors';
 import { trackError } from '../../utils/errors';
 import { mockLogger } from '../__mocks__/logger';
 import type { AccountsService } from '../accounts';
-import type { SolanaConnection } from '../connection';
 import type { TransactionsService } from '../transactions';
+import type { SignatureMonitorConnection } from './SignatureMonitor';
 import { SignatureMonitor } from './SignatureMonitor';
 import type { SubscriptionService } from './SubscriptionService';
 
@@ -28,7 +28,7 @@ describe('SignatureMonitor', () => {
   let mockAccountService: AccountsService;
   let mockTransactionsService: TransactionsService;
   let mockAnalyticsService: AnalyticsService;
-  let mockConnection: SolanaConnection;
+  let mockConnection: SignatureMonitorConnection;
 
   const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNTS[0];
 
@@ -96,12 +96,12 @@ describe('SignatureMonitor', () => {
     mockConnection = {
       getRpc: vi.fn().mockImplementation(() => ({
         getSignatureStatuses: vi.fn().mockImplementation(() => ({
-          send: vi.fn().mockReturnValue({
+          send: vi.fn().mockResolvedValue({
             value: [{ confirmationStatus: 'confirmed' }],
           }),
         })),
       })),
-    } as unknown as SolanaConnection;
+    };
 
     signatureMonitor = new SignatureMonitor(
       mockSubscriptionService,
@@ -400,11 +400,11 @@ describe('SignatureMonitor', () => {
     // The transaction is only processed, not confirmed
     vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
       getSignatureStatuses: vi.fn().mockReturnValue({
-        send: vi.fn().mockReturnValue({
+        send: vi.fn().mockResolvedValue({
           value: [{ confirmationStatus: 'processed' }],
         }),
       }),
-    } as unknown as ReturnType<SolanaConnection['getRpc']>);
+    });
 
     await signatureMonitor.monitor(
       signature,

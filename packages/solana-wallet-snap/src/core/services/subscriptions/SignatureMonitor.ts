@@ -3,6 +3,7 @@ import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
 import { assert, string } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 import { signature as asSignature } from '@solana/kit';
+import type { Rpc, SolanaRpcApi } from '@solana/kit';
 import { get } from 'lodash';
 
 import { CommitmentStruct } from '../../../entities';
@@ -16,9 +17,38 @@ import type { Network } from '../../constants/solana';
 import { trackError } from '../../utils/errors';
 import type { AccountsService } from '../accounts/AccountsService';
 import { SUPPORTED_NETWORKS } from '../config/ConfigProvider';
-import type { SolanaConnection } from '../connection';
 import type { TransactionsService } from '../transactions';
 import type { SubscriptionService } from './SubscriptionService';
+
+/**
+ * The slice of the Solana RPC client that {@link SignatureMonitor} reads from.
+ *
+ * The monitor only looks at the confirmation status of a signature, so the
+ * client is narrowed here to that single call rather than to the whole
+ * `Rpc<SolanaRpcApi>`. A real RPC client satisfies it, and it documents — and
+ * lets callers and tests provide — exactly what is used.
+ */
+export type SignatureStatusesRpc = {
+  getSignatureStatuses: (
+    ...args: Parameters<Rpc<SolanaRpcApi>['getSignatureStatuses']>
+  ) => {
+    send: () => Promise<{
+      value: readonly ({
+        readonly confirmationStatus?: Commitment | null;
+      } | null)[];
+    }>;
+  };
+};
+
+/**
+ * The slice of the connection service that {@link SignatureMonitor} needs.
+ *
+ * Only the RPC client is read from, so the monitor depends on that single
+ * accessor instead of the whole connection service.
+ */
+export type SignatureMonitorConnection = {
+  getRpc: (network: Network) => SignatureStatusesRpc;
+};
 
 export class SignatureMonitor {
   readonly #subscriptionService: SubscriptionService;
@@ -29,7 +59,7 @@ export class SignatureMonitor {
 
   readonly #analyticsService: AnalyticsService;
 
-  readonly #connection: SolanaConnection;
+  readonly #connection: SignatureMonitorConnection;
 
   readonly #logger: Logger;
 
@@ -48,7 +78,7 @@ export class SignatureMonitor {
     accountService: AccountsService,
     transactionsService: TransactionsService,
     analyticsService: AnalyticsService,
-    connection: SolanaConnection,
+    connection: SignatureMonitorConnection,
     logger: Logger,
   ) {
     this.#subscriptionService = subscriptionService;

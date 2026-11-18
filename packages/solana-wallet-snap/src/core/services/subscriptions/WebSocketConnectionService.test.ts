@@ -62,9 +62,7 @@ describe('WebSocketConnectionService', () => {
     vi.clearAllMocks();
     vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
 
-    (globalThis as unknown as { snap: unknown }).snap = {
-      request: vi.fn(),
-    };
+    vi.stubGlobal('snap', { request: vi.fn() });
 
     mockWebSocketConnectionRepository = {
       getAll: vi.fn(),

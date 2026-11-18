@@ -148,10 +148,7 @@ describe('SubscriptionService', () => {
     vi.clearAllMocks();
     connectionRecoveryHandlers.clear();
 
-    const snap = {
-      request: vi.fn(),
-    };
-    (globalThis as unknown as { snap: typeof snap }).snap = snap;
+    vi.stubGlobal('snap', { request: vi.fn() });
 
     mockWebSocketConnectionService = {
       openConnection: vi.fn(),
