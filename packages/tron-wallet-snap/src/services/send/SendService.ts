@@ -25,22 +25,45 @@ import type { TransactionExpirationRefresherService } from '../transaction-expir
 import type { FeeCalculatorService } from './FeeCalculatorService';
 import type { SendValidationResult } from './types';
 
+/**
+ * The collaborator surface `SendService` drives. Each collaborator is a class
+ * with private state, so depending on the whole type forces callers to hand
+ * over nominal instances. These picks state exactly which methods this service
+ * calls — real instances stay assignable — and keep the dependency explicit.
+ */
+type SendServiceDependencies = {
+  accountsService: Pick<
+    AccountsService,
+    'findByIdOrThrow' | 'deriveTronKeypair'
+  >;
+  assetsService: Pick<AssetsService, 'getAccountAssetsByIDs'>;
+  tronWebFactory: Pick<TronWebFactory, 'createClient' | 'executeBroadcast'>;
+  feeCalculatorService: Pick<FeeCalculatorService, 'computeFee'>;
+  logger: Logger;
+  snapClient: Pick<SnapClient, 'scheduleBackgroundEvent'>;
+  transactionExpirationRefresherService: Pick<
+    TransactionExpirationRefresherService,
+    'ensureFreshMetadata'
+  >;
+  analyticsService: Pick<AnalyticsService, 'trackTransactionSubmitted'>;
+};
+
 export class SendService {
-  readonly #accountsService: AccountsService;
+  readonly #accountsService: SendServiceDependencies['accountsService'];
 
-  readonly #assetsService: AssetsService;
+  readonly #assetsService: SendServiceDependencies['assetsService'];
 
-  readonly #tronWebFactory: TronWebFactory;
+  readonly #tronWebFactory: SendServiceDependencies['tronWebFactory'];
 
-  readonly #feeCalculatorService: FeeCalculatorService;
+  readonly #feeCalculatorService: SendServiceDependencies['feeCalculatorService'];
 
   readonly #logger: Logger;
 
-  readonly #snapClient: SnapClient;
+  readonly #snapClient: SendServiceDependencies['snapClient'];
 
-  readonly #transactionExpirationRefresherService: TransactionExpirationRefresherService;
+  readonly #transactionExpirationRefresherService: SendServiceDependencies['transactionExpirationRefresherService'];
 
-  readonly #analyticsService: AnalyticsService;
+  readonly #analyticsService: SendServiceDependencies['analyticsService'];
 
   constructor({
     accountsService,
@@ -51,16 +74,7 @@ export class SendService {
     snapClient,
     transactionExpirationRefresherService,
     analyticsService,
-  }: {
-    accountsService: AccountsService;
-    assetsService: AssetsService;
-    tronWebFactory: TronWebFactory;
-    feeCalculatorService: FeeCalculatorService;
-    logger: Logger;
-    snapClient: SnapClient;
-    transactionExpirationRefresherService: TransactionExpirationRefresherService;
-    analyticsService: AnalyticsService;
-  }) {
+  }: SendServiceDependencies) {
     this.#accountsService = accountsService;
     this.#assetsService = assetsService;
     this.#tronWebFactory = tronWebFactory;
