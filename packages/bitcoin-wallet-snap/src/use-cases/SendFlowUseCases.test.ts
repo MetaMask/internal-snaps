@@ -610,12 +610,12 @@ describe('SendFlowUseCases', () => {
     });
 
     it('populate errors successfully', async () => {
-      const mockError = mock<CodifiedError>({
+      const mockError = mock<CodifiedError & Error>({
         code: 18,
         message: 'base58 error',
       });
       (Address.from_string as Mock).mockImplementation(() => {
-        throw mockError as unknown as Error;
+        throw mockError;
       });
 
       const testContext = {
@@ -687,9 +687,7 @@ describe('SendFlowUseCases', () => {
     });
 
     it('computes the fee when amount and recipient are filled: drain', async () => {
-      mockPsbt.fee.mockReturnValue({
-        to_sat: () => BigInt(10),
-      } as unknown as Amount);
+      mockPsbt.fee.mockReturnValue(mock<Amount>({ to_sat: () => BigInt(10) }));
       mockAccountRepository.get.mockResolvedValue(mockAccount);
       mockAccountRepository.getFrozenUTXOs.mockResolvedValue(['txid:vout']);
 
@@ -727,9 +725,7 @@ describe('SendFlowUseCases', () => {
       (Address.from_string as Mock).mockReturnValue({
         toString: () => 'newAddressValidated',
       });
-      mockPsbt.fee.mockReturnValue({
-        to_sat: () => BigInt(10),
-      } as unknown as Amount);
+      mockPsbt.fee.mockReturnValue(mock<Amount>({ to_sat: () => BigInt(10) }));
       mockAccountRepository.get.mockResolvedValue(mockAccount);
       mockAccountRepository.getFrozenUTXOs.mockResolvedValue([]);
 
@@ -1111,12 +1107,12 @@ describe('SendFlowUseCases', () => {
       );
       mockSnapClient.displayUserPrompt.mockResolvedValue(true);
       mockAccountUseCases.signPsbt.mockResolvedValue({
-        psbt: mockSignedPsbt,
-      } as unknown as Awaited<ReturnType<AccountUseCases['signPsbt']>>);
+        psbt: mockSignedPsbt.toString(),
+      });
       (Psbt.from_string as Mock).mockReturnValue(mockSignedPsbt);
-      mockRatesClient.spotPrices.mockResolvedValue({
-        price: { value: 50000, currency: 'usd' },
-      } as unknown as SpotPrice);
+      mockRatesClient.spotPrices.mockResolvedValue(
+        mock<SpotPrice>({ price: 50000 }),
+      );
     });
 
     it('builds and confirms a regular send transaction', async () => {
@@ -1191,9 +1187,9 @@ describe('SendFlowUseCases', () => {
     it('builds a drain transaction when amount equals balance', async () => {
       const balanceAmount = mock<Amount>();
       balanceAmount.to_sat.mockReturnValue(BigInt(10000));
-      mockAccount.balance = {
+      mockAccount.balance = mock<Balance>({
         trusted_spendable: balanceAmount,
-      } as unknown as Balance;
+      });
 
       await useCases.confirmSendFlow(mockAccount, amount, toAddress);
 
@@ -1321,7 +1317,7 @@ describe('SendFlowUseCases', () => {
       expect(mockSendFlowRepository.insertConfirmSendForm).toHaveBeenCalledWith(
         expect.objectContaining({
           exchangeRate: expect.objectContaining({
-            conversionRate: { value: 50000, currency: 'usd' },
+            conversionRate: 50000,
             currency: 'USD',
           }),
           currency: CurrencyUnit.Bitcoin,
@@ -1330,9 +1326,9 @@ describe('SendFlowUseCases', () => {
     });
 
     it('handles missing exchange rate gracefully', async () => {
-      mockRatesClient.spotPrices.mockResolvedValue({
-        price: undefined,
-      } as unknown as SpotPrice);
+      mockRatesClient.spotPrices.mockResolvedValue(
+        mock<SpotPrice>({ price: undefined }),
+      );
 
       await useCases.confirmSendFlow(mockAccount, amount, toAddress);
 
