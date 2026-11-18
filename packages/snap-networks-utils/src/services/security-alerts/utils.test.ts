@@ -1,8 +1,81 @@
 import {
   deriveSecurityAlert,
   getSecurityAlertDescription,
+  getTransactionSecurityProperties,
   requiresMaliciousAcknowledgement,
 } from './utils';
+
+describe('getTransactionSecurityProperties', () => {
+  it('returns no fields when no response is stored', () => {
+    expect(getTransactionSecurityProperties(null)).toStrictEqual({});
+    expect(getTransactionSecurityProperties(undefined)).toStrictEqual({});
+  });
+
+  it('marks a scan in progress as loading', () => {
+    expect(
+      getTransactionSecurityProperties({ response: 'Loading' }),
+    ).toStrictEqual({
+      securityAlertResponse: 'Loading',
+      securityAlertReason: 'NotApplicable',
+    });
+  });
+
+  it('omits the reason for benign verdicts', () => {
+    expect(
+      getTransactionSecurityProperties({
+        response: 'Benign',
+        reason: 'honeypot',
+      }),
+    ).toStrictEqual({
+      securityAlertResponse: 'Benign',
+    });
+  });
+
+  it('includes the reason and description for warning verdicts', () => {
+    expect(
+      getTransactionSecurityProperties({
+        response: 'Warning',
+        reason: 'other',
+        description: 'Suspicious transfer',
+      }),
+    ).toStrictEqual({
+      securityAlertResponse: 'Warning',
+      securityAlertReason: 'other',
+      securityAlertDescription: 'Suspicious transfer',
+    });
+  });
+
+  it('uses NotApplicable for a non-benign verdict without a reason', () => {
+    expect(
+      getTransactionSecurityProperties({
+        response: 'Malicious',
+        reason: null,
+      }),
+    ).toStrictEqual({
+      securityAlertResponse: 'Malicious',
+      securityAlertReason: 'NotApplicable',
+    });
+  });
+
+  it('omits the description when the response has none', () => {
+    const properties = getTransactionSecurityProperties({
+      response: 'Warning',
+      reason: 'other',
+      description: '',
+    });
+
+    expect(properties).not.toHaveProperty('securityAlertDescription');
+  });
+
+  it('uses NotApplicable for an error verdict without a reason', () => {
+    expect(
+      getTransactionSecurityProperties({ response: 'Error' }),
+    ).toStrictEqual({
+      securityAlertResponse: 'Error',
+      securityAlertReason: 'NotApplicable',
+    });
+  });
+});
 
 describe('deriveSecurityAlert', () => {
   it('returns null for missing verdicts', () => {

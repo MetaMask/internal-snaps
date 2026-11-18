@@ -7,6 +7,7 @@ import type {
   FetchPolicyService,
 } from '../../utils/fetchPolicy/createFetchPolicy';
 import type { Logger } from '../../utils/logger/Logger';
+import type { SecurityAlertResponse } from '../security-alerts/types';
 
 export const TransactionEventType = {
   TransactionAdded: 'Transaction Added',
@@ -59,9 +60,31 @@ export type AccountEventProperties = {
 };
 
 /**
+ * Security verdict values reported on transaction events. `Loading` is set
+ * while the scan is in progress, and `NotApplicable` stands in for a missing
+ * reason.
+ */
+export type TransactionSecurityAlertResponse =
+  | SecurityAlertResponse
+  | 'Loading'
+  | 'NotApplicable';
+
+/**
+ * Security verdict fields on transaction lifecycle events, aligned with the
+ * MetaMask extension. A field is omitted when there is nothing to report.
+ */
+export type TransactionSecurityProperties = {
+  securityAlertResponse?: TransactionSecurityAlertResponse;
+  securityAlertReason?: string;
+  securityAlertDescription?: string;
+};
+
+/**
  * Properties of a transaction lifecycle event.
  *
- * `transactionType` is the optional classification of the transaction.
+ * `transactionType` is the optional classification of the transaction. The
+ * security verdict fields are optional and omitted when the transaction has no
+ * stored verdict.
  *
  * Security events intentionally do not extend this type: they are not tied to a
  * transaction classification, so advertising `transactionType` there would let
@@ -69,7 +92,7 @@ export type AccountEventProperties = {
  */
 export type TransactionEventProperties = AccountEventProperties & {
   transactionType?: `${TransactionType}`;
-};
+} & TransactionSecurityProperties;
 
 export type TransactionFinalizedEventProperties = TransactionEventProperties & {
   transactionStatus?: string;
@@ -104,6 +127,35 @@ export type ServiceDegradedEventProperties =
     retryReason?: FetchPolicyRetryReason;
     durationMs?: number;
   };
+
+/**
+ * Converts security verdict properties to the snake_case event payload. Only
+ * the fields that are set are included.
+ *
+ * @param properties - The security verdict properties.
+ * @returns The payload fields to merge into a transaction event.
+ */
+function toSecurityEventProperties(
+  properties: TransactionSecurityProperties,
+): Record<string, Json> {
+  const {
+    securityAlertResponse,
+    securityAlertReason,
+    securityAlertDescription,
+  } = properties;
+
+  return {
+    ...(securityAlertResponse === undefined
+      ? {}
+      : { security_alert_response: securityAlertResponse }),
+    ...(securityAlertReason === undefined
+      ? {}
+      : { security_alert_reason: securityAlertReason }),
+    ...(securityAlertDescription === undefined
+      ? {}
+      : { security_alert_description: securityAlertDescription }),
+  };
+}
 
 /**
  * Tracks common network Snap analytics events.
@@ -175,6 +227,9 @@ export class AnalyticsService<
    * @param properties.accountType - The type of account.
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
    * @param properties.transactionType - Optional transaction type.
+   * @param properties.securityAlertResponse - Optional security verdict. Omitted when no verdict is stored.
+   * @param properties.securityAlertReason - Optional Blockaid reason. Omitted for `Benign`.
+   * @param properties.securityAlertDescription - Optional Blockaid description. Omitted when the response has none.
    */
   async trackTransactionAdded(
     properties: TransactionEventProperties,
@@ -194,6 +249,9 @@ export class AnalyticsService<
    * @param properties.accountType - The type of account.
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
    * @param properties.transactionType - Optional transaction type.
+   * @param properties.securityAlertResponse - Optional security verdict. Omitted when no verdict is stored.
+   * @param properties.securityAlertReason - Optional Blockaid reason. Omitted for `Benign`.
+   * @param properties.securityAlertDescription - Optional Blockaid description. Omitted when the response has none.
    */
   async trackTransactionRejected(
     properties: TransactionEventProperties,
@@ -213,6 +271,9 @@ export class AnalyticsService<
    * @param properties.accountType - The type of account.
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
    * @param properties.transactionType - Optional transaction type.
+   * @param properties.securityAlertResponse - Optional security verdict. Omitted when no verdict is stored.
+   * @param properties.securityAlertReason - Optional Blockaid reason. Omitted for `Benign`.
+   * @param properties.securityAlertDescription - Optional Blockaid description. Omitted when the response has none.
    */
   async trackTransactionApproved(
     properties: TransactionEventProperties,
@@ -232,6 +293,9 @@ export class AnalyticsService<
    * @param properties.accountType - The type of account.
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
    * @param properties.transactionType - Optional transaction type.
+   * @param properties.securityAlertResponse - Optional security verdict. Omitted when no verdict is stored.
+   * @param properties.securityAlertReason - Optional Blockaid reason. Omitted for `Benign`.
+   * @param properties.securityAlertDescription - Optional Blockaid description. Omitted when the response has none.
    */
   async trackTransactionSubmitted(
     properties: TransactionEventProperties,
@@ -252,6 +316,9 @@ export class AnalyticsService<
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
    * @param properties.transactionStatus - Optional final transaction status.
    * @param properties.transactionType - Optional transaction type.
+   * @param properties.securityAlertResponse - Optional security verdict. Omitted when no verdict is stored.
+   * @param properties.securityAlertReason - Optional Blockaid reason. Omitted for `Benign`.
+   * @param properties.securityAlertDescription - Optional Blockaid description. Omitted when the response has none.
    */
   async trackTransactionFinalized({
     origin,
@@ -259,6 +326,7 @@ export class AnalyticsService<
     chainIdCaip,
     transactionStatus,
     transactionType,
+    ...securityProperties
   }: TransactionFinalizedEventProperties): Promise<void> {
     await this.trackEvent(TransactionEventType.TransactionFinalized, {
       message: 'Snap transaction finalized',
@@ -271,12 +339,17 @@ export class AnalyticsService<
       ...(transactionType === undefined
         ? {}
         : { transaction_type: transactionType }),
+      ...toSecurityEventProperties(securityProperties),
     });
   }
 
   /**
    * Track a "Security Alert Detected" event when a malicious or warning
    * transaction is detected.
+   *
+   * @deprecated Verdicts are sent on the transaction lifecycle events through
+   * the security fields of `TransactionEventProperties`. This event will be
+   * removed in a future release.
    *
    * @param properties - Event properties.
    * @param properties.origin - The origin of the request.
@@ -308,6 +381,10 @@ export class AnalyticsService<
   /**
    * Track a "Security Scan Completed" event when a transaction security scan
    * finishes.
+   *
+   * @deprecated Verdicts are sent on the transaction lifecycle events through
+   * the security fields of `TransactionEventProperties`. This event will be
+   * removed in a future release.
    *
    * @param properties - Event properties.
    * @param properties.origin - The origin of the request.
@@ -423,6 +500,9 @@ export class AnalyticsService<
    * @param properties.accountType - The type of account.
    * @param properties.chainIdCaip - The CAIP-2 chain ID.
    * @param properties.transactionType - Optional transaction type.
+   * @param properties.securityAlertResponse - Optional security verdict. Omitted when no verdict is stored.
+   * @param properties.securityAlertReason - Optional Blockaid reason. Omitted for `Benign`.
+   * @param properties.securityAlertDescription - Optional Blockaid description. Omitted when the response has none.
    */
   async #trackTransactionEvent(
     event: TransactionEventType,
@@ -432,6 +512,7 @@ export class AnalyticsService<
       accountType,
       chainIdCaip,
       transactionType,
+      ...securityProperties
     }: TransactionEventProperties,
   ): Promise<void> {
     await this.trackEvent(event, {
@@ -442,6 +523,7 @@ export class AnalyticsService<
       ...(transactionType === undefined
         ? {}
         : { transaction_type: transactionType }),
+      ...toSecurityEventProperties(securityProperties),
     });
   }
 }

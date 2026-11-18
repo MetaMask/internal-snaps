@@ -1,4 +1,17 @@
+import type { TransactionSecurityProperties } from '../analytics/AnalyticsService';
 import { SecurityAlertResponse } from './types';
+
+/**
+ * A security verdict for a transaction, as reported by the snap.
+ */
+export type SecurityVerdict = {
+  /** The verdict, or `Loading` while the scan is in progress. */
+  response: SecurityAlertResponse | 'Loading';
+  /** The Blockaid reason for the verdict, if any. */
+  reason?: string | null;
+  /** The Blockaid description of the verdict, if any. */
+  description?: string | null;
+};
 
 /**
  * Human-readable description suffixes for Blockaid validation reasons, shared
@@ -60,6 +73,36 @@ export function deriveSecurityAlert(type?: string | null): string | null {
     type !== SecurityAlertResponse.Error
     ? type
     : null;
+}
+
+/**
+ * Builds the security fields for a transaction lifecycle event, aligned with
+ * the MetaMask extension.
+ *
+ * - With no verdict (for example, security alerts are off), no fields are returned.
+ * - `reason` is omitted for `Benign`. Other verdicts report `NotApplicable` when
+ *   they have no reason.
+ * - `description` is included only when the response has one.
+ *
+ * @param verdict - The security verdict, or null/undefined when no response is stored.
+ * @returns The security properties to add to a transaction event.
+ */
+export function getTransactionSecurityProperties(
+  verdict?: SecurityVerdict | null,
+): TransactionSecurityProperties {
+  if (!verdict) {
+    return {};
+  }
+
+  const { response, reason, description } = verdict;
+
+  const isBenign = response === SecurityAlertResponse.Benign;
+
+  return {
+    securityAlertResponse: response,
+    ...(isBenign ? {} : { securityAlertReason: reason ?? 'NotApplicable' }),
+    ...(description ? { securityAlertDescription: description } : {}),
+  };
 }
 
 /**
