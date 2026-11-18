@@ -7,6 +7,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { Logger, BitcoinAccount } from '../entities';
+import { ValidationError } from '../entities';
 import type { AccountUseCases, SendFlowUseCases } from '../use-cases';
 import { Caip19Asset } from './caip';
 import * as Mappings from './mappings';
@@ -824,6 +825,134 @@ describe('RpcHandler', () => {
         valid: false,
         errors: [{ code: SendErrorCodes.Invalid }],
       });
+    });
+  });
+
+  describe('getMaxSendableAmount', () => {
+    const spendableSats = 150_000_000n;
+    const feeSats = 10_000n;
+    const assetId = 'bip122:000000000019d6689c085ae165831e93/slip44:0';
+
+    const createRequest = (toAddress?: string): JsonRpcRequest => ({
+      id: 1,
+      jsonrpc: '2.0',
+      method: RpcMethod.GetMaxSendableAmount,
+      params: {
+        accountId: validAccountId,
+        assetId,
+        ...(toAddress === undefined ? {} : { toAddress }),
+      },
+    });
+
+    const parseSats = (amount: string): bigint => {
+      const [whole = '0', fraction = ''] = amount.split('.');
+      return BigInt(whole) * 100_000_000n + BigInt(fraction.padEnd(8, '0'));
+    };
+
+    const mockFundableUpTo = (maxFundableSats: bigint): void => {
+      mockSendFlowUseCases.buildProbePsbt.mockImplementation(
+        async (_account, amount) => {
+          if (parseSats(amount) <= maxFundableSats) {
+            return mockPsbt;
+          }
+          throw new Error('Insufficient funds: 149990000 sat available');
+        },
+      );
+    };
+
+    beforeEach(() => {
+      const trustedSpendable = mock<Amount>();
+      trustedSpendable.to_sat.mockReturnValue(spendableSats);
+
+      mockAccountsUseCases.get.mockResolvedValue({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+        balance: { trusted_spendable: trustedSpendable },
+      } as unknown as BitcoinAccount);
+
+      (Amount.from_btc as Mock).mockImplementation(
+        (btc): { to_sat: () => bigint } => ({
+          to_sat: (): bigint => BigInt(Math.round(btc * 100_000_000)),
+        }),
+      );
+    });
+
+    it('binary searches the max amount fundable with the fee for a known toAddress', async () => {
+      mockFundableUpTo(spendableSats - feeSats);
+      const toAddress = 'bc1qux9xtsj6mr4un7yg9kgd7tv8kndvlhv2gv5yc8';
+
+      const result = await handler.route(origin, createRequest(toAddress));
+
+      expect(mockSendFlowUseCases.buildProbePsbt).toHaveBeenCalledWith(
+        expect.objectContaining({ network: 'bitcoin' }),
+        expect.any(String),
+        toAddress,
+      );
+      expect(
+        mockSendFlowUseCases.buildProbePsbt.mock.calls.length,
+      ).toBeGreaterThan(1);
+      expect(result).toStrictEqual({ amount: '1.4999' });
+    });
+
+    it('binary searches the max amount fundable with the fee when toAddress is omitted', async () => {
+      mockFundableUpTo(spendableSats - feeSats);
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(mockSendFlowUseCases.buildProbePsbt).toHaveBeenCalledWith(
+        expect.objectContaining({ network: 'bitcoin' }),
+        expect.any(String),
+        undefined,
+      );
+      expect(result).toStrictEqual({ amount: '1.4999' });
+    });
+
+    it('returns 0 when no amount covers the fee', async () => {
+      mockFundableUpTo(-1n);
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns 0 when the fundable amount is below the dust limit', async () => {
+      mockFundableUpTo(100n);
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns 0 without probing when the spendable balance is zero', async () => {
+      const trustedSpendable = mock<Amount>();
+      trustedSpendable.to_sat.mockReturnValue(0n);
+      mockAccountsUseCases.get.mockResolvedValue({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+        balance: { trusted_spendable: trustedSpendable },
+      } as unknown as BitcoinAccount);
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(mockSendFlowUseCases.buildProbePsbt).not.toHaveBeenCalled();
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns 0 when every probe reports a dust limit error', async () => {
+      mockSendFlowUseCases.buildProbePsbt.mockRejectedValue(
+        new Error('Output below the dust limit'),
+      );
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('rejects an invalid toAddress', async () => {
+      await expect(
+        handler.route(origin, createRequest('invalid-address')),
+      ).rejects.toThrow(ValidationError);
+      expect(mockSendFlowUseCases.buildProbePsbt).not.toHaveBeenCalled();
     });
   });
 
