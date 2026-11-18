@@ -302,7 +302,7 @@ export class FeeCalculatorService {
       }
 
       await this.#snapClient.trackError(error as Error);
-      this.#logger.warn(
+      this.#logger.error(
         { error },
         `Failed to determine activation for ${address} on ${scope}`,
       );
@@ -330,7 +330,7 @@ export class FeeCalculatorService {
       return await this.#trongridApiClient.getChainParameters(scope);
     } catch (error) {
       await this.#snapClient.trackError(error as Error);
-      this.#logger.warn(
+      this.#logger.error(
         { error },
         'Failed to fetch chain parameters, attempting cached fallback',
       );
@@ -509,7 +509,7 @@ export class FeeCalculatorService {
       return availableEnergy;
     } catch (error) {
       await this.#snapClient.trackError(error as Error);
-      this.#logger.warn(
+      this.#logger.error(
         { error, deployerAddress },
         'Failed to fetch deployer energy',
       );
@@ -583,7 +583,7 @@ export class FeeCalculatorService {
           .getContract(scope, contractAddress)
           .catch(async (error) => {
             await this.#snapClient.trackError(error as Error);
-            this.#logger.warn(
+            this.#logger.error(
               'Failed to fetch contract info for energy sharing, assuming user pays all',
             );
             return null;
@@ -726,7 +726,7 @@ export class FeeCalculatorService {
       return BigNumber.max(0, netLimit - netUsed);
     } catch (error) {
       await this.#snapClient.trackError(error as Error);
-      this.#logger.warn(
+      this.#logger.error(
         { error, ownerAddress },
         'Failed to fetch sender staked Bandwidth for account activation',
       );

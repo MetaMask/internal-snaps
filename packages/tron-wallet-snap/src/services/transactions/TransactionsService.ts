@@ -449,7 +449,7 @@ export class TransactionsService {
         ...tokenAssetTypes,
       ]);
     } catch (error) {
-      this.#logger.warn(
+      this.#logger.error(
         { error },
         'Failed to fetch spot prices for spam filtering, keeping all transactions',
       );

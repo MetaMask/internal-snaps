@@ -948,7 +948,7 @@ describe('TransactionsService', () => {
                   mockAccount,
                 );
               expect(result).toHaveLength(1);
-              expect(mockLogger.warn).toHaveBeenCalledWith(
+              expect(mockLogger.error).toHaveBeenCalledWith(
                 '[🧾 TransactionsService]',
                 expect.objectContaining({ error: expect.any(Error) }),
                 'Failed to fetch spot prices for spam filtering, keeping all transactions',
