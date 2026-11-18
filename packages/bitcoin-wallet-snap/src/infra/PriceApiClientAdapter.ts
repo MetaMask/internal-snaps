@@ -6,6 +6,7 @@ import type { FetchPolicy, Logger } from '@metamask/snap-networks-utils';
 
 import { ExternalServiceError } from '../entities';
 import type { AssetRatesClient, PriceApiConfig, SpotPrice } from '../entities';
+import { fetchPolicyReporting } from '../utils/analytics';
 
 type SpotPricesResponse = {
   price: number;
@@ -37,7 +38,11 @@ export class PriceApiClientAdapter implements AssetRatesClient {
   ) {
     this.#endpoint = config.url;
     this.#fetch = fetchFn;
-    this.#policy = createFetchPolicy({ service: 'price_api', logger });
+    this.#policy = createFetchPolicy({
+      service: 'price_api',
+      logger,
+      ...fetchPolicyReporting,
+    });
   }
 
   async spotPrices(

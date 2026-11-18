@@ -8,6 +8,8 @@ import type {
 } from '@metamask/bitcoindevkit';
 import * as BitcoinDevKit from '@metamask/bitcoindevkit';
 import { EsploraClient } from '@metamask/bitcoindevkit';
+import { BtcScope } from '@metamask/keyring-api';
+import * as snapNetworksUtils from '@metamask/snap-networks-utils';
 import {
   FetchPolicyErrorName,
   Logger,
@@ -19,6 +21,7 @@ import { fileURLToPath } from 'url';
 import { mock } from 'vitest-mock-extended';
 
 import type { BitcoinAccount, ChainConfig } from '../entities';
+import { analyticsService } from '../utils/analytics';
 import { EsploraClientAdapter } from './EsploraClientAdapter';
 
 const setupTest = (): {
@@ -71,6 +74,29 @@ describe('EsploraClientAdapter', () => {
       'Failed to perform initial full scan',
     );
     expect(mockEsploraClient.full_scan).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports outages of each network to analytics only', () => {
+    const createFetchPolicySpy = vi.spyOn(
+      snapNetworksUtils,
+      'createFetchPolicy',
+    );
+
+    setupTest();
+
+    expect(createFetchPolicySpy).toHaveBeenCalledTimes(5);
+    for (const scope of Object.values(BtcScope)) {
+      expect(createFetchPolicySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          service: 'esplora',
+          chainIdCaip: scope,
+          analytics: analyticsService,
+        }),
+      );
+    }
+    for (const [options] of createFetchPolicySpy.mock.calls) {
+      expect(options).not.toHaveProperty('trackError');
+    }
   });
 
   it('disables the Esplora client internal retries', () => {

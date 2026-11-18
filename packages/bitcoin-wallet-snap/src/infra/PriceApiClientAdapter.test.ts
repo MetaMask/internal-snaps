@@ -1,7 +1,9 @@
+import * as snapNetworksUtils from '@metamask/snap-networks-utils';
 import { Logger, LogLevel } from '@metamask/snap-networks-utils';
 import type { MockedFunction } from 'vitest';
 
 import type { PriceApiConfig } from '../entities';
+import { fetchPolicyReporting } from '../utils/analytics';
 import { PriceApiClientAdapter } from './PriceApiClientAdapter';
 
 const response = {
@@ -27,6 +29,24 @@ describe('PriceApiClientAdapter', () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
+  });
+
+  it('reports outages through its fetch policy', () => {
+    const createFetchPolicySpy = vi.spyOn(
+      snapNetworksUtils,
+      'createFetchPolicy',
+    );
+
+    expect(
+      () => new PriceApiClientAdapter(config, logger, fetchMock),
+    ).not.toThrow();
+
+    expect(createFetchPolicySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        service: 'price_api',
+        ...fetchPolicyReporting,
+      }),
+    );
   });
 
   it('retries transient failures and parses the response', async () => {

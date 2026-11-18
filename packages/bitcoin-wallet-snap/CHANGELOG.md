@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Report Esplora and Price API outages through the shared fetch policy ([#643](https://github.com/MetaMask/internal-snaps/pull/643))
+  - Slow or failing requests now emit `Snap Service Degraded` and `Snap Service Unavailable` Segment events. Esplora events are tagged with the network's CAIP-2 chain ID.
+  - Price API give-ups are sent to Sentry without URLs, request params or response data. Esplora give-ups are still reported by their callers, as before.
+  - Errors the policy already reported, including open-circuit rejections during account synchronization, are no longer sent to Sentry a second time.
 - `onAmountInput` now estimates the send fee and rejects amounts that cannot cover it, including when `toAddress` is omitted ([#586](https://github.com/MetaMask/internal-snaps/pull/586))
 
 ### Removed
