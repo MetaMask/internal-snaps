@@ -966,7 +966,7 @@ describe('CronHandler', () => {
 
       await handler.route(request);
 
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect(mockLogger.error).toHaveBeenCalledWith(
         'Failed to report error',
         expect.anything(),
       );

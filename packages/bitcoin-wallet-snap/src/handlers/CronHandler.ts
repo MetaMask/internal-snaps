@@ -109,7 +109,7 @@ export class CronHandler {
         new SynchronizationError(message, failures),
       );
     } catch (reportingError) {
-      this.#logger.warn('Failed to report error', { reportingError });
+      this.#logger.error('Failed to report error', { reportingError });
     }
   }
 
