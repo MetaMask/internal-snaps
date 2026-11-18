@@ -6,19 +6,15 @@ import type { Mock } from 'vitest';
 
 import { Network } from '../../constants/solana';
 import { mockLogger } from '../__mocks__/logger';
-import type { SolanaConnection } from '../connection';
 import { RecipientClassifier } from './RecipientClassifier';
-
-type MockJsonParsedAccount = Awaited<
-  ReturnType<SolanaConnection['fetchJsonParsedAccount']>
->;
-
-type MockRpc = ReturnType<SolanaConnection['getRpc']>;
 
 describe('RecipientClassifier', () => {
   let classifier: RecipientClassifier;
-  let mockConnection: SolanaConnection;
-  let mockRpc: MockRpc;
+  let mockConnection: {
+    getRpc: Mock;
+    fetchJsonParsedAccount: Mock;
+  };
+  let mockRpc: { getAccountInfo: Mock };
   let assertAccountExists: Mock;
 
   beforeEach(() => {
@@ -31,12 +27,12 @@ describe('RecipientClassifier', () => {
 
     mockRpc = {
       getAccountInfo: vi.fn(),
-    } as unknown as MockRpc;
+    };
 
     mockConnection = {
       getRpc: vi.fn().mockReturnValue(mockRpc),
       fetchJsonParsedAccount: vi.fn(),
-    } as unknown as SolanaConnection;
+    };
 
     classifier = new RecipientClassifier(mockConnection, mockLogger);
   });
@@ -46,7 +42,7 @@ describe('RecipientClassifier', () => {
     const network = Network.Mainnet;
 
     it('classifies non-existent account as SYSTEM', async () => {
-      const mockAccountInfo = null as unknown as MockJsonParsedAccount;
+      const mockAccountInfo = null;
 
       vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
         mockAccountInfo,
@@ -68,7 +64,7 @@ describe('RecipientClassifier', () => {
     it('classifies system program account as SYSTEM', async () => {
       const mockAccountInfo = {
         programAddress: SYSTEM_PROGRAM_ADDRESS,
-      } as unknown as MockJsonParsedAccount;
+      };
 
       vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
         mockAccountInfo,
@@ -89,7 +85,7 @@ describe('RecipientClassifier', () => {
           mint: mintAddress,
           owner: ownerAddress,
         },
-      } as unknown as MockJsonParsedAccount;
+      };
 
       vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
         mockAccountInfo,
@@ -113,7 +109,7 @@ describe('RecipientClassifier', () => {
           mint: mintAddress,
           owner: ownerAddress,
         },
-      } as unknown as MockJsonParsedAccount;
+      };
 
       vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
         mockAccountInfo,
@@ -136,7 +132,7 @@ describe('RecipientClassifier', () => {
           owner: ownerAddress,
           // mint is missing
         },
-      } as unknown as MockJsonParsedAccount;
+      };
 
       vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
         mockAccountInfo,
@@ -156,7 +152,7 @@ describe('RecipientClassifier', () => {
           mint: mintAddress,
           // owner is missing
         },
-      } as unknown as MockJsonParsedAccount;
+      };
 
       vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
         mockAccountInfo,
@@ -176,7 +172,7 @@ describe('RecipientClassifier', () => {
           mintAuthority: 'BJE5MMbqXjVwjAF7oxwPYXnTXDyspzZyt4vwenNw5ruG',
           supply: '12807222010705262',
         },
-      } as unknown as MockJsonParsedAccount;
+      };
 
       vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
         mockAccountInfo,
@@ -191,7 +187,7 @@ describe('RecipientClassifier', () => {
       const mockAccountInfo = {
         programAddress: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
         data: {},
-      } as unknown as MockJsonParsedAccount;
+      };
 
       vi.spyOn(mockConnection, 'fetchJsonParsedAccount').mockResolvedValue(
         mockAccountInfo,

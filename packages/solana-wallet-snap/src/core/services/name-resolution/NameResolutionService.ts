@@ -6,14 +6,20 @@ import { address as asAddress } from '@solana/kit';
 import type { Network } from '../../constants/solana';
 import type { SolanaConnection } from '../connection/SolanaConnection';
 
+/**
+ * The subset of {@link SolanaConnection} this service depends on: it only ever
+ * reads the RPC client for the requested network.
+ */
+type NameResolutionConnection = Pick<SolanaConnection, 'getRpc'>;
+
 export class NameResolutionService {
-  readonly #connection: SolanaConnection;
+  readonly #connection: NameResolutionConnection;
 
   readonly #logger: Logger;
 
   tld = '.sns';
 
-  constructor(connection: SolanaConnection, logger: Logger) {
+  constructor(connection: NameResolutionConnection, logger: Logger) {
     this.#connection = connection;
     this.#logger = logger;
   }

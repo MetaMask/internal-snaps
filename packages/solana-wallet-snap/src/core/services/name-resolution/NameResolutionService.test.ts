@@ -1,18 +1,23 @@
 import { getPrimaryDomain, resolve } from '@solana-name-service/sns-sdk-kit';
 import * as SnsSdk from '@solana-name-service/sns-sdk-kit';
 import type { Address } from '@solana/kit';
-import type { Mocked } from 'vitest';
+import type { Mock } from 'vitest';
 
 import { Network } from '../../constants/solana';
 import { mockLogger } from '../__mocks__/logger';
-import type { SolanaConnection } from '../connection/SolanaConnection';
 import { NameResolutionService } from './NameResolutionService';
 
-type MockRpc = ReturnType<SolanaConnection['getRpc']>;
+/**
+ * A stand-in for the RPC client the service hands to the SNS SDK.
+ *
+ * Both SDK functions are spied on in these tests, so the stub is never
+ * dereferenced: it only needs to be the same object the assertions expect.
+ */
+type MockRpc = Record<string, never>;
 
 describe('NameResolutionService', () => {
   let nameResolutionService: NameResolutionService;
-  let mockConnection: Mocked<SolanaConnection>;
+  let mockConnection: { getRpc: Mock };
   let mockRpc: MockRpc;
 
   beforeEach(() => {
@@ -21,12 +26,12 @@ describe('NameResolutionService', () => {
     vi.spyOn(SnsSdk, 'resolve');
     vi.spyOn(SnsSdk, 'getPrimaryDomain');
 
-    mockRpc = {} as unknown as MockRpc;
+    mockRpc = {};
 
     // Create mock connection
     mockConnection = {
       getRpc: vi.fn().mockReturnValue(mockRpc),
-    } as unknown as Mocked<SolanaConnection>;
+    };
 
     // Create service instance
     nameResolutionService = new NameResolutionService(
