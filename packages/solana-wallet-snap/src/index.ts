@@ -5,8 +5,9 @@ import {
   wrapSnapHandlers,
 } from '@metamask/snap-networks-utils';
 import { MethodNotFoundError } from '@metamask/snaps-sdk';
+import type { InterfaceContext, UserInputEvent } from '@metamask/snaps-sdk';
 import { assert, enums } from '@metamask/superstruct';
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 
 import { handlers as onCronjobHandlers } from './core/handlers/onCronjob';
 import { ScheduleBackgroundEventMethod } from './core/handlers/onCronjob/backgroundEvents/ScheduleBackgroundEventMethod';
@@ -26,6 +27,17 @@ import snapContext, {
   eventEmitter,
   keyring,
 } from './snapContext';
+
+/**
+ * The arguments passed to the UI event handlers registered by the confirmation
+ * views. Each handler destructures the fields it needs.
+ */
+type UiEventHandlersArgs = {
+  id: string;
+  event: UserInputEvent;
+  context: InterfaceContext | null;
+  snapContext: typeof snapContext;
+};
 
 installPolyfills();
 
@@ -68,11 +80,15 @@ export const {
     const handler = onRpcRequestHandlers[method];
 
     if (!handler) {
-      throw new MethodNotFoundError(
+      // oxlint's `only-throw-error` reads the declared type, not the class
+      // hierarchy, so annotate the thrown error instead of asserting it.
+      const unknownRpcMethodError: Error = new MethodNotFoundError(
         `RpcRequest method ${method} not found. Available methods: ${Object.keys(
           onRpcRequestHandlers,
         ).toString()}`,
-      ) as unknown as Error;
+      );
+
+      throw unknownRpcMethodError;
     }
 
     const result = await handler({ origin, originMetadata, request });
@@ -118,7 +134,12 @@ export const {
       return;
     }
 
-    const uiEventHandlers: Record<string, (...args: any) => Promise<void>> = {
+    // The handlers declare only the arguments they use, so the map is typed
+    // with the full set of arguments that `onUserInput` receives.
+    const uiEventHandlers: Record<
+      string,
+      (args: UiEventHandlersArgs) => Promise<void>
+    > = {
       ...confirmSignAndSendTransactionEvents,
       ...confirmSignMessageEvents,
       ...confirmSignInEvents,
@@ -163,9 +184,11 @@ export const {
       ];
 
     if (!handler) {
-      throw new MethodNotFoundError(
+      const unknownCronjobMethodError: Error = new MethodNotFoundError(
         `Cronjob / ScheduleBackgroundEvent method ${method} not found. Available methods: ${validMethods.toString()}`,
-      ) as unknown as Error;
+      );
+
+      throw unknownCronjobMethodError;
     }
 
     const result = await handler({ request });

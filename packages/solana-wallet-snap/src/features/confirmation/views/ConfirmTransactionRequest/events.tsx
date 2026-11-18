@@ -1,3 +1,5 @@
+import type { InterfaceContext } from '@metamask/snaps-sdk';
+
 import {
   CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME,
   resolveInterface,
@@ -19,13 +21,19 @@ async function onShowAdvancedButtonClick({
   context,
 }: {
   id: string;
-  context: ConfirmTransactionRequestContext;
+  context: InterfaceContext | null;
 }) {
+  // `onUserInput` hands the stored interface context to the handler. This view
+  // is the only writer of that context, so it always holds a
+  // `ConfirmTransactionRequestContext` — the same assertion
+  // `getInterfaceContext` makes when it deserializes the stored context.
+  const currentContext = context as ConfirmTransactionRequestContext;
+
   const updatedContext: ConfirmTransactionRequestContext = {
-    ...context,
+    ...currentContext,
     advanced: {
-      ...context.advanced,
-      shown: !context.advanced.shown,
+      ...currentContext.advanced,
+      shown: !currentContext.advanced.shown,
     },
   };
 

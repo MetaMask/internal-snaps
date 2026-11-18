@@ -105,7 +105,7 @@ describe('onCronjob', () => {
       request: vi.fn().mockResolvedValue({ locked: false, active: true }),
     };
 
-    (globalThis as any).snap = snap;
+    Object.assign(globalThis, { snap });
 
     await onCronjob({
       request: {

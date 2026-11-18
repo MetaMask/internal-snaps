@@ -41,7 +41,9 @@ export const handlers: Record<string, OnRpcRequestHandler> = {
   }: {
     request: JsonRpcRequest;
   }) => {
-    await keyring.setSelectedAccounts((request as any).params.accountIds);
+    const { accountIds } = request.params as { accountIds: string[] };
+
+    await keyring.setSelectedAccounts(accountIds);
     return null;
   },
   [TestDappRpcRequestMethod.ConfirmSend]: async ({

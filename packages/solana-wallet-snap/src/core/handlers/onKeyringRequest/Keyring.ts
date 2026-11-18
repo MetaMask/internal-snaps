@@ -39,9 +39,11 @@ import {
   MethodNotFoundError,
   SnapError,
   UserRejectedRequestError,
+  getErrorMessage,
 } from '@metamask/snaps-sdk';
 import { array, assert, is } from '@metamask/superstruct';
-import type { CaipChainId } from '@metamask/utils';
+import { hasProperty } from '@metamask/utils';
+import type { CaipChainId, JsonRpcError } from '@metamask/utils';
 import type { Signature } from '@solana/kit';
 import { address as asAddress, getAddressDecoder } from '@solana/kit';
 import bs58 from 'bs58';
@@ -94,6 +96,19 @@ import { SolanaKeyringRequestStruct } from './structs';
  * A Solana address decoder that we can reuse across the class to avoid instantiating multiple decoders.
  */
 const decoder = getAddressDecoder();
+
+/**
+ * Converts an unknown caught value into a value `SnapError` accepts.
+ *
+ * `SnapError` expects a `string`, an `Error`, or a `JsonRpcError`. Errors are
+ * forwarded as-is so their message and data are preserved, and any other value
+ * is stringified, which is what `SnapError` would have done with it anyway.
+ *
+ * @param error - The caught value.
+ * @returns The value to build the `SnapError` from.
+ */
+const toSnapErrorInput = (error: unknown): string | Error | JsonRpcError =>
+  error instanceof Error ? error : getErrorMessage(error);
 
 const SUPPORTED_SCOPES = snapManifest.initialPermissions['endowment:keyring']
   .capabilities.scopes as readonly Network[];
@@ -155,7 +170,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
         )) ?? {};
 
       return sortBy(Object.values(keyringAccounts), ['entropySource', 'index']);
-    } catch (error: any) {
+    } catch (error) {
       // Note: we intentionally do not log here. The public callers
       // (`getAccounts`, `createAccounts`, etc.) wrap calls to this helper in
       // their own try/catch with a function-level log call, so logging here
@@ -175,9 +190,9 @@ export class SolanaKeyring implements KeyringSnapRpc {
       const account = await this.getAccountOrThrow(accountId);
 
       return asStrictKeyringAccount(account);
-    } catch (error: any) {
+    } catch (error) {
       this.#logger.error({ error }, 'Error getting account');
-      throw new SnapError(error);
+      throw new SnapError(toSnapErrorInput(error));
     }
   }
 
@@ -189,9 +204,9 @@ export class SolanaKeyring implements KeyringSnapRpc {
   async getAccounts(): Promise<KeyringAccount[]> {
     try {
       return (await this.#listAccounts()).map(asStrictKeyringAccount);
-    } catch (error: any) {
+    } catch (error) {
       this.#logger.error({ error }, 'Error listing accounts');
-      throw new SnapError(error);
+      throw new SnapError(toSnapErrorInput(error));
     }
   }
 
@@ -384,9 +399,9 @@ export class SolanaKeyring implements KeyringSnapRpc {
       );
 
       return result;
-    } catch (error: any) {
+    } catch (error) {
       this.#logger.error({ error }, 'Error creating accounts batch');
-      throw new SnapError(error);
+      throw new SnapError(toSnapErrorInput(error));
     }
   }
 
@@ -403,9 +418,9 @@ export class SolanaKeyring implements KeyringSnapRpc {
       validateRequest({ accountId }, DeleteAccountStruct);
 
       await this.#deleteAccountFromState(accountId);
-    } catch (error: any) {
+    } catch (error) {
       this.#logger.error({ error }, 'Error deleting account');
-      throw new SnapError(error);
+      throw new SnapError(toSnapErrorInput(error));
     }
   }
 
@@ -435,9 +450,9 @@ export class SolanaKeyring implements KeyringSnapRpc {
 
       validateResponse(result, ListAccountAssetsResponseStruct);
       return result;
-    } catch (error: any) {
+    } catch (error) {
       this.#logger.error({ error }, 'Error listing account assets');
-      throw new SnapError(error);
+      throw new SnapError(toSnapErrorInput(error));
     }
   }
 
@@ -482,9 +497,9 @@ export class SolanaKeyring implements KeyringSnapRpc {
 
       validateResponse(result, GetAccounBalancesResponseStruct);
       return result;
-    } catch (error: any) {
+    } catch (error) {
       this.#logger.error({ error }, 'Error getting account balances');
-      throw new SnapError(error);
+      throw new SnapError(toSnapErrorInput(error));
     }
   }
 
@@ -508,9 +523,13 @@ export class SolanaKeyring implements KeyringSnapRpc {
       throw new Error(`Method "${method}" is not allowed for this account`);
     }
 
-    if ('scope' in params && scope !== params.scope) {
+    if (hasProperty(params, 'scope') && scope !== params.scope) {
+      // `hasProperty` narrows `params.scope` to `unknown`, but the request has
+      // been validated against `SolanaKeyringRequestStruct` at this point.
+      const requestScope = String(params.scope);
+
       throw new Error(
-        `Scope "${scope}" does not match "${params.scope}" in request.params`,
+        `Scope "${scope}" does not match "${requestScope}" in request.params`,
       );
     }
 
@@ -522,7 +541,11 @@ export class SolanaKeyring implements KeyringSnapRpc {
     );
 
     if (!isConfirmed) {
-      throw new UserRejectedRequestError() as unknown as Error;
+      // oxlint's `only-throw-error` reads the declared type, not the class
+      // hierarchy, so annotate the thrown error instead of asserting it.
+      const userRejectedError: Error = new UserRejectedRequestError();
+
+      throw userRejectedError;
     }
 
     switch (method) {
@@ -554,10 +577,13 @@ export class SolanaKeyring implements KeyringSnapRpc {
       }
       case SolMethod.SignIn:
         return this.#walletService.signIn(account, params);
-      default:
-        throw new MethodNotFoundError(
-          `Unsupported method: ${method}`,
-        ) as unknown as Error;
+      default: {
+        const unsupportedMethodError: Error = new MethodNotFoundError(
+          `Unsupported method: ${String(method)}`,
+        );
+
+        throw unsupportedMethodError;
+      }
     }
   }
 
@@ -646,9 +672,9 @@ export class SolanaKeyring implements KeyringSnapRpc {
         data: accountTransactions,
         next: nextSignature,
       };
-    } catch (error: any) {
+    } catch (error) {
       this.#logger.error({ error }, 'Error listing account transactions');
-      throw new SnapError(error);
+      throw new SnapError(toSnapErrorInput(error));
     }
   }
 
@@ -684,7 +710,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
       );
 
       return { address: caip10Address };
-    } catch (error: any) {
+    } catch (error) {
       await trackError(error);
       this.#logger.error({ error }, 'Error resolving account address');
       return null;
@@ -737,9 +763,11 @@ export class SolanaKeyring implements KeyringSnapRpc {
       (await this.#listAccounts()).map((account) => account.id),
     );
     if (!accountIds.every((id) => existingIds.has(id))) {
-      throw new InvalidParamsError(
+      const invalidAccountIdsError: Error = new InvalidParamsError(
         'Account IDs were not part of existing accounts.',
       );
+
+      throw invalidAccountIdsError;
     }
 
     await this.#keyringAccountMonitor.setMonitoredAccounts(accountIds);
@@ -794,7 +822,7 @@ export class SolanaKeyring implements KeyringSnapRpc {
         encoding,
         privateKey,
       };
-    } catch (error: any) {
+    } catch {
       const errorMsg = 'Error exporting account';
       this.#logger.error(errorMsg);
       throw new SnapError(errorMsg);

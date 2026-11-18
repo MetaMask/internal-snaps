@@ -54,7 +54,7 @@ import { SolanaKeyring } from './Keyring';
 
 const NON_EXISTENT_ACCOUNT_ID = '123e4567-e89b-42d3-a456-426614174009';
 
-(globalThis as any).snap = {
+vi.stubGlobal('snap', {
   request: vi.fn(async ({ method }) => {
     if (method === 'snap_listEntropySources') {
       return Promise.resolve([
@@ -65,7 +65,7 @@ const NON_EXISTENT_ACCOUNT_ID = '123e4567-e89b-42d3-a456-426614174009';
 
     return Promise.resolve({});
   }),
-};
+});
 
 describe('SolanaKeyring', () => {
   let keyring: SolanaKeyring;
@@ -83,7 +83,7 @@ describe('SolanaKeyring', () => {
     );
     vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
     vi.spyOn(Bip32Entropy, 'getBip32Entropy').mockImplementation((params) =>
-      getBip32EntropyMock(params as never),
+      getBip32EntropyMock(params),
     );
     vi.spyOn(Bip32Entropy, 'getSolanaCoinTypeNode').mockImplementation(
       (entropySource) => getSolanaCoinTypeNodeMock(entropySource),

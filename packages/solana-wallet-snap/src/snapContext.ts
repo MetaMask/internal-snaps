@@ -246,7 +246,9 @@ const keyringAccountMonitor = new KeyringAccountMonitor(
   logger,
 );
 
-const monitoredAccountsInitializer = new MonitoredAccountsInitializer(
+// This service is autonomous: instantiating it binds the `onActive` listener
+// that starts monitoring the selected accounts.
+export const monitoredAccountsInitializer = new MonitoredAccountsInitializer(
   accountsService,
   keyringAccountMonitor,
   eventEmitter,

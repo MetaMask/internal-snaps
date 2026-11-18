@@ -411,89 +411,6 @@
       "count": 1
     }
   },
-  "packages/solana-wallet-snap/src/core/handlers/onClientRequest/ClientRequestHandler.test.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    },
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 1
-    },
-    "typescript/no-unsafe-argument": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/handlers/onClientRequest/ClientRequestHandler.ts": {
-    "typescript/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/handlers/onCronjob/backgroundEvents/refreshConfirmationEstimation.test.tsx": {
-    "typescript/explicit-function-return-type": {
-      "count": 1
-    },
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 1
-    },
-    "typescript/no-unsafe-return": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/handlers/onCronjob/backgroundEvents/refreshConfirmationEstimation.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 3
-    },
-    "typescript/no-unsafe-argument": {
-      "count": 3
-    },
-    "typescript/no-unsafe-assignment": {
-      "count": 3
-    }
-  },
-  "packages/solana-wallet-snap/src/core/handlers/onKeyringRequest/Keyring.test.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    },
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 1
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/handlers/onKeyringRequest/Keyring.ts": {
-    "internal-snaps/no-in-operator": {
-      "count": 1
-    },
-    "no-unused-vars": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 10
-    },
-    "typescript/no-unsafe-argument": {
-      "count": 7
-    },
-    "typescript/no-unsafe-assignment": {
-      "count": 8
-    },
-    "typescript/only-throw-error": {
-      "count": 1
-    },
-    "typescript/restrict-template-expressions": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/core/handlers/onRpcRequest/index.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    },
-    "typescript/no-unsafe-argument": {
-      "count": 1
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 1
-    }
-  },
   "packages/solana-wallet-snap/src/core/sdk-extensions/codecs.test.ts": {
     "typescript/no-unsafe-argument": {
       "count": 1
@@ -1254,22 +1171,6 @@
       "count": 3
     }
   },
-  "packages/solana-wallet-snap/src/index.test.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 1
-    }
-  },
-  "packages/solana-wallet-snap/src/index.ts": {
-    "import/no-named-as-default": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "packages/solana-wallet-snap/src/infrastructure/event-emitter/EventEmitter.ts": {
     "typescript/explicit-function-return-type": {
       "count": 3
@@ -1305,11 +1206,6 @@
     },
     "typescript/explicit-function-return-type": {
       "count": 2
-    }
-  },
-  "packages/solana-wallet-snap/src/snapContext.ts": {
-    "no-unused-vars": {
-      "count": 1
     }
   },
   "packages/solana-wallet-snap/vitest.setup.ts": {
