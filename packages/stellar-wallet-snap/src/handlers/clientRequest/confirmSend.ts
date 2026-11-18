@@ -252,7 +252,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
       // User rejection is rethrown as-is. Other failures are logged here, then
       // rethrown so `withCatchAndThrowSnapError` can track them once.
       if (!(error instanceof UserRejectedRequestError)) {
-        this.#logger.warn('Failed to confirm send transaction', { error });
+        this.#logger.error('Failed to confirm send transaction', { error });
       }
 
       throw error;

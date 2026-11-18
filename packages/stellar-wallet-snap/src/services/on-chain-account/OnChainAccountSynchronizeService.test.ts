@@ -982,7 +982,7 @@ describe('OnChainAccountSynchronizeService', () => {
         message: 'sep41 fetch temporarily unavailable',
       }),
     );
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       '[💼 OnChainAccountSynchronizeService]',
       'SEP-41 token balance step failed; merge will reuse last-saved SEP-41 asset entries where needed',
       expect.objectContaining({
@@ -1148,7 +1148,7 @@ describe('OnChainAccountSynchronizeService', () => {
 
     expect(saveManySpy).toHaveBeenCalled();
     expect(errorsUtils.trackError).toHaveBeenCalledWith(emitError);
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       '[💼 OnChainAccountSynchronizeService]',
       'Failed to emit keyring events after synchronize',
       { error: emitError },
