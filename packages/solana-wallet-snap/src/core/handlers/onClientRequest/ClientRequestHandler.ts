@@ -33,6 +33,7 @@ import { ClientRequestMethod } from './types';
 import {
   ApproveCardAmountRequestStruct,
   ApproveCardAmountResponseStruct,
+  SignPackPartnerBuyRequestStruct,
   ComputeFeeRequestStruct,
   ComputeFeeResponseStruct,
   GetMaxSendableAmountRequestStruct,
@@ -108,7 +109,7 @@ export class ClientRequestHandler {
    * @throws {InvalidParamsError} If the params are invalid.
    */
   async handle(request: JsonRpcRequest): Promise<Json> {
-    this.#logger.log('Handling client request', request);
+    this.#logger.log('Handling client request', { method: request.method });
 
     const { method } = request;
 
@@ -121,6 +122,8 @@ export class ClientRequestHandler {
         return this.#handleConfirmSend(request);
       case ClientRequestMethod.SignAndSendTransaction:
         return this.#handleSignAndSendTransaction(request);
+      case ClientRequestMethod.SignPackPartnerBuy:
+        return this.#handleSignPackPartner(request);
       case ClientRequestMethod.ComputeFee:
         return this.#handleComputeFee(request);
       case ClientRequestMethod.GetMaxSendableAmount:
@@ -224,6 +227,44 @@ export class ClientRequestHandler {
     assert(result, SignAndSendTransactionResponseStruct);
 
     return result;
+  }
+
+  /**
+   * Routes a client-only Pack Partner request to its atomic validator/signer.
+   * Identity is resolved from the keyring; caller-supplied policy overrides are rejected.
+   *
+   * @param request - The internal JSON-RPC signing request.
+   * @returns The signed transaction without submitting it or opening confirmation UI.
+   */
+  async #handleSignPackPartner(request: JsonRpcRequest): Promise<Json> {
+    try {
+      assert(request, SignPackPartnerBuyRequestStruct);
+    } catch (error) {
+      const errorToThrow = new InvalidParamsError() as Error;
+      errorToThrow.cause = error;
+      throw errorToThrow;
+    }
+
+    const account = await this.#accountsService.findById(
+      request.params.accountId,
+    );
+    if (!account) {
+      throw new InvalidParamsError(
+        `Account not found: ${request.params.accountId}`,
+      ) as Error;
+    }
+    if (!account.scopes.includes(request.params.scope)) {
+      throw new InvalidParamsError(
+        'Account does not support the requested Solana network',
+      ) as Error;
+    }
+
+    return this.#walletService.signPackPartnerBuy(
+      account,
+      request.params.transaction,
+      request.params.context,
+      request.params.scope,
+    );
   }
 
   /**
