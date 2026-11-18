@@ -86,7 +86,6 @@ jobs:
       RPC_URL_DEVNET_LIST: ${{ secrets.RPC_URL_DEVNET_LIST }}
       RPC_WEB_SOCKET_URL_MAINNET: ${{ secrets.RPC_WEB_SOCKET_URL_MAINNET }}
       RPC_WEB_SOCKET_URL_DEVNET: ${{ secrets.RPC_WEB_SOCKET_URL_DEVNET }}
-      LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
       DEFAULT_ADDRESS_TYPE: ${{ secrets.DEFAULT_ADDRESS_TYPE }}
       ESPLORA_BITCOIN: ${{ secrets.ESPLORA_BITCOIN }}
       ESPLORA_TESTNET: ${{ secrets.ESPLORA_TESTNET }}
@@ -194,7 +193,6 @@ jobs:
     secrets:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
       DEFAULT_ADDRESS_TYPE: ${{ secrets.DEFAULT_ADDRESS_TYPE }}
       ESPLORA_BITCOIN: ${{ secrets.ESPLORA_BITCOIN }}
       ESPLORA_TESTNET: ${{ secrets.ESPLORA_TESTNET }}

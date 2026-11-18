@@ -7,8 +7,6 @@ on:
         required: false
       SLACK_WEBHOOK_URL:
         required: true
-      LOG_LEVEL:
-        required: false
       DEFAULT_ADDRESS_TYPE:
         required: false
       ESPLORA_BITCOIN:
@@ -69,7 +67,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: yarn build
         env:
-          LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
+          LOG_LEVEL: error
           DEFAULT_ADDRESS_TYPE: ${{ secrets.DEFAULT_ADDRESS_TYPE }}
           ESPLORA_BITCOIN: ${{ secrets.ESPLORA_BITCOIN }}
           ESPLORA_TESTNET: ${{ secrets.ESPLORA_TESTNET }}

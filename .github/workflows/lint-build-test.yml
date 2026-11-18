@@ -17,8 +17,6 @@ on:
         required: false
       RPC_WEB_SOCKET_URL_DEVNET:
         required: false
-      LOG_LEVEL:
-        required: false
       DEFAULT_ADDRESS_TYPE:
         required: false
       ESPLORA_BITCOIN:
@@ -42,7 +40,7 @@ on:
       STELLAR_HORIZON_URL_TESTNET:
 
 env:
-  LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
+  LOG_LEVEL: error
   DEFAULT_ADDRESS_TYPE: ${{ secrets.DEFAULT_ADDRESS_TYPE }}
   ESPLORA_BITCOIN: ${{ secrets.ESPLORA_BITCOIN }}
   ESPLORA_TESTNET: ${{ secrets.ESPLORA_TESTNET }}
