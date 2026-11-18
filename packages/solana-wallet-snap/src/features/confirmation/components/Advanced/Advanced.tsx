@@ -1,3 +1,4 @@
+import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import { Box, Button, Icon } from '@metamask/snaps-sdk/jsx';
 
 import type { Network } from '../../../../core/constants/solana';
@@ -19,7 +20,7 @@ export const Advanced = ({
   showInstructions,
   locale,
   scope,
-}: AdvancedProps) => {
+}: AdvancedProps): ComponentOrElement => {
   const translate = i18n(locale);
 
   const showInstructionsMode = showInstructions ? 'hide' : 'show';

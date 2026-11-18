@@ -30,6 +30,7 @@ import {
 import type { Base64EncodedWireTransaction, Instruction } from '@solana/kit';
 
 import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../../core/test/mocks/solana-keyring-accounts';
+import type { InstructionParseResult } from '../../../entities';
 import { parseInstruction } from '../../../entities';
 import type {
   AccountSnapshot,
@@ -335,6 +336,35 @@ describe('analyzeFeePayment', () => {
         symbol: 'USDC',
       },
     ]);
+  });
+
+  it('throws when a numeric instruction field is not a number', async () => {
+    // The instruction parsers keep the numeric fields as JSON values, so the
+    // amount can be anything a program puts in the parsed data.
+    const instruction: InstructionParseResult = {
+      type: 'TransferSol',
+      encoded: {
+        programAddress: address('11111111111111111111111111111111'),
+        dataBase58: '3tGNFMqHiozw',
+      },
+      parsed: {
+        data: { discriminator: 2, amount: { nested: 'value' } },
+        accounts: {
+          source: { address: user, role: AccountRole.WRITABLE_SIGNER },
+          destination: { address: sponsor, role: AccountRole.WRITABLE },
+        },
+      },
+    };
+
+    await expect(
+      analyzeFeePayment({
+        transaction: buildTransaction(sponsor, [transferSol(sponsor, 1000n)]),
+        accountAddress: user,
+        ownAddresses: [user, otherOwnAccount],
+        instructions: [instruction],
+        reader: buildReader(),
+      }),
+    ).rejects.toThrow('Instruction field "amount" is not a number');
   });
 
   it('marks an unchecked transfer into a new sponsor account as unverified', async () => {

@@ -170,6 +170,45 @@ const accountAddressOf = (
   name: string,
 ): string | null => instruction.parsed?.accounts?.[name]?.address ?? null;
 
+/**
+ * Reads a numeric field of the parsed instruction data, which the instruction
+ * parsers keep as a JSON value.
+ *
+ * @param data - The parsed instruction data.
+ * @param key - The name of the field.
+ * @returns The value of the field as a `bigint`.
+ */
+const bigIntFieldOf = (data: Record<string, unknown>, key: string): bigint => {
+  const value = data[key];
+
+  if (
+    typeof value !== 'string' &&
+    typeof value !== 'number' &&
+    typeof value !== 'bigint'
+  ) {
+    throw new Error(`Instruction field "${key}" is not a number`);
+  }
+
+  return BigInt(value);
+};
+
+/**
+ * Reads the decimals field of the parsed instruction data, which the
+ * instruction parsers keep as a JSON value.
+ *
+ * @param data - The parsed instruction data.
+ * @param key - The name of the field.
+ * @returns The value of the field, or `null` when it is not a number.
+ */
+const decimalsFieldOf = (
+  data: Record<string, unknown>,
+  key: string,
+): number | null => {
+  const value = data[key];
+
+  return typeof value === 'number' ? value : null;
+};
+
 const accountsOf = (
   instruction: InstructionParseResult,
 ): readonly { address: string; role: AccountRole }[] =>
@@ -256,7 +295,10 @@ const analyzeTransferSol: TopLevelAnalyzer = (
     accountAddressOf(instruction, 'source') === accountAddress &&
     accountAddressOf(instruction, 'destination') === feePayer
   ) {
-    sponsorship.solToSponsorLamports += BigInt(instruction.parsed.data.amount);
+    sponsorship.solToSponsorLamports += bigIntFieldOf(
+      instruction.parsed.data,
+      'amount',
+    );
   }
 };
 
@@ -266,7 +308,10 @@ const analyzeAccountCreation: TopLevelAnalyzer = (
   sponsorship,
 ) => {
   if (accountAddressOf(instruction, 'payer') === accountAddress) {
-    sponsorship.rentLamports += BigInt(instruction.parsed.data.lamports);
+    sponsorship.rentLamports += bigIntFieldOf(
+      instruction.parsed.data,
+      'lamports',
+    );
   }
 };
 
@@ -314,9 +359,9 @@ const analyzeTokenTransfer: TopLevelAnalyzer = (
 
   sponsorship.tokenTransfers.push({
     destination,
-    amount: BigInt(instruction.parsed.data.amount),
+    amount: bigIntFieldOf(instruction.parsed.data, 'amount'),
     mint: accountAddressOf(instruction, 'mint'),
-    decimals: instruction.parsed.data.decimals ?? null,
+    decimals: decimalsFieldOf(instruction.parsed.data, 'decimals'),
   });
 };
 

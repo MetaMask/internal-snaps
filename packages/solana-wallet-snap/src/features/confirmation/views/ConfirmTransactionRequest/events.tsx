@@ -20,7 +20,7 @@ async function onShowAdvancedButtonClick({
 }: {
   id: string;
   context: ConfirmTransactionRequestContext;
-}) {
+}): Promise<void> {
   const updatedContext: ConfirmTransactionRequestContext = {
     ...context,
     advanced: {
@@ -42,7 +42,7 @@ async function onShowAdvancedButtonClick({
  * @param params - The parameters for the function.
  * @param params.id - The ID of the interface to update.
  */
-async function onCancelButtonClick({ id }: { id: string }) {
+async function onCancelButtonClick({ id }: { id: string }): Promise<void> {
   await resolveInterface(id, false);
   await state.deleteKey(
     `mapInterfaceNameToId.${CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME}`,
@@ -55,7 +55,7 @@ async function onCancelButtonClick({ id }: { id: string }) {
  * @param params - The parameters for the function.
  * @param params.id - The ID of the interface to update.
  */
-async function onConfirmButtonClick({ id }: { id: string }) {
+async function onConfirmButtonClick({ id }: { id: string }): Promise<void> {
   await resolveInterface(id, true);
   await state.deleteKey(
     `mapInterfaceNameToId.${CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME}`,
