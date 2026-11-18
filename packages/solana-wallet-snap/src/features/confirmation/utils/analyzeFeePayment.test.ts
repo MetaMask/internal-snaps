@@ -341,7 +341,7 @@ describe('analyzeFeePayment', () => {
   it('throws when a numeric instruction field is not a number', async () => {
     // The instruction parsers keep the numeric fields as JSON values, so the
     // amount can be anything a program puts in the parsed data.
-    const instruction = {
+    const instruction: InstructionParseResult = {
       type: 'TransferSol',
       encoded: {
         programAddress: address('11111111111111111111111111111111'),
@@ -354,7 +354,7 @@ describe('analyzeFeePayment', () => {
           destination: { address: sponsor, role: AccountRole.WRITABLE },
         },
       },
-    } as unknown as InstructionParseResult;
+    };
 
     await expect(
       analyzeFeePayment({
