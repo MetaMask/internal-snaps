@@ -40,9 +40,7 @@ describe('SolanaConnection', () => {
       ((value: unknown) => value) as never,
     );
     vi.spyOn(SolanaKit, 'fetchJsonParsedAccount');
-    vi.spyOn(Token2022, 'fetchMint').mockResolvedValue(
-      MOCK_MINT_ACCOUNT as never,
-    );
+    vi.spyOn(Token2022, 'fetchMint').mockResolvedValue(MOCK_MINT_ACCOUNT);
     vi.spyOn(Transport, 'createMainTransport').mockImplementation(((
       urls: unknown,
     ) => ({ urls })) as never);
@@ -123,11 +121,12 @@ describe('SolanaConnection', () => {
     });
 
     it('caches the JSON-parsed account', async () => {
-      const call = async () =>
-        connection.fetchJsonParsedAccount(
+      const call = async (): Promise<void> => {
+        await connection.fetchJsonParsedAccount(
           KnownCaip19Id.UsdcMainnet,
           Network.Mainnet,
         );
+      };
 
       // Do the call twice in a row to test the cache
       await call();
@@ -138,13 +137,14 @@ describe('SolanaConnection', () => {
     });
 
     it('bypasses the cache when skipCache is true', async () => {
-      const call = async () =>
-        connection.fetchJsonParsedAccount(
+      const call = async (): Promise<void> => {
+        await connection.fetchJsonParsedAccount(
           KnownCaip19Id.UsdcMainnet,
           Network.Mainnet,
           undefined,
           { skipCache: true },
         );
+      };
 
       await call();
       await call();
@@ -164,8 +164,9 @@ describe('SolanaConnection', () => {
     });
 
     it('caches the mint account', async () => {
-      const call = async () =>
-        connection.fetchMint(KnownCaip19Id.UsdcMainnet, Network.Mainnet);
+      const call = async (): Promise<void> => {
+        await connection.fetchMint(KnownCaip19Id.UsdcMainnet, Network.Mainnet);
+      };
 
       await call();
       await call();

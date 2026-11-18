@@ -18,6 +18,14 @@ export type RecipientClassification =
   | { type: 'UNSUPPORTED' }; // PDA, metadata, program account, mint, etc.
 
 /**
+ * The subset of {@link SolanaConnection} the classifier depends on.
+ *
+ * Only the account lookup is used, so the classifier neither needs nor
+ * pretends to need an RPC client.
+ */
+type ClassifierConnection = Pick<SolanaConnection, 'fetchJsonParsedAccount'>;
+
+/**
  * Determines how a recipient address should be handled when sending SPL tokens.
  *
  * This classifier protects users from accidental fund loss if they enter addresses that are not standard wallet addresses,
@@ -34,11 +42,11 @@ export type RecipientClassification =
  * - Unsupported account types (PDA, program, mint): rejects the operation.
  */
 export class RecipientClassifier {
-  readonly #connection: SolanaConnection;
+  readonly #connection: ClassifierConnection;
 
   readonly #logger: Logger;
 
-  constructor(connection: SolanaConnection, logger: Logger) {
+  constructor(connection: ClassifierConnection, logger: Logger) {
     this.#connection = connection;
     this.#logger = logger.withPrefix('[👀 RecipientClassifier]');
   }
@@ -57,7 +65,7 @@ export class RecipientClassifier {
 
     try {
       assertAccountExists(recipientInfo);
-    } catch (error) {
+    } catch {
       // The account doesn't exist yet. The blockchain will create it as a system account.
       return { type: 'SYSTEM' };
     }

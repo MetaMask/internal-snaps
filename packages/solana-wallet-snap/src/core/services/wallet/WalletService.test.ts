@@ -2,6 +2,7 @@ import { SolMethod, TransactionType } from '@metamask/keyring-api';
 import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
+import type { Transaction } from '@solana/kit';
 import type { Mock } from 'vitest';
 
 import { Network } from '../../constants/solana';
@@ -48,7 +49,6 @@ describe('WalletService', () => {
   let mockTransactionsService: TransactionsService;
   let service: WalletService;
   const mockAccounts = [...MOCK_SOLANA_KEYRING_ACCOUNTS];
-  let onCommitmentReachedCallback: (params: any) => Promise<void>;
   const origin = 'https://metamask.io';
 
   beforeEach(() => {
@@ -57,7 +57,7 @@ describe('WalletService', () => {
     );
     vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
     vi.spyOn(Bip32Entropy, 'getBip32Entropy').mockImplementation((params) =>
-      getBip32EntropyMock(params as never),
+      getBip32EntropyMock(params),
     );
     vi.spyOn(Bip32Entropy, 'getSolanaCoinTypeNode').mockImplementation(
       (entropySource) => getSolanaCoinTypeNodeMock(entropySource),
@@ -72,12 +72,8 @@ describe('WalletService', () => {
       monitor: vi.fn(),
     } as unknown as SignatureMonitor;
 
-    // Mock the monitor method to capture the onCommitmentReached callback
-    (mockSignatureMonitor.monitor as Mock).mockImplementation(
-      async (params) => {
-        onCommitmentReachedCallback = params.onCommitmentReached;
-        return Promise.resolve();
-      },
+    (mockSignatureMonitor.monitor as Mock).mockImplementation(async () =>
+      Promise.resolve(),
     );
 
     mockAnalyticsService = {
@@ -97,9 +93,9 @@ describe('WalletService', () => {
       logger,
     );
 
-    (globalThis as any).snap = {
+    vi.stubGlobal('snap', {
       request: vi.fn(),
-    };
+    });
 
     getBip32EntropyMock.mockClear();
     getSolanaCoinTypeNodeMock.mockClear();
@@ -231,11 +227,13 @@ describe('WalletService', () => {
         scope,
         fromAccount,
         transactionMessageBase64Encoded,
-        signedTransaction,
+        signedTransaction: mockSignedTransaction,
         signedTransactionBase64Encoded,
         signature,
         getMultipleAccountsResponse,
       } = scenario;
+
+      const signedTransaction: Transaction = mockSignedTransaction;
 
       beforeEach(() => {
         vi.spyOn(mockSigner, 'partiallySignBase64String').mockResolvedValue(

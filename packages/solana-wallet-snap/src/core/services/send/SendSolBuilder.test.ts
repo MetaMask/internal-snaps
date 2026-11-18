@@ -1,5 +1,5 @@
 import { address } from '@solana/kit';
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 
 import { Network } from '../../constants/solana';
 import { MOCK_SOLANA_KEYRING_ACCOUNTS } from '../../test/mocks/solana-keyring-accounts';

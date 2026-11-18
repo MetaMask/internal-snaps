@@ -7,6 +7,7 @@ import {
   DEFAULT_METAMASK_ORIGIN,
 } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
+import { hasProperty } from '@metamask/utils';
 import bs58 from 'bs58';
 
 import {
@@ -86,7 +87,7 @@ export class TransactionScanService extends BaseTransactionScanService {
 
       this.logger.info('Scanning transaction');
 
-      const result =
+      const result: unknown =
         await this.securityAlertsApiClient.scanTransaction(requestBody);
 
       assert(result, SecurityAlertResponseStruct, 'Solana scan response body');
@@ -154,10 +155,12 @@ export class TransactionScanService extends BaseTransactionScanService {
       },
       error: result?.error_details
         ? {
-            type:
-              'type' in result.error_details ? result.error_details.type : null,
+            type: hasProperty(result.error_details, 'type')
+              ? result.error_details.type
+              : null,
             code:
-              ('code' in result.error_details
+              (hasProperty(result.error_details, 'code') &&
+              typeof result.error_details.code === 'string'
                 ? result.error_details.code
                 : null) ?? null,
           }
