@@ -1,5 +1,6 @@
-import type { Psbt } from '@metamask/bitcoindevkit';
+import type { Amount, Psbt } from '@metamask/bitcoindevkit';
 import { Psbt as BdkPsbt } from '@metamask/bitcoindevkit';
+import { mock } from 'vitest-mock-extended';
 
 import type { ConfirmSendFormContext, Messages } from '../../../entities';
 import { CurrencyUnit } from '../../../entities';
@@ -29,9 +30,14 @@ const messages: Messages = {
   cancel: { message: 'Cancel' },
 };
 
-const mockPsbt = {
-  fee: (): { to_sat: () => bigint } => ({ to_sat: (): bigint => 1500n }),
-} as unknown as Psbt;
+const createMockPsbt = (): Psbt => {
+  const amount = mock<Amount>();
+  amount.to_sat.mockReturnValue(1500n);
+
+  const psbt = mock<Psbt>();
+  psbt.fee.mockReturnValue(amount);
+  return psbt;
+};
 
 const contextWith = (
   overrides: Partial<ConfirmSendFormContext> = {},
@@ -54,7 +60,7 @@ const render = (context: ConfirmSendFormContext): string =>
 
 describe('UnifiedSendFormView', () => {
   beforeEach(() => {
-    vi.spyOn(BdkPsbt, 'from_string').mockReturnValue(mockPsbt);
+    vi.spyOn(BdkPsbt, 'from_string').mockReturnValue(createMockPsbt());
   });
 
   afterEach(() => {
@@ -81,7 +87,7 @@ describe('UnifiedSendFormView', () => {
       contextWith({
         explorerUrl: 'not a url',
         isMine: true,
-        origin: undefined as unknown as string,
+        origin: undefined,
       }),
     );
 

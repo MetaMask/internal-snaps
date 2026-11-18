@@ -1,5 +1,6 @@
-import type { Psbt } from '@metamask/bitcoindevkit';
+import type { Amount, FeeRate, Psbt } from '@metamask/bitcoindevkit';
 import { Psbt as BdkPsbt } from '@metamask/bitcoindevkit';
+import { mock } from 'vitest-mock-extended';
 
 import type { Messages, ReviewTransactionContext } from '../../../entities';
 import { CurrencyUnit } from '../../../entities';
@@ -22,12 +23,21 @@ const messages: Messages = {
   send: { message: 'Send' },
 };
 
-const mockPsbt = {
-  fee: (): { to_sat: () => bigint } => ({ to_sat: (): bigint => 1500n }),
-  fee_rate: (): { to_sat_per_vb_floor: () => number } => ({
-    to_sat_per_vb_floor: (): number => 3,
-  }),
-} as unknown as Psbt;
+const mockAmount = (satoshis: bigint): Amount => {
+  const amount = mock<Amount>();
+  amount.to_sat.mockReturnValue(satoshis);
+  return amount;
+};
+
+const createMockPsbtWithFee = (): Psbt => {
+  const feeRate = mock<FeeRate>();
+  feeRate.to_sat_per_vb_floor.mockReturnValue(3n);
+
+  const psbt = mock<Psbt>();
+  psbt.fee.mockReturnValue(mockAmount(1500n));
+  psbt.fee_rate.mockReturnValue(feeRate);
+  return psbt;
+};
 
 const contextWith = (
   overrides: Partial<ReviewTransactionContext> = {},
@@ -49,7 +59,7 @@ const render = (context: ReviewTransactionContext): string =>
 
 describe('ReviewTransactionView', () => {
   beforeEach(() => {
-    vi.spyOn(BdkPsbt, 'from_string').mockReturnValue(mockPsbt);
+    vi.spyOn(BdkPsbt, 'from_string').mockReturnValue(createMockPsbtWithFee());
   });
 
   afterEach(() => {
