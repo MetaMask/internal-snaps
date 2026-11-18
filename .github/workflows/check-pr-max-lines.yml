@@ -1,0 +1,29 @@
+name: 'Check PR Max Lines'
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: read
+
+jobs:
+  check-pr-max-lines:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # Required to apply the size-* label
+    steps:
+      - name: Check PR lines changed
+        uses: MetaMask/github-tools/.github/actions/pr-line-check@88836cf1473f73a64848a809cf89e616ed6ed692 # v1.22.0
+        with:
+          # This repo uses the action only to apply the size-* label, not to
+          # gate merges, so the limit is deliberately out of reach. Lower it
+          # to start failing CI on oversized PRs.
+          max-lines: '100000000'
+          # Lockfiles, snapshots and markdown are generated or bot-edited and
+          # would otherwise push most dependency and docs PRs into size-XL.
+          ignore-patterns: '(\.lock|\.snap|\.md)$'
