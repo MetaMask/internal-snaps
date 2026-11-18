@@ -1,6 +1,5 @@
 import { Psbt, Address, Amount } from '@metamask/bitcoindevkit';
 import type { Balance, Transaction, Txid } from '@metamask/bitcoindevkit';
-import type { Transaction as KeyringTransaction } from '@metamask/keyring-api';
 import { BtcScope, FeeType, TransactionType } from '@metamask/keyring-api';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import type { Mock } from 'vitest';
@@ -11,6 +10,7 @@ import { ValidationError } from '../entities';
 import type { AccountUseCases, SendFlowUseCases } from '../use-cases';
 import { Caip19Asset } from './caip';
 import * as Mappings from './mappings';
+import type { KeyringTransactionWithMalleability } from './mappings';
 import { mapPsbtToTransaction } from './mappings';
 import { RpcHandler } from './RpcHandler';
 import { RpcMethod, SendErrorCodes } from './validation';
@@ -52,7 +52,9 @@ describe('RpcHandler', () => {
     vi.mocked(Address.from_string).mockImplementation(
       (address: string, _: string) => {
         if (validAddresses.includes(address)) {
-          return { toString: () => address } as unknown as Address;
+          const addressMock = mock<Address>();
+          vi.spyOn(addressMock, 'toString').mockReturnValue(address);
+          return addressMock;
         }
         throw new Error(`Invalid address: ${address}`);
       },
@@ -642,9 +644,7 @@ describe('RpcHandler', () => {
       const mockAmountAccount = mock<BitcoinAccount>({
         network: 'bitcoin',
         addressType: 'p2wpkh',
-        balance: {
-          trusted_spendable: mockTrustedSpendable,
-        } as unknown as Balance,
+        balance: mock<Balance>({ trusted_spendable: mockTrustedSpendable }),
       });
       mockAccountsUseCases.get.mockResolvedValue(mockAmountAccount);
       mockSendFlowUseCases.buildProbePsbt.mockResolvedValue(mockPsbt);
@@ -1054,9 +1054,9 @@ describe('RpcHandler', () => {
       const mockBalanceAmount = mock<Amount>();
       mockBalanceAmount.to_sat.mockReturnValue(BigInt(100_000_000)); // 1 BTC in satoshis
       mockBalanceAmount.to_btc.mockReturnValue(1);
-      mockAccount.balance = {
+      mockAccount.balance = mock<Balance>({
         trusted_spendable: mockBalanceAmount,
-      } as unknown as Balance;
+      });
 
       mockAccountsUseCases.get.mockResolvedValue(mockAccount);
       mockSendFlowUseCases.confirmSendFlow.mockResolvedValue(mockTransaction);
@@ -1070,11 +1070,9 @@ describe('RpcHandler', () => {
 
       // we mock the mapping function since we don't care about the result structure here
       // it is tested in mappings.test.ts
-      vi.mocked(mapPsbtToTransaction).mockReturnValue({
-        canBeMalleable: false,
-      } as KeyringTransaction & {
-        canBeMalleable: boolean;
-      });
+      vi.mocked(mapPsbtToTransaction).mockReturnValue(
+        mock<KeyringTransactionWithMalleability>({ canBeMalleable: false }),
+      );
     });
 
     it('creates and signs a transaction successfully', async () => {
@@ -1095,10 +1093,12 @@ describe('RpcHandler', () => {
     });
 
     it('passes the canBeMalleable flag through from mapPsbtToTransaction', async () => {
-      vi.mocked(mapPsbtToTransaction).mockReturnValueOnce({
-        id: 'tx-id',
-        canBeMalleable: true,
-      } as unknown as KeyringTransaction & { canBeMalleable: boolean });
+      vi.mocked(mapPsbtToTransaction).mockReturnValueOnce(
+        mock<KeyringTransactionWithMalleability>({
+          id: 'tx-id',
+          canBeMalleable: true,
+        }),
+      );
 
       const result = await handler.route(origin, validRequest);
 
@@ -1240,20 +1240,17 @@ describe('RpcHandler', () => {
       smallBalanceAmount.to_sat.mockReturnValue(BigInt(5000)); // 0.00005 BTC in satoshis
       smallBalanceAmount.to_btc.mockReturnValue(0.00005);
 
-      const mockBalance = {
+      const mockBalance = mock<Balance>({
         trusted_spendable: smallBalanceAmount,
-        free: mock<Amount>(),
         immature: mock<Amount>(),
         trusted_pending: mock<Amount>(),
         untrusted_pending: mock<Amount>(),
-        coin_count: 1,
-        coin_value: mock<Amount>(),
-      };
+      });
 
       const smallBalanceAccount = mock<BitcoinAccount>();
       smallBalanceAccount.id = validAccountId;
       smallBalanceAccount.network = 'bitcoin';
-      smallBalanceAccount.balance = mockBalance as unknown as Balance;
+      smallBalanceAccount.balance = mockBalance;
 
       mockAccountsUseCases.get.mockResolvedValue(smallBalanceAccount);
 
@@ -1289,20 +1286,17 @@ describe('RpcHandler', () => {
       smallBalanceAmount.to_sat.mockReturnValue(BigInt(5000)); // 0.00005 BTC in satoshis
       smallBalanceAmount.to_btc.mockReturnValue(0.00005);
 
-      const mockBalance = {
+      const mockBalance = mock<Balance>({
         trusted_spendable: smallBalanceAmount,
-        free: mock<Amount>(),
         immature: mock<Amount>(),
         trusted_pending: mock<Amount>(),
         untrusted_pending: mock<Amount>(),
-        coin_count: 1,
-        coin_value: mock<Amount>(),
-      };
+      });
 
       const smallBalanceAccount = mock<BitcoinAccount>();
       smallBalanceAccount.id = validAccountId;
       smallBalanceAccount.network = 'bitcoin';
-      smallBalanceAccount.balance = mockBalance as unknown as Balance;
+      smallBalanceAccount.balance = mockBalance;
 
       mockAccountsUseCases.get.mockResolvedValue(smallBalanceAccount);
 
@@ -1410,7 +1404,8 @@ describe('RpcHandler', () => {
       const message = btoa(`rewards,${address},${timestamp}`);
 
       mockAccountsUseCases.get.mockResolvedValue(
-        null as unknown as BitcoinAccount,
+        // @ts-expect-error - testing the runtime guard against a missing account
+        null,
       );
 
       const request: JsonRpcRequest = {
@@ -1519,7 +1514,8 @@ describe('RpcHandler', () => {
 
     it('throws when the account is not found', async () => {
       mockAccountsUseCases.get.mockResolvedValue(
-        null as unknown as BitcoinAccount,
+        // @ts-expect-error - testing the runtime guard against a missing account
+        null,
       );
 
       const message = `metamask:proof-of-ownership:${nonce}:${accountAddress}`;

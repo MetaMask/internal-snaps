@@ -247,7 +247,7 @@ export function mapToTransaction(
  * will see the standard shape, while consumers that opt in can read the flag
  * to decide whether to trust the txid before block confirmation.
  */
-type KeyringTransactionWithMalleability = KeyringTransaction & {
+export type KeyringTransactionWithMalleability = KeyringTransaction & {
   canBeMalleable: boolean;
 };
 

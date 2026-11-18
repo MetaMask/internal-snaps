@@ -883,9 +883,9 @@ describe('KeyringHandler', () => {
     ] as { tNetwork: Network; caip19: Caip19Asset }[])(
       'list assets for account: %s',
       async ({ tNetwork, caip19 }) => {
-        mockAccounts.get.mockResolvedValue({
-          network: tNetwork,
-        } as unknown as BitcoinAccount);
+        mockAccounts.get.mockResolvedValue(
+          mock<BitcoinAccount>({ network: tNetwork }),
+        );
 
         const result = await handler.getAccountAssets('some-id');
 

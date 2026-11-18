@@ -788,10 +788,12 @@ describe('CronHandler', () => {
   });
 
   describe('refreshRates', () => {
-    const request = {
+    const request: JsonRpcRequest = {
+      jsonrpc: '2.0',
+      id: 1,
       method: CronMethod.RefreshRates,
       params: { interfaceId: 'id' },
-    } as unknown as JsonRpcRequest;
+    };
 
     it('throws if invalid params', async () => {
       await expect(
@@ -830,10 +832,12 @@ describe('CronHandler', () => {
     const mockAccount2 = mock<BitcoinAccount>({ id: 'account-2' });
     const mockAccount3 = mock<BitcoinAccount>({ id: 'account-3' });
     const mockAccounts = [mockAccount1, mockAccount2, mockAccount3];
-    const request = {
+    const request: JsonRpcRequest = {
+      jsonrpc: '2.0',
+      id: 1,
       method: CronMethod.SyncSelectedAccounts,
       params: { accountIds: ['account-1', 'account-2'] },
-    } as unknown as JsonRpcRequest;
+    };
 
     it('throws if invalid params', async () => {
       await expect(
@@ -1072,10 +1076,12 @@ describe('CronHandler', () => {
 
   describe('fullScanAccount', () => {
     const mockAccount = mock<BitcoinAccount>({ id: 'account-1' });
-    const request = {
+    const request: JsonRpcRequest = {
+      jsonrpc: '2.0',
+      id: 1,
       method: CronMethod.FullScanAccount,
       params: { accountId: 'account-1' },
-    } as unknown as JsonRpcRequest;
+    };
 
     it('throws if invalid params', async () => {
       await expect(

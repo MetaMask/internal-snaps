@@ -3,6 +3,7 @@ import type {
   TxOut,
   ScriptBuf,
   Amount,
+  ChainPosition,
   Txid,
   WalletTx,
 } from '@metamask/bitcoindevkit';
@@ -23,6 +24,35 @@ import {
   mapToTransaction,
   mapToTransactionFees,
 } from './mappings';
+
+/**
+ * Creates a mock address whose `toString` returns the given address.
+ *
+ * @param address - The address string.
+ * @returns A mocked Address object.
+ */
+function createMockAddress(address: string): Address {
+  const mockAddress = mock<Address>();
+  vi.spyOn(mockAddress, 'toString').mockReturnValue(address);
+  return mockAddress;
+}
+
+/**
+ * Creates a mock wallet transaction wrapping the given transaction.
+ *
+ * @param tx - The transaction.
+ * @param txid - The transaction ID.
+ * @returns A mocked WalletTx object.
+ */
+function createMockWalletTx(tx: Transaction, txid: Txid): WalletTx {
+  // Unconfirmed: the transaction has no anchor block and no mempool timestamp.
+  const chainPosition = mock<ChainPosition>({
+    anchor: undefined,
+    last_seen: undefined,
+  });
+
+  return mock<WalletTx>({ tx, txid, chain_position: chainPosition });
+}
 
 /* eslint-disable @typescript-eslint/naming-convention */
 describe('mapToTransactionFees', () => {
@@ -131,11 +161,8 @@ describe('mapPsbtToTransaction', () => {
     const output = createMockOutput(10000);
     const transaction = createMockTransaction(txId, [output]);
 
-    vi.mocked(Address.from_script).mockImplementationOnce(
-      () =>
-        ({
-          toString: () => 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-        }) as unknown as Address,
+    vi.mocked(Address.from_script).mockImplementationOnce(() =>
+      createMockAddress('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'),
     );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -185,11 +212,8 @@ describe('mapPsbtToTransaction', () => {
     const output = createMockOutput(10000);
     const transaction = createMockTransaction('p2pkhtx', [output]);
 
-    vi.mocked(Address.from_script).mockImplementationOnce(
-      () =>
-        ({
-          toString: () => '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-        }) as unknown as Address,
+    vi.mocked(Address.from_script).mockImplementationOnce(() =>
+      createMockAddress('1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa'),
     );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -203,11 +227,8 @@ describe('mapPsbtToTransaction', () => {
     const output = createMockOutput(10000);
     const transaction = createMockTransaction('p2shtx', [output]);
 
-    vi.mocked(Address.from_script).mockImplementationOnce(
-      () =>
-        ({
-          toString: () => '3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy',
-        }) as unknown as Address,
+    vi.mocked(Address.from_script).mockImplementationOnce(() =>
+      createMockAddress('3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy'),
     );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -230,11 +251,8 @@ describe('mapPsbtToTransaction', () => {
       .mockReturnValueOnce(false); // recipient output
 
     // Only mock for the recipient since change output won't call Address.from_script
-    vi.mocked(Address.from_script).mockImplementationOnce(
-      () =>
-        ({
-          toString: () => 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-        }) as unknown as Address,
+    vi.mocked(Address.from_script).mockImplementationOnce(() =>
+      createMockAddress('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'),
     );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -266,11 +284,8 @@ describe('mapPsbtToTransaction', () => {
       .mockReturnValueOnce(false) // recipient output (external)
       .mockReturnValueOnce(true); // change output (internal)
 
-    vi.mocked(Address.from_script).mockImplementationOnce(
-      () =>
-        ({
-          toString: () => 'bc1q0qr9ulgwv7hwp2xrhlkz0zs6eqxsm4kwnn757m',
-        }) as unknown as Address,
+    vi.mocked(Address.from_script).mockImplementationOnce(() =>
+      createMockAddress('bc1q0qr9ulgwv7hwp2xrhlkz0zs6eqxsm4kwnn757m'),
     );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -292,12 +307,10 @@ describe('mapPsbtToTransaction', () => {
     const transaction = createMockTransaction('testnet123', [output]);
 
     // Mock Address.from_script for testnet address
-    vi.mocked(Address.from_script).mockImplementationOnce(
-      () =>
-        ({
-          toString: () =>
-            'tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7',
-        }) as unknown as Address,
+    vi.mocked(Address.from_script).mockImplementationOnce(() =>
+      createMockAddress(
+        'tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7',
+      ),
     );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -330,23 +343,14 @@ describe('mapPsbtToTransaction', () => {
     ]);
 
     vi.mocked(Address.from_script)
-      .mockImplementationOnce(
-        () =>
-          ({
-            toString: () => '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-          }) as unknown as Address,
+      .mockImplementationOnce(() =>
+        createMockAddress('1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa'),
       )
-      .mockImplementationOnce(
-        () =>
-          ({
-            toString: () => 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-          }) as unknown as Address,
+      .mockImplementationOnce(() =>
+        createMockAddress('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'),
       )
-      .mockImplementationOnce(
-        () =>
-          ({
-            toString: () => 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
-          }) as unknown as Address,
+      .mockImplementationOnce(() =>
+        createMockAddress('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'),
       );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -392,8 +396,8 @@ describe('mapPsbtToTransaction', () => {
     const output = createMockOutput(50000);
     const transaction = createMockTransaction('fee123', [output]);
 
-    vi.mocked(Address.from_script).mockImplementationOnce(
-      () => ({ toString: () => 'bc1qtest' }) as unknown as Address,
+    vi.mocked(Address.from_script).mockImplementationOnce(() =>
+      createMockAddress('bc1qtest'),
     );
 
     const result = mapPsbtToTransaction(account, transaction);
@@ -495,11 +499,10 @@ describe('mapToTransaction', () => {
         toString: () => 'bc1qrecipient',
       } as Address);
 
-      const result = mapToTransaction(account, {
-        tx: transaction,
-        txid: transaction.compute_txid(),
-        chain_position: { anchor: undefined, last_seen: undefined },
-      } as unknown as WalletTx);
+      const result = mapToTransaction(
+        account,
+        createMockWalletTx(transaction, transaction.compute_txid()),
+      );
 
       expect(() => assert(result, TransactionStruct)).not.toThrow();
       expect(result.to[0]).toMatchObject({ asset: { amount: '0.00000001' } });
@@ -523,18 +526,14 @@ describe('mapToTransaction', () => {
       .mockReturnValueOnce(false) // recipient output (external)
       .mockReturnValueOnce(true); // change output (internal)
 
-    vi.mocked(Address.from_script).mockImplementationOnce(
-      () =>
-        ({
-          toString: () => 'bc1q0qr9ulgwv7hwp2xrhlkz0zs6eqxsm4kwnn757m',
-        }) as unknown as Address,
+    vi.mocked(Address.from_script).mockImplementationOnce(() =>
+      createMockAddress('bc1q0qr9ulgwv7hwp2xrhlkz0zs6eqxsm4kwnn757m'),
     );
 
-    const result = mapToTransaction(account, {
-      tx: transaction,
-      txid: transaction.compute_txid(),
-      chain_position: { anchor: undefined, last_seen: undefined },
-    } as unknown as WalletTx);
+    const result = mapToTransaction(
+      account,
+      createMockWalletTx(transaction, transaction.compute_txid()),
+    );
 
     expect(result.type).toBe('send');
     expect(result.to).toHaveLength(1);
@@ -559,18 +558,14 @@ describe('mapToTransaction', () => {
       .mockReturnValueOnce(true) // change output
       .mockReturnValueOnce(false); // recipient output
 
-    vi.mocked(Address.from_script).mockImplementationOnce(
-      () =>
-        ({
-          toString: () => 'bc1qstku2y3pfh9av50lxj55arm8r5gj8tf2yv5nxz',
-        }) as unknown as Address,
+    vi.mocked(Address.from_script).mockImplementationOnce(() =>
+      createMockAddress('bc1qstku2y3pfh9av50lxj55arm8r5gj8tf2yv5nxz'),
     );
 
-    const result = mapToTransaction(account, {
-      tx: transaction,
-      txid: transaction.compute_txid(),
-      chain_position: { anchor: undefined, last_seen: undefined },
-    } as unknown as WalletTx);
+    const result = mapToTransaction(
+      account,
+      createMockWalletTx(transaction, transaction.compute_txid()),
+    );
 
     expect(result.to).toHaveLength(1);
     expect(result.to[0]?.address).toBe(
@@ -584,20 +579,13 @@ describe('mapToTransaction', () => {
     const transaction = createMockTransaction('receive111', [output]);
 
     account.isMine.mockReturnValue(true);
-    vi.mocked(Address.from_script).mockImplementationOnce(
-      () =>
-        ({
-          toString: () => 'bc1qreceiveoutput',
-        }) as unknown as Address,
+    vi.mocked(Address.from_script).mockImplementationOnce(() =>
+      createMockAddress('bc1qreceiveoutput'),
     );
 
     const result = mapToTransaction(
       account,
-      {
-        tx: transaction,
-        txid: transaction.compute_txid(),
-        chain_position: { anchor: undefined, last_seen: undefined },
-      } as unknown as WalletTx,
+      createMockWalletTx(transaction, transaction.compute_txid()),
       ['bc1qsender1', 'bc1qsender2'],
     );
 
@@ -620,17 +608,13 @@ describe('mapToTransaction', () => {
     const transaction = createMockTransaction('receive222', [output]);
 
     account.isMine.mockReturnValue(true);
-    vi.mocked(Address.from_script).mockImplementationOnce(
-      () => ({ toString: () => 'bc1qreceiveoutput' }) as unknown as Address,
+    vi.mocked(Address.from_script).mockImplementationOnce(() =>
+      createMockAddress('bc1qreceiveoutput'),
     );
 
     const result = mapToTransaction(
       account,
-      {
-        tx: transaction,
-        txid: transaction.compute_txid(),
-        chain_position: { anchor: undefined, last_seen: undefined },
-      } as unknown as WalletTx,
+      createMockWalletTx(transaction, transaction.compute_txid()),
       ['bc1qsender1', 'bc1qsender1', 'bc1qsender2'],
     );
 
@@ -646,15 +630,14 @@ describe('mapToTransaction', () => {
     const transaction = createMockTransaction('receive333', [output]);
 
     account.isMine.mockReturnValue(true);
-    vi.mocked(Address.from_script).mockImplementationOnce(
-      () => ({ toString: () => 'bc1qreceiveoutput' }) as unknown as Address,
+    vi.mocked(Address.from_script).mockImplementationOnce(() =>
+      createMockAddress('bc1qreceiveoutput'),
     );
 
-    const result = mapToTransaction(account, {
-      tx: transaction,
-      txid: transaction.compute_txid(),
-      chain_position: { anchor: undefined, last_seen: undefined },
-    } as unknown as WalletTx);
+    const result = mapToTransaction(
+      account,
+      createMockWalletTx(transaction, transaction.compute_txid()),
+    );
 
     expect(result.from).toStrictEqual([]);
   });
