@@ -10,6 +10,7 @@ import type { CaipAssetType } from '@metamask/utils';
 
 import type { AnyErrorConstructor } from '../../../utils';
 import { rethrowIfInstanceElseThrow } from '../../../utils';
+import { fetchPolicyReporting } from '../../../utils/analytics';
 import {
   assertHttpRequestParams,
   assertHttpResponse,
@@ -46,6 +47,7 @@ export class PriceApiClient {
     this.#policy = createFetchPolicy({
       service: 'price_api',
       logger: _logger,
+      ...fetchPolicyReporting,
     });
   }
 

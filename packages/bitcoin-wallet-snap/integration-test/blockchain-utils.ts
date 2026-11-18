@@ -1,6 +1,5 @@
 /* eslint-disable import-x/no-nodejs-modules */
 import { execSync } from 'child_process';
-import process from 'process';
 
 /* eslint-enable import-x/no-nodejs-modules */
 
@@ -8,6 +7,16 @@ import process from 'process';
  * Minimal utility for Bitcoin regtest operations in integration tests
  */
 const POLL_INTERVAL_MS = 50;
+
+/**
+ * The subset of the Esplora `/address/:address` response used by the tests.
+ */
+type EsploraAddressInfo = {
+  chain_stats: {
+    funded_txo_sum: number;
+    spent_txo_sum: number;
+  };
+};
 
 const POLL_MAX_RETRIES = 200;
 
@@ -168,7 +177,7 @@ export class BlockchainTestUtils {
         throw new Error(`Failed to get address info: ${response.statusText}`);
       }
 
-      const addressInfo = await response.json();
+      const addressInfo = (await response.json()) as EsploraAddressInfo;
       const funded = BigInt(addressInfo.chain_stats.funded_txo_sum ?? 0);
       const spent = BigInt(addressInfo.chain_stats.spent_txo_sum ?? 0);
       return funded - spent;

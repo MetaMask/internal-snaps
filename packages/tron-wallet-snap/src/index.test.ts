@@ -68,13 +68,13 @@ describe('entrypoints', () => {
   const entrypoints: [string, () => Promise<unknown>, Mock, unknown[]][] = [
     [
       'onClientRequest',
-      async (): Promise<unknown> => onClientRequest({ request } as never),
+      async (): Promise<unknown> => onClientRequest({ request }),
       mockClientRequestHandle,
       [request],
     ],
     [
       'onCronjob',
-      async (): Promise<unknown> => onCronjob({ request } as never),
+      async (): Promise<unknown> => onCronjob({ request }),
       mockCronHandle,
       [request],
     ],

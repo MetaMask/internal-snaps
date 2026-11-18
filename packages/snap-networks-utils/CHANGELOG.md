@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0]
+
 ### Added
 
 - Add optional `analytics` and `trackError` options to `createFetchPolicy`, to send the "Snap Service Degraded" and "Snap Service Unavailable" events and report calls that use up their retries ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
@@ -16,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Change the default `shouldTrack` of `createTrackError` and `createSnapErrorHandling` to also skip errors a fetch policy already reported (`isReportedFetchPolicyError`) ([#642](https://github.com/MetaMask/internal-snaps/pull/642))
 - Change `requiresMaliciousAcknowledgement` to accept the security-alerts preference and verdict, treating a missing preference as disabled, and allow `TransactionAlert` callers to select the unavailable-scan banner severity ([#578](https://github.com/MetaMask/internal-snaps/pull/578))
 
 ### Fixed
@@ -128,7 +131,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement `AssetsProvider` ([#82](https://github.com/MetaMask/internal-snaps/pull/82))
 - Initial package release ([#79](https://github.com/MetaMask/internal-snaps/pull/79))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.2.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.3.0...HEAD
+[3.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.2.0...@metamask/snap-networks-utils@3.3.0
 [3.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.1.0...@metamask/snap-networks-utils@3.2.0
 [3.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.0.0...@metamask/snap-networks-utils@3.1.0
 [3.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@2.0.0...@metamask/snap-networks-utils@3.0.0
