@@ -78,7 +78,7 @@ describe('AssetsService', () => {
     const snap = {
       request: vi.fn(),
     };
-    (globalThis as unknown as { snap: unknown }).snap = snap;
+    vi.stubGlobal('snap', snap);
 
     mockAssetsRepository = {
       findByKeyringAccountId: vi.fn(),
@@ -135,6 +135,7 @@ describe('AssetsService', () => {
   describe('fetchAccountAssets', () => {
     it('fetches native and token assets', async () => {
       vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        ...mockConnection.getRpc(Network.Mainnet),
         getBalance: vi.fn().mockReturnValueOnce({
           send: vi.fn().mockResolvedValue({
             value: 1000000000, // Native balance on Mainnet
@@ -152,7 +153,7 @@ describe('AssetsService', () => {
               value: [],
             }),
         }),
-      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+      });
 
       const assets = await assetsService.fetchAccountAssets(
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
@@ -163,6 +164,7 @@ describe('AssetsService', () => {
 
     it('does not fail on individual RPC call failures to fetch native assets', async () => {
       vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        ...mockConnection.getRpc(Network.Mainnet),
         getBalance: vi.fn().mockReturnValue({
           send: vi
             .fn()
@@ -180,7 +182,7 @@ describe('AssetsService', () => {
               value: [],
             }),
         }),
-      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+      });
 
       const assets = await assetsService.fetchAccountAssets(
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
@@ -191,6 +193,7 @@ describe('AssetsService', () => {
 
     it('does not fail on individual RPC call failures to fetch token assets', async () => {
       vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        ...mockConnection.getRpc(Network.Mainnet),
         getBalance: vi.fn().mockReturnValueOnce({
           send: vi.fn().mockResolvedValue({
             value: 1000000000, // Native balance on Mainnet
@@ -201,7 +204,7 @@ describe('AssetsService', () => {
             .fn()
             .mockRejectedValueOnce(new Error('Error getting token accounts')),
         }),
-      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+      });
 
       const assets = await assetsService.fetchAccountAssets(
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
