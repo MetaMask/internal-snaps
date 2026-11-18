@@ -26,10 +26,14 @@ import logger from '../../utils/logger';
 import type { AssetsService, TokenHelper } from '../assets';
 import { TransactionMapper } from './TransactionMapper';
 
+type MockTokenHelper = Mocked<Pick<TokenHelper, 'amountToUiAmountForMint'>>;
+
+type MockAssetsService = Mocked<Pick<AssetsService, 'getAssetsMetadata'>>;
+
 type WithTransactionMapperCallback<ReturnValue> = (payload: {
   transactionMapper: TransactionMapper;
-  mockTokenHelper: Mocked<Pick<TokenHelper, 'amountToUiAmountForMint'>>;
-  mockAssetsService: Mocked<Pick<AssetsService, 'getAssetsMetadata'>>;
+  mockTokenHelper: MockTokenHelper;
+  mockAssetsService: MockAssetsService;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -41,18 +45,17 @@ type WithTransactionMapperCallback<ReturnValue> = (payload: {
 async function withTransactionMapper<ReturnValue>(
   testFunction: WithTransactionMapperCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  const mockTokenHelper: Mocked<Pick<TokenHelper, 'amountToUiAmountForMint'>> =
-    {
-      amountToUiAmountForMint: vi.fn().mockResolvedValue('1'),
-    };
+  const mockTokenHelper: MockTokenHelper = {
+    amountToUiAmountForMint: vi.fn().mockResolvedValue('1'),
+  };
 
-  const mockAssetsService: Mocked<Pick<AssetsService, 'getAssetsMetadata'>> = {
+  const mockAssetsService: MockAssetsService = {
     getAssetsMetadata: vi.fn().mockResolvedValue({}),
   };
 
   const transactionMapper = new TransactionMapper(
-    mockTokenHelper as unknown as TokenHelper,
-    mockAssetsService as unknown as AssetsService,
+    mockTokenHelper,
+    mockAssetsService,
     logger,
   );
 
@@ -65,8 +68,8 @@ async function withTransactionMapper<ReturnValue>(
 
 describe('TransactionMapper', () => {
   let transactionMapper: TransactionMapper;
-  let mockTokenHelper: TokenHelper;
-  let mockAssetsService: AssetsService;
+  let mockTokenHelper: MockTokenHelper;
+  let mockAssetsService: MockAssetsService;
   const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 
   beforeEach(() => {
@@ -75,11 +78,11 @@ describe('TransactionMapper', () => {
 
     mockTokenHelper = {
       amountToUiAmountForMint: vi.fn().mockResolvedValue('1'),
-    } as unknown as TokenHelper;
+    };
 
     mockAssetsService = {
       getAssetsMetadata: vi.fn().mockResolvedValue({}),
-    } as unknown as AssetsService;
+    };
 
     transactionMapper = new TransactionMapper(
       mockTokenHelper,
@@ -477,13 +480,13 @@ describe('TransactionMapper', () => {
     });
 
     it('tracks mapping errors', async () => {
-      const invalidTransaction = {
+      const invalidTransaction: SolanaTransaction = {
         ...EXPECTED_NATIVE_SOL_TRANSFER_DATA,
         transaction: {
           ...EXPECTED_NATIVE_SOL_TRANSFER_DATA.transaction,
           signatures: [],
         },
-      } as unknown as SolanaTransaction;
+      };
 
       expect(
         await transactionMapper.mapRpcTransaction(

@@ -5,8 +5,6 @@ import { MOCK_SOLANA_KEYRING_ACCOUNT_0 } from '../../../test/mocks/solana-keyrin
 import { EXPECTED_SPAM_TRANSACTION_DATA } from '../../../test/mocks/transactions-data/spam';
 import { EXPECTED_SPAM_TRANSACTION_DATA_2 } from '../../../test/mocks/transactions-data/spam-2';
 import { mockLogger } from '../../__mocks__/logger';
-import type { AssetsService } from '../../assets/AssetsService';
-import type { TokenHelper } from '../../assets/TokenHelper';
 import { TransactionMapper } from '../TransactionMapper';
 import { isSpam } from './isSpam';
 
@@ -32,11 +30,11 @@ describe('isSpam', () => {
   beforeEach(() => {
     const mockTokenHelper = {
       amountToUiAmountForMint: vi.fn().mockResolvedValue('1'),
-    } as unknown as TokenHelper;
+    };
 
     const mockAssetsService = {
       getAssetsMetadata: vi.fn().mockResolvedValue({}),
-    } as unknown as AssetsService;
+    };
 
     transactionMapper = new TransactionMapper(
       mockTokenHelper,
