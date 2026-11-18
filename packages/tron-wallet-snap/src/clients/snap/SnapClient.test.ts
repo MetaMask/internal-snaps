@@ -7,9 +7,9 @@ import { SnapClient } from './SnapClient';
 
 // Mock the global snap object
 const mockSnapRequest = vi.fn();
-(globalThis as any).snap = {
+vi.stubGlobal('snap', {
   request: mockSnapRequest,
-};
+});
 
 /**
  * Creates a fresh SnapClient and executes the given test function with it.

@@ -2237,8 +2237,7 @@ __metadata:
     "@metamask/key-tree": "npm:^10.1.1"
     "@metamask/keyring-api": "npm:^24.1.0"
     "@metamask/keyring-snap-sdk": "npm:^10.0.0"
-    "@metamask/slip44": "npm:^4.2.0"
-    "@metamask/snap-networks-utils": "npm:^3.2.0"
+    "@metamask/snap-networks-utils": "npm:^3.3.0"
     "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-jest": "npm:^10.2.1"
     "@metamask/snaps-sdk": "npm:^12.0.1"
@@ -3490,7 +3489,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/slip44@npm:^4.2.0, @metamask/slip44@npm:^4.3.0, @metamask/slip44@npm:^4.5.0":
+"@metamask/slip44@npm:^4.3.0, @metamask/slip44@npm:^4.5.0":
   version: 4.5.0
   resolution: "@metamask/slip44@npm:4.5.0"
   checksum: 10/8450d4f5afa98e8f57c67a39f12aa413888c423505f22c05a3dc181be223f7742db017f54a99852acc3826abe74b22bf7247bccd78b810e509321c075e67516f
@@ -3517,7 +3516,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/snap-networks-utils@npm:^3.2.0, @metamask/snap-networks-utils@workspace:packages/snap-networks-utils":
+"@metamask/snap-networks-utils@npm:^3.3.0, @metamask/snap-networks-utils@workspace:packages/snap-networks-utils":
   version: 0.0.0-use.local
   resolution: "@metamask/snap-networks-utils@workspace:packages/snap-networks-utils"
   dependencies:
@@ -3895,7 +3894,7 @@ __metadata:
     "@metamask/keyring-snap-sdk": "npm:^10.0.0"
     "@metamask/messenger": "npm:^2.0.0"
     "@metamask/remote-feature-flag-controller": "npm:^7.0.0"
-    "@metamask/snap-networks-utils": "npm:^3.2.0"
+    "@metamask/snap-networks-utils": "npm:^3.3.0"
     "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-jest": "npm:^10.2.1"
     "@metamask/snaps-sdk": "npm:^12.0.1"
@@ -3943,7 +3942,7 @@ __metadata:
     "@metamask/keyring-snap-sdk": "npm:^10.0.0"
     "@metamask/messenger": "npm:^2.0.0"
     "@metamask/remote-feature-flag-controller": "npm:^7.0.0"
-    "@metamask/snap-networks-utils": "npm:^3.2.0"
+    "@metamask/snap-networks-utils": "npm:^3.3.0"
     "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-sdk": "npm:^12.0.1"
     "@metamask/superstruct": "npm:^3.4.1"
@@ -4067,7 +4066,7 @@ __metadata:
     "@metamask/keyring-snap-sdk": "npm:^10.0.0"
     "@metamask/messenger": "npm:^2.0.0"
     "@metamask/remote-feature-flag-controller": "npm:^7.0.0"
-    "@metamask/snap-networks-utils": "npm:^3.2.0"
+    "@metamask/snap-networks-utils": "npm:^3.3.0"
     "@metamask/snaps-cli": "npm:^8.4.1"
     "@metamask/snaps-sdk": "npm:^12.0.1"
     "@metamask/superstruct": "npm:^3.4.1"

@@ -9,6 +9,7 @@ import {
 } from '@metamask/keyring-api';
 import type { Snap } from '@metamask/snaps-jest';
 import { installSnap } from '@metamask/snaps-jest';
+import { hasProperty } from '@metamask/utils';
 
 import { CurrencyUnit, TrackingSnapEvent } from '../src/entities';
 import { Caip19Asset } from '../src/handlers/caip';
@@ -55,7 +56,6 @@ describe('OnClientRequestHandler', () => {
       }
 
       // don't mock other methods
-      return undefined;
     });
 
     const response = await snap.onKeyringRequest({
@@ -68,7 +68,7 @@ describe('OnClientRequestHandler', () => {
       },
     });
 
-    if ('result' in response.response) {
+    if (hasProperty(response.response, 'result')) {
       account = (
         response.response.result as KeyringAccount[]
       )[0] as KeyringAccount;
@@ -412,33 +412,13 @@ describe('OnClientRequestHandler', () => {
       });
     });
 
-    it.skip('fails with insufficient funds to pay fees', async () => {
-      // now with drainWallet in place this is not going to happen
-      const balanceBtc = await blockchain.getBalanceInBTC(account.address);
-
-      const response = await snap.onClientRequest({
-        method: 'confirmSend',
-        params: {
-          fromAccountId: account.id,
-          toAddress: TEST_ADDRESS_REGTEST,
-          assetId: Caip19Asset.Regtest,
-          amount: balanceBtc.toString(),
-        },
-      });
-
-      expect(response).toRespondWith({
-        errors: [{ code: 'InsufficientBalanceToCoverFee' }],
-        valid: false,
-      });
-    });
-
     it('fails with missing parameters', async () => {
       const response = await snap.onClientRequest({
         method: 'confirmSend',
         params: {
           fromAccountId: account.id,
           // missing toAddress, assetId, amount
-        } as any,
+        },
       });
 
       expect(response).toRespondWithError({

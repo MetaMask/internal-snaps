@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.5.0]
+
 ### Added
 
 - Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for TRX and TRC-20 assets. The maximum leaves enough TRX for the network fees and account activation (native sends) or the transfer fee (TRC-20), and the destination is conservatively assumed unactivated when omitted ([#555](https://github.com/MetaMask/internal-snaps/pull/555))
@@ -14,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Report Trongrid, Tron HTTP, TronWeb provider and broadcast, Price API, Token API and Security Alerts API outages through the shared fetch policy ([#607](https://github.com/MetaMask/internal-snaps/pull/607))
+  - Slow or failing requests now emit `Snap Service Degraded` and `Snap Service Unavailable` Segment events, and give-ups are sent to Sentry without URLs, request params or response data.
+  - Errors the policy already reported, including open-circuit rejections during account synchronization, are no longer sent to Sentry a second time.
 - Show security alerts separately from transaction and simulation errors, prioritizing blocking errors ([#603](https://github.com/MetaMask/internal-snaps/pull/603))
 - Show a consistent informational security-check unavailable banner when validation fails or a scan returns no requested results, including validation. ([#601](https://github.com/MetaMask/internal-snaps/pull/601))
 - `onAmountInput` now estimates send fees when `toAddress` is not provided ([#554](https://github.com/MetaMask/internal-snaps/pull/554))
@@ -167,7 +172,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump `@metamask/snaps-sdk` from `^11.1.1` to `^11.2.0` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 - Bump `@metamask/superstruct` from `^3.2.1` to `^3.4.1` ([#43](https://github.com/MetaMask/internal-snaps/pull/43))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.4.1...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.5.0...HEAD
+[4.5.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.4.1...@metamask/tron-wallet-snap@4.5.0
 [4.4.1]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.4.0...@metamask/tron-wallet-snap@4.4.1
 [4.4.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.3.1...@metamask/tron-wallet-snap@4.4.0
 [4.3.1]: https://github.com/MetaMask/internal-snaps/compare/@metamask/tron-wallet-snap@4.3.0...@metamask/tron-wallet-snap@4.3.1

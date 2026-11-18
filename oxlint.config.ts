@@ -62,7 +62,7 @@ export default createConfig({
     },
 
     {
-      files: ['**/*.cjs', '**/*.cts', '.prettierrc.js'],
+      files: ['**/*.cjs', '**/*.cts'],
       extends: [nodejs, commonjs],
       rules: {
         'import/extensions': 'off',

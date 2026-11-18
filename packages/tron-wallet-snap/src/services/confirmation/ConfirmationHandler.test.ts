@@ -731,9 +731,7 @@ describe('ConfirmationHandler', () => {
           mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
             rawData,
           );
-          mockRenderConfirmSignTransaction.mockResolvedValue(
-            dialogResult as unknown as boolean,
-          );
+          mockRenderConfirmSignTransaction.mockResolvedValue(dialogResult);
 
           const result = await handler.handleKeyringRequest({
             request,
@@ -837,7 +835,7 @@ describe('ConfirmationHandler', () => {
         };
 
         await handler.handleKeyringRequest({
-          request: signMessageRequest as unknown as typeof request,
+          request: signMessageRequest,
           account: mockAccount,
         });
 

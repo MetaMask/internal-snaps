@@ -134,6 +134,7 @@ export {
   createWithCatchAndThrowSnapError,
   formatAccountSyncFailures,
   getSyncFailuresFromSettledResult,
+  getUnreportedSyncFailures,
   HttpError,
   isSnapRpcError,
   normalizeError,

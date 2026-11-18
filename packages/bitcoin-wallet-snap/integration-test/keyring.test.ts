@@ -3,6 +3,7 @@ import type { KeyringAccount } from '@metamask/keyring-api';
 import { BtcAccountType, BtcScope } from '@metamask/keyring-api';
 import type { Snap } from '@metamask/snaps-jest';
 import { installSnap } from '@metamask/snaps-jest';
+import { assert, hasProperty } from '@metamask/utils';
 
 import { AccountCapability, CurrencyUnit } from '../src/entities';
 import { Caip19Asset } from '../src/handlers/caip';
@@ -49,8 +50,6 @@ describe('Keyring', () => {
       if (request.method === 'snap_scheduleBackgroundEvent') {
         return 'mock-event-id';
       }
-
-      return undefined;
     });
   });
 
@@ -85,16 +84,18 @@ describe('Keyring', () => {
       },
     ]);
 
-    if ('result' in response.response) {
-      accounts[TEST_ADDRESS_REGTEST] = (
-        response.response.result as KeyringAccount[]
-      )[0]!;
+    assert(
+      hasProperty(response.response, 'result'),
+      'Expected the account creation to return a result',
+    );
+    accounts[TEST_ADDRESS_REGTEST] = (
+      response.response.result as KeyringAccount[]
+    )[0]!;
 
-      await snap.onCronjob({
-        method: 'fullScanAccount',
-        params: { accountId: accounts[TEST_ADDRESS_REGTEST].id },
-      });
-    }
+    await snap.onCronjob({
+      method: 'fullScanAccount',
+      params: { accountId: accounts[TEST_ADDRESS_REGTEST].id },
+    });
   });
 
   it.each([
@@ -145,83 +146,15 @@ describe('Keyring', () => {
         },
       ]);
 
-      if ('result' in response.response) {
-        accounts[expectedAddress] = (
-          response.response.result as KeyringAccount[]
-        )[0] as KeyringAccount;
-      }
+      assert(
+        hasProperty(response.response, 'result'),
+        'Expected the account creation to return a result',
+      );
+      accounts[expectedAddress] = (
+        response.response.result as KeyringAccount[]
+      )[0]!;
     },
   );
-
-  // skip non-P2WPKH address types as we are not supporting them for v1
-  it.skip.each([
-    {
-      addressType: BtcAccountType.P2pkh,
-      scope: BtcScope.Mainnet,
-      index: 0,
-      expectedAddress: '15feVv7kK3z7jxA4RZZzY7Fwdu3yqFwzcT',
-    },
-    {
-      addressType: BtcAccountType.P2pkh,
-      scope: BtcScope.Testnet,
-      index: 0,
-      expectedAddress: 'mjPQaLkhZN3MxsYN8Nebzwevuz8vdTaRCq',
-    },
-    {
-      addressType: BtcAccountType.P2sh,
-      scope: BtcScope.Mainnet,
-      index: 0,
-      expectedAddress: '3QVSaDYjxEh4L3K24eorrQjfVxPAKJMys2',
-    },
-    {
-      addressType: BtcAccountType.P2sh,
-      scope: BtcScope.Testnet,
-      index: 0,
-      expectedAddress: '2NBG623WvXp1zxKB6gK2mnMe2mSDCur5qRU',
-    },
-    {
-      addressType: BtcAccountType.P2tr,
-      scope: BtcScope.Mainnet,
-      index: 0,
-      expectedAddress:
-        'bc1p4rue37y0v9snd4z3fvw43d29u97qxf9j3fva72xy2t7hekg24dzsaz40mz',
-    },
-    {
-      addressType: BtcAccountType.P2tr,
-      scope: BtcScope.Testnet,
-      index: 0,
-      expectedAddress:
-        'tb1pwwjax3vpq6h69965hcr22vkpm4qdvyu2pz67wyj8eagp9vxkcz0q0ya20h',
-    },
-  ])('creates an account: %s', async ({ expectedAddress, ...requestOpts }) => {
-    const response = await snap.onKeyringRequest({
-      origin: ORIGIN,
-      method: 'keyring_createAccount',
-      params: { options: { ...requestOpts, synchronize: false } },
-    });
-
-    expect(response).toRespondWith({
-      type: requestOpts.addressType,
-      id: expect.anything(),
-      address: expectedAddress,
-      options: {
-        entropySource: 'm',
-        entropy: {
-          type: 'mnemonic',
-          id: 'm',
-          groupIndex: requestOpts.index,
-          derivationPath: `m/${accountTypeToPurpose[requestOpts.addressType]}/${scopeToCoinType[requestOpts.scope]}/${requestOpts.index}'`,
-        },
-        exportable: true,
-      },
-      scopes: [requestOpts.scope],
-      methods: Object.values(AccountCapability),
-    });
-
-    if ('result' in response.response) {
-      accounts[expectedAddress] = response.response.result as KeyringAccount;
-    }
-  });
 
   it('returns the same account if already exists by derivationPath', async () => {
     // Account already exists so we should get the same account
