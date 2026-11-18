@@ -14,7 +14,7 @@ const networkToIcon: Record<Network, string> = {
   regtest: signetIcon,
 };
 
-export type AssetIconInlineProps = {
+type AssetIconInlineProps = {
   network: Network;
   variant?: 'asset' | 'network';
 };

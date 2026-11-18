@@ -26,7 +26,7 @@ import {
   translate,
 } from '../format';
 
-export type UnifiedSendFormViewProps = {
+type UnifiedSendFormViewProps = {
   context: ConfirmSendFormContext;
   messages: Messages;
 };

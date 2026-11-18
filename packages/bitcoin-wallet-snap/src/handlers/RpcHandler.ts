@@ -62,13 +62,13 @@ import {
   canonicalizeBitcoinAddress,
 } from './validation';
 
-export const CreateSendFormRequest = object({
+const CreateSendFormRequest = object({
   account: string(),
   scope: optional(enums(Object.values(BtcScope))), // We don't use the scope but need to define it for validation
   assetId: optional(string()), // We don't use the Caip19 but need to define it for validation
 });
 
-export const SendPsbtRequest = object({
+const SendPsbtRequest = object({
   accountId: string(),
   transaction: string(),
   scope: optional(enums(Object.values(BtcScope))), // We don't use the scope but need to define it for validation
@@ -81,25 +81,25 @@ export const ComputeFeeRequest = object({
   scope: enums(Object.values(BtcScope)),
 });
 
-export type SendTransactionResponse = {
+type SendTransactionResponse = {
   transactionId: string;
   // True if the source account's address type allows third-party txid
   // malleation before confirmation (currently only legacy P2PKH).
   canBeMalleable: boolean;
 };
 
-export const VerifyMessageRequest = object({
+const VerifyMessageRequest = object({
   address: string(),
   message: string(),
   signature: string(),
 });
 
-export const SignRewardsMessageRequest = object({
+const SignRewardsMessageRequest = object({
   accountId: string(),
   message: string(),
 });
 
-export const SignProofOfOwnershipRequest = object({
+const SignProofOfOwnershipRequest = object({
   accountId: string(),
   message: string(),
 });
@@ -110,7 +110,7 @@ export const SignProofOfOwnershipRequest = object({
  * Batch items intentionally validate messages as plain strings so invalid
  * proof messages can be reported per item instead of failing the whole batch.
  */
-export const SignProofOfOwnershipBatchRequestItem = object({
+const SignProofOfOwnershipBatchRequestItem = object({
   accountId: string(),
   message: string(),
 });
@@ -118,11 +118,11 @@ export const SignProofOfOwnershipBatchRequestItem = object({
 /**
  * Validates `signProofOfOwnershipBatch` request params.
  */
-export const SignProofOfOwnershipBatchRequest = object({
+const SignProofOfOwnershipBatchRequest = object({
   items: array(SignProofOfOwnershipBatchRequestItem),
 });
 
-export type SignProofOfOwnershipBatchResponse = ProofOfOwnershipBatchResponse;
+type SignProofOfOwnershipBatchResponse = ProofOfOwnershipBatchResponse;
 
 /**
  * Checks whether a batch proof-signing result is an item-level error.

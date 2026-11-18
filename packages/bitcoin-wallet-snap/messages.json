@@ -1,7 +1,4 @@
 {
-  "reviewTransactionWarning": {
-    "message": "Review the transaction before proceeding"
-  },
   "from": {
     "message": "From"
   },
@@ -56,9 +53,6 @@
   "asset": {
     "message": "Asset"
   },
-  "sending": {
-    "message": "Sending"
-  },
   "max": {
     "message": "Max"
   },
@@ -73,6 +67,27 @@
   },
   "unknownError": {
     "message": "An unknown error occurred"
+  },
+  "descriptor": {
+    "message": "Failed to build transaction: invalid descriptor"
+  },
+  "policy": {
+    "message": "Failed to build transaction: invalid policy"
+  },
+  "spendingPolicyRequired": {
+    "message": "Spending policy is required to spend from this keychain"
+  },
+  "version0": {
+    "message": "Failed to build transaction: invalid transaction version 0"
+  },
+  "version1Csv": {
+    "message": "Failed to build transaction: transaction version 1 cannot use OP_CSV"
+  },
+  "lockTime": {
+    "message": "Failed to build transaction: requested lock time is too early"
+  },
+  "rbfSequenceCsv": {
+    "message": "Failed to build transaction: cannot enable RBF with a required OP_CSV"
   },
   "feeTooLow": {
     "message": "Fee too low"
@@ -95,10 +110,16 @@
   "psbt": {
     "message": "Invalid PSBT"
   },
+  "missingKeyOrigin": {
+    "message": "Invalid Bitcoin address: extended key is missing the origin"
+  },
+  "miniscriptPsbt": {
+    "message": "Failed to build transaction: invalid miniscript PSBT"
+  },
   "unknownUtxo": {
     "message": "Failed to build transaction: unknown UTXO"
   },
-  "MmssingNonWitnessUtxo": {
+  "missingNonWitnessUtxo": {
     "message": "Failed to build transaction: missing non-witness UTXO"
   },
   "base58": {
@@ -106,6 +127,9 @@
   },
   "bech32": {
     "message": "Invalid Bitcoin address"
+  },
+  "unknownHrp": {
+    "message": "Invalid Bitcoin address: unknown human-readable part"
   },
   "witnessVersion": {
     "message": "Invalid Bitcoin address: witness version"
@@ -223,9 +247,6 @@
   },
   "confirmation.signPsbt.confirmButton": {
     "message": "Sign"
-  },
-  "confirmation.signPsbt.psbt": {
-    "message": "Transaction (PSBT)"
   },
   "confirmation.signPsbt.options": {
     "message": "Options"

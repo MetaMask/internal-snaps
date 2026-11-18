@@ -1,3 +1,4 @@
+import * as snapNetworksUtils from '@metamask/snap-networks-utils';
 import {
   BaseConfigProvider,
   FetchPolicyErrorName,
@@ -8,6 +9,7 @@ import {
   ConfigStruct,
   ENVIRONMENT,
 } from '../../services/config/ConfigProvider';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import { TronHttpClient } from './TronHttpClient';
 
 describe('TronHttpClient', () => {
@@ -16,6 +18,25 @@ describe('TronHttpClient', () => {
 
   afterEach(() => {
     global.fetch = originalFetch;
+  });
+
+  it('reports outages through the fetch policy of each network', () => {
+    const createFetchPolicySpy = vi.spyOn(
+      snapNetworksUtils,
+      'createFetchPolicy',
+    );
+
+    expect(() => new TronHttpClient({ configProvider })).not.toThrow();
+
+    for (const network of Object.values(Network)) {
+      expect(createFetchPolicySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          service: 'tronweb_provider',
+          chainIdCaip: network,
+          ...fetchPolicyReporting,
+        }),
+      );
+    }
   });
 
   it('retries when reading the response body fails', async () => {
