@@ -85,9 +85,7 @@ describe('ConfirmTransactionRequest', () => {
       });
 
       expect(serialized).toContain('"severity":"warning"');
-      expect(serialized).toContain(
-        'This transaction was reverted during simulation.',
-      );
+      expect(serialized).toContain('This transaction is expected to fail.');
       expect(serialized).toContain(
         'Account does not have enough SOL to perform the operation.',
       );
@@ -106,7 +104,7 @@ describe('ConfirmTransactionRequest', () => {
 
         expect(serialized).toContain(`"severity":"${severity}"`);
         expect(serialized).toContain('This is a deceptive request');
-        expect(serialized).toContain('Security advice by');
+        expect(serialized).toContain('Powered by');
       },
     );
 

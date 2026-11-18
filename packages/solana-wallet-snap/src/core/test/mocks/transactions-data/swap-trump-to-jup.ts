@@ -1,10 +1,8 @@
 import type {
   Base58EncodedBytes,
   Base64EncodedDataResponse,
-  Slot,
   TokenBalance,
   TransactionError,
-  TransactionVersion,
   UnixTimestamp,
 } from '@solana/kit';
 import { address, blockhash, lamports } from '@solana/kit';

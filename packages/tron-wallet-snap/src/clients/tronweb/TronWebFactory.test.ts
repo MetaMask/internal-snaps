@@ -1,8 +1,10 @@
+import * as snapNetworksUtils from '@metamask/snap-networks-utils';
 import { TronWeb } from 'tronweb';
 import type { Types as TronwebTypes } from 'tronweb';
 
 import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import { throwOnTransientBroadcastFailure } from '../../utils/broadcast';
 import { TronWebFactory } from './TronWebFactory';
 
@@ -44,6 +46,29 @@ function createConfigProvider(
 }
 
 describe('TronWebFactory', () => {
+  it('reports outages through the read and broadcast fetch policies of each network', () => {
+    const createFetchPolicySpy = vi.spyOn(
+      snapNetworksUtils,
+      'createFetchPolicy',
+    );
+
+    expect(
+      () => new TronWebFactory({ configProvider: createConfigProvider() }),
+    ).not.toThrow();
+
+    for (const network of Object.values(Network)) {
+      for (const service of ['tronweb_provider', 'tronweb_broadcast']) {
+        expect(createFetchPolicySpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            service,
+            chainIdCaip: network,
+            ...fetchPolicyReporting,
+          }),
+        );
+      }
+    }
+  });
+
   describe('createClient', () => {
     it('reads the trongrid base URL for the requested network from the config provider', () => {
       const configProvider = createConfigProvider();
@@ -119,7 +144,7 @@ describe('TronWebFactory', () => {
       });
       const signedTransaction = { txID: 'signed-transaction' };
       const sendRawTransaction = vi
-        .fn()
+        .fn<(transaction: { txID: string }) => Promise<{ result: boolean }>>()
         .mockRejectedValueOnce(
           Object.assign(new Error('unavailable'), {
             response: { status: 503 },
@@ -156,7 +181,13 @@ describe('TronWebFactory', () => {
       });
       const signedTransaction = { txID: 'signed-transaction' };
       const sendRawTransaction = vi
-        .fn()
+        .fn<
+          (transaction: { txID: string }) => Promise<{
+            code?: string;
+            message?: string;
+            result: boolean;
+          }>
+        >()
         .mockResolvedValueOnce({
           code: 'SERVER_BUSY',
           message: 'Server busy',

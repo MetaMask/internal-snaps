@@ -1,5 +1,4 @@
 import {
-  AnalyticsService,
   AssetsProvider,
   createFetchPolicy,
   InMemoryCache,
@@ -9,6 +8,7 @@ import {
   StateCache,
 } from '@metamask/snap-networks-utils';
 import type {
+  AnalyticsService,
   AssetsProviderMessenger,
   IStateManager,
   RemoteFeatureFlagsProviderMessenger,
@@ -16,7 +16,6 @@ import type {
 import { getMessenger } from '@metamask/snaps-sdk';
 
 import { PriceApiClient } from './clients/price-api/PriceApiClient';
-import { getSnapProvider } from './clients/snap/getSnapProvider';
 import { SnapClient } from './clients/snap/SnapClient';
 import { TokenApiClient } from './clients/token-api/TokenApiClient';
 import { TronHttpClient } from './clients/tron-http/TronHttpClient';
@@ -49,6 +48,7 @@ import type {
   CoreMessenger,
   CoreMessengerClient,
 } from './types/core-messenger';
+import { analyticsService, fetchPolicyReporting } from './utils/analytics';
 import { trackError } from './utils/errors';
 import logger, { noOpLogger } from './utils/logger';
 
@@ -61,12 +61,6 @@ import logger, { noOpLogger } from './utils/logger';
  * 3. Business services (AssetsService, TransactionsService, AccountsService)
  * 4. Handlers (CronHandler, KeyringHandler, RpcHandler, UserInputHandler)
  */
-
-const analyticsService = new AnalyticsService({
-  getSnapProvider,
-  logger,
-  trackError,
-});
 
 const state = new State({
   encrypted: false,
@@ -119,6 +113,7 @@ const securityAlertsHttpClient = new SecurityAlertsApiClient({
   policy: createFetchPolicy({
     service: 'security_alerts_api',
     logger,
+    ...fetchPolicyReporting,
   }),
 });
 

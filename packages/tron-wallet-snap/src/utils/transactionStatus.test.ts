@@ -1,6 +1,5 @@
 import { TransactionStatus } from '@metamask/keyring-api';
 
-import type { FullNodeTransactionInfo } from '../clients/tron-http/types';
 import { mapTransactionInfoStatus } from './transactionStatus';
 
 describe('mapTransactionInfoStatus', () => {
@@ -13,21 +12,19 @@ describe('mapTransactionInfoStatus', () => {
     expect(
       mapTransactionInfoStatus({
         receipt: { result },
-      } as FullNodeTransactionInfo),
+      }),
     ).toBe(expected);
   });
 
   it('treats a missing receipt as confirmed', () => {
-    expect(mapTransactionInfoStatus({} as FullNodeTransactionInfo)).toBe(
-      TransactionStatus.Confirmed,
-    );
+    expect(mapTransactionInfoStatus({})).toBe(TransactionStatus.Confirmed);
   });
 
   it('treats a receipt without a result as confirmed', () => {
     expect(
       mapTransactionInfoStatus({
         receipt: { net_fee: 100 },
-      } as FullNodeTransactionInfo),
+      }),
     ).toBe(TransactionStatus.Confirmed);
   });
 });

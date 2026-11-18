@@ -1,16 +1,4 @@
-import type { AddressType, Network } from '@metamask/bitcoindevkit';
-import type { LogLevel } from '@metamask/snap-networks-utils';
-
-export type SnapConfig = {
-  logLevel: LogLevel;
-  chain: ChainConfig;
-  targetBlocksConfirmation: number; // Temporary global config to set the expected confirmation target, should eventually be a user setting
-  fallbackFeeRate: number;
-  ratesRefreshInterval: string;
-  feeRateCacheTtlMilliseconds: number;
-  priceApi: PriceApiConfig;
-  defaultAddressType: AddressType;
-};
+import type { Network } from '@metamask/bitcoindevkit';
 
 export type ChainConfig = {
   parallelRequests: number;

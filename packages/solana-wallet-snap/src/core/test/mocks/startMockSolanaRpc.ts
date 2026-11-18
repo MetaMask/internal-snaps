@@ -1,8 +1,15 @@
 import type { Json } from '@metamask/utils';
+import { hasProperty } from '@metamask/utils';
 import express from 'express';
+import type { Request, Response } from 'express';
 
 import logger from '../../utils/logger';
 import { Stack } from '../../utils/stack';
+
+/**
+ * The HTTP server returned by `express.Application.listen`.
+ */
+type HttpServer = ReturnType<express.Application['listen']>;
 
 export type MockedResolvedResult = {
   method: string;
@@ -18,7 +25,9 @@ export type MockedRejectedError = {
 };
 
 // Add new types for implementation functions
-export type MockImplementationFn = (params: any) => Json | Promise<Json>;
+export type MockImplementationFn = (
+  params: Json | undefined,
+) => Json | Promise<Json>;
 
 export type MockSolanaRpc = {
   mockResolvedResult: (mock: MockedResolvedResult) => void;
@@ -37,10 +46,48 @@ export type MockSolanaRpc = {
   server: express.Application | null;
 };
 
+/**
+ * Shape of the JSON-RPC request body sent to the mock server.
+ */
+type MockRpcRequestBody = {
+  method: string;
+  params?: Json;
+  id?: string | number;
+};
+
 // Singleton server instance
 const FIXED_PORT = 8899;
 let app: express.Application | null = null;
-let server: any;
+let server: HttpServer;
+
+/**
+ * The entries that can be stored on a mock stack for a single RPC method.
+ */
+type MockStackEntry =
+  | Omit<MockedResolvedResult, 'method'>
+  | Omit<MockedRejectedError, 'method'>
+  | { implementation: MockImplementationFn };
+
+/**
+ * Narrows a mock stack entry to a mocked error entry.
+ *
+ * @param mock - The mock stack entry to check.
+ * @returns Whether the entry is a mocked error.
+ */
+const isRejectedErrorMock = (
+  mock: MockStackEntry,
+): mock is Omit<MockedRejectedError, 'method'> => hasProperty(mock, 'error');
+
+/**
+ * Narrows a mock stack entry to an implementation entry.
+ *
+ * @param mock - The mock stack entry to check.
+ * @returns Whether the entry holds an implementation function.
+ */
+const isImplementationMock = (
+  mock: MockStackEntry,
+): mock is { implementation: MockImplementationFn } =>
+  hasProperty(mock, 'implementation');
 
 /**
  * We store mocks in a Map where the key is the method name and the value is a
@@ -56,31 +103,24 @@ let server: any;
  * the stack. If the item is not destackable, it is returned without removing it
  * from the stack.
  */
-const mocks = new Map<
-  string,
-  Stack<
-    | Omit<MockedResolvedResult, 'method'>
-    | Omit<MockedRejectedError, 'method'>
-    | { implementation: MockImplementationFn }
-  >
->();
+const mocks = new Map<string, Stack<MockStackEntry>>();
 
 /**
  * Singleton express app: creates it if it does not exist, otherwise returns
  * the existing one.
  */
-const createAppIfNotExists = () => {
+const createAppIfNotExists = (): void => {
   if (!app) {
     app = express();
     app.use(express.json());
 
-    app.post('/', async (req: any, res: any) => {
-      const { method, params, id: requestId } = req.body;
+    app.post('/', async (req: Request, res: Response): Promise<void> => {
+      const { method, params, id: requestId } = req.body as MockRpcRequestBody;
       const id = requestId ?? '0';
 
       const mockStack = mocks.get(method);
       if (!mockStack) {
-        return res.status(400).json({
+        res.status(400).json({
           jsonrpc: '2.0',
           id,
           error: {
@@ -88,11 +128,12 @@ const createAppIfNotExists = () => {
             message: 'No mock registered for this method',
           },
         });
+        return;
       }
 
       const mock = mockStack.pop();
       if (!mock) {
-        return res.status(400).json({
+        res.status(400).json({
           jsonrpc: '2.0',
           id,
           error: {
@@ -100,30 +141,33 @@ const createAppIfNotExists = () => {
             message: 'No mock registered for this method',
           },
         });
+        return;
       }
 
-      if ('error' in mock) {
-        return res.status(400).json({
+      if (isRejectedErrorMock(mock)) {
+        res.status(400).json({
           jsonrpc: '2.0',
           id,
           error: mock.error,
         });
+        return;
       }
 
-      if ('implementation' in mock) {
+      if (isImplementationMock(mock)) {
         try {
           console.log(
             'Calling implementation with params:',
             JSON.stringify(params, null, 2),
           );
           const result = await mock.implementation(params);
-          return res.json({
+          res.json({
             jsonrpc: '2.0',
             id,
             result,
           });
+          return;
         } catch (error) {
-          return res.status(400).json({
+          res.status(400).json({
             jsonrpc: '2.0',
             id,
             error: {
@@ -132,10 +176,11 @@ const createAppIfNotExists = () => {
                 error instanceof Error ? error.message : 'Implementation error',
             },
           });
+          return;
         }
       }
 
-      return res.json({
+      res.json({
         jsonrpc: '2.0',
         id,
         result: mock.result,
@@ -167,25 +212,34 @@ const createAppIfNotExists = () => {
 export const startMockSolanaRpc = (): MockSolanaRpc => {
   createAppIfNotExists();
 
-  const mockResolvedResult = ({ method, result }: MockedResolvedResult) => {
+  const mockResolvedResult = ({
+    method,
+    result,
+  }: MockedResolvedResult): void => {
     const stack = mocks.get(method) ?? new Stack();
     stack.push({ result }, false); // Non destackable
     mocks.set(method, stack);
   };
 
-  const mockResolvedResultOnce = ({ method, result }: MockedResolvedResult) => {
+  const mockResolvedResultOnce = ({
+    method,
+    result,
+  }: MockedResolvedResult): void => {
     const stack = mocks.get(method) ?? new Stack();
     stack.push({ result }, true); // Destackable
     mocks.set(method, stack);
   };
 
-  const mockRejectedError = ({ method, error }: MockedRejectedError) => {
+  const mockRejectedError = ({ method, error }: MockedRejectedError): void => {
     const stack = mocks.get(method) ?? new Stack();
     stack.push({ error }, false); // Non destackable
     mocks.set(method, stack);
   };
 
-  const mockRejectedErrorOnce = ({ method, error }: MockedRejectedError) => {
+  const mockRejectedErrorOnce = ({
+    method,
+    error,
+  }: MockedRejectedError): void => {
     const stack = mocks.get(method) ?? new Stack();
     stack.push({ error }, true); // Destackable
     mocks.set(method, stack);
@@ -194,7 +248,7 @@ export const startMockSolanaRpc = (): MockSolanaRpc => {
   const mockImplementation = (
     method: string,
     implementation: MockImplementationFn,
-  ) => {
+  ): void => {
     const stack = mocks.get(method) ?? new Stack();
     stack.push({ implementation }, false); // Non destackable
     mocks.set(method, stack);
@@ -203,13 +257,15 @@ export const startMockSolanaRpc = (): MockSolanaRpc => {
   const mockImplementationOnce = (
     method: string,
     implementation: MockImplementationFn,
-  ) => {
+  ): void => {
     const stack = mocks.get(method) ?? new Stack();
     stack.push({ implementation }, true); // Destackable
     mocks.set(method, stack);
   };
 
-  const shutdown = () => server.close();
+  const shutdown = (): void => {
+    server.close();
+  };
 
   return {
     mockResolvedResult,

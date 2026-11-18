@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.4.0]
+
 ### Added
 
-- Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for SOL and SPL assets. SOL leaves the rent-exempt minimum and the fee. SPL requires SOL to cover the fee, the rent-exempt minimum, and the recipient ATA rent unless `toAddress` shows the recipient ATA already exists, and the result is `0` when no amount can pass ([#585](https://github.com/MetaMask/internal-snaps/pull/585)).
-- `onAmountInput` now accepts an optional `toAddress` parameter for the shared client request shape ([#589](https://github.com/MetaMask/internal-snaps/pull/589)).
-- `onAmountInput` now uses `toAddress` to decide whether the recipient ATA rent applies, and returns `Invalid` for unsupported recipients or token accounts for another mint ([#585](https://github.com/MetaMask/internal-snaps/pull/585)).
+- Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for SOL and SPL assets. SOL leaves the rent-exempt minimum and the fee. SPL requires SOL to cover the fee, the rent-exempt minimum, and the recipient ATA rent unless `toAddress` shows the recipient ATA already exists, and the result is `0` when no amount can pass. ([#585](https://github.com/MetaMask/internal-snaps/pull/585))
+- `onAmountInput` now accepts an optional `toAddress` parameter for the shared client request shape. ([#589](https://github.com/MetaMask/internal-snaps/pull/589))
+- `onAmountInput` now uses `toAddress` to decide whether the recipient ATA rent applies, and returns `Invalid` for unsupported recipients or token accounts for another mint. ([#585](https://github.com/MetaMask/internal-snaps/pull/585))
 - Show who pays the network fee on transaction confirmations, and whether a sponsored transaction is free for the user ([#595](https://github.com/MetaMask/internal-snaps/pull/595))
   - When another account pays the fee, the confirmation shows the sponsor and a "You pay" row: "Free" only when no instruction charges the user, otherwise the account rent and payments to the sponsor the user covers
   - Shows "Can't confirm" instead of "Free" when it can't rule out other costs, for example when the simulation fails
@@ -19,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Update Solana confirmation copy to match the shared wording ([#614](https://github.com/MetaMask/internal-snaps/pull/614))
 - Report Solana RPC, Price API, Token API, NFT API and Security Alerts API outages through the shared fetch policy ([#583](https://github.com/MetaMask/internal-snaps/pull/583))
   - Slow or failing requests now emit `Snap Service Degraded` and `Snap Service Unavailable` Segment events, and give-ups are sent to Sentry without URLs, request params or response data.
   - The Solana RPC error-tracking transport has been removed, and errors the policy already reported are no longer sent to Sentry a second time.
@@ -127,7 +130,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING:** Re-licensed split into LICENSE.MIT or LICENSE.APACHE2 files (SPDX expression unchanged) ([#72](https://github.com/MetaMask/internal-snaps/pull/72))
 - This package was migrated from [snap-solana-wallet](https://github.com/MetaMask/snap-solana-wallet). See the source repository for the original [changelog](https://github.com/MetaMask/snap-solana-wallet/blob/main/packages/snap/CHANGELOG.md). ([#72](https://github.com/MetaMask/internal-snaps/pull/72))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.3.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.4.0...HEAD
+[7.4.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.3.0...@metamask/solana-wallet-snap@7.4.0
 [7.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.2.0...@metamask/solana-wallet-snap@7.3.0
 [7.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.1.0...@metamask/solana-wallet-snap@7.2.0
 [7.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.0.0...@metamask/solana-wallet-snap@7.1.0

@@ -1,3 +1,4 @@
+import * as snapNetworksUtils from '@metamask/snap-networks-utils';
 import {
   BaseConfigProvider,
   InMemoryCache,
@@ -12,6 +13,7 @@ import {
 } from '../../services/config/ConfigProvider';
 import nativeTransferWithoutTimestampMock from '../../services/transactions/mocks/trongrid/account-transactions/native-transfer-without-timestamp.json';
 import nativeTransferMock from '../../services/transactions/mocks/trongrid/account-transactions/native-transfer.json';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import { mockLogger } from '../../utils/mockLogger';
 import { TronHttpClient } from '../tron-http/TronHttpClient';
 import { TrongridApiClient } from './TrongridApiClient';
@@ -88,6 +90,25 @@ async function withTrongridApiClient<ReturnValue>(
 }
 
 describe('TrongridApiClient', () => {
+  it('reports outages through the fetch policy of each network', async () => {
+    const createFetchPolicySpy = vi.spyOn(
+      snapNetworksUtils,
+      'createFetchPolicy',
+    );
+
+    await withTrongridApiClient(() => {
+      for (const network of Object.values(Network)) {
+        expect(createFetchPolicySpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            service: 'trongrid',
+            chainIdCaip: network,
+            ...fetchPolicyReporting,
+          }),
+        );
+      }
+    });
+  });
+
   describe('getTrc20BalancesByAddress', () => {
     const mockAddress = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
     const normalizeBalances = (balances: Trc20Balance[]): Trc20Balance[] =>
