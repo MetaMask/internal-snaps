@@ -448,14 +448,13 @@ describe('render tracking', () => {
     analyzeFeePayment.mockRejectedValue(feePaymentError);
 
     const dialogResult = await render({
+      ...DEFAULT_CONFIRMATION_CONTEXT,
       method: SolMethod.SignAndSendTransaction,
       scope: Network.Mainnet,
       transaction: 'transaction',
-      account: {
-        address: 'BLw3RweJmfbTapJRgnPRvd962YDjFYAnVGd1p5hmZ5tP',
-      },
+      account: MOCK_SOLANA_KEYRING_ACCOUNT_0,
       origin: 'https://metamask.io',
-    } as unknown as ConfirmTransactionRequestContext);
+    });
 
     expect(dialogResult).toBe('dialog-result');
 
@@ -492,14 +491,13 @@ describe('render tracking', () => {
     });
 
     await render({
+      ...DEFAULT_CONFIRMATION_CONTEXT,
       method: SolMethod.SignAndSendTransaction,
       scope: Network.Mainnet,
       transaction: 'transaction',
-      account: {
-        address: 'BLw3RweJmfbTapJRgnPRvd962YDjFYAnVGd1p5hmZ5tP',
-      },
+      account: MOCK_SOLANA_KEYRING_ACCOUNT_0,
       origin: 'https://metamask.io',
-    } as unknown as ConfirmTransactionRequestContext);
+    });
 
     expect(analyzeFeePayment).toHaveBeenCalledWith(
       expect.objectContaining({ instructions: null }),
