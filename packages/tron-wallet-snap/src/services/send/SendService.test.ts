@@ -1,14 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { FeeType, TransactionType } from '@metamask/keyring-api';
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
-import type { AnalyticsService } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
-import { TronWeb } from 'tronweb';
-import type { Types as TronwebTypes } from 'tronweb';
+import { TronWeb, Types as TronwebTypes } from 'tronweb';
 import type { Mock } from 'vitest';
 
-import type { SnapClient } from '../../clients/snap/SnapClient';
-import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
   FEE_LIMIT,
   Network,
@@ -19,20 +15,19 @@ import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
 import { mockLogger } from '../../utils/mockLogger';
-import type { AccountsService } from '../accounts/AccountsService';
-import type { AssetsService } from '../assets/AssetsService';
 import { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
-import type { FeeCalculatorService } from './FeeCalculatorService';
 import { SendService } from './SendService';
 
 type Transaction = TronwebTypes.Transaction<TronwebTypes.TransferContract>;
 
 // Typed stand-ins for the `SendService` collaborators mocked by the suites
 // below. Each mocked method is a `Mock` rather than `any`, so member access and
-// assertions against the mocks are type-checked. The leaf mocks stay loosely
-// typed on purpose: several tests stage partial fixtures carrying only the
-// fields `SendService` reads, so pinning them to the real service signatures
-// would only add fixture noise.
+// assertions against the mocks are type-checked. `SendService` depends on these
+// collaborators through `Pick`s of the methods it actually calls, so these
+// structural doubles are accepted as-is. The leaf mocks stay loosely typed on
+// purpose: several tests stage partial fixtures carrying only the fields
+// `SendService` reads, so pinning them to the real service signatures would
+// only add fixture noise.
 type MockAccountsService = {
   findByIdOrThrow: Mock;
   deriveTronKeypair: Mock;
@@ -45,6 +40,7 @@ type MockAssetsService = {
 type MockTronWebFactory = {
   createClient: Mock;
   executeBroadcast: Mock;
+  executeRead: Mock;
 };
 
 type MockFeeCalculatorService = {
@@ -82,7 +78,7 @@ type MockTronWebClient = {
 
 const mockAnalyticsService = {
   trackTransactionSubmitted: vi.fn().mockResolvedValue(undefined),
-} as unknown as AnalyticsService;
+};
 
 describe('SendService', () => {
   type MockTransferContract = Transaction['raw_data']['contract'][number];
@@ -114,54 +110,57 @@ describe('SendService', () => {
 
     const createMockTransaction = (
       ownerAddress = TEST_OWNER_HEX,
-    ): MockTransferTransaction =>
-      ({
-        visible: false,
-        txID: 'mock-tx-id',
-        raw_data: {
-          contract: [
-            {
-              type: 'TransferContract',
-              parameter: {
-                value: {
-                  owner_address: ownerAddress,
-                  to_address: TronWeb.address.toHex(TEST_TO_ADDRESS),
-                  amount: 1000000,
-                },
+    ): MockTransferTransaction => ({
+      visible: false,
+      txID: 'mock-tx-id',
+      raw_data: {
+        contract: [
+          {
+            type: TronwebTypes.ContractType.TransferContract,
+            parameter: {
+              type_url: 'type.googleapis.com/protocol.TransferContract',
+              value: {
+                owner_address: ownerAddress,
+                to_address: TronWeb.address.toHex(TEST_TO_ADDRESS),
+                amount: 1000000,
               },
             },
-          ],
-        },
-        raw_data_hex: 'mock-hex',
-      }) as unknown as MockTransferTransaction;
+          },
+        ],
+        ref_block_bytes: '0000',
+        ref_block_hash: '0000000000000000',
+        expiration: 0,
+        timestamp: 0,
+      },
+      raw_data_hex: 'mock-hex',
+    });
 
     const createMockTrc20Transaction = (
       ownerAddress = TEST_OWNER_HEX,
-    ): TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract> =>
-      ({
-        visible: false,
-        txID: 'mock-trc20-tx-id',
-        raw_data: {
-          contract: [
-            {
-              type: 'TriggerSmartContract',
-              parameter: {
-                type_url: 'type.googleapis.com/protocol.Transaction.Contract',
-                value: {
-                  owner_address: ownerAddress,
-                  contract_address: TronWeb.address.toHex(TEST_TO_ADDRESS),
-                  data: 'a9059cbb000000000000000000000000a614f803b6fd780986a42c78ec9c7f77e6ded13c0000000000000000000000000000000000000000000000000000000000000000',
-                },
+    ): TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract> => ({
+      visible: false,
+      txID: 'mock-trc20-tx-id',
+      raw_data: {
+        contract: [
+          {
+            type: TronwebTypes.ContractType.TriggerSmartContract,
+            parameter: {
+              type_url: 'type.googleapis.com/protocol.Transaction.Contract',
+              value: {
+                owner_address: ownerAddress,
+                contract_address: TronWeb.address.toHex(TEST_TO_ADDRESS),
+                data: 'a9059cbb000000000000000000000000a614f803b6fd780986a42c78ec9c7f77e6ded13c0000000000000000000000000000000000000000000000000000000000000000',
               },
             },
-          ],
-          ref_block_bytes: '0000',
-          ref_block_hash: '0000000000000000',
-          expiration: 0,
-          timestamp: 0,
-        },
-        raw_data_hex: 'mock-trc20-hex',
-      }) as unknown as TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract>;
+          },
+        ],
+        ref_block_bytes: '0000',
+        ref_block_hash: '0000000000000000',
+        expiration: 0,
+        timestamp: 0,
+      },
+      raw_data_hex: 'mock-trc20-hex',
+    });
 
     beforeEach(() => {
       vi.clearAllMocks();
@@ -199,6 +198,7 @@ describe('SendService', () => {
 
       mockTronWebFactory = {
         createClient: vi.fn().mockReturnValue(mockTronWeb),
+        executeRead: vi.fn(),
         executeBroadcast: vi.fn(
           async (_network: Network, operation: () => Promise<unknown>) =>
             operation(),
@@ -220,16 +220,15 @@ describe('SendService', () => {
       };
 
       sendService = new SendService({
-        accountsService: mockAccountsService as unknown as AccountsService,
-        assetsService: mockAssetsService as unknown as AssetsService,
-        tronWebFactory: mockTronWebFactory as unknown as TronWebFactory,
-        feeCalculatorService:
-          mockFeeCalculatorService as unknown as FeeCalculatorService,
+        accountsService: mockAccountsService,
+        assetsService: mockAssetsService,
+        tronWebFactory: mockTronWebFactory,
+        feeCalculatorService: mockFeeCalculatorService,
         logger: mockLogger,
-        snapClient: mockSnapClient as unknown as SnapClient,
+        snapClient: mockSnapClient,
         analyticsService: mockAnalyticsService,
         transactionExpirationRefresherService:
-          mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
+          mockTransactionExpirationRefresherService,
       });
     });
 
@@ -377,7 +376,7 @@ describe('SendService', () => {
       raw_data: {
         contract: [
           {
-            type: 'TransferContract' as MockTransferContract['type'],
+            type: TronwebTypes.ContractType.TransferContract,
             parameter: {
               type_url: 'type.googleapis.com/protocol.TransferContract',
               value: {
@@ -419,6 +418,19 @@ describe('SendService', () => {
 
     const getRefBlockBytes = (number: number): string =>
       number.toString(16).slice(-4).padStart(4, '0');
+
+    /**
+     * The transaction the service handed to `trx.sign`.
+     *
+     * @returns The signed transaction argument.
+     */
+    const getSignedTransaction = (): Transaction => {
+      const [signedCall] = mockTronWeb.trx.sign.mock.calls;
+      if (!signedCall) {
+        throw new Error('expected the service to sign a transaction');
+      }
+      return signedCall[0];
+    };
 
     beforeEach(() => {
       vi.clearAllMocks();
@@ -466,6 +478,7 @@ describe('SendService', () => {
 
       mockTronWebFactory = {
         createClient: vi.fn().mockReturnValue(mockTronWeb),
+        executeRead: vi.fn(),
         executeBroadcast: vi.fn(
           async (_network: Network, operation: () => Promise<unknown>) =>
             operation(),
@@ -487,16 +500,15 @@ describe('SendService', () => {
       };
 
       sendService = new SendService({
-        accountsService: mockAccountsService as unknown as AccountsService,
-        assetsService: mockAssetsService as unknown as AssetsService,
-        tronWebFactory: mockTronWebFactory as unknown as TronWebFactory,
-        feeCalculatorService:
-          mockFeeCalculatorService as unknown as FeeCalculatorService,
+        accountsService: mockAccountsService,
+        assetsService: mockAssetsService,
+        tronWebFactory: mockTronWebFactory,
+        feeCalculatorService: mockFeeCalculatorService,
         logger: mockLogger,
-        snapClient: mockSnapClient as unknown as SnapClient,
+        snapClient: mockSnapClient,
         analyticsService: mockAnalyticsService,
         transactionExpirationRefresherService:
-          mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
+          mockTransactionExpirationRefresherService,
       });
     });
 
@@ -1350,17 +1362,16 @@ describe('SendService', () => {
 
       it('refreshes stale transaction metadata before signing and broadcasting', async () => {
         sendService = new SendService({
-          accountsService: mockAccountsService as unknown as AccountsService,
-          assetsService: mockAssetsService as unknown as AssetsService,
-          tronWebFactory: mockTronWebFactory as unknown as TronWebFactory,
-          feeCalculatorService:
-            mockFeeCalculatorService as unknown as FeeCalculatorService,
+          accountsService: mockAccountsService,
+          assetsService: mockAssetsService,
+          tronWebFactory: mockTronWebFactory,
+          feeCalculatorService: mockFeeCalculatorService,
           logger: mockLogger,
-          snapClient: mockSnapClient as unknown as SnapClient,
+          snapClient: mockSnapClient,
           analyticsService: mockAnalyticsService,
           transactionExpirationRefresherService:
             new TransactionExpirationRefresherService({
-              tronWebFactory: mockTronWebFactory as unknown as TronWebFactory,
+              tronWebFactory: mockTronWebFactory,
             }),
         });
         const currentTimestamp = Date.now();
@@ -1385,8 +1396,7 @@ describe('SendService', () => {
           transaction,
         });
 
-        const signedTransaction = mockTronWeb.trx.sign.mock
-          .calls[0]?.[0] as Transaction;
+        const signedTransaction = getSignedTransaction();
         expect(signedTransaction).not.toBe(transaction);
         expect(signedTransaction.raw_data.ref_block_bytes).toBe(
           getRefBlockBytes(200_000),
@@ -1448,17 +1458,16 @@ describe('SendService', () => {
 
       it('signs valid transaction metadata without unnecessary modification', async () => {
         sendService = new SendService({
-          accountsService: mockAccountsService as unknown as AccountsService,
-          assetsService: mockAssetsService as unknown as AssetsService,
-          tronWebFactory: mockTronWebFactory as unknown as TronWebFactory,
-          feeCalculatorService:
-            mockFeeCalculatorService as unknown as FeeCalculatorService,
+          accountsService: mockAccountsService,
+          assetsService: mockAssetsService,
+          tronWebFactory: mockTronWebFactory,
+          feeCalculatorService: mockFeeCalculatorService,
           logger: mockLogger,
-          snapClient: mockSnapClient as unknown as SnapClient,
+          snapClient: mockSnapClient,
           analyticsService: mockAnalyticsService,
           transactionExpirationRefresherService:
             new TransactionExpirationRefresherService({
-              tronWebFactory: mockTronWebFactory as unknown as TronWebFactory,
+              tronWebFactory: mockTronWebFactory,
             }),
         });
         const currentTimestamp = Date.now();

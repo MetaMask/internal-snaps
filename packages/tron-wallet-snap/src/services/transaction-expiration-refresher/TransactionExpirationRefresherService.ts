@@ -59,9 +59,18 @@ const MAX_EXPIRATION_MS = 24 * 60 * 60 * 1000;
  * - Serialized rawDataHex transactions stored in sign-transaction UI context.
  */
 export class TransactionExpirationRefresherService {
-  readonly #tronWebFactory: TronWebFactory;
+  // Narrowed to the factory methods this service calls, so callers can inject a
+  // structural double; real `TronWebFactory` instances remain assignable.
+  readonly #tronWebFactory: Pick<
+    TronWebFactory,
+    'createClient' | 'executeRead'
+  >;
 
-  constructor({ tronWebFactory }: { tronWebFactory: TronWebFactory }) {
+  constructor({
+    tronWebFactory,
+  }: {
+    tronWebFactory: Pick<TronWebFactory, 'createClient' | 'executeRead'>;
+  }) {
     this.#tronWebFactory = tronWebFactory;
   }
 
