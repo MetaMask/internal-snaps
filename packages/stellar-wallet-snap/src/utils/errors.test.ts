@@ -3,6 +3,7 @@ import {
   createFetchPolicyError,
   FetchPolicyErrorName,
 } from '@metamask/snap-networks-utils';
+import { UserRejectedRequestError } from '@metamask/snaps-sdk';
 
 import {
   HttpException,
@@ -12,6 +13,7 @@ import {
   KnownHttpErrorCode,
   normalizeHttpException,
   rethrowIfInstanceElseThrow,
+  trackError,
 } from './errors';
 
 describe('errors', () => {
@@ -102,6 +104,36 @@ describe('errors', () => {
           message: 'wrapped',
         }),
       );
+    });
+  });
+
+  describe('trackError', () => {
+    it('does not track errors a fetch policy already reported', async () => {
+      expect(await trackError(new BrokenCircuitError())).toBeUndefined();
+      expect(
+        await trackError(
+          new HttpException('HTTP error!', {
+            cause: new BrokenCircuitError(),
+          }),
+        ),
+      ).toBeUndefined();
+
+      expect(snap.request).not.toHaveBeenCalled();
+    });
+
+    it('does not track user rejections', async () => {
+      expect(await trackError(new UserRejectedRequestError())).toBeUndefined();
+
+      expect(snap.request).not.toHaveBeenCalled();
+    });
+
+    it('tracks other errors', async () => {
+      await trackError(new Error('boom'));
+
+      expect(snap.request).toHaveBeenCalledWith({
+        method: 'snap_trackError',
+        params: { error: expect.objectContaining({ message: 'boom' }) },
+      });
     });
   });
 

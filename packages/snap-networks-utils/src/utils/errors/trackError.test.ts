@@ -1,6 +1,7 @@
 import { SnapError, UserRejectedRequestError } from '@metamask/snaps-sdk';
 import type { Mock } from 'vitest';
 
+import { BrokenCircuitError } from '../fetchPolicy/createFetchPolicy';
 import { mockLogger } from '../logger/__mocks__/Logger';
 import type { TrackErrorFn } from './errors';
 import { createSnapErrorHandling, createTrackError } from './trackError';
@@ -28,6 +29,18 @@ describe('trackError', () => {
       const { request, trackError } = setupTrackErrorTest();
 
       expect(await trackError(new UserRejectedRequestError())).toBeUndefined();
+
+      expect(request).not.toHaveBeenCalled();
+    });
+
+    it('does not track errors a fetch policy already reported', async () => {
+      const { request, trackError } = setupTrackErrorTest();
+
+      expect(
+        await trackError(
+          new Error('Request failed', { cause: new BrokenCircuitError() }),
+        ),
+      ).toBeUndefined();
 
       expect(request).not.toHaveBeenCalled();
     });

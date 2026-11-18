@@ -1,5 +1,7 @@
 import { TransactionStatus } from '@metamask/keyring-api';
+import * as snapNetworksUtils from '@metamask/snap-networks-utils';
 import { InMemoryCache } from '@metamask/snap-networks-utils';
+import type { CreateFetchPolicyOptions } from '@metamask/snap-networks-utils';
 import {
   Account,
   Horizon as StellarHorizon,
@@ -12,6 +14,7 @@ import { BigNumber } from 'bignumber.js';
 import { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
 import { toSmallestUnit } from '../../utils';
+import { analyticsService, fetchPolicyReporting } from '../../utils/analytics';
 import { logger } from '../../utils/logger';
 import {
   TESTNET_SEP41_USDC,
@@ -64,6 +67,37 @@ describe('NetworkService', () => {
       cache: new InMemoryCache(logger),
     });
     scope = KnownCaip2ChainId.Mainnet;
+  });
+
+  it('reports Horizon outages to analytics only, and RPC outages to analytics and Sentry', async () => {
+    const createFetchPolicySpy = vi.spyOn(
+      snapNetworksUtils,
+      'createFetchPolicy',
+    );
+    getHorizonClientSpies().fetchBaseFeeSpy.mockResolvedValue(100);
+    getRpcServerSpies().getAccountSpy.mockRejectedValue(new Error('boom'));
+
+    await networkService.getBaseFee(scope);
+    await expect(
+      networkService.getAccount(generateStellarAddress(), scope),
+    ).rejects.toThrow(NetworkServiceException);
+
+    const optionsFor = (
+      service: string,
+    ): CreateFetchPolicyOptions | undefined =>
+      createFetchPolicySpy.mock.calls.find(
+        ([options]) => options.service === service,
+      )?.[0];
+    expect(optionsFor('stellar_horizon')).toStrictEqual(
+      expect.objectContaining({
+        chainIdCaip: scope,
+        analytics: analyticsService,
+      }),
+    );
+    expect(optionsFor('stellar_horizon')).not.toHaveProperty('trackError');
+    expect(optionsFor('stellar_rpc')).toStrictEqual(
+      expect.objectContaining({ chainIdCaip: scope, ...fetchPolicyReporting }),
+    );
   });
 
   describe('getBaseFee', () => {
