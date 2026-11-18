@@ -392,7 +392,7 @@ export class WalletService {
       // The transaction is already broadcast, so we don't fail the request.
       // The signature monitor will still save the confirmed transaction.
       await trackError(error);
-      this.#logger.warn('Failed to save pending transaction', error);
+      this.#logger.error('Failed to save pending transaction', error);
     }
 
     await this.#signatureMonitor.monitor(

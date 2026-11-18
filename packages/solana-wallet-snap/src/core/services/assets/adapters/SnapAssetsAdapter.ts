@@ -263,11 +263,11 @@ export class SnapAssetsAdapter {
         return;
       }
 
-      this.#logger.warn(message, { failures });
+      this.#logger.error(message, { failures });
 
       await trackError(new SynchronizationError(message, failures));
     } catch (trackingError) {
-      this.#logger.warn('Failed to track error', { trackingError });
+      this.#logger.error('Failed to track error', { trackingError });
     }
   }
 

@@ -230,7 +230,7 @@ describe('AccountsSynchronizer', () => {
       (trackError as Mock).mockRejectedValueOnce(new Error('tracking down'));
 
       await synchronizer.synchronize([MOCK_SOLANA_KEYRING_ACCOUNT_0]);
-      expect(mockLogger.warn).toHaveBeenCalled();
+      expect(mockLogger.error).toHaveBeenCalled();
     });
   });
 });

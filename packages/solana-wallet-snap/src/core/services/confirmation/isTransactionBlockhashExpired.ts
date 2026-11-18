@@ -58,7 +58,7 @@ export const isTransactionBlockhashExpired = async (
 
     return !isBlockhashValid;
   } catch (error) {
-    logger.warn({ error }, 'Could not check transaction blockhash lifetime');
+    logger.error({ error }, 'Could not check transaction blockhash lifetime');
     await trackError(error);
     return false;
   }
