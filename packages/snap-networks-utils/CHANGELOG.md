@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0]
+
 ### Added
 
 - Add optional `analytics` and `trackError` options to `createFetchPolicy`, to send the "Snap Service Degraded" and "Snap Service Unavailable" events and report calls that use up their retries ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
 - Add `isReportedFetchPolicyError`, so callers can skip errors a policy already reported ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
 - Add `trackServiceDegraded` and `trackServiceUnavailable` to `AnalyticsService` ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
+- Add `getUnreportedSyncFailures`, which works like `getSyncFailuresFromSettledResult` but skips rejections a fetch policy already reported ([#607](https://github.com/MetaMask/internal-snaps/pull/607))
 
 ### Changed
 
@@ -127,7 +130,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement `AssetsProvider` ([#82](https://github.com/MetaMask/internal-snaps/pull/82))
 - Initial package release ([#79](https://github.com/MetaMask/internal-snaps/pull/79))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.2.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.3.0...HEAD
+[3.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.2.0...@metamask/snap-networks-utils@3.3.0
 [3.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.1.0...@metamask/snap-networks-utils@3.2.0
 [3.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.0.0...@metamask/snap-networks-utils@3.1.0
 [3.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@2.0.0...@metamask/snap-networks-utils@3.0.0

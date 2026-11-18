@@ -33,15 +33,15 @@ export const CronMethod = {
 
 export type CronMethod = (typeof CronMethod)[keyof typeof CronMethod];
 
-export const SendFormRefreshRatesRequest = object({
+const SendFormRefreshRatesRequest = object({
   interfaceId: string(),
 });
 
-export const SyncSelectedAccountsRequest = object({
+const SyncSelectedAccountsRequest = object({
   accountIds: array(string()),
 });
 
-export const FullScanAccountRequest = object({
+const FullScanAccountRequest = object({
   accountId: string(),
 });
 

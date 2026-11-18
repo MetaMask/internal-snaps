@@ -1,3 +1,4 @@
+import { isReportedFetchPolicyError } from '../fetchPolicy/createFetchPolicy';
 import { stringifyReason } from './stringifyReason';
 
 /**
@@ -40,6 +41,30 @@ export function getSyncFailuresFromSettledResult(
   });
 
   return failures;
+}
+
+/**
+ * Same as {@link getSyncFailuresFromSettledResult}, minus the rejections a
+ * fetch policy already reported (see {@link isReportedFetchPolicyError}). The
+ * failures are stringified into a new error, so `trackError` can no longer
+ * recognise them afterwards.
+ *
+ * @param results - The settled synchronization results.
+ * @param accountIds - The account IDs, in the same order as `results`.
+ * @returns The failures that still need reporting.
+ */
+export function getUnreportedSyncFailures(
+  results: PromiseSettledResult<unknown>[],
+  accountIds: string[],
+): AccountSyncFailure[] {
+  return getSyncFailuresFromSettledResult(
+    results.map((result) =>
+      result.status === 'rejected' && isReportedFetchPolicyError(result.reason)
+        ? { status: 'fulfilled', value: undefined }
+        : result,
+    ),
+    accountIds,
+  );
 }
 
 /**

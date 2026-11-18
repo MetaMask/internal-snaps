@@ -200,7 +200,7 @@ function buildMockInterfaceContext(
       ref_block_hash: '',
       expiration: 0,
       timestamp: 0,
-    } as any,
+    },
     accountType: 'tron:eoa',
     ...overrides,
   };
@@ -224,7 +224,7 @@ function buildMockSignTransactionInterfaceContext(
       methods: ['signMessage', 'signTransaction'],
       type: 'tron:eoa',
       scopes: [Network.Mainnet],
-      entropySource: 'entropy-source-1' as any,
+      entropySource: 'entropy-source-1',
       derivationPath: "m/44'/195'/0'/0/0",
       index: 0,
     },
@@ -365,7 +365,11 @@ function buildMockTronWebFactory({
           }),
         },
         transaction: {
-          txJsonToPb: vi.fn().mockImplementation((transaction) => transaction),
+          txJsonToPb: vi
+            .fn()
+            .mockImplementation(
+              (transaction: JsonTransactionRawData) => transaction,
+            ),
           txPbToRawDataHex: vi.fn().mockReturnValue('refreshed-raw-data-hex'),
           txPbToTxID: vi.fn().mockReturnValue('0xrefreshed-tx-id'),
         },
@@ -490,8 +494,11 @@ async function withCronHandler(
     new TransactionExpirationRefresherService({
       tronWebFactory: mockTronWebFactory as unknown as TronWebFactory,
     });
-  const passThroughTransactionExpirationRefresherService = {
-    ensureFreshRawData: vi.fn(async ({ rawData }) => rawData),
+  const passThroughTransactionExpirationRefresherService: Pick<
+    TransactionExpirationRefresherService,
+    'ensureFreshRawData' | 'deserializeTransaction' | 'isTransactionExpired'
+  > = {
+    ensureFreshRawData: async ({ rawData }) => rawData,
     deserializeTransaction:
       transactionExpirationRefresherService.deserializeTransaction.bind(
         transactionExpirationRefresherService,
@@ -760,7 +767,9 @@ describe('CronHandler', () => {
 
           // The final update should have scanFetchStatus: FetchStatus.Error
           const lastUpdateCall = mockSnapClient.updateInterface.mock.calls[1];
-          const contextArg = lastUpdateCall?.[2] as any;
+          const contextArg = lastUpdateCall?.[2] as
+            | InterfaceContext
+            | undefined;
           expect(contextArg?.scanFetchStatus).toBe(FetchStatus.Error);
         },
       );
@@ -1219,7 +1228,7 @@ describe('CronHandler', () => {
         mockTransactionScanService,
         mockPriceApiClient: { getMultipleSpotPrices: vi.fn() },
         transactionExpirationRefresherService: {
-          ensureFreshRawData: vi.fn(async ({ rawData }) => rawData),
+          ensureFreshRawData: async ({ rawData }) => rawData,
           deserializeTransaction: vi
             .fn()
             .mockRejectedValue(new Error('deserialize failed')),
@@ -1370,7 +1379,7 @@ describe('CronHandler', () => {
           mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
             blockNumber: 100,
             receipt: { result: 'SUCCESS' },
-          } as any);
+          });
           mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
 
           await cronHandler.trackTransaction({
@@ -1406,7 +1415,7 @@ describe('CronHandler', () => {
           mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
             blockNumber: 100,
             receipt: { result: 'SUCCESS' },
-          } as never);
+          });
           mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
 
           await cronHandler.trackTransaction({
@@ -1437,7 +1446,7 @@ describe('CronHandler', () => {
           mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
             blockNumber: 100,
             receipt: { result: 'SUCCESS' },
-          } as never);
+          });
           mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
 
           await cronHandler.trackTransaction({
