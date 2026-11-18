@@ -154,12 +154,12 @@ export class AnalyticsService<
       try {
         await this.#trackError(error);
       } catch (trackingError) {
-        this.#logger.warn('Failed to report analytics error', {
+        this.#logger.error('Failed to report analytics error', {
           error: trackingError,
         });
       }
 
-      this.#logger.warn('Failed to track event', {
+      this.#logger.error('Failed to track event', {
         error,
         event,
         properties,

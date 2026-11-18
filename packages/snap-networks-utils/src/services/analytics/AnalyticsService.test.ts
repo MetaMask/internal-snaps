@@ -364,7 +364,7 @@ describe('AnalyticsService', () => {
     ).toBeUndefined();
 
     expect(trackError).toHaveBeenCalledWith(error);
-    expect(mockLogger.warn).toHaveBeenCalledWith(
+    expect(mockLogger.error).toHaveBeenCalledWith(
       '[AnalyticsService]',
       'Failed to track event',
       {
@@ -383,7 +383,7 @@ describe('AnalyticsService', () => {
       await analytics.trackEvent('Custom Event', { value: 42 }),
     ).toBeUndefined();
 
-    expect(mockLogger.warn).toHaveBeenCalledWith(
+    expect(mockLogger.error).toHaveBeenCalledWith(
       '[AnalyticsService]',
       'Failed to report analytics error',
       expect.objectContaining({ error: expect.any(Error) }),
