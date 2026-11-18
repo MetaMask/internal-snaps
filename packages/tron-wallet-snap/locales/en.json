@@ -83,7 +83,7 @@
       "message": "Security check unavailable"
     },
     "confirmation.simulationMessageAPIError": {
-      "message": "We couldn't complete this safety check. Continue only if you trust the site and addresses involved."
+      "message": "We couldn't complete this safety check. Only continue if you trust this site and/or every address involved."
     },
     "confirmation.simulationErrorTitle": {
       "message": "This transaction was reverted during simulation."
@@ -104,10 +104,10 @@
       "message": "Only continue if you trust this site and/or every address involved."
     },
     "confirmation.validationErrorLearnMore": {
-      "message": "Learn more"
+      "message": "See details"
     },
     "confirmation.validationErrorSecurityAdviced": {
-      "message": "Security advice by"
+      "message": "Powered by"
     },
     "confirmation.securityScanInProgressTitle": {
       "message": "Checking for security issues"

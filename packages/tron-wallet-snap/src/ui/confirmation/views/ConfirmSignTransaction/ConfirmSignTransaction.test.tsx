@@ -384,7 +384,7 @@ describe('ConfirmSignTransaction', () => {
       );
 
       expect(texts).toContain(MALICIOUS_TITLE);
-      expect(texts).toContain('Learn more');
+      expect(texts).toContain('See details');
       expect(serialized).toContain('"severity":"danger"');
     });
 
