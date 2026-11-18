@@ -20,9 +20,7 @@ describe('WebSocketConnectionRepository', () => {
 
     repository = new WebSocketConnectionRepository(mockConfigProvider);
 
-    (globalThis as unknown as { snap: unknown }).snap = {
-      request: vi.fn(),
-    };
+    vi.stubGlobal('snap', { request: vi.fn() });
   });
 
   describe('getAll', () => {
