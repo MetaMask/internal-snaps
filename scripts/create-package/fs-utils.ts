@@ -2,7 +2,6 @@
  * File system utilities that are agnostic of your use case.
  */
 
-import { writeFile } from '@metamask/utils/node';
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -55,6 +54,7 @@ export async function writeFiles(
 ): Promise<void> {
   for (const [relativePath, content] of Object.entries(fileMap)) {
     const fullPath = path.join(parentDirectory, relativePath);
-    await writeFile(fullPath, content);
+    await fs.mkdir(path.dirname(fullPath), { recursive: true });
+    await fs.writeFile(fullPath, content);
   }
 }
