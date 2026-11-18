@@ -13,7 +13,6 @@ import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
 import { trxToSun } from '../../utils/conversion';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AccountsService } from '../accounts/AccountsService';
-import type { StakedCaipAssetType } from '../assets/types';
 import type { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
 import type { TransactionWithMetadata } from '../transaction-expiration-refresher/types';
 import { StakingService } from './StakingService';
@@ -676,13 +675,13 @@ describe('StakingService', () => {
     });
 
     it('throws error for invalid asset ID', async () => {
-      const invalidAssetId =
-        'tron:728126428/slip44:invalid' as unknown as StakedCaipAssetType;
+      const invalidAssetId = 'tron:728126428/slip44:invalid';
       const amount = BigNumber(1000000);
 
       await expect(
         stakingService.unstake({
           account: mockAccount,
+          // @ts-expect-error - 'slip44:invalid' is not a staked CAIP asset type; the value is deliberately invalid for this error path.
           assetId: invalidAssetId,
           amount,
         }),
