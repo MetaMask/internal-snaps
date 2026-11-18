@@ -268,8 +268,19 @@ const userInputHandler = new UserInputHandler({
 export type SnapExecutionContext = {
   /**
    * Clients
+   *
+   * Narrowed to the methods the confirmation views call on it, so consumers can
+   * be handed a partial double. A real `SnapClient` remains assignable.
    */
-  snapClient: SnapClient;
+  snapClient: Pick<
+    SnapClient,
+    | 'createInterface'
+    | 'showDialog'
+    | 'updateInterface'
+    | 'getPreferences'
+    | 'scheduleBackgroundEvent'
+    | 'trackError'
+  >;
   /**
    * Services
    */
