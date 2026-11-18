@@ -1,8 +1,7 @@
 import { SnapError } from '@metamask/snaps-sdk';
-import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
 import { TronWeb } from 'tronweb';
-import type { Mock, Mocked, MockedFunction } from 'vitest';
+import type { Mock, MockedFunction } from 'vitest';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Network } from '../../constants';
@@ -120,8 +119,10 @@ describe('WalletService', () => {
   };
 
   let walletService: WalletService;
-  let mockAccountsService: Mocked<AccountsService>;
-  let mockTronWebFactory: Mocked<TronWebFactory>;
+  let mockAccountsService: Pick<AccountsService, 'deriveTronKeypair'> & {
+    deriveTronKeypair: MockedFunction<AccountsService['deriveTronKeypair']>;
+  };
+  let mockTronWebFactory: Pick<TronWebFactory, 'createClient'>;
   let mockTronWeb: MockTronWeb;
 
   beforeEach(() => {
@@ -174,12 +175,14 @@ describe('WalletService', () => {
     };
 
     mockAccountsService = {
-      deriveTronKeypair: vi.fn().mockResolvedValue(mockTronKeypair),
-    } as unknown as Mocked<AccountsService>;
+      deriveTronKeypair: vi
+        .fn<AccountsService['deriveTronKeypair']>()
+        .mockResolvedValue(mockTronKeypair),
+    };
 
     mockTronWebFactory = {
       createClient: vi.fn().mockReturnValue(mockTronWeb),
-    } as unknown as Mocked<TronWebFactory>;
+    };
 
     walletService = new WalletService({
       logger: mockLogger,
@@ -233,7 +236,8 @@ describe('WalletService', () => {
         walletService.handleKeyringRequest({
           account: mockAccount,
           scope: Network.Mainnet,
-          method: 'unsupportedMethod' as unknown as TronMultichainMethod,
+          // @ts-expect-error - 'unsupportedMethod' is intentionally not a TronMultichainMethod, to exercise the unsupported-method error path.
+          method: 'unsupportedMethod',
           params: {},
         }),
       ).rejects.toThrow(SnapError);
@@ -738,9 +742,10 @@ describe('WalletService', () => {
         jsonrpc: '2.0' as const,
         id: 1,
         params: { address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8' },
-      } as unknown as JsonRpcRequest;
+      };
 
       await expect(
+        // @ts-expect-error - `method` is intentionally omitted so the request fails validation.
         walletService.resolveAccountAddress(keyringAccounts, scope, request),
       ).rejects.toThrow('Expected one of');
     });

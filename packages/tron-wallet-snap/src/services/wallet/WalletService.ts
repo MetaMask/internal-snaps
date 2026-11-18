@@ -31,9 +31,9 @@ import type { AccountsService } from '../accounts/AccountsService';
 export class WalletService {
   readonly #logger: Logger;
 
-  readonly #accountsService: AccountsService;
+  readonly #accountsService: Pick<AccountsService, 'deriveTronKeypair'>;
 
-  readonly #tronWebFactory: TronWebFactory;
+  readonly #tronWebFactory: Pick<TronWebFactory, 'createClient'>;
 
   constructor({
     logger,
@@ -41,8 +41,8 @@ export class WalletService {
     tronWebFactory,
   }: {
     logger: Logger;
-    accountsService: AccountsService;
-    tronWebFactory: TronWebFactory;
+    accountsService: Pick<AccountsService, 'deriveTronKeypair'>;
+    tronWebFactory: Pick<TronWebFactory, 'createClient'>;
   }) {
     this.#logger = logger.withPrefix('[💼 WalletService]');
     this.#accountsService = accountsService;
