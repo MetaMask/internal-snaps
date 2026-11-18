@@ -9,11 +9,13 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write # Required for the called workflow to manage labels
 
 jobs:
   check-pr-max-lines:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # Required to apply the size-* label
     steps:
       - name: Check PR lines changed
         uses: MetaMask/github-tools/.github/actions/pr-line-check@88836cf1473f73a64848a809cf89e616ed6ed692 # v1.22.0
