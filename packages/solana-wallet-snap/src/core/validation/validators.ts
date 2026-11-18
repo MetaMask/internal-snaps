@@ -21,9 +21,11 @@ export function validateRequest<Params, TStruct extends AnyStruct>(
   try {
     assert(requestParams, struct);
   } catch (error) {
-    throw new InvalidParamsError(
+    const invalidParamsError: Error = new InvalidParamsError(
       error instanceof Error ? error.message : String(error),
-    ) as unknown as Error;
+    );
+
+    throw invalidParamsError;
   }
 }
 
