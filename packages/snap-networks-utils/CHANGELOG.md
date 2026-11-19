@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Extend the "Transaction Added", "Transaction Rejected", "Transaction Approved", "Transaction Submitted", and "Transaction Finalized" lifecycle events with security fields ([#650](https://github.com/MetaMask/internal-snaps/pull/650))
+  - Add `getTransactionSecurityProperties`, which builds the security fields of a transaction event
+
 ### Changed
 
 - `createFetchPolicy` now logs terminal failures at the error level instead of the warning level, and its `logger` option is typed as `Pick<Logger, 'warn' | 'error'>` ([#652](https://github.com/MetaMask/internal-snaps/pull/652))
   - Retries exhausted, the circuit opening, and failures to report either are now error logs
   - `AnalyticsService.trackEvent` likewise logs failed tracks at the error level
+
+### Deprecated
+
+- Deprecate `AnalyticsService.trackSecurityAlertDetected` and `AnalyticsService.trackSecurityScanCompleted`, which send the "Security Alert Detected" and "Security Scan Completed" events ([#650](https://github.com/MetaMask/internal-snaps/pull/650))
 
 ## [3.3.0]
 

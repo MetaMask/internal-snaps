@@ -23,6 +23,8 @@ export type {
   TrackEventCapableProvider,
   TransactionEventProperties,
   TransactionFinalizedEventProperties,
+  TransactionSecurityAlertResponse,
+  TransactionSecurityProperties,
   WebSocketConnectionClosedEventProperties,
 } from './services/analytics/AnalyticsService';
 export {
@@ -45,8 +47,10 @@ export { BaseTransactionScanService } from './services/security-alerts/BaseTrans
 export {
   deriveSecurityAlert,
   getSecurityAlertDescription,
+  getTransactionSecurityProperties,
   requiresMaliciousAcknowledgement,
 } from './services/security-alerts/utils';
+export type { SecurityVerdict } from './services/security-alerts/utils';
 export { safeMerge } from './utils/safeMerge/safeMerge';
 export {
   resolveFlowTransactionType,
