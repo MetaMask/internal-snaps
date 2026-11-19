@@ -44,10 +44,10 @@
       "message": "Review alert"
     },
     "confirmation.maliciousAck.title": {
-      "message": "Malicious request"
+      "message": "High-risk request"
     },
     "confirmation.maliciousAck.description": {
-      "message": "If you confirm this request, you will probably lose your assets to a scammer."
+      "message": "Security partners found high-risk signals in this request. If you continue, your funds can't be recovered."
     },
     "confirmation.maliciousAck.checkbox": {
       "message": "I have acknowledged the risk and still want to proceed"
@@ -233,7 +233,7 @@
       "message": "This request may be risky"
     },
     "confirmation.validationWarningSubtitle": {
-      "message": "Security Alerts found potential risk. Only continue if you trust this site and every address involved."
+      "message": "Only continue if you trust this site and/or every address involved."
     },
     "confirmation.validationErrorLearnMore": {
       "message": "See details"
