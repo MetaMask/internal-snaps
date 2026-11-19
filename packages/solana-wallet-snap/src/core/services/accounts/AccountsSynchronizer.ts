@@ -131,7 +131,7 @@ export class AccountsSynchronizer {
 
       await trackError(error);
     } catch (reportingError) {
-      this.#logger.warn('Failed to report synchronization failures', {
+      this.#logger.error('Failed to report synchronization failures', {
         reportingError,
       });
     }
