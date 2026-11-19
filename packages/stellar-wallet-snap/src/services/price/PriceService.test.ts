@@ -4,6 +4,7 @@ import type { KnownCaip19AssetIdOrSlip44Id } from '../../api';
 import { AppConfig } from '../../config';
 import { logger } from '../../utils';
 import { createMemoryCache } from '../../utils/__mocks__/cache.fixtures';
+import * as errorsUtils from '../../utils/errors';
 import type { SpotPrice } from './price-api/api';
 import { PriceApiClient } from './price-api/PriceApiClient';
 import { PriceService } from './PriceService';
@@ -33,8 +34,13 @@ describe('PriceService', () => {
     getSpotPricesSpy.mockReset();
     getSpotPricesSpy.mockResolvedValue({ [stellarClassicUsdc]: null });
 
+    const trackErrorSpy = vi
+      .spyOn(errorsUtils, 'trackError')
+      .mockResolvedValue(undefined);
+
     return {
       getSpotPricesSpy,
+      trackErrorSpy,
     };
   };
 
@@ -252,6 +258,61 @@ describe('PriceService', () => {
         [stellarClassicUsdc],
         'eur',
       );
+    });
+
+    it('logs at error level and reports when reading the cache fails', async () => {
+      const { getSpotPricesSpy, trackErrorSpy } = setupTest();
+      const { cache } = createMemoryCache();
+      const service = new PriceService({ cache, logger });
+      const cacheError = new Error('cache read unavailable');
+      const spotResult = { [stellarClassicUsdc]: null };
+
+      vi.mocked(cache.mget).mockRejectedValueOnce(cacheError);
+      getSpotPricesSpy.mockResolvedValueOnce(spotResult);
+
+      expect(
+        await service.getSpotPrices({
+          assetIds: [stellarClassicUsdc],
+          vsCurrency: 'usd',
+        }),
+      ).toStrictEqual(spotResult);
+
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining(' PriceService]'),
+        'Error fetching cached spot prices',
+        cacheError,
+      );
+      expect(trackErrorSpy).toHaveBeenCalledWith(cacheError);
+      // A cache read failure must not stop the prices being fetched.
+      expect(getSpotPricesSpy).toHaveBeenCalledWith(
+        [stellarClassicUsdc],
+        'usd',
+      );
+    });
+
+    it('logs at error level and reports when writing the cache fails', async () => {
+      const { getSpotPricesSpy, trackErrorSpy } = setupTest();
+      const { cache } = createMemoryCache();
+      const service = new PriceService({ cache, logger });
+      const cacheError = new Error('cache write unavailable');
+      const spotResult = { [stellarClassicUsdc]: null };
+
+      vi.mocked(cache.mset).mockRejectedValueOnce(cacheError);
+      getSpotPricesSpy.mockResolvedValueOnce(spotResult);
+
+      expect(
+        await service.getSpotPrices({
+          assetIds: [stellarClassicUsdc],
+          vsCurrency: 'usd',
+        }),
+      ).toStrictEqual(spotResult);
+
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining(' PriceService]'),
+        'Error caching spot prices',
+        cacheError,
+      );
+      expect(trackErrorSpy).toHaveBeenCalledWith(cacheError);
     });
   });
 });

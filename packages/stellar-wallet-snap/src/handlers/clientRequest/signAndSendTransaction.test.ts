@@ -756,4 +756,23 @@ describe('SignAndSendTransactionHandler', () => {
       });
     });
   });
+
+  describe('pending transaction persistence failures', () => {
+    it('logs at error level and still resolves when persisting the pending transaction fails', async () => {
+      const { handler, request, savePendingKeyringTransaction } = setup();
+      const persistenceError = new Error('keyring persistence unavailable');
+
+      savePendingKeyringTransaction.mockRejectedValueOnce(persistenceError);
+
+      const result = await handler.handle(request);
+      expect(result).toStrictEqual({
+        transactionId: expect.any(String),
+      });
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining(' SignAndSendTransactionHandler]'),
+        'Failed to map a transaction for swap and bridge send',
+        { error: persistenceError },
+      );
+    });
+  });
 });

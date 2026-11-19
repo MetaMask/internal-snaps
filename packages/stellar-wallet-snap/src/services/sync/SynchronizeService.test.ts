@@ -182,6 +182,42 @@ describe('SynchronizeService', () => {
     );
   });
 
+  it('logs at error level and reports when loading an account fails unexpectedly', async () => {
+    const {
+      service,
+      onChainSynchronizeSpy,
+      transactionSynchronizeSpy,
+      resolveOnChainAccountSpy,
+      sep41Assets,
+    } = setup();
+    const [account] = generateMockStellarKeyringAccounts(
+      1,
+      'sync-account-error-entropy',
+    ) as [StellarKeyringAccount];
+    const resolveError = new Error('horizon unavailable');
+
+    resolveOnChainAccountSpy.mockRejectedValue(resolveError);
+
+    await service.synchronize([account], { scope });
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining(' SynchronizeService]'),
+      'Failed to load account for sync',
+      {
+        error: resolveError,
+        accountAddress: account.address,
+        scope,
+      },
+    );
+    // An unexpected failure for one account must not abort the whole sync.
+    expect(onChainSynchronizeSpy).toHaveBeenCalledWith([], scope, sep41Assets);
+    expect(transactionSynchronizeSpy).toHaveBeenCalledWith(
+      [],
+      scope,
+      sep41Assets,
+    );
+  });
+
   it('respects syncAccounts and syncTransactions options', async () => {
     const {
       service,
