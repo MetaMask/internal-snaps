@@ -280,8 +280,12 @@ export type CreateFetchPolicyOptions = Omit<
   chainIdCaip?: string;
   /**
    * Where retries, circuit breaks and give-ups are logged.
+   *
+   * `warn` reports recoverable events: a retry in progress, or a request the
+   * policy declines to retry. `error` reports terminal ones: the retries ran
+   * out, the circuit opened, or the failure could not be reported.
    */
-  logger: Pick<Logger, 'warn'>;
+  logger: Pick<Logger, 'warn' | 'error'>;
   /**
    * Reports each call that fails after its retries, once, with an error
    * carrying only the service, chain, retry reason and status.
@@ -439,7 +443,7 @@ export const createFetchPolicy = ({
   policy.retryPolicy.onGiveUp((reason) => {
     // Only transient errors are retried, and those are always `Error`s.
     const error = errorOf(reason) as FetchPolicyError;
-    logger.warn(`${prefix} Giving up:`, error);
+    logger.error(`${prefix} Giving up:`, error);
     if (!trackError) {
       return;
     }
@@ -454,16 +458,16 @@ export const createFetchPolicy = ({
     runIsolated(
       async () => trackError(tracked),
       (trackingError) =>
-        logger.warn(`${prefix} Failed to report give-up:`, trackingError),
+        logger.error(`${prefix} Failed to report give-up:`, trackingError),
     );
   });
   policy.onBreak((reason) => {
     const message = `${prefix} Circuit opened for ${policy.circuitBreakDuration} ms`;
     const error = errorOf(reason);
     if (error === undefined) {
-      logger.warn(message);
+      logger.error(message);
     } else {
-      logger.warn(`${message}:`, error);
+      logger.error(`${message}:`, error);
     }
   });
 
@@ -478,7 +482,7 @@ export const createFetchPolicy = ({
     };
 
     const logTrackingFailure = (trackingError: unknown): void =>
-      logger.warn(`${prefix} Failed to track service event:`, trackingError);
+      logger.error(`${prefix} Failed to track service event:`, trackingError);
 
     policy.onDegraded(
       rateLimited((data) => {

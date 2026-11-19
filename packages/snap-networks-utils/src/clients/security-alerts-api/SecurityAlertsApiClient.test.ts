@@ -48,10 +48,10 @@ describe('SecurityAlertsApiClient', () => {
     });
 
   const createPolicy = (): {
-    logger: { warn: Mock };
+    logger: { warn: Mock; error: Mock };
     policy: ReturnType<typeof createFetchPolicy>;
   } => {
-    const logger = { warn: vi.fn() };
+    const logger = { warn: vi.fn(), error: vi.fn() };
     return {
       logger,
       policy: createFetchPolicy({
@@ -148,7 +148,7 @@ describe('SecurityAlertsApiClient', () => {
     fetchMock.mockRejectedValue(new TypeError('fetch failed'));
     const policy = createFetchPolicy({
       service: 'security_alerts_api',
-      logger: { warn: vi.fn() },
+      logger: { warn: vi.fn(), error: vi.fn() },
       backoff: new ConstantBackoff(0),
       trackError: vi.fn().mockResolvedValue(undefined),
     });
