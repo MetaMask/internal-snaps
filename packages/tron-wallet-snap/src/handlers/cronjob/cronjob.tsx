@@ -334,7 +334,7 @@ export class CronHandler {
         duration: 'PT20S',
       });
     } catch (error) {
-      this.#logger.warn({ error }, 'Could not refresh confirmation prices');
+      this.#logger.error({ error }, 'Could not refresh confirmation prices');
     }
   }
 
@@ -510,7 +510,7 @@ export class CronHandler {
         duration: 'PT20S',
       });
     } catch (error) {
-      this.#logger.warn({ error }, 'Could not refresh send confirmation');
+      this.#logger.error({ error }, 'Could not refresh send confirmation');
     }
   }
 
@@ -721,7 +721,7 @@ export class CronHandler {
         duration: 'PT20S',
       });
     } catch (error) {
-      this.#logger.warn({ error }, 'Could not refresh signTransaction');
+      this.#logger.error({ error }, 'Could not refresh signTransaction');
     }
   }
 
