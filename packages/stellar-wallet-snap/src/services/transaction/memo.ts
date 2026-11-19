@@ -38,7 +38,7 @@ export function isMemoText(value: string): boolean {
  *
  * Used on the transaction build path (TransactionBuilder), not only UI.
  *
- * @param value - Raw memo from confirmation UI or interface context.
+ * @param value - Raw memo from the client request, confirmation UI, or interface context.
  * @returns SDK memo, or `null` when the value is missing, non-string, or whitespace-only.
  * @throws {InvalidMemoException} When the value is neither a valid memo id nor text memo.
  */

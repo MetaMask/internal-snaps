@@ -801,6 +801,35 @@ describe('ConfirmSendJsonRpcRequestStruct', () => {
     expect(result.params.scope).toBe('stellar:testnet');
   });
 
+  it.each([{ memo: 'deposit-ref' }, { memo: '123456' }])(
+    'accepts optional memo %j',
+    ({ memo }) => {
+      const result = create(
+        {
+          ...baseWireRequest,
+          params: { ...baseWireRequest.params, memo },
+        },
+        ConfirmSendJsonRpcRequestStruct,
+      );
+
+      expect(result.params.memo).toBe(memo);
+    },
+  );
+
+  it.each([
+    {
+      ...baseWireRequest,
+      params: {
+        ...baseWireRequest.params,
+        memo: 'a'.repeat(65),
+      },
+    },
+  ])('rejects confirmSend when the memo is invalid', (request) => {
+    expect(() => assert(request, ConfirmSendJsonRpcRequestStruct)).toThrow(
+      StructError,
+    );
+  });
+
   it.each([
     {
       ...baseWireRequest,
