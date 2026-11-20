@@ -8,6 +8,7 @@ import type {
   ConnectionRecoveryHandler,
   SignatureNotification,
   SignatureNotificationHandler,
+  SubscribeMethod,
   Subscription,
 } from '../../../entities';
 import { Network } from '../../constants/solana';
@@ -16,8 +17,8 @@ import * as Errors from '../../utils/errors';
 import { trackError } from '../../utils/errors';
 import { mockLogger } from '../__mocks__/logger';
 import type { AccountsService } from '../accounts';
-import type { SolanaConnection } from '../connection';
 import type { TransactionsService } from '../transactions';
+import type { SignatureMonitorConnection } from './SignatureMonitor';
 import { SignatureMonitor } from './SignatureMonitor';
 import type { SubscriptionService } from './SubscriptionService';
 
@@ -27,7 +28,7 @@ describe('SignatureMonitor', () => {
   let mockAccountService: AccountsService;
   let mockTransactionsService: TransactionsService;
   let mockAnalyticsService: AnalyticsService;
-  let mockConnection: SolanaConnection;
+  let mockConnection: SignatureMonitorConnection;
 
   const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNTS[0];
 
@@ -58,16 +59,24 @@ describe('SignatureMonitor', () => {
       unsubscribe: vi.fn(),
       registerNotificationHandler: vi
         .fn()
-        .mockImplementation(async (_method, _network, handler) => {
-          // This will let us capture and manually call the handler
-          notificationHandlers.push(handler);
-        }),
+        .mockImplementation(
+          async (
+            _method: SubscribeMethod,
+            _network: Network,
+            handler: SignatureNotificationHandler,
+          ) => {
+            // This will let us capture and manually call the handler
+            notificationHandlers.push(handler);
+          },
+        ),
       registerConnectionRecoveryHandler: vi
         .fn()
-        .mockImplementation(async (_network, handler) => {
-          // This will let us capture and manually call the handler
-          connectionRecoveryHandlers.push(handler);
-        }),
+        .mockImplementation(
+          async (_network: Network, handler: ConnectionRecoveryHandler) => {
+            // This will let us capture and manually call the handler
+            connectionRecoveryHandlers.push(handler);
+          },
+        ),
     } as unknown as SubscriptionService;
 
     mockAccountService = {
@@ -87,12 +96,12 @@ describe('SignatureMonitor', () => {
     mockConnection = {
       getRpc: vi.fn().mockImplementation(() => ({
         getSignatureStatuses: vi.fn().mockImplementation(() => ({
-          send: vi.fn().mockReturnValue({
+          send: vi.fn().mockResolvedValue({
             value: [{ confirmationStatus: 'confirmed' }],
           }),
         })),
       })),
-    } as unknown as SolanaConnection;
+    };
 
     signatureMonitor = new SignatureMonitor(
       mockSubscriptionService,
@@ -391,11 +400,11 @@ describe('SignatureMonitor', () => {
     // The transaction is only processed, not confirmed
     vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
       getSignatureStatuses: vi.fn().mockReturnValue({
-        send: vi.fn().mockReturnValue({
+        send: vi.fn().mockResolvedValue({
           value: [{ confirmationStatus: 'processed' }],
         }),
       }),
-    } as any);
+    });
 
     await signatureMonitor.monitor(
       signature,

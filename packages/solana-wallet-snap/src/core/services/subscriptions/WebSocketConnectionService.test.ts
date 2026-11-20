@@ -62,9 +62,7 @@ describe('WebSocketConnectionService', () => {
     vi.clearAllMocks();
     vi.spyOn(Errors, 'trackError').mockResolvedValue('tracked-error-id');
 
-    (globalThis as any).snap = {
-      request: vi.fn(),
-    };
+    vi.stubGlobal('snap', { request: vi.fn() });
 
     mockWebSocketConnectionRepository = {
       getAll: vi.fn(),
@@ -493,21 +491,44 @@ describe('WebSocketConnectionService', () => {
   });
 
   describe('background event scheduling', () => {
+    const removedBackgroundEventId = 'existing-event-id';
+    const removedEventMessage = `A background event with the id of "${removedBackgroundEventId}" does not exist.`;
+
     it.each([
-      { event: 'onActive', asRpcError: false },
-      { event: 'onActive', asRpcError: true },
-      { event: 'onInactive', asRpcError: false },
-      { event: 'onInactive', asRpcError: true },
+      {
+        event: 'onActive',
+        asRpcError: false,
+        error: new Error(removedEventMessage),
+        openConnectionCalls: 2,
+        requestCalls: 1,
+      },
+      {
+        event: 'onActive',
+        asRpcError: true,
+        error: { code: -32603, message: removedEventMessage },
+        openConnectionCalls: 2,
+        requestCalls: 1,
+      },
+      {
+        event: 'onInactive',
+        asRpcError: false,
+        error: new Error(removedEventMessage),
+        openConnectionCalls: 0,
+        requestCalls: 2,
+      },
+      {
+        event: 'onInactive',
+        asRpcError: true,
+        error: { code: -32603, message: removedEventMessage },
+        openConnectionCalls: 0,
+        requestCalls: 2,
+      },
     ])(
       'does not track an already-removed background event on $event (RPC error: $asRpcError)',
-      async ({ event, asRpcError }) => {
-        const existingEventId = 'existing-event-id';
-        const message = `A background event with the id of "${existingEventId}" does not exist.`;
-        const error = asRpcError
-          ? { code: -32603, message }
-          : new Error(message);
-
-        vi.spyOn(mockState, 'getKey').mockResolvedValueOnce(existingEventId);
+      async ({ event, error, openConnectionCalls, requestCalls }) => {
+        vi.spyOn(mockState, 'getKey').mockResolvedValueOnce(
+          removedBackgroundEventId,
+        );
         vi.spyOn(snap, 'request')
           .mockRejectedValueOnce(error)
           .mockResolvedValueOnce('new-event-id');
@@ -523,11 +544,9 @@ describe('WebSocketConnectionService', () => {
           null,
         );
         expect(service.openConnection).toHaveBeenCalledTimes(
-          event === 'onActive' ? 2 : 0,
+          openConnectionCalls,
         );
-        expect(snap.request).toHaveBeenCalledTimes(
-          event === 'onActive' ? 1 : 2,
-        );
+        expect(snap.request).toHaveBeenCalledTimes(requestCalls);
       },
     );
 

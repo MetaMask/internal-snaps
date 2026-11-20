@@ -45,9 +45,10 @@ const createMockConfirmationMessage = (
 
 const createMockUnsubscriptionConfirmationMessage = (
   id: string = globalThis.crypto.randomUUID(),
-) => ({
+): WebSocketMessage => ({
   type: 'message',
   id,
+  origin: 'some-origin',
   data: {
     type: 'text',
     message: JSON.stringify({ jsonrpc: '2.0', id, result: true }),
@@ -57,8 +58,8 @@ const createMockUnsubscriptionConfirmationMessage = (
 const createMockNotificationMessage = (
   id: string = globalThis.crypto.randomUUID(),
   rpcSubscriptionId = 98765,
-  result: any = {},
-) => ({
+  result: unknown = {},
+): WebSocketMessage => ({
   type: 'message',
   id,
   origin: 'some-origin',
@@ -73,11 +74,12 @@ const createMockNotificationMessage = (
 });
 
 const createMockFailureMessage = (
-  error: any,
+  error: unknown,
   id: string = globalThis.crypto.randomUUID(),
-) => ({
+): WebSocketMessage => ({
   type: 'message',
   id,
+  origin: 'some-origin',
   data: {
     type: 'text',
     message: JSON.stringify({
@@ -91,7 +93,7 @@ const createMockFailureMessage = (
 const simulateDisconnection = async (
   eventEmitter: EventEmitter,
   connectionId: string,
-) => {
+): Promise<void> => {
   await eventEmitter.emitSync('onWebSocketEvent', {
     event: {
       type: 'close',
@@ -103,7 +105,7 @@ const simulateDisconnection = async (
 const simulateReconnection = async (
   eventEmitter: EventEmitter,
   connectionId: string,
-) => {
+): Promise<void> => {
   await eventEmitter.emitSync('onWebSocketEvent', {
     event: {
       type: 'open',
@@ -115,7 +117,7 @@ const simulateReconnection = async (
 const triggerConnectionRecoveryHandlers = async (
   connectionRecoveryHandlers: Map<Network, ConnectionRecoveryHandler[]>,
   network: Network,
-) => {
+): Promise<void> => {
   const recoveryHandlers = connectionRecoveryHandlers.get(network) ?? [];
   await Promise.all(
     recoveryHandlers.map(async (handler) => {
@@ -146,22 +148,23 @@ describe('SubscriptionService', () => {
     vi.clearAllMocks();
     connectionRecoveryHandlers.clear();
 
-    const snap = {
-      request: vi.fn(),
-    };
-    (globalThis as any).snap = snap;
+    vi.stubGlobal('snap', { request: vi.fn() });
 
     mockWebSocketConnectionService = {
       openConnection: vi.fn(),
       findById: vi.fn().mockReturnValue(mockConnection),
       findByNetwork: vi.fn().mockReturnValue(mockConnection),
       // Allows to capture the connection recovery handlers to trigger them manually
-      onConnectionRecovery: vi.fn().mockImplementation((network, handler) => {
-        connectionRecoveryHandlers.set(network, [
-          ...(connectionRecoveryHandlers.get(network) ?? []),
-          handler,
-        ]);
-      }),
+      onConnectionRecovery: vi
+        .fn()
+        .mockImplementation(
+          (network: Network, handler: ConnectionRecoveryHandler) => {
+            connectionRecoveryHandlers.set(network, [
+              ...(connectionRecoveryHandlers.get(network) ?? []),
+              handler,
+            ]);
+          },
+        ),
       handleConnectionEvent: vi.fn(),
     } as unknown as WebSocketConnectionService;
 

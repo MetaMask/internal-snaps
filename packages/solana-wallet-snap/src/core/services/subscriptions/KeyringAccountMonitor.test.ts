@@ -3,7 +3,6 @@ import type { Transaction } from '@metamask/keyring-api';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import type { Address } from '@solana/kit';
 import { signature } from '@solana/kit';
-import type { Mock } from 'vitest';
 
 import type {
   AccountNotification,
@@ -11,6 +10,7 @@ import type {
   ConfirmedSubscription,
   ProgramNotification,
   ProgramNotificationHandler,
+  SubscribeMethod,
   Subscription,
 } from '../../../entities';
 import { KnownCaip19Id, Network } from '../../constants/solana';
@@ -107,13 +107,23 @@ describe('KeyringAccountMonitor', () => {
       getAll: vi.fn().mockResolvedValue([]),
       registerNotificationHandler: vi
         .fn()
-        .mockImplementation(async (method, _network, handler) => {
-          if (method === 'accountSubscribe') {
-            accountNotificationHandlers.push(handler);
-          } else if (method === 'programSubscribe') {
-            programNotificationHandlers.push(handler);
-          }
-        }),
+        .mockImplementation(
+          async (
+            method: SubscribeMethod,
+            _network: Network,
+            handler: AccountNotificationHandler | ProgramNotificationHandler,
+          ) => {
+            if (method === 'accountSubscribe') {
+              accountNotificationHandlers.push(
+                handler as AccountNotificationHandler,
+              );
+            } else if (method === 'programSubscribe') {
+              programNotificationHandlers.push(
+                handler as ProgramNotificationHandler,
+              );
+            }
+          },
+        ),
       registerConnectionRecoveryHandler: vi.fn(),
     } as unknown as SubscriptionService;
 
@@ -719,9 +729,9 @@ describe('KeyringAccountMonitor', () => {
       const syncSpy = vi.spyOn(mockAccountsSynchronizer, 'synchronize');
 
       // Simulate connection recovery
-      const recoveryHandler = (
-        mockSubscriptionService.registerConnectionRecoveryHandler as Mock
-      ).mock.calls[0]?.[1];
+      const recoveryHandler = vi.mocked(
+        mockSubscriptionService.registerConnectionRecoveryHandler,
+      ).mock.calls[0]![1];
       await recoveryHandler(Network.Mainnet);
 
       expect(syncSpy).toHaveBeenCalledTimes(1);
@@ -740,9 +750,9 @@ describe('KeyringAccountMonitor', () => {
       const syncSpy = vi.spyOn(mockAccountsSynchronizer, 'synchronize');
 
       // Simulate connection recovery
-      const recoveryHandler = (
-        mockSubscriptionService.registerConnectionRecoveryHandler as Mock
-      ).mock.calls[0]?.[1];
+      const recoveryHandler = vi.mocked(
+        mockSubscriptionService.registerConnectionRecoveryHandler,
+      ).mock.calls[0]![1];
       await recoveryHandler(Network.Mainnet);
 
       expect(syncSpy).toHaveBeenCalledWith(accounts);
@@ -754,9 +764,9 @@ describe('KeyringAccountMonitor', () => {
       const syncSpy = vi.spyOn(mockAccountsSynchronizer, 'synchronize');
 
       // Simulate connection recovery
-      const recoveryHandler = (
-        mockSubscriptionService.registerConnectionRecoveryHandler as Mock
-      ).mock.calls[0]?.[1];
+      const recoveryHandler = vi.mocked(
+        mockSubscriptionService.registerConnectionRecoveryHandler,
+      ).mock.calls[0]![1];
       await recoveryHandler(Network.Mainnet);
 
       expect(syncSpy).not.toHaveBeenCalled();
