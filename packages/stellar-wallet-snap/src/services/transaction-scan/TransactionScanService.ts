@@ -93,7 +93,7 @@ export class TransactionScanService extends BaseTransactionScanService {
 
       return scan;
     } catch (error: unknown) {
-      this.logger.warn('Error scanning Stellar transaction', {
+      this.logger.error('Error scanning Stellar transaction', {
         reason: error,
       });
 

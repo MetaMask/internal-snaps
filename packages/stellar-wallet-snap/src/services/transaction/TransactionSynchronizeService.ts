@@ -276,7 +276,7 @@ export class TransactionSynchronizeService {
 
     for (const fetchResult of fetchResults) {
       if (fetchResult.status === 'rejected') {
-        this.#logger.warn(
+        this.#logger.error(
           'Failed to fetch on-chain transactions',
           fetchResult.reason,
         );
@@ -356,7 +356,7 @@ export class TransactionSynchronizeService {
           continue;
         }
         // for other errors, log and continue.
-        this.#logger.warn('Failed to fetch on-chain transaction', {
+        this.#logger.error('Failed to fetch on-chain transaction', {
           error: fetchResult.reason,
         });
 

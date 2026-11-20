@@ -590,7 +590,7 @@ export class TransactionService {
     } catch (error: unknown) {
       await trackError(error);
 
-      this.#logger.warn('Failed to save pending transaction', { error });
+      this.#logger.error('Failed to save pending transaction', { error });
       return null;
     }
   }

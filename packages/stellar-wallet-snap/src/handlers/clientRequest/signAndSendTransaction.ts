@@ -259,9 +259,12 @@ export class SignAndSendTransactionHandler extends BaseClientRequestHandler<
       }
     } catch (error) {
       await trackError(error);
-      this.logger.warn('Failed to map a transaction for swap and bridge send', {
-        error,
-      });
+      this.logger.error(
+        'Failed to map a transaction for swap and bridge send',
+        {
+          error,
+        },
+      );
     }
   }
 

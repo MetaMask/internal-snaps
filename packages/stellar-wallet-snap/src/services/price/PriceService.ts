@@ -92,7 +92,7 @@ export class PriceService {
         ? {}
         : await this.#cache.mget(uniqueAssetTypes.map(toCacheKey));
     } catch (error) {
-      this.#logger.warn('Error fetching cached spot prices', error);
+      this.#logger.error('Error fetching cached spot prices', error);
       await trackError(error);
     }
 
@@ -138,7 +138,7 @@ export class PriceService {
         ),
       );
     } catch (error) {
-      this.#logger.warn('Error caching spot prices', error);
+      this.#logger.error('Error caching spot prices', error);
       await trackError(error);
     }
 
