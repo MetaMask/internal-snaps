@@ -20,7 +20,7 @@ import {
 describe('validation', () => {
   describe('feeRate request validation', () => {
     const account = { account: { address: 'test-account-address' } };
-    const optionalFeeRate = (feeRate?: number) =>
+    const optionalFeeRate = (feeRate?: number): { feeRate?: number } =>
       feeRate === undefined ? {} : { feeRate };
     const requestCases: {
       name: string;
@@ -105,7 +105,7 @@ describe('validation', () => {
   });
 
   describe('validateDustLimit', () => {
-    const makeAccount = (addressType: AddressType) =>
+    const makeAccount = (addressType: AddressType): BitcoinAccount =>
       mock<BitcoinAccount>({ addressType });
 
     it.each<{ type: AddressType; dust: bigint }>([

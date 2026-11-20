@@ -27,7 +27,7 @@ describe('HandlerMiddleware', () => {
     vi.clearAllMocks();
     mockTrackError = vi
       .spyOn(Errors, 'trackError')
-      .mockResolvedValue(undefined) as unknown as Mock;
+      .mockResolvedValue(undefined);
     mockSnapClient.getPreferences.mockResolvedValue({
       locale: 'en',
     } as GetPreferencesResult);
