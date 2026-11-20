@@ -1,17 +1,62 @@
-import type { TransactionSecurityProperties } from '../analytics/AnalyticsService';
+import type { Infer } from '@metamask/superstruct';
+import { enums, is, object, optional, string } from '@metamask/superstruct';
+
 import { SecurityAlertResponse } from './types';
+import type { SecurityScanOutcome } from './types';
 
 /**
- * A security verdict for a transaction, as reported by the snap.
+ * The security response reported while a security scan is in progress.
  */
-export type SecurityVerdict = {
-  /** The verdict, or `Loading` while the scan is in progress. */
-  response: SecurityAlertResponse | 'Loading';
-  /** The Blockaid reason for the verdict, if any. */
-  reason?: string | null;
-  /** The Blockaid description of the verdict, if any. */
-  description?: string | null;
-};
+export const SECURITY_ALERT_LOADING_RESPONSE = 'Loading' as const;
+
+/**
+ * The security reason reported while a security scan is in progress.
+ */
+const SECURITY_ALERT_IN_PROGRESS_REASON = 'validation_in_progress' as const;
+
+/**
+ * The security reason reported when a response has no reason of its own.
+ */
+export const SECURITY_ALERT_NOT_APPLICABLE_REASON = 'NotApplicable' as const;
+
+/**
+ * The security reason reported when a security scan failed.
+ */
+const SECURITY_ALERT_ERROR_REASON = 'Error' as const;
+
+/**
+ * The verdicts a security scan can return. Any other value is not a verdict.
+ */
+const SecurityScanVerdictStruct = enums(Object.values(SecurityAlertResponse));
+
+/**
+ * Security verdict values reported on transaction events. `Loading` is set
+ * while the scan is in progress, and `NotApplicable` stands in for a missing
+ * reason.
+ */
+const TransactionSecurityAlertResponseStruct = enums([
+  ...Object.values(SecurityAlertResponse),
+  SECURITY_ALERT_LOADING_RESPONSE,
+  SECURITY_ALERT_NOT_APPLICABLE_REASON,
+]);
+
+export type TransactionSecurityAlertResponse = Infer<
+  typeof TransactionSecurityAlertResponseStruct
+>;
+
+/**
+ * Security verdict fields on transaction lifecycle events, aligned with the
+ * MetaMask extension. A field is omitted when there is nothing to report.
+ */
+export const TransactionSecurityPropertiesStruct = object({
+  securityAlertResponse: optional(TransactionSecurityAlertResponseStruct),
+  securityAlertReason: optional(string()),
+  securityAlertDescription: optional(string()),
+});
+
+export type TransactionSecurityProperties = Infer<
+  typeof TransactionSecurityPropertiesStruct
+>;
 
 /**
  * Human-readable description suffixes for Blockaid validation reasons, shared
@@ -79,28 +124,53 @@ export function deriveSecurityAlert(type?: string | null): string | null {
  * Builds the security fields for a transaction lifecycle event, aligned with
  * the MetaMask extension.
  *
- * - With no verdict (for example, security alerts are off), no fields are returned.
- * - `reason` is omitted for `Benign`. Other verdicts report `NotApplicable` when
- *   they have no reason.
- * - `description` is included only when the response has one.
+ * - `'Loading'` while the scan is in progress, with reason `validation_in_progress`.
+ * - `null` when the scan request failed, which is reported as `Error` with reason `Error`.
+ * - A scan without a known verdict, including a successful one with an
+ *   unrecognized verdict, is reported as `Error` with reason `Error`, and its
+ *   error message as the description when it has one.
+ * - Otherwise, the scan's verdict, with its reason and description.
  *
- * @param verdict - The security verdict, or null/undefined when no response is stored.
+ * `reason` is omitted for `Benign`. Other verdicts report `NotApplicable` when
+ * they have no reason. `description` is included only when the scan has one.
+ *
+ * The same rule applies to every snap: a scan without a known verdict is an
+ * error. A caller with a skipped scan should report no security fields instead
+ * of passing the scan here.
+ *
+ * @param scan - The security state to report: the scan outcome, `'Loading'` while the scan is in progress, or `null` when the scan request failed.
  * @returns The security properties to add to a transaction event.
  */
 export function getTransactionSecurityProperties(
-  verdict?: SecurityVerdict | null,
+  scan: SecurityScanOutcome | typeof SECURITY_ALERT_LOADING_RESPONSE | null,
 ): TransactionSecurityProperties {
-  if (!verdict) {
-    return {};
+  if (scan === SECURITY_ALERT_LOADING_RESPONSE) {
+    return {
+      securityAlertResponse: SECURITY_ALERT_LOADING_RESPONSE,
+      securityAlertReason: SECURITY_ALERT_IN_PROGRESS_REASON,
+    };
   }
 
-  const { response, reason, description } = verdict;
+  const verdict = scan?.validation?.type;
 
-  const isBenign = response === SecurityAlertResponse.Benign;
+  if (!is(verdict, SecurityScanVerdictStruct)) {
+    const description = scan?.error?.message;
+
+    return {
+      securityAlertResponse: SecurityAlertResponse.Error,
+      securityAlertReason: SECURITY_ALERT_ERROR_REASON,
+      ...(description ? { securityAlertDescription: description } : {}),
+    };
+  }
+
+  const reason =
+    scan?.validation?.reason ?? SECURITY_ALERT_NOT_APPLICABLE_REASON;
+  const description = scan?.validation?.description;
+  const isBenign = verdict === SecurityAlertResponse.Benign;
 
   return {
-    securityAlertResponse: response,
-    ...(isBenign ? {} : { securityAlertReason: reason ?? 'NotApplicable' }),
+    securityAlertResponse: verdict,
+    ...(isBenign ? {} : { securityAlertReason: reason }),
     ...(description ? { securityAlertDescription: description } : {}),
   };
 }

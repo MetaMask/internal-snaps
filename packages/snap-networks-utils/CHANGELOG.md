@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Extend the "Transaction Added", "Transaction Rejected", "Transaction Approved", "Transaction Submitted", and "Transaction Finalized" lifecycle events with security fields ([#650](https://github.com/MetaMask/internal-snaps/pull/650))
+- Extend the "Transaction Added", "Transaction Rejected", "Transaction Approved", "Transaction Submitted", and "Transaction Finalized" lifecycle events with security fields ([#650](https://github.com/MetaMask/internal-snaps/pull/650), [#659](https://github.com/MetaMask/internal-snaps/pull/659))
   - Add `getTransactionSecurityProperties`, which builds the security fields of a transaction event
 
 ### Changed

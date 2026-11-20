@@ -7,7 +7,7 @@ import type {
   FetchPolicyService,
 } from '../../utils/fetchPolicy/createFetchPolicy';
 import type { Logger } from '../../utils/logger/Logger';
-import type { SecurityAlertResponse } from '../security-alerts/types';
+import type { TransactionSecurityProperties } from '../security-alerts/utils';
 
 export const TransactionEventType = {
   TransactionAdded: 'Transaction Added',
@@ -57,26 +57,6 @@ export type AccountEventProperties = {
   origin: string;
   accountType: string;
   chainIdCaip: string;
-};
-
-/**
- * Security verdict values reported on transaction events. `Loading` is set
- * while the scan is in progress, and `NotApplicable` stands in for a missing
- * reason.
- */
-export type TransactionSecurityAlertResponse =
-  | SecurityAlertResponse
-  | 'Loading'
-  | 'NotApplicable';
-
-/**
- * Security verdict fields on transaction lifecycle events, aligned with the
- * MetaMask extension. A field is omitted when there is nothing to report.
- */
-export type TransactionSecurityProperties = {
-  securityAlertResponse?: TransactionSecurityAlertResponse;
-  securityAlertReason?: string;
-  securityAlertDescription?: string;
 };
 
 /**
@@ -144,16 +124,16 @@ function toSecurityEventProperties(
     securityAlertDescription,
   } = properties;
 
+  const hasResponse = securityAlertResponse !== undefined;
+  const hasReason = securityAlertReason !== undefined;
+  const hasDescription = securityAlertDescription !== undefined;
+
   return {
-    ...(securityAlertResponse === undefined
-      ? {}
-      : { security_alert_response: securityAlertResponse }),
-    ...(securityAlertReason === undefined
-      ? {}
-      : { security_alert_reason: securityAlertReason }),
-    ...(securityAlertDescription === undefined
-      ? {}
-      : { security_alert_description: securityAlertDescription }),
+    ...(hasResponse ? { security_alert_response: securityAlertResponse } : {}),
+    ...(hasReason ? { security_alert_reason: securityAlertReason } : {}),
+    ...(hasDescription
+      ? { security_alert_description: securityAlertDescription }
+      : {}),
   };
 }
 
