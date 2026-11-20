@@ -164,6 +164,7 @@ export class ConfirmationScanRefresher implements IConfirmationContextRefresher 
       estimatedChanges: localEstimatedChanges,
       validation: null,
       error: null,
+      validationError: null,
     };
   }
 

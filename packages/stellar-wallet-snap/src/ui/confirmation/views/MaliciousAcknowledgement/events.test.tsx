@@ -164,6 +164,22 @@ describe('malicious acknowledgement events', () => {
     });
   });
 
+  it('resolves a non-send confirmation with true', async () => {
+    const name = MaliciousAcknowledgementFormNames.Proceed;
+    await handlers[name]?.({
+      id: INTERFACE_ID,
+      event: buttonEvent(name),
+      context: {
+        ...baseContext,
+        interfaceKey: ConfirmationInterfaceKey.SignTransaction,
+        acknowledgementScreen: true,
+        acknowledged: true,
+      },
+    });
+
+    expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, true);
+  });
+
   it('does not resolve on "Confirm" when the risk is not acknowledged', async () => {
     const name = MaliciousAcknowledgementFormNames.Proceed;
     await handlers[name]?.({

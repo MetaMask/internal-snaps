@@ -44,6 +44,7 @@ describe('ConfirmationScanRefresher', () => {
       description: null,
     },
     error: null,
+    validationError: null,
   };
 
   function setup() {
@@ -176,6 +177,7 @@ describe('ConfirmationScanRefresher', () => {
           estimatedChanges: localEstimatedChanges,
           validation: null,
           error: null,
+          validationError: null,
         },
       }),
     );
@@ -218,6 +220,7 @@ describe('ConfirmationScanRefresher', () => {
           estimatedChanges: localEstimatedChanges,
           validation: null,
           error: null,
+          validationError: null,
         },
       }),
     );
@@ -259,6 +262,7 @@ describe('ConfirmationScanRefresher', () => {
           estimatedChanges: localEstimatedChanges,
           validation: null,
           error: null,
+          validationError: null,
         },
       }),
     );
@@ -299,6 +303,7 @@ describe('ConfirmationScanRefresher', () => {
           estimatedChanges: localEstimatedChanges,
           validation: null,
           error: null,
+          validationError: null,
         },
       }),
     );
@@ -310,6 +315,52 @@ describe('ConfirmationScanRefresher', () => {
           estimatedChanges: localEstimatedChanges,
           validation: null,
           error: null,
+          validationError: null,
+        },
+        scanFetchStatus: FetchStatus.Error,
+      },
+      reschedule: false,
+    });
+  });
+
+  it('returns an error scan and does not reschedule when the scan throws', async () => {
+    const { refresher, transactionScanService } = setup();
+    transactionScanService.scanTransaction.mockRejectedValueOnce(
+      new Error('scan down'),
+    );
+    const localEstimatedChanges = {
+      assets: [
+        {
+          type: AssetChangeDirection.Out,
+          value: '1',
+          price: null,
+          symbol: 'XLM',
+          name: 'Stellar Lumens',
+          logo: null,
+        },
+      ],
+    };
+
+    const result = await refresher.refresh(
+      createScanContext({
+        scan: {
+          status: 'SUCCESS',
+          estimatedChanges: localEstimatedChanges,
+          validation: null,
+          error: null,
+          validationError: null,
+        },
+      }),
+    );
+
+    expect(result).toStrictEqual({
+      result: {
+        scan: {
+          status: 'ERROR',
+          estimatedChanges: localEstimatedChanges,
+          validation: null,
+          error: null,
+          validationError: null,
         },
         scanFetchStatus: FetchStatus.Error,
       },
@@ -349,6 +400,16 @@ describe('ConfirmationScanRefresher', () => {
     ).toBe(false);
   });
 
+  it('does not fetch when the previous scan already failed', () => {
+    const { refresher } = setup();
+
+    expect(
+      refresher.shouldFetch(
+        createScanContext({ scanFetchStatus: FetchStatus.Error }),
+      ),
+    ).toBe(false);
+  });
+
   it('does not fetch when securityScanRequest is missing', () => {
     const { refresher } = setup();
 
@@ -359,6 +420,16 @@ describe('ConfirmationScanRefresher', () => {
         }),
       ),
     ).toBe(false);
+  });
+
+  it('does not recover when the scan is not fetching', () => {
+    const { refresher } = setup();
+
+    expect(
+      refresher.recoveryResult(
+        createScanContext({ scanFetchStatus: FetchStatus.Fetched }),
+      ),
+    ).toBeNull();
   });
 
   it('writes recovery error when scan prefs are enabled but request is missing', () => {
