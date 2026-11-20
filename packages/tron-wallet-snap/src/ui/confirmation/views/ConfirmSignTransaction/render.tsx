@@ -1,14 +1,15 @@
 import { sha256 } from '@metamask/cryptography/sha';
+import { getTransactionSecurityProperties } from '@metamask/snap-networks-utils';
 import type {
   ExtendedKeyringAccount,
   SecurityAlertsScanOption,
 } from '@metamask/snap-networks-utils';
-import type { DialogResult } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
 import { bytesToHex, hexToBytes } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
 
+import { isContractTypeSupported } from '../../../../clients/security-alerts-api/utils';
 import { Network, Networks, ZERO } from '../../../../constants';
 import snapContext from '../../../../context';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
@@ -23,7 +24,10 @@ import { getTransactionTrxValue } from '../../../../validation/transaction';
 import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
 import { ConfirmSignTransaction } from './ConfirmSignTransaction';
 import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from './types';
-import type { ConfirmSignTransactionContext } from './types';
+import type {
+  ConfirmSignTransactionContext,
+  ConfirmSignTransactionResult,
+} from './types';
 
 export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
   scope: Network.Mainnet,
@@ -61,13 +65,13 @@ export const DEFAULT_CONTEXT: ConfirmSignTransactionContext = {
  * @param request - The keyring request to confirm.
  * @param account - The account that the request is for.
  * @param rawData - The raw data of the transaction.
- * @returns The confirmation dialog result.
+ * @returns The dialog result and the security properties of the scan shown.
  */
 export async function render(
   request: TronWalletKeyringRequest,
   account: ExtendedKeyringAccount,
   rawData: TronwebTypes.Transaction['raw_data'],
-): Promise<DialogResult> {
+): Promise<ConfirmSignTransactionResult> {
   const { snapClient, transactionScanService } = snapContext;
   assert(request.request.params, SignTransactionRequestStruct);
 
@@ -299,5 +303,21 @@ export async function render(
     // stays intact.
   }
 
-  return dialogPromise;
+  const result = await dialogPromise;
+
+  const validationRequested = securityScanEnabled && useSecurityAlerts;
+
+  // Without validation, or for a contract type the scan service skips, no
+  // response is stored, so there is no security data to report.
+  const securityProperties =
+    validationRequested && isContractTypeSupported(rawData)
+      ? getTransactionSecurityProperties(context.scan)
+      : undefined;
+
+  return {
+    result,
+    context: {
+      securityProperties,
+    },
+  };
 }
