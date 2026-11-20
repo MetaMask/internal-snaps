@@ -60,7 +60,7 @@ export const isValidSnapLinkProtocol = (url: string): boolean => {
 };
 
 export const errorCodeToLabel = (code: number): string => {
-  const raw = BdkErrorCode[code] as string | undefined;
+  const raw: string | undefined = BdkErrorCode[code];
   if (!raw) {
     return 'unknownError';
   }

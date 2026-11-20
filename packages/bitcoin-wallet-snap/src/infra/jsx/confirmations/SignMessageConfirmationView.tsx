@@ -27,7 +27,7 @@ type SignMessageConfirmationViewProps = {
 export const SignMessageConfirmationView: SnapComponent<
   SignMessageConfirmationViewProps
 > = ({ context, messages }) => {
-  const t = translate(messages);
+  const tr = translate(messages);
   const { account, network, origin, message } = context;
   const originHostname = origin ? displayOrigin(origin) : null;
 
@@ -35,14 +35,14 @@ export const SignMessageConfirmationView: SnapComponent<
     <Container>
       <Box>
         <HeadingWithReturn
-          heading={t('confirmation.signMessage.title')}
+          heading={tr('confirmation.signMessage.title')}
           returnButtonName={ConfirmationEvent.Cancel}
         />
 
         <Section>
           <Box direction="horizontal" center>
             <SnapText fontWeight="medium">
-              {t('confirmation.signMessage.message')}
+              {tr('confirmation.signMessage.message')}
             </SnapText>
           </Box>
           <Box alignment="space-between">
@@ -55,9 +55,9 @@ export const SignMessageConfirmationView: SnapComponent<
             <Box alignment="space-between" direction="horizontal">
               <Box alignment="space-between" direction="horizontal" center>
                 <SnapText fontWeight="medium" color="alternative">
-                  {t('confirmation.origin')}
+                  {tr('confirmation.origin')}
                 </SnapText>
-                <Tooltip content={t('confirmation.origin.tooltip')}>
+                <Tooltip content={tr('confirmation.origin.tooltip')}>
                   <Icon name="question" color="muted" />
                 </Tooltip>
               </Box>
@@ -66,7 +66,7 @@ export const SignMessageConfirmationView: SnapComponent<
           ) : null}
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
-              {t('confirmation.account')}
+              {tr('confirmation.account')}
             </SnapText>
             <Address
               address={displayCaip10(network, account.address)}
@@ -76,9 +76,9 @@ export const SignMessageConfirmationView: SnapComponent<
         </Section>
       </Box>
       <Footer>
-        <Button name={ConfirmationEvent.Cancel}>{t('cancel')}</Button>
+        <Button name={ConfirmationEvent.Cancel}>{tr('cancel')}</Button>
         <Button name={ConfirmationEvent.Confirm}>
-          {t('confirmation.signMessage.confirmButton')}
+          {tr('confirmation.signMessage.confirmButton')}
         </Button>
       </Footer>
     </Container>

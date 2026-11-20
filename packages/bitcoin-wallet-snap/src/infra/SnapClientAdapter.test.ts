@@ -12,7 +12,12 @@ import { TrackingSnapEvent } from '../entities';
 import logger from '../utils/logger';
 import { SnapClientAdapter } from './SnapClientAdapter';
 
-const setupTest = () => {
+const setupTest = (): {
+  snapClient: SnapClientAdapter;
+  mockLogger: ReturnType<typeof mock<Logger>>;
+  mockRequest: ReturnType<typeof vi.fn>;
+  mockTrackingLogger: ReturnType<typeof vi.mocked<typeof logger>>;
+} => {
   const mockLogger = mock<Logger>();
   const mockRequest = vi.fn();
   const snapClient = new SnapClientAdapter(mockLogger);
@@ -185,8 +190,9 @@ describe('SnapClientAdapter', () => {
         TransactionType.Send,
       );
 
-      const { properties } = mockRequest.mock.calls[0]?.[0]?.params.event ?? {};
-      expect(properties).not.toHaveProperty('transaction_status');
+      expect(mockRequest.mock.calls[0]?.[0]).not.toHaveProperty(
+        'params.event.properties.transaction_status',
+      );
     });
 
     it("doesn't throw and logs when building properties fails", async () => {

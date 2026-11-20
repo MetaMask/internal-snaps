@@ -29,7 +29,7 @@ type SignPsbtConfirmationViewProps = {
 export const SignPsbtConfirmationView: SnapComponent<
   SignPsbtConfirmationViewProps
 > = ({ context, messages }) => {
-  const t = translate(messages);
+  const tr = translate(messages);
   const {
     account,
     network,
@@ -47,7 +47,7 @@ export const SignPsbtConfirmationView: SnapComponent<
     <Container>
       <Box>
         <HeadingWithReturn
-          heading={t('confirmation.signPsbt.title')}
+          heading={tr('confirmation.signPsbt.title')}
           returnButtonName={ConfirmationEvent.Cancel}
         />
 
@@ -55,19 +55,19 @@ export const SignPsbtConfirmationView: SnapComponent<
           <Section>
             <Box>
               <SnapText fontWeight="medium">
-                {t('confirmation.signPsbt.outputs')}
+                {tr('confirmation.signPsbt.outputs')}
               </SnapText>
             </Box>
             {outputs.map((output, index) => {
               let label: string;
               if (output.isOpReturn) {
-                label = t('confirmation.signPsbt.output.opReturn');
+                label = tr('confirmation.signPsbt.output.opReturn');
               } else if (output.isMine) {
-                label = t('confirmation.signPsbt.output.change');
+                label = tr('confirmation.signPsbt.output.change');
               } else if (output.address) {
-                label = `${t('toAddress')} #${index + 1}`;
+                label = `${tr('toAddress')} #${index + 1}`;
               } else {
-                label = t('confirmation.signPsbt.output.unknown');
+                label = tr('confirmation.signPsbt.output.unknown');
               }
 
               return (
@@ -103,32 +103,32 @@ export const SignPsbtConfirmationView: SnapComponent<
         <Section>
           <Box direction="horizontal" center>
             <SnapText fontWeight="medium">
-              {t('confirmation.signPsbt.options')}
+              {tr('confirmation.signPsbt.options')}
             </SnapText>
           </Box>
           <Box alignment="space-between" direction="horizontal">
             <SnapText color="alternative">
-              {t('confirmation.signPsbt.options.fill')}
+              {tr('confirmation.signPsbt.options.fill')}
             </SnapText>
-            <SnapText>{options.fill ? t('yes') : t('no')}</SnapText>
+            <SnapText>{options.fill ? tr('yes') : tr('no')}</SnapText>
           </Box>
           <Box alignment="space-between" direction="horizontal">
             <SnapText color="alternative">
-              {t('confirmation.signPsbt.options.broadcast')}
+              {tr('confirmation.signPsbt.options.broadcast')}
             </SnapText>
-            <SnapText>{options.broadcast ? t('yes') : t('no')}</SnapText>
+            <SnapText>{options.broadcast ? tr('yes') : tr('no')}</SnapText>
           </Box>
           {inputCount > 0 ? (
             <Box alignment="space-between" direction="horizontal">
               <SnapText color="alternative">
-                {t('confirmation.signPsbt.inputs')}
+                {tr('confirmation.signPsbt.inputs')}
               </SnapText>
               <SnapText>{inputCount.toString()}</SnapText>
             </Box>
           ) : null}
           {fee === undefined ? null : (
             <Box alignment="space-between" direction="horizontal">
-              <SnapText color="alternative">{t('networkFee')}</SnapText>
+              <SnapText color="alternative">{tr('networkFee')}</SnapText>
               <Box direction="horizontal" alignment="center">
                 <SnapText color="muted">
                   {displayExchangeAmount(BigInt(fee), exchangeRate)}
@@ -142,14 +142,14 @@ export const SignPsbtConfirmationView: SnapComponent<
         <Section>
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
-              {t('confirmation.requestOrigin')}
+              {tr('confirmation.requestOrigin')}
             </SnapText>
             <SnapText>{origin ?? 'MetaMask'}</SnapText>
           </Box>
           <Box>{null}</Box>
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
-              {t('from')}
+              {tr('from')}
             </SnapText>
             <Address
               address={displayCaip10(network, account.address)}
@@ -159,7 +159,7 @@ export const SignPsbtConfirmationView: SnapComponent<
           <Box>{null}</Box>
           <Box alignment="space-between" direction="horizontal">
             <SnapText fontWeight="medium" color="alternative">
-              {t('network')}
+              {tr('network')}
             </SnapText>
             <Box direction="horizontal" center>
               <AssetIconInline network={network} variant="network" />
@@ -171,16 +171,16 @@ export const SignPsbtConfirmationView: SnapComponent<
         <Section>
           <Box>
             <SnapText fontWeight="medium">
-              {t('confirmation.signPsbt.rawPsbt')}
+              {tr('confirmation.signPsbt.rawPsbt')}
             </SnapText>
           </Box>
           <Copyable value={psbt} />
         </Section>
       </Box>
       <Footer>
-        <Button name={ConfirmationEvent.Cancel}>{t('cancel')}</Button>
+        <Button name={ConfirmationEvent.Cancel}>{tr('cancel')}</Button>
         <Button name={ConfirmationEvent.Confirm}>
-          {t('confirmation.signPsbt.confirmButton')}
+          {tr('confirmation.signPsbt.confirmButton')}
         </Button>
       </Footer>
     </Container>
