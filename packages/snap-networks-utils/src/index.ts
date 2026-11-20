@@ -23,8 +23,6 @@ export type {
   TrackEventCapableProvider,
   TransactionEventProperties,
   TransactionFinalizedEventProperties,
-  TransactionSecurityAlertResponse,
-  TransactionSecurityProperties,
   WebSocketConnectionClosedEventProperties,
 } from './services/analytics/AnalyticsService';
 export {
@@ -49,8 +47,14 @@ export {
   getSecurityAlertDescription,
   getTransactionSecurityProperties,
   requiresMaliciousAcknowledgement,
+  SECURITY_ALERT_LOADING_RESPONSE,
+  SECURITY_ALERT_NOT_APPLICABLE_REASON,
+  TransactionSecurityPropertiesStruct,
 } from './services/security-alerts/utils';
-export type { SecurityVerdict } from './services/security-alerts/utils';
+export type {
+  TransactionSecurityAlertResponse,
+  TransactionSecurityProperties,
+} from './services/security-alerts/utils';
 export { safeMerge } from './utils/safeMerge/safeMerge';
 export {
   resolveFlowTransactionType,
