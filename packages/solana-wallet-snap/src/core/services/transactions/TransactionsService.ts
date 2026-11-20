@@ -2,6 +2,7 @@ import { KeyringEvent } from '@metamask/keyring-api';
 import type { Transaction } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import { hasProperty } from '@metamask/utils';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import type { Address, Commitment, Signature, Slot } from '@solana/kit';
@@ -21,23 +22,48 @@ import type { TransactionMapper } from './TransactionMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
 import { isSpam } from './utils/isSpam';
 
+/**
+ * The subset of the Solana RPC client that {@link TransactionsService} uses.
+ *
+ * Narrowing the dependency to the methods actually used keeps the service
+ * honest about what it needs, and lets callers (and tests) provide anything
+ * that satisfies this slice instead of a full RPC client.
+ */
+export type TransactionsRpc = Pick<
+  ReturnType<SolanaConnection['getRpc']>,
+  'getSignaturesForAddress' | 'getTokenAccountsByOwner' | 'getTransaction'
+>;
+
+/**
+ * The subset of the Solana connection that {@link TransactionsService} uses.
+ */
+export type TransactionsConnection = {
+  getRpc: (network: Network) => TransactionsRpc;
+};
+
 export class TransactionsService {
-  readonly #transactionsRepository: TransactionsRepository;
+  readonly #transactionsRepository: Pick<
+    TransactionsRepository,
+    'findByAccountId' | 'getAll' | 'saveMany'
+  >;
 
-  readonly #transactionMapper: TransactionMapper;
+  readonly #transactionMapper: Pick<TransactionMapper, 'mapRpcTransaction'>;
 
-  readonly #accountsService: AccountsService;
+  readonly #accountsService: Pick<AccountsService, 'getAll'>;
 
-  readonly #assetsService: AssetsService;
+  readonly #assetsService: Pick<AssetsService, 'getAssetsMetadata'>;
 
-  readonly #connection: SolanaConnection;
+  readonly #connection: TransactionsConnection;
 
   constructor(
-    transactionsRepository: TransactionsRepository,
-    transactionMapper: TransactionMapper,
-    accountsService: AccountsService,
-    assetsService: AssetsService,
-    connection: SolanaConnection,
+    transactionsRepository: Pick<
+      TransactionsRepository,
+      'findByAccountId' | 'getAll' | 'saveMany'
+    >,
+    transactionMapper: Pick<TransactionMapper, 'mapRpcTransaction'>,
+    accountsService: Pick<AccountsService, 'getAll'>,
+    assetsService: Pick<AssetsService, 'getAssetsMetadata'>,
+    connection: TransactionsConnection,
   ) {
     this.#transactionsRepository = transactionsRepository;
     this.#transactionMapper = transactionMapper;
@@ -100,7 +126,11 @@ export class TransactionsService {
       asset: AssetEntity,
     ): Promise<Transaction | null> => {
       const { network } = asset;
-      const addressOrMint = 'mint' in asset ? asset.mint : asset.address;
+      // `TokenAsset` and `NftAsset` are identified by their `mint`, while
+      // `NativeAsset` is identified by its `address`.
+      const addressOrMint = hasProperty(asset, 'mint')
+        ? String(asset.mint)
+        : asset.address;
 
       const existingTransaction = savedTransactions
         .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
@@ -196,10 +226,10 @@ export class TransactionsService {
         return [];
       }
 
-      const addresses =
-        'mint' in asset
-          ? ((await getTokenAccounts(account, network)).get(asset.mint) ?? [])
-          : [asAddress(asset.address)];
+      const addresses = hasProperty(asset, 'mint')
+        ? ((await getTokenAccounts(account, network)).get(String(asset.mint)) ??
+          [])
+        : [asAddress(asset.address)];
       const latestTransaction = await findLatestTransactionForAsset(asset);
 
       const latestSignature = latestTransaction

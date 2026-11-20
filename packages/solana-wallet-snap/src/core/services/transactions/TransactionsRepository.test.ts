@@ -8,6 +8,7 @@ import {
   MOCK_SOLANA_KEYRING_ACCOUNT_0,
   MOCK_SOLANA_KEYRING_ACCOUNT_1,
 } from '../../test/mocks/solana-keyring-accounts';
+import { createMockTransaction as createTransactionFixture } from '../../test/mocks/transactions';
 import { DEFAULT_UNENCRYPTED_STATE } from '../state/stateTypes';
 import type { UnencryptedStateValue } from '../state/stateTypes';
 import { TransactionsRepository } from './TransactionsRepository';
@@ -24,13 +25,13 @@ describe('TransactionsRepository', () => {
     signature: string,
     status: TransactionStatus = TransactionStatus.Confirmed,
     timestamp = 1234567890,
-  ) =>
-    ({
+  ): Transaction =>
+    createTransactionFixture({
       account: accountId,
       id: signature,
       status,
       timestamp,
-    }) as unknown as Transaction;
+    });
 
   // Create two transactions for account 0
   const mockTransaction00 = createMockTransaction(

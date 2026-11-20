@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import type { Transaction } from '@metamask/keyring-api';
 import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
+import { assert, hasProperty } from '@metamask/utils';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
+import type { Address } from '@solana/kit';
 import { address as asAddress } from '@solana/kit';
+import type { Mock } from 'vitest';
 
 import type { NativeAsset, TokenAsset } from '../../../entities';
 import { KnownCaip19Id, Network } from '../../constants/solana';
@@ -11,16 +13,22 @@ import {
   MOCK_SOLANA_KEYRING_ACCOUNT_0,
   MOCK_SOLANA_KEYRING_ACCOUNT_1,
 } from '../../test/mocks/solana-keyring-accounts';
-import { MOCK_GET_SIGNATURES_FOR_ADDRESS } from '../../test/mocks/transactions';
+import {
+  createMockTransaction,
+  MOCK_GET_SIGNATURES_FOR_ADDRESS,
+} from '../../test/mocks/transactions';
 import { ADDRESS_1_TRANSACTION_1_DATA } from '../../test/mocks/transactions-data/address-1/transaction-1';
 import * as Errors from '../../utils/errors';
 import { trackError } from '../../utils/errors';
 import { createMockConnection } from '../__mocks__/mockConnection';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { AssetsService } from '../assets/AssetsService';
-import type { SolanaConnection } from '../connection/SolanaConnection';
 import type { TransactionMapper } from './TransactionMapper';
 import type { TransactionsRepository } from './TransactionsRepository';
+import type {
+  TransactionsConnection,
+  TransactionsRpc,
+} from './TransactionsService';
 import { TransactionsService } from './TransactionsService';
 
 const MOCK_TOKEN_ACCOUNT_RESPONSE = {
@@ -36,12 +44,49 @@ const MOCK_TOKEN_ACCOUNT_RESPONSE = {
   pubkey: asAddress('9wt9PfjPD3JCy5r7o4K1cTGiuTG7fq2pQhdDCdQALKjg'),
 };
 
+/**
+ * Reads the `programId` out of a `getTokenAccountsByOwner` filter. The RPC
+ * also accepts a `mint` filter, which the service under test never uses.
+ *
+ * @param filter - The filter the service passed to the RPC.
+ * @returns The base58 encoded program id.
+ */
+const getProgramIdFilter = (
+  filter: Parameters<TransactionsRpc['getTokenAccountsByOwner']>[1],
+): string => {
+  if (!hasProperty(filter, 'programId')) {
+    throw new Error('Expected the RPC to be called with a programId filter');
+  }
+
+  return String(filter.programId);
+};
+
+/**
+ * Builds a Solana RPC client stub containing only the methods
+ * `TransactionsService` uses, with `overrides` replacing the defaults.
+ *
+ * @param overrides - The RPC methods the test needs to stub out.
+ * @returns The stubbed RPC client.
+ */
+const mockRpc = (overrides: Partial<TransactionsRpc> = {}): TransactionsRpc => {
+  const rpc: TransactionsRpc = {
+    getSignaturesForAddress: vi.fn(),
+    getTokenAccountsByOwner: vi.fn(),
+    getTransaction: vi.fn(),
+  };
+
+  return Object.assign(rpc, overrides);
+};
+
 describe('TransactionsService', () => {
-  let mockTransactionsRepository: TransactionsRepository;
-  let mockTransactionMapper: TransactionMapper;
-  let mockAccountsService: AccountsService;
-  let mockConnection: SolanaConnection;
-  let mockAssetsService: AssetsService;
+  let mockTransactionsRepository: Pick<
+    TransactionsRepository,
+    'findByAccountId' | 'getAll' | 'saveMany'
+  >;
+  let mockTransactionMapper: Pick<TransactionMapper, 'mapRpcTransaction'>;
+  let mockAccountsService: Pick<AccountsService, 'getAll'>;
+  let mockConnection: TransactionsConnection;
+  let mockAssetsService: Pick<AssetsService, 'getAssetsMetadata'>;
   let service: TransactionsService;
 
   beforeEach(() => {
@@ -53,21 +98,21 @@ describe('TransactionsService', () => {
       findByAccountId: vi.fn(),
       getAll: vi.fn(),
       saveMany: vi.fn(),
-    } as unknown as TransactionsRepository;
+    };
 
     mockTransactionMapper = {
       mapRpcTransaction: vi.fn(),
-    } as unknown as TransactionMapper;
+    };
 
     mockAssetsService = {
       getAssetsMetadata: vi.fn(),
-    } as unknown as AssetsService;
+    };
 
     mockConnection = createMockConnection();
 
     mockAccountsService = {
       getAll: vi.fn(),
-    } as unknown as AccountsService;
+    };
 
     service = new TransactionsService(
       mockTransactionsRepository,
@@ -77,25 +122,26 @@ describe('TransactionsService', () => {
       mockConnection,
     );
 
-    const snap = {
+    vi.stubGlobal('snap', {
       request: vi.fn(),
-    };
-    (globalThis as any).snap = snap;
+    });
   });
 
   describe('fetchBySignature', () => {
     const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
     const mockScope = Network.Mainnet;
     const mockTransactionData = ADDRESS_1_TRANSACTION_1_DATA;
-    const mockMappedTransaction = {} as unknown as Transaction;
+    const mockMappedTransaction = createMockTransaction();
     const mockSignature = mockTransactionData.transaction.signatures[1]!;
 
     it('fetches and returns a transaction by signature', async () => {
-      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getTransaction: vi.fn().mockReturnValue({
-          send: vi.fn().mockResolvedValue(mockTransactionData),
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue(
+        mockRpc({
+          getTransaction: vi.fn().mockReturnValue({
+            send: vi.fn().mockResolvedValue(mockTransactionData),
+          }),
         }),
-      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+      );
 
       vi.spyOn(mockTransactionMapper, 'mapRpcTransaction').mockResolvedValue(
         mockMappedTransaction,
@@ -111,11 +157,13 @@ describe('TransactionsService', () => {
     });
 
     it('returns null if the transaction is not found', async () => {
-      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getTransaction: vi.fn().mockReturnValue({
-          send: vi.fn().mockResolvedValue(null),
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue(
+        mockRpc({
+          getTransaction: vi.fn().mockReturnValue({
+            send: vi.fn().mockResolvedValue(null),
+          }),
         }),
-      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+      );
 
       const result = await service.fetchBySignature(
         mockSignature,
@@ -129,11 +177,13 @@ describe('TransactionsService', () => {
 
   describe('fetchLatestSignatures', () => {
     it('fetches and returns signatures for the given address', async () => {
-      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getSignaturesForAddress: vi.fn().mockReturnValue({
-          send: vi.fn().mockResolvedValue(MOCK_GET_SIGNATURES_FOR_ADDRESS),
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue(
+        mockRpc({
+          getSignaturesForAddress: vi.fn().mockReturnValue({
+            send: vi.fn().mockResolvedValue(MOCK_GET_SIGNATURES_FOR_ADDRESS),
+          }),
         }),
-      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+      );
 
       const result = await service.fetchLatestSignatures(
         Network.Localnet,
@@ -161,9 +211,9 @@ describe('TransactionsService', () => {
       const mockAccount0 = MOCK_SOLANA_KEYRING_ACCOUNT_0;
       const mockAccount1 = MOCK_SOLANA_KEYRING_ACCOUNT_1;
 
-      const mockTransaction00 = {} as unknown as Transaction;
-      const mockTransaction01 = {} as unknown as Transaction;
-      const mockTransaction10 = {} as unknown as Transaction;
+      const mockTransaction00 = createMockTransaction();
+      const mockTransaction01 = createMockTransaction();
+      const mockTransaction10 = createMockTransaction();
 
       vi.spyOn(mockTransactionsRepository, 'findByAccountId')
         .mockResolvedValueOnce([mockTransaction00, mockTransaction01])
@@ -198,14 +248,18 @@ describe('TransactionsService', () => {
       ]);
       vi.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
       vi.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
-      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getSignaturesForAddress: vi.fn().mockReturnValue({
-          send: vi.fn().mockResolvedValue([MOCK_GET_SIGNATURES_FOR_ADDRESS[0]]),
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue(
+        mockRpc({
+          getSignaturesForAddress: vi.fn().mockReturnValue({
+            send: vi
+              .fn()
+              .mockResolvedValue([MOCK_GET_SIGNATURES_FOR_ADDRESS[0]]),
+          }),
+          getTransaction: vi.fn().mockReturnValue({
+            send: vi.fn().mockRejectedValue(error),
+          }),
         }),
-        getTransaction: vi.fn().mockReturnValue({
-          send: vi.fn().mockRejectedValue(error),
-        }),
-      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+      );
 
       expect(await service.fetchAssetsTransactions([asset])).toStrictEqual([]);
       expect(trackError).toHaveBeenCalledTimes(1);
@@ -226,49 +280,52 @@ describe('TransactionsService', () => {
       const ata = '9wt9PfjPD3JCy5r7o4K1cTGiuTG7fq2pQhdDCdQALKjg';
       const nonAta = '7Gg2Y8vCj3v5nQj5xFfC3uT7wJ9sN4mK2pL8rH6dQ1eA';
       const signature = MOCK_GET_SIGNATURES_FOR_ADDRESS[0]!;
-      const getSignaturesForAddress = vi.fn((address: string) => ({
-        send: vi.fn().mockResolvedValue(
-          address === nonAta
-            ? [
-                {
-                  ...signature,
-                  signature: 'non-ata-signature',
-                },
-              ]
-            : [],
-        ),
+      // Only the non-ATA account has a transaction, the ATA one has none.
+      const signaturesByAccount = new Map<string, unknown[]>([
+        [ata, []],
+        [nonAta, [{ ...signature, signature: 'non-ata-signature' }]],
+      ]);
+      const getSignaturesForAddress = vi.fn((address: Address) => ({
+        send: vi.fn().mockResolvedValue(signaturesByAccount.get(address)),
+        reactiveStore: vi.fn(),
       }));
+
+      // Only the main token program owns token accounts for this asset.
+      const tokenAccountsByProgram = new Map<string, unknown[]>([
+        [
+          TOKEN_PROGRAM_ADDRESS,
+          [
+            { ...MOCK_TOKEN_ACCOUNT_RESPONSE, pubkey: asAddress(ata) },
+            { ...MOCK_TOKEN_ACCOUNT_RESPONSE, pubkey: asAddress(nonAta) },
+          ],
+        ],
+        [TOKEN_2022_PROGRAM_ADDRESS, []],
+      ]);
 
       vi.spyOn(mockAccountsService, 'getAll').mockResolvedValue([
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
       ]);
       vi.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
       vi.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
-      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getTokenAccountsByOwner: vi.fn(
-          (_owner: string, filter: { programId: string }) => ({
-            send: vi.fn().mockResolvedValue({
-              value:
-                filter.programId === TOKEN_PROGRAM_ADDRESS
-                  ? [
-                      {
-                        ...MOCK_TOKEN_ACCOUNT_RESPONSE,
-                        pubkey: asAddress(ata),
-                      },
-                      {
-                        ...MOCK_TOKEN_ACCOUNT_RESPONSE,
-                        pubkey: asAddress(nonAta),
-                      },
-                    ]
-                  : [],
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue(
+        mockRpc({
+          getTokenAccountsByOwner: vi.fn(
+            (
+              _owner: Address,
+              filter: Parameters<TransactionsRpc['getTokenAccountsByOwner']>[1],
+            ) => ({
+              send: vi.fn().mockResolvedValue({
+                value: tokenAccountsByProgram.get(getProgramIdFilter(filter)),
+              }),
+              reactiveStore: vi.fn(),
             }),
+          ),
+          getSignaturesForAddress,
+          getTransaction: vi.fn().mockReturnValue({
+            send: vi.fn().mockResolvedValue(null),
           }),
-        ),
-        getSignaturesForAddress,
-        getTransaction: vi.fn().mockReturnValue({
-          send: vi.fn().mockResolvedValue(null),
         }),
-      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+      );
 
       await service.fetchAssetsTransactions([asset]);
 
@@ -296,30 +353,46 @@ describe('TransactionsService', () => {
       const getSignaturesForAddress = vi.fn().mockReturnValue({
         send: vi.fn().mockResolvedValue([]),
       });
+      // The main token program answers, the Token-2022 one rejects.
+      const sendByProgram = new Map<string, Mock>([
+        [
+          TOKEN_PROGRAM_ADDRESS,
+          vi.fn().mockResolvedValue({
+            value: [
+              {
+                ...MOCK_TOKEN_ACCOUNT_RESPONSE,
+                pubkey: asAddress(tokenAccount),
+              },
+            ],
+          }),
+        ],
+        [
+          TOKEN_2022_PROGRAM_ADDRESS,
+          vi.fn().mockRejectedValue(new Error('Token-2022 failed')),
+        ],
+      ]);
 
       vi.spyOn(mockAccountsService, 'getAll').mockResolvedValue([
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
       ]);
       vi.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
       vi.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
-      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getTokenAccountsByOwner: vi.fn(
-          (_owner: string, filter: { programId: string }) => ({
-            send:
-              filter.programId === TOKEN_PROGRAM_ADDRESS
-                ? vi.fn().mockResolvedValue({
-                    value: [
-                      {
-                        ...MOCK_TOKEN_ACCOUNT_RESPONSE,
-                        pubkey: asAddress(tokenAccount),
-                      },
-                    ],
-                  })
-                : vi.fn().mockRejectedValue(new Error('Token-2022 failed')),
-          }),
-        ),
-        getSignaturesForAddress,
-      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue(
+        mockRpc({
+          getTokenAccountsByOwner: vi.fn(
+            (
+              _owner: Address,
+              filter: Parameters<TransactionsRpc['getTokenAccountsByOwner']>[1],
+            ) => {
+              const send = sendByProgram.get(getProgramIdFilter(filter));
+              assert(send, 'Expected the token program to be stubbed');
+
+              return { send, reactiveStore: vi.fn() };
+            },
+          ),
+          getSignaturesForAddress,
+        }),
+      );
 
       expect(await service.fetchAssetsTransactions([asset])).toStrictEqual([]);
       expect(getSignaturesForAddress).toHaveBeenCalledWith(tokenAccount, {
@@ -342,19 +415,28 @@ describe('TransactionsService', () => {
         uiAmount: '0.000001',
       };
       const token2022Account = '7Gg2Y8vCj3v5nQj5xFfC3uT7wJ9sN4mK2pL8rH6dQ1eA';
+      // Only the Token-2022 program owns a token account for this asset.
+      const tokenAccountsByProgram = new Map<string, unknown[]>([
+        [
+          TOKEN_2022_PROGRAM_ADDRESS,
+          [
+            {
+              ...MOCK_TOKEN_ACCOUNT_RESPONSE,
+              pubkey: asAddress(token2022Account),
+            },
+          ],
+        ],
+        [TOKEN_PROGRAM_ADDRESS, []],
+      ]);
       const getTokenAccountsByOwner = vi.fn(
-        (_owner: string, filter: { programId: string }) => ({
+        (
+          _owner: Address,
+          filter: Parameters<TransactionsRpc['getTokenAccountsByOwner']>[1],
+        ) => ({
           send: vi.fn().mockResolvedValue({
-            value:
-              filter.programId === TOKEN_2022_PROGRAM_ADDRESS
-                ? [
-                    {
-                      ...MOCK_TOKEN_ACCOUNT_RESPONSE,
-                      pubkey: asAddress(token2022Account),
-                    },
-                  ]
-                : [],
+            value: tokenAccountsByProgram.get(getProgramIdFilter(filter)),
           }),
+          reactiveStore: vi.fn(),
         }),
       );
 
@@ -363,12 +445,14 @@ describe('TransactionsService', () => {
       ]);
       vi.spyOn(mockAssetsService, 'getAssetsMetadata').mockResolvedValue({});
       vi.spyOn(mockTransactionsRepository, 'getAll').mockResolvedValue([]);
-      vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
-        getTokenAccountsByOwner,
-        getSignaturesForAddress: vi.fn().mockReturnValue({
-          send: vi.fn().mockResolvedValue([]),
+      vi.spyOn(mockConnection, 'getRpc').mockReturnValue(
+        mockRpc({
+          getTokenAccountsByOwner,
+          getSignaturesForAddress: vi.fn().mockReturnValue({
+            send: vi.fn().mockResolvedValue([]),
+          }),
         }),
-      } as unknown as ReturnType<SolanaConnection['getRpc']>);
+      );
 
       await service.fetchAssetsTransactions([asset]);
 
@@ -387,7 +471,7 @@ describe('TransactionsService', () => {
 
   describe('save', () => {
     it('saves a transaction', async () => {
-      const mockTransaction = {} as unknown as Transaction;
+      const mockTransaction = createMockTransaction();
 
       await service.save(mockTransaction);
 
@@ -399,10 +483,7 @@ describe('TransactionsService', () => {
 
   describe('saveMany', () => {
     it('saves multiple transactions', async () => {
-      const transactions = [
-        {} as unknown as Transaction,
-        {} as unknown as Transaction,
-      ];
+      const transactions = [createMockTransaction(), createMockTransaction()];
 
       await service.saveMany(transactions);
 

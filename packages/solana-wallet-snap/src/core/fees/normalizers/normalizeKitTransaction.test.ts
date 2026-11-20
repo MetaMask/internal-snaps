@@ -1,9 +1,12 @@
+import type { Transaction } from '@solana/kit';
+
 import { MOCK_EXECUTION_SCENARIO_LIFI_SWAP } from '../../services/signer/mocks/scenarios/lifiSwap';
 import { normalizeKitTransaction } from './normalizeKitTransaction';
 
 describe('normalizeKitTransaction', () => {
   it('normalizes a Lifi Swap transaction correctly', () => {
-    const mockTransaction = MOCK_EXECUTION_SCENARIO_LIFI_SWAP.signedTransaction;
+    const mockTransaction: Transaction =
+      MOCK_EXECUTION_SCENARIO_LIFI_SWAP.signedTransaction;
 
     const result = normalizeKitTransaction(mockTransaction);
 

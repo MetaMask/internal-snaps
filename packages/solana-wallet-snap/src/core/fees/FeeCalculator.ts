@@ -1,3 +1,4 @@
+import { hasProperty } from '@metamask/utils';
 import {
   parseSetComputeUnitLimitInstruction,
   parseSetComputeUnitPriceInstruction,
@@ -8,7 +9,7 @@ import type {
   Lamports,
 } from '@solana/kit';
 import { lamports, pipe } from '@solana/kit';
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 
 import { parseInstruction } from '../../entities';
 import type { ParsedSecp256Instruction } from '../../entities/instructions/programs/secp256k1-secp256r1';
@@ -319,7 +320,7 @@ export class FeeCalculator {
       }
       normalizeBase64EncodedTransaction(input);
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -333,7 +334,7 @@ export class FeeCalculator {
       }
       normalizeBase64EncodedTransactionMessage(input);
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -343,8 +344,8 @@ export class FeeCalculator {
   ): input is CompiledTransactionMessage {
     return (
       typeof input === 'object' &&
-      'instructions' in input &&
-      'staticAccounts' in input
+      hasProperty(input, 'instructions') &&
+      hasProperty(input, 'staticAccounts')
     );
   }
 
@@ -353,15 +354,17 @@ export class FeeCalculator {
   ): input is SolanaTransaction {
     return (
       typeof input === 'object' &&
-      'transaction' in input &&
+      hasProperty(input, 'transaction') &&
       typeof input.transaction === 'object' &&
-      'message' in input.transaction &&
+      input.transaction !== null &&
+      hasProperty(input.transaction, 'message') &&
       typeof input.transaction.message === 'object' &&
-      'accountKeys' in input.transaction.message &&
+      input.transaction.message !== null &&
+      hasProperty(input.transaction.message, 'accountKeys') &&
       typeof input.transaction.message.accountKeys === 'object' &&
-      'instructions' in input.transaction.message &&
+      hasProperty(input.transaction.message, 'instructions') &&
       typeof input.transaction.message.instructions === 'object' &&
-      'signatures' in input.transaction &&
+      hasProperty(input.transaction, 'signatures') &&
       typeof input.transaction.signatures === 'object'
     );
   }
@@ -369,9 +372,9 @@ export class FeeCalculator {
   static #isKitTransaction(input: NormalizableInput): input is KitTransaction {
     return (
       typeof input === 'object' &&
-      'messageBytes' in input &&
+      hasProperty(input, 'messageBytes') &&
       typeof input.messageBytes === 'object' &&
-      'signatures' in input
+      hasProperty(input, 'signatures')
     );
   }
 }

@@ -5,10 +5,11 @@ import type {
   Logger,
 } from '@metamask/snap-networks-utils';
 import type { CaipAssetType } from '@metamask/utils';
+import { hasProperty } from '@metamask/utils';
 import { SYSTEM_PROGRAM_ADDRESS } from '@solana-program/system';
 import { address as asAddress, lamports } from '@solana/kit';
 import type { Address } from '@solana/kit';
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 import bs58 from 'bs58';
 import { get } from 'lodash';
 
@@ -27,15 +28,15 @@ import { tokenAddressToCaip19 } from '../../utils/tokenAddressToCaip19';
 import type { AssetMetadata } from '../assets/types';
 
 export class TransactionMapper {
-  readonly #tokenHelper: TokenHelper;
+  readonly #tokenHelper: Pick<TokenHelper, 'amountToUiAmountForMint'>;
 
-  readonly #assetsService: AssetsService;
+  readonly #assetsService: Pick<AssetsService, 'getAssetsMetadata'>;
 
   readonly #logger: Logger;
 
   constructor(
-    tokenHelper: TokenHelper,
-    assetsService: AssetsService,
+    tokenHelper: Pick<TokenHelper, 'amountToUiAmountForMint'>,
+    assetsService: Pick<AssetsService, 'getAssetsMetadata'>,
     logger: Logger,
   ) {
     this.#tokenHelper = tokenHelper;
@@ -248,8 +249,9 @@ export class TransactionMapper {
     transactionData: SolanaTransaction,
   ): TransactionStatus {
     const isError =
-      transactionData.meta?.err ||
-      (transactionData.meta?.status && 'Err' in transactionData.meta.status);
+      transactionData.meta?.err ??
+      (transactionData.meta?.status &&
+        hasProperty(transactionData.meta.status, 'Err'));
 
     const status = isError
       ? TransactionStatus.Failed
@@ -849,7 +851,9 @@ export class TransactionMapper {
       }
 
       // Compute the amount of the transfer
-      const rawAmount = instruction.parsed?.data.amount;
+      // The parsed instruction data is a free-form record, so we narrow the
+      // amount to the type the token instruction parsers actually emit.
+      const rawAmount = instruction.parsed?.data.amount as BigNumber.Value;
       const amount = BigNumber(rawAmount)
         .dividedBy(new BigNumber(10).pow(decimals))
         .toString();
@@ -1000,7 +1004,7 @@ export class TransactionMapper {
    */
   #aggregateSameAssetMovements(
     movements: Transaction['from'] | Transaction['to'],
-  ) {
+  ): Transaction['from'] | Transaction['to'] {
     return movements.reduce<Transaction['from'] | Transaction['to']>(
       (acc, movement) => {
         // Find existing movement with same asset type
@@ -1039,7 +1043,7 @@ export class TransactionMapper {
    * @param data - The instruction data.
    * @returns The amount.
    */
-  #decodeOpcode(data: Uint8Array) {
+  #decodeOpcode(data: Uint8Array): number {
     /**
      * Opcode is the first 4 bytes of the instruction data.
      */

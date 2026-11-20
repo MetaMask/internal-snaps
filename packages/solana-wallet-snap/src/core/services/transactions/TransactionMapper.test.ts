@@ -16,7 +16,6 @@ import { EXPECTED_SEND_USDC_TRANSFER_TO_SELF_2_DATA } from '../../test/mocks/tra
 import { EXPECTED_SWAP_A16Z_USDT_SOL_DATA } from '../../test/mocks/transactions-data/swap-a16z-usdt-sol';
 import { EXPECTED_SWAP_SOL_TO_OBRIC_DATA } from '../../test/mocks/transactions-data/swap-sol-to-obric';
 import { EXPECTED_SWAP_SOL_TO_SAHUR_DATA } from '../../test/mocks/transactions-data/swap-sol-to-sahur';
-import { EXPECTED_SWAP_SOL_TO_USDC_DATA } from '../../test/mocks/transactions-data/swap-sol-to-usdc';
 import { EXPECTED_SWAP_TRUMP_TO_JUP_DATA } from '../../test/mocks/transactions-data/swap-trump-to-jup';
 import { EXPECTED_SWAP_USDC_TO_COBIE_DATA } from '../../test/mocks/transactions-data/swap-usdc-to-cobie';
 import { EXPECTED_SWAP_USDC_TO_JUP_DATA } from '../../test/mocks/transactions-data/swap-usdc-to-jup';
@@ -27,10 +26,14 @@ import logger from '../../utils/logger';
 import type { AssetsService, TokenHelper } from '../assets';
 import { TransactionMapper } from './TransactionMapper';
 
+type MockTokenHelper = Mocked<Pick<TokenHelper, 'amountToUiAmountForMint'>>;
+
+type MockAssetsService = Mocked<Pick<AssetsService, 'getAssetsMetadata'>>;
+
 type WithTransactionMapperCallback<ReturnValue> = (payload: {
   transactionMapper: TransactionMapper;
-  mockTokenHelper: Mocked<Pick<TokenHelper, 'amountToUiAmountForMint'>>;
-  mockAssetsService: Mocked<Pick<AssetsService, 'getAssetsMetadata'>>;
+  mockTokenHelper: MockTokenHelper;
+  mockAssetsService: MockAssetsService;
 }) => Promise<ReturnValue> | ReturnValue;
 
 /**
@@ -42,18 +45,17 @@ type WithTransactionMapperCallback<ReturnValue> = (payload: {
 async function withTransactionMapper<ReturnValue>(
   testFunction: WithTransactionMapperCallback<ReturnValue>,
 ): Promise<ReturnValue> {
-  const mockTokenHelper: Mocked<Pick<TokenHelper, 'amountToUiAmountForMint'>> =
-    {
-      amountToUiAmountForMint: vi.fn().mockResolvedValue('1'),
-    };
+  const mockTokenHelper: MockTokenHelper = {
+    amountToUiAmountForMint: vi.fn().mockResolvedValue('1'),
+  };
 
-  const mockAssetsService: Mocked<Pick<AssetsService, 'getAssetsMetadata'>> = {
+  const mockAssetsService: MockAssetsService = {
     getAssetsMetadata: vi.fn().mockResolvedValue({}),
   };
 
   const transactionMapper = new TransactionMapper(
-    mockTokenHelper as unknown as TokenHelper,
-    mockAssetsService as unknown as AssetsService,
+    mockTokenHelper,
+    mockAssetsService,
     logger,
   );
 
@@ -66,8 +68,8 @@ async function withTransactionMapper<ReturnValue>(
 
 describe('TransactionMapper', () => {
   let transactionMapper: TransactionMapper;
-  let mockTokenHelper: TokenHelper;
-  let mockAssetsService: AssetsService;
+  let mockTokenHelper: MockTokenHelper;
+  let mockAssetsService: MockAssetsService;
   const mockAccount = MOCK_SOLANA_KEYRING_ACCOUNT_0;
 
   beforeEach(() => {
@@ -76,11 +78,11 @@ describe('TransactionMapper', () => {
 
     mockTokenHelper = {
       amountToUiAmountForMint: vi.fn().mockResolvedValue('1'),
-    } as unknown as TokenHelper;
+    };
 
     mockAssetsService = {
       getAssetsMetadata: vi.fn().mockResolvedValue({}),
-    } as unknown as AssetsService;
+    };
 
     transactionMapper = new TransactionMapper(
       mockTokenHelper,
@@ -478,13 +480,13 @@ describe('TransactionMapper', () => {
     });
 
     it('tracks mapping errors', async () => {
-      const invalidTransaction = {
+      const invalidTransaction: SolanaTransaction = {
         ...EXPECTED_NATIVE_SOL_TRANSFER_DATA,
         transaction: {
           ...EXPECTED_NATIVE_SOL_TRANSFER_DATA.transaction,
           signatures: [],
         },
-      } as unknown as SolanaTransaction;
+      };
 
       expect(
         await transactionMapper.mapRpcTransaction(
@@ -1361,142 +1363,10 @@ describe('TransactionMapper', () => {
     // We end this transaction with more of all assets than we started with meaning
     // we think it's a receive transaction but it's not, it's actually a Swap.
     // https://solscan.io/tx/2m8z8uPZyoZwQpissDbhSfW5XDTFmpc7cSFithc5e1w8iCwFcvVkxHeaVhgFSdgUPb5cebbKGjuu48JMLPjfEATr
-    it.skip('maps swaps - #6 SOL -> USDC', async () => {
-      vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint')
-        .mockResolvedValueOnce('0.167225')
-        .mockResolvedValueOnce('0.00099125')
-        .mockResolvedValueOnce('0.167225');
-
-      const result = await transactionMapper.mapRpcTransaction(
-        EXPECTED_SWAP_SOL_TO_USDC_DATA,
-        {
-          ...mockAccount,
-          address: asAddress('3xTPAZxmpwd8GrNEKApaTw6VH4jqJ31WFXUvQzgwhR7c'),
-        },
-        Network.Mainnet,
-      );
-
-      expect(result).toStrictEqual({
-        id: '2X4vKsDS56avumw6jh6Z5wj28GNvK5UkMfY1Ta2Mtouic886EGAraa1gsCJ5rkXyHCeL9p2wHRty3QHAhjf352Dp',
-        account: '4b445722-6766-4f99-ade5-c2c9295f21d0',
-        timestamp: 1748539118,
-        chain: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-        status: 'confirmed',
-        type: 'swap',
-        from: [
-          {
-            address: '3xTPAZxmpwd8GrNEKApaTw6VH4jqJ31WFXUvQzgwhR7c',
-            asset: {
-              fungible: true,
-              type: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
-              unit: 'SOL',
-              amount: '0.00099125',
-            },
-          },
-        ],
-        to: [
-          {
-            address: '3xTPAZxmpwd8GrNEKApaTw6VH4jqJ31WFXUvQzgwhR7c',
-            asset: {
-              fungible: true,
-              type: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/token:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-              unit: '',
-              amount: '0.167225',
-            },
-          },
-        ],
-        fees: [
-          {
-            type: 'base',
-            asset: {
-              fungible: true,
-              type: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
-              unit: 'SOL',
-              amount: '0.000005',
-            },
-          },
-          {
-            type: 'priority',
-            asset: {
-              fungible: true,
-              type: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
-              unit: 'SOL',
-              amount: '0.000010072',
-            },
-          },
-        ],
-        events: [{ status: 'confirmed', timestamp: 1748539118 }],
-      });
-    });
-
-    it.skip('maps swaps - #7 SOL -> OBRIC', async () => {
-      vi.spyOn(mockTokenHelper, 'amountToUiAmountForMint')
-        .mockResolvedValueOnce('4')
-        .mockResolvedValueOnce('0.00875')
-        .mockResolvedValueOnce('0.005903984')
-        .mockResolvedValueOnce('0.99125');
-
-      const result = await transactionMapper.mapRpcTransaction(
-        EXPECTED_SWAP_SOL_TO_OBRIC_DATA,
-        {
-          ...mockAccount,
-          address: asAddress('3xTPAZxmpwd8GrNEKApaTw6VH4jqJ31WFXUvQzgwhR7c'),
-        },
-        Network.Mainnet,
-      );
-
-      expect(result).toStrictEqual({
-        id: '28rWme56aMyaP8oX18unFeZg65iyDEhjLhvMBpxyFgKcn38P37ZRsssSZoHDCCr5xUfwfpqsVSSBoShLitHQLdrr',
-        account: '4b445722-6766-4f99-ade5-c2c9295f21d0',
-        timestamp: 1748545222,
-        chain: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-        status: 'confirmed',
-        type: 'swap',
-        from: [
-          {
-            address: '3xTPAZxmpwd8GrNEKApaTw6VH4jqJ31WFXUvQzgwhR7c',
-            asset: {
-              fungible: true,
-              type: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/token:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-              unit: 'SOL',
-              amount: '0.99125',
-            },
-          },
-        ],
-        to: [
-          {
-            address: '3xTPAZxmpwd8GrNEKApaTw6VH4jqJ31WFXUvQzgwhR7c',
-            asset: {
-              fungible: true,
-              type: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
-              unit: '',
-              amount: '0.005903984',
-            },
-          },
-        ],
-        fees: [
-          {
-            type: 'base',
-            asset: {
-              fungible: true,
-              type: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
-              unit: 'SOL',
-              amount: '0.000005',
-            },
-          },
-          {
-            type: 'priority',
-            asset: {
-              fungible: true,
-              type: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
-              unit: 'SOL',
-              amount: '0.00001212',
-            },
-          },
-        ],
-        events: [{ status: 'confirmed', timestamp: 1748545222 }],
-      });
-    });
+    it.todo('maps swaps - #6 SOL -> USDC');
+    // Same edge case as above.
+    // https://solscan.io/tx/28rWme56aMyaP8oX18unFeZg65iyDEhjLhvMBpxyFgKcn38P37ZRsssSZoHDCCr5xUfwfpqsVSSBoShLitHQLdrr
+    it.todo('maps swaps - #7 SOL -> OBRIC');
 
     it('maps swaps - failure', async () => {
       const result = await transactionMapper.mapRpcTransaction(
