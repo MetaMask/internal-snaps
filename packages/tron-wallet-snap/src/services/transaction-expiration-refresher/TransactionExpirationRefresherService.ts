@@ -319,7 +319,9 @@ export class TransactionExpirationRefresherService {
       ...transaction,
       raw_data: rawData,
     };
-    const transactionPb =
+    // TronWeb returns an opaque protobuf handle here, which is only ever
+    // passed back into TronWeb's own helpers below.
+    const transactionPb: unknown =
       tronWeb.utils.transaction.txJsonToPb(refreshedTransaction);
 
     return {

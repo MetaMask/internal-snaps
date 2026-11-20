@@ -142,10 +142,12 @@ export class ConfirmationHandler {
     const tronWeb = this.#tronWebFactory.createClient(scope);
 
     // Rebuild the transaction from hex (same logic as clientRequest handler)
+    // TronWeb types this helper as `any`; the payload is validated by
+    // `assertTransactionStructure` before it is used.
     const rawData = tronWeb.utils.deserializeTx.deserializeTransaction(
       type,
       rawDataHex,
-    );
+    ) as TronwebTypes.Transaction['raw_data'];
     assertTransactionStructure(rawData);
 
     const trackingProperties = {

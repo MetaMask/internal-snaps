@@ -1,6 +1,7 @@
 import type { CaipAssetType, Transaction } from '@metamask/keyring-api';
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import { hasProperty } from '@metamask/utils';
 import { TronWeb } from 'tronweb';
 
 import type { TRC10TokenMetadata } from '../../clients/tron-http/types';
@@ -19,6 +20,70 @@ import { sunToTrx, toUiAmount } from '../../utils/conversion';
 // TRC20 transaction types from TronGrid API
 const TRC20_APPROVAL_TYPE = 'Approval';
 const TRC20_TRANSFER_TYPE = 'Transfer';
+
+// The fields read below are not fully modelled by the TronGrid types: internal
+// transactions from the Full Node API expose
+// `caller_address`/`transferTo_address`/`callValueInfo`, and contract parameter
+// values only carry `call_value`/`contract_address` for some contract types.
+// These readers narrow a single field with an own-property check instead of
+// casting whole API payloads to `any`.
+
+/**
+ * Reads a string field from an untyped API value.
+ *
+ * @param value - The value to read from.
+ * @param key - The field name.
+ * @returns The field value, or `undefined` when it is missing or not a string.
+ */
+function readString(value: unknown, key: string): string | undefined {
+  if (typeof value !== 'object' || value === null || !hasProperty(value, key)) {
+    return undefined;
+  }
+
+  const field = value[key];
+  return typeof field === 'string' ? field : undefined;
+}
+
+/**
+ * Reads a number field from an untyped API value.
+ *
+ * @param value - The value to read from.
+ * @param key - The field name.
+ * @returns The field value, or `undefined` when it is missing or not a number.
+ */
+function readNumber(value: unknown, key: string): number | undefined {
+  if (typeof value !== 'object' || value === null || !hasProperty(value, key)) {
+    return undefined;
+  }
+
+  const field = value[key];
+  return typeof field === 'number' ? field : undefined;
+}
+
+/**
+ * Reads the TRX amounts reported by the `callValueInfo` entries of a Full Node
+ * API internal transaction. Entries without a numeric `callValue` count as `0`.
+ *
+ * @param value - The internal transaction to read from.
+ * @returns The call values, empty when the field is missing.
+ */
+function readCallValues(value: unknown): number[] {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !hasProperty(value, 'callValueInfo')
+  ) {
+    return [];
+  }
+
+  const { callValueInfo } = value;
+  if (!Array.isArray(callValueInfo)) {
+    return [];
+  }
+
+  const entries: unknown[] = callValueInfo;
+  return entries.map((entry) => readNumber(entry, 'callValue') ?? 0);
+}
 
 export class TransactionMapper {
   /**
@@ -295,15 +360,11 @@ export class TransactionMapper {
 
     // Check for TRX movements where this account is involved
     // Note: internal_transactions from Full Node API uses caller_address/transferTo_address
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return internalTransactions.some((internal: any) => {
-      const fromHex = internal.caller_address?.toLowerCase();
-      const toHex = internal.transferTo_address?.toLowerCase();
-      const hasCallValue = internal.callValueInfo?.some(
-        // TODO: Replace `any` with type
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (valueInfo: any) => (valueInfo.callValue ?? 0) > 0,
+    return internalTransactions.some((internal) => {
+      const fromHex = readString(internal, 'caller_address')?.toLowerCase();
+      const toHex = readString(internal, 'transferTo_address')?.toLowerCase();
+      const hasCallValue = readCallValues(internal).some(
+        (callValue) => callValue > 0,
       );
 
       return hasCallValue && (fromHex === accountHex || toHex === accountHex);
@@ -712,10 +773,10 @@ export class TransactionMapper {
     // 2. internal_transactions where user is sender
     // 3. Sum of all internal TRX (fallback for complex DEX swaps)
     const contractInfo = trongridTransaction.raw_data.contract?.[0];
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const contractCallValue = (contractInfo?.parameter?.value as any)
-      ?.call_value;
+    const contractCallValue = readNumber(
+      contractInfo?.parameter?.value,
+      'call_value',
+    );
 
     let trxAmount = '0';
 
@@ -730,16 +791,11 @@ export class TransactionMapper {
 
       // Find the TRX movement where the account is the sender
       // Note: internal_transactions from Full Node API uses caller_address/callValueInfo
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for (const internal of internalTransactions as any[]) {
-        const fromHex = internal.caller_address?.toLowerCase();
+      for (const internal of internalTransactions) {
+        const fromHex = readString(internal, 'caller_address')?.toLowerCase();
         if (fromHex === accountHex) {
           const callValue =
-            // TODO: Replace `any` with type
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            internal.callValueInfo?.find((vi: any) => vi.callValue)
-              ?.callValue ?? 0;
+            readCallValues(internal).find((value) => value !== 0) ?? 0;
           if (callValue > 0) {
             trxAmount = sunToTrx(callValue).toString();
             break;
@@ -751,14 +807,9 @@ export class TransactionMapper {
       // (DEX swaps often have TRX moving internally without the user's address)
       if (trxAmount === '0' && internalTransactions.length > 0) {
         let totalInternalTrx = 0;
-        // TODO: Replace `any` with type
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        for (const internal of internalTransactions as any[]) {
+        for (const internal of internalTransactions) {
           const callValue =
-            // TODO: Replace `any` with type
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            internal.callValueInfo?.find((vi: any) => vi.callValue)
-              ?.callValue ?? 0;
+            readCallValues(internal).find((value) => value !== 0) ?? 0;
           totalInternalTrx += callValue;
         }
         if (totalInternalTrx > 0) {
@@ -839,13 +890,11 @@ export class TransactionMapper {
 
     const contractInfo = trongridTransaction.raw_data.contract?.[0];
     const ownerAddress = contractInfo?.parameter?.value?.owner_address;
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const contractAddress = (contractInfo?.parameter?.value as any)
-      ?.contract_address;
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const callValue = (contractInfo?.parameter?.value as any)?.call_value;
+    const contractAddress = readString(
+      contractInfo?.parameter?.value,
+      'contract_address',
+    );
+    const callValue = readNumber(contractInfo?.parameter?.value, 'call_value');
 
     // Handle failed transactions (even without TRC20 data)
     if (status === TransactionStatus.Failed) {
@@ -992,12 +1041,8 @@ export class TransactionMapper {
     const hasAnyInternalTrxMovement =
       trongridTransaction.internal_transactions &&
       trongridTransaction.internal_transactions.length > 0 &&
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      trongridTransaction.internal_transactions.some((internal: any) =>
-        // TODO: Replace `any` with type
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        internal.callValueInfo?.some((vi: any) => (vi.callValue ?? 0) > 0),
+      trongridTransaction.internal_transactions.some((internal) =>
+        readCallValues(internal).some((amount) => amount > 0),
       );
 
     // TRX → TRC20: User receives TRC20 and there's TRX being sent or internal TRX movements
@@ -1137,9 +1182,7 @@ export class TransactionMapper {
     const amountInSun: number =
       Number(
         contractValue.frozen_balance ??
-          // TODO: Replace `any` with type
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (contractValue as any).frozen_balance_v2,
+          readNumber(contractValue, 'frozen_balance_v2'),
       ) || 0;
     const amountInTrx = sunToTrx(amountInSun).toString();
 
