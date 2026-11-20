@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add security telemetry fields to the "Transaction Approved", "Transaction Rejected", "Transaction Submitted", and "Transaction Finalized" events for the send flow ([#660](https://github.com/MetaMask/internal-snaps/pull/660))
+
 ### Fixed
 
 - Derive Tron staking positions and account resources from the TRX asset's balance metadata when the assets migration is active, instead of relying on legacy special asset entries from the controller ([#658](https://github.com/MetaMask/internal-snaps/pull/658))
