@@ -1,6 +1,8 @@
 import type {
+  Balance,
   FeeEstimates,
   Network,
+  ScriptBuf,
   Transaction,
 } from '@metamask/bitcoindevkit';
 import { Psbt, Address, Amount } from '@metamask/bitcoindevkit';
@@ -603,12 +605,12 @@ describe('SendFlowUseCases', () => {
     });
 
     it('populate errors successfully', async () => {
-      const mockError = mock<CodifiedError>({
+      const mockError = mock<CodifiedError & Error>({
         code: 18,
         message: 'base58 error',
       });
       (Address.from_string as Mock).mockImplementation(() => {
-        throw mockError as unknown as Error;
+        throw mockError;
       });
 
       const testContext = {
@@ -680,9 +682,7 @@ describe('SendFlowUseCases', () => {
     });
 
     it('computes the fee when amount and recipient are filled: drain', async () => {
-      mockPsbt.fee.mockReturnValue({
-        to_sat: () => BigInt(10),
-      } as unknown as Amount);
+      mockPsbt.fee.mockReturnValue(mock<Amount>({ to_sat: () => BigInt(10) }));
       mockAccountRepository.get.mockResolvedValue(mockAccount);
       mockAccountRepository.getFrozenUTXOs.mockResolvedValue(['txid:vout']);
 
@@ -720,9 +720,7 @@ describe('SendFlowUseCases', () => {
       (Address.from_string as Mock).mockReturnValue({
         toString: () => 'newAddressValidated',
       });
-      mockPsbt.fee.mockReturnValue({
-        to_sat: () => BigInt(10),
-      } as unknown as Amount);
+      mockPsbt.fee.mockReturnValue(mock<Amount>({ to_sat: () => BigInt(10) }));
       mockAccountRepository.get.mockResolvedValue(mockAccount);
       mockAccountRepository.getFrozenUTXOs.mockResolvedValue([]);
 
@@ -812,7 +810,7 @@ describe('SendFlowUseCases', () => {
 
     it('sets account from state on Account', async () => {
       const accountId = 'myAccount2';
-      mockAccount.publicAddress.toString = () => 'myAddress2';
+      mockAccount.publicAddress.toString = (): string => 'myAddress2';
       mockAccountRepository.get.mockResolvedValue({
         ...mockAccount,
         id: accountId,
@@ -1104,12 +1102,12 @@ describe('SendFlowUseCases', () => {
       );
       mockSnapClient.displayUserPrompt.mockResolvedValue(true);
       mockAccountUseCases.signPsbt.mockResolvedValue({
-        psbt: mockSignedPsbt,
-      } as any);
+        psbt: mockSignedPsbt.toString(),
+      });
       (Psbt.from_string as Mock).mockReturnValue(mockSignedPsbt);
-      mockRatesClient.spotPrices.mockResolvedValue({
-        price: { value: 50000, currency: 'usd' },
-      } as any);
+      mockRatesClient.spotPrices.mockResolvedValue(
+        mock<SpotPrice>({ price: 50000 }),
+      );
     });
 
     it('builds and confirms a regular send transaction', async () => {
@@ -1149,7 +1147,7 @@ describe('SendFlowUseCases', () => {
     });
 
     it('marks the recipient as isMine when the address belongs to the account', async () => {
-      const recipientScript = {} as any;
+      const recipientScript = mock<ScriptBuf>();
       (Address.from_string as Mock).mockReturnValue({
         script_pubkey: recipientScript,
       });
@@ -1184,9 +1182,9 @@ describe('SendFlowUseCases', () => {
     it('builds a drain transaction when amount equals balance', async () => {
       const balanceAmount = mock<Amount>();
       balanceAmount.to_sat.mockReturnValue(BigInt(10000));
-      mockAccount.balance = {
+      mockAccount.balance = mock<Balance>({
         trusted_spendable: balanceAmount,
-      } as any;
+      });
 
       await useCases.confirmSendFlow(mockAccount, amount, toAddress);
 
@@ -1314,7 +1312,7 @@ describe('SendFlowUseCases', () => {
       expect(mockSendFlowRepository.insertConfirmSendForm).toHaveBeenCalledWith(
         expect.objectContaining({
           exchangeRate: expect.objectContaining({
-            conversionRate: { value: 50000, currency: 'usd' },
+            conversionRate: 50000,
             currency: 'USD',
           }),
           currency: CurrencyUnit.Bitcoin,
@@ -1323,9 +1321,9 @@ describe('SendFlowUseCases', () => {
     });
 
     it('handles missing exchange rate gracefully', async () => {
-      mockRatesClient.spotPrices.mockResolvedValue({
-        price: undefined,
-      } as any);
+      mockRatesClient.spotPrices.mockResolvedValue(
+        mock<SpotPrice>({ price: undefined }),
+      );
 
       await useCases.confirmSendFlow(mockAccount, amount, toAddress);
 

@@ -12,11 +12,6 @@
       "count": 1
     }
   },
-  "packages/bitcoin-wallet-snap/src/handlers/HandlerMiddleware.ts": {
-    "typescript/no-unsafe-argument": {
-      "count": 1
-    }
-  },
   "packages/bitcoin-wallet-snap/src/handlers/KeyringHandler.test.ts": {
     "id-length": {
       "count": 1
@@ -57,24 +52,9 @@
       "count": 1
     }
   },
-  "packages/bitcoin-wallet-snap/src/handlers/RpcHandler.ts": {
-    "typescript/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
   "packages/bitcoin-wallet-snap/src/handlers/UserInputHandler.test.ts": {
     "typescript/no-unnecessary-type-assertion": {
       "count": 2
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/handlers/UserInputHandler.ts": {
-    "internal-snaps/no-in-operator": {
-      "count": 1
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/handlers/caip.ts": {
-    "typescript/no-unsafe-return": {
-      "count": 1
     }
   },
   "packages/bitcoin-wallet-snap/src/handlers/mappings.test.ts": {
@@ -89,11 +69,6 @@
     },
     "typescript/no-unsafe-return": {
       "count": 9
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/handlers/mappings.ts": {
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 1
     }
   },
   "packages/bitcoin-wallet-snap/src/handlers/validation.test.ts": {
@@ -222,35 +197,6 @@
   "packages/bitcoin-wallet-snap/src/store/JSXSendFlowRepository.tsx": {
     "typescript/no-unsafe-argument": {
       "count": 4
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/use-cases/AccountUseCases.test.ts": {
-    "no-throw-literal": {
-      "count": 2
-    },
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 1
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/use-cases/AccountUseCases.ts": {
-    "typescript/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/use-cases/SendFlowUseCases.test.ts": {
-    "typescript/explicit-function-return-type": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 5
-    },
-    "typescript/no-unsafe-argument": {
-      "count": 3
-    }
-  },
-  "packages/bitcoin-wallet-snap/src/utils/format-btc.test.ts": {
-    "jsdoc/check-tag-names": {
-      "count": 1
     }
   },
   "packages/snap-networks-utils/src/services/analytics/AnalyticsService.test.ts": {

@@ -68,7 +68,7 @@ export type Utxo = {
  */
 export function mapToKeyringAccount(account: BitcoinAccount): KeyringAccount {
   return {
-    type: addressTypeToCaip[account.addressType] as KeyringAccount['type'],
+    type: addressTypeToCaip[account.addressType],
     scopes: [networkToScope[account.network]],
     id: account.id,
     address: account.publicAddress.toString(),

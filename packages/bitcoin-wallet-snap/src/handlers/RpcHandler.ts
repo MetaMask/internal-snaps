@@ -662,9 +662,9 @@ export class RpcHandler {
     const accountsById = new Map(
       allAccounts.map((account) => [account.id.toLowerCase(), account]),
     );
-    const results: SignProofOfOwnershipBatchResponse['results'] = new Array(
-      items.length,
-    );
+    const results: SignProofOfOwnershipBatchResponse['results'] = new Array<
+      SignProofOfOwnershipBatchResponse['results'][number]
+    >(items.length);
     const signingRequestMetadata: {
       index: number;
       accountId: string;

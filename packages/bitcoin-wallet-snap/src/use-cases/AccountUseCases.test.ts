@@ -1671,9 +1671,11 @@ describe('AccountUseCases', () => {
     });
 
     it('includes non-Error cause in ValidationError message', async () => {
+      // Deliberately not an `Error`: exercises the message-extraction path.
+      const nonErrorCause = { message: 'InsufficientFunds', code: 11 };
       mockTxBuilder.finish.mockImplementation(() => {
         // eslint-disable-next-line @typescript-eslint/only-throw-error
-        throw { message: 'InsufficientFunds', code: 11 };
+        throw nonErrorCause;
       });
 
       await expect(
@@ -1684,9 +1686,11 @@ describe('AccountUseCases', () => {
     });
 
     it('uses unknown cause when error has no message', async () => {
+      // Deliberately not an `Error`: exercises the fallback message path.
+      const causeWithoutMessage = 42;
       mockTxBuilder.finish.mockImplementation(() => {
         // eslint-disable-next-line @typescript-eslint/only-throw-error
-        throw 42;
+        throw causeWithoutMessage;
       });
 
       await expect(
@@ -2621,7 +2625,7 @@ describe('AccountUseCases', () => {
       segments: string[],
     ): Promise<RealSlip10Node> {
       const derivationPath: [BIP39Node, ...BIP32Node[]] = [
-        mnemonicPhraseToBytes(mnemonic) as BIP39Node,
+        mnemonicPhraseToBytes(mnemonic),
         ...segments.map((segment) => `bip32:${segment}` as BIP32Node),
       ];
 
