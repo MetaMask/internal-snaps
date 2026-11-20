@@ -158,7 +158,7 @@ export class ConfirmationHandler {
 
     await this.#analyticsService.trackTransactionAdded(trackingProperties);
 
-    const result = await renderConfirmSignTransaction(
+    const { result, context } = await renderConfirmSignTransaction(
       request,
       account,
       rawData,
@@ -166,10 +166,15 @@ export class ConfirmationHandler {
 
     await this.#clearInterfaceId(CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME);
 
+    const propertiesToReport = {
+      ...trackingProperties,
+      ...context.securityProperties,
+    };
+
     if (result === true) {
-      await this.#analyticsService.trackTransactionApproved(trackingProperties);
+      await this.#analyticsService.trackTransactionApproved(propertiesToReport);
     } else {
-      await this.#analyticsService.trackTransactionRejected(trackingProperties);
+      await this.#analyticsService.trackTransactionRejected(propertiesToReport);
     }
 
     return result === true;
