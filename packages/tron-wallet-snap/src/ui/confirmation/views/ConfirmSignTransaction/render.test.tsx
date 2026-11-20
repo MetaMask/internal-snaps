@@ -599,7 +599,9 @@ describe('ConfirmSignTransaction render', () => {
       };
 
       // Should not throw, even with failed preferences
-      expect(await render(request, mockAccount, mockRawData as any)).toBe(true);
+      expect(
+        (await render(request, mockAccount, mockRawData as any)).result,
+      ).toBe(true);
     });
   });
 
@@ -656,9 +658,132 @@ describe('ConfirmSignTransaction render', () => {
         contract: [],
       };
 
-      const result = await render(request, mockAccount, mockRawData as any);
+      const outcome = await render(request, mockAccount, mockRawData as any);
 
-      expect(result).toBe(true);
+      expect(outcome.result).toBe(true);
+    });
+  });
+
+  describe('security properties', () => {
+    const supportedRawData = {
+      contract: [
+        {
+          type: 'TriggerSmartContract',
+          parameter: {
+            value: {
+              owner_address: '41A2155E688B2BAEBDFDACD073BA79F5B22946AACF',
+              to_address: '4132F9C0C487F21716B7A8F12906B752889902655',
+              call_value: 100000,
+            },
+          },
+        },
+      ],
+    } as unknown as TronwebTypes.Transaction['raw_data'];
+
+    const request: TronWalletKeyringRequest = {
+      id: '00000000-0000-4000-8000-000000000008',
+      origin: 'https://example.com',
+      account: mockAccount.id,
+      scope: Network.Mainnet,
+      request: {
+        method: TronMultichainMethod.SignTransaction,
+        params: {
+          address: mockAccount.address,
+          transaction: {
+            rawDataHex: toHex('transaction'),
+            type: 'TriggerSmartContract',
+          },
+        },
+      },
+    };
+
+    it('returns the security verdict shown in the dialog', async () => {
+      await withSnapContext(async () => {
+        const outcome = await render(request, mockAccount, supportedRawData);
+
+        expect(outcome).toStrictEqual({
+          result: true,
+          context: {
+            securityProperties: { securityAlertResponse: 'Benign' },
+          },
+        });
+      });
+    });
+
+    it('reports the verdict reason when the dialog shows a warning', async () => {
+      await withSnapContext(async ({ mockTransactionScanService }) => {
+        mockTransactionScanService.scanTransaction.mockResolvedValue({
+          ...mockScanResult,
+          validation: { type: 'Warning', reason: 'transfer_farming' },
+        });
+
+        const outcome = await render(request, mockAccount, supportedRawData);
+
+        expect(outcome.context.securityProperties).toStrictEqual({
+          securityAlertResponse: 'Warning',
+          securityAlertReason: 'transfer_farming',
+        });
+      });
+    });
+
+    it('reports an error verdict when the scan throws', async () => {
+      await withSnapContext(async ({ mockTransactionScanService }) => {
+        mockTransactionScanService.scanTransaction.mockRejectedValue(
+          new Error('Scan failed'),
+        );
+
+        const outcome = await render(request, mockAccount, supportedRawData);
+
+        expect(outcome.context.securityProperties).toStrictEqual({
+          securityAlertResponse: 'Error',
+          securityAlertReason: 'Error',
+        });
+      });
+    });
+
+    it('reports no security fields when validation is not requested', async () => {
+      await withSnapContext(async ({ mockSnapClient }) => {
+        mockSnapClient.getPreferences.mockResolvedValue({
+          ...mockPreferences,
+          useSecurityAlerts: false,
+          simulateOnChainActions: true,
+        });
+
+        const outcome = await render(request, mockAccount, supportedRawData);
+
+        expect(outcome.context.securityProperties).toBeUndefined();
+      });
+    });
+
+    it('reports no security fields for an unsupported contract type, even when the scan returns a verdict', async () => {
+      await withSnapContext(async ({ mockTransactionScanService }) => {
+        const trc10RawData = {
+          contract: [
+            {
+              type: 'TransferAssetContract',
+              parameter: { value: {} },
+            },
+          ],
+        } as unknown as TronwebTypes.Transaction['raw_data'];
+
+        const outcome = await render(request, mockAccount, trc10RawData);
+
+        expect(
+          mockTransactionScanService.scanTransaction,
+        ).toHaveBeenCalledTimes(1);
+        expect(outcome.context.securityProperties).toBeUndefined();
+      });
+    });
+
+    it('reports no security fields when the scan service is missing', async () => {
+      await withSnapContext(async ({ snapContext }) => {
+        snapContext.transactionScanService =
+          null as unknown as TransactionScanService;
+
+        const outcome = await render(request, mockAccount, supportedRawData);
+
+        expect(outcome.context.securityProperties).toBeUndefined();
+      });
     });
   });
 
@@ -748,7 +873,9 @@ describe('ConfirmSignTransaction render', () => {
 
       // Scheduling is best-effort and isolated from the scan result, so render
       // still completes and the successful scan stays on screen.
-      expect(await render(request, mockAccount, mockRawData as any)).toBe(true);
+      expect(
+        (await render(request, mockAccount, mockRawData as any)).result,
+      ).toBe(true);
       expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalled();
 
       const finalUpdateCall = mockSnapClient.updateInterface.mock.calls.at(-1);
@@ -793,13 +920,12 @@ describe('ConfirmSignTransaction render', () => {
       };
 
       // A failed price fetch falls back to empty prices, so render still completes.
-      expect(
-        await render(
-          request,
-          mockAccount,
-          mockRawData as unknown as TronwebTypes.Transaction['raw_data'],
-        ),
-      ).toBe(true);
+      const outcome = await render(
+        request,
+        mockAccount,
+        mockRawData as unknown as TronwebTypes.Transaction['raw_data'],
+      );
+      expect(outcome.result).toBe(true);
       expect(mockPriceApiClient.getMultipleSpotPrices).toHaveBeenCalled();
 
       const finalContext = mockSnapClient.updateInterface.mock.calls.at(
@@ -842,7 +968,9 @@ describe('ConfirmSignTransaction render', () => {
       };
 
       // The first updateInterface throws; the catch re-renders an error state.
-      expect(await render(request, mockAccount, mockRawData as any)).toBe(true);
+      expect(
+        (await render(request, mockAccount, mockRawData as any)).result,
+      ).toBe(true);
 
       const finalUpdateCall = mockSnapClient.updateInterface.mock.calls.at(-1);
       const finalContext = finalUpdateCall?.[2] as {
@@ -885,9 +1013,9 @@ describe('ConfirmSignTransaction render', () => {
 
         // The TAPOS check fails safe: it must not wipe the benign security scan or
         // synthesize a false expired result.
-        expect(await render(request, mockAccount, mockRawData as any)).toBe(
-          true,
-        );
+        expect(
+          (await render(request, mockAccount, mockRawData as any)).result,
+        ).toBe(true);
 
         const finalUpdateCall =
           mockSnapClient.updateInterface.mock.calls.at(-1);
