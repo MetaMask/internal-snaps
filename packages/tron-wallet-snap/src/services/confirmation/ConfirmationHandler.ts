@@ -26,6 +26,7 @@ import { render as renderConfirmSignTransaction } from '../../ui/confirmation/vi
 import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import { render as renderConfirmTransactionRequest } from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
+import type { ConfirmTransactionRequestResult } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import { resolveTransactionType } from '../../utils/transactionType';
 import { SignTransactionRequestStruct } from '../../validation/structs';
@@ -194,7 +195,10 @@ export class ConfirmationHandler {
     accountType: string;
     origin: string;
     transactionRawData: TronwebTypes.Transaction['raw_data'];
-  }): Promise<boolean> {
+  }): Promise<{
+    confirmed: boolean;
+    context: ConfirmTransactionRequestResult['context'];
+  }> {
     const trackingProperties = {
       origin,
       accountType,
@@ -209,7 +213,7 @@ export class ConfirmationHandler {
     // Track Transaction Added event
     await this.#analyticsService.trackTransactionAdded(trackingProperties);
 
-    const result = await renderConfirmTransactionRequest(
+    const { result, context } = await renderConfirmTransactionRequest(
       this.#snapClient,
       this.#state,
       {
@@ -232,14 +236,22 @@ export class ConfirmationHandler {
 
     await this.#clearInterfaceId(CONFIRM_TRANSACTION_INTERFACE_NAME);
 
-    // Track Transaction Rejected event if user rejects
+    const propertiesToReport = {
+      ...trackingProperties,
+      ...context.securityProperties,
+    };
+
     if (result === true) {
-      await this.#analyticsService.trackTransactionApproved(trackingProperties);
+      await this.#analyticsService.trackTransactionApproved(propertiesToReport);
     } else {
-      await this.#analyticsService.trackTransactionRejected(trackingProperties);
+      // Track Transaction Rejected event if user rejects
+      await this.#analyticsService.trackTransactionRejected(propertiesToReport);
     }
 
-    return result === true;
+    return {
+      confirmed: result === true,
+      context,
+    };
   }
 
   /**

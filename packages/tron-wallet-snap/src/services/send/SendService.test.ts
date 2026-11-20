@@ -49,6 +49,7 @@ describe('SendService', () => {
     let mockTronWebFactory: any;
     let mockFeeCalculatorService: any;
     let mockSnapClient: any;
+    let mockScheduleBackgroundEvent: Mock;
     let mockTronWeb: any;
     let mockTransactionExpirationRefresherService: any;
 
@@ -149,8 +150,9 @@ describe('SendService', () => {
         computeFee: vi.fn(),
       };
 
+      mockScheduleBackgroundEvent = vi.fn();
       mockSnapClient = {
-        scheduleBackgroundEvent: vi.fn(),
+        scheduleBackgroundEvent: mockScheduleBackgroundEvent,
       };
 
       mockTransactionExpirationRefresherService = {
@@ -223,6 +225,57 @@ describe('SendService', () => {
       });
     });
 
+    it('tracks the security properties with the submitted event', async () => {
+      await sendService.signAndSendTransaction({
+        scope: Network.Mainnet,
+        fromAccountId: TEST_ACCOUNT_ID,
+        transaction: createMockTransaction(),
+        context: {
+          securityProperties: {
+            securityAlertResponse: 'Benign',
+          },
+        },
+      });
+
+      expect(
+        mockAnalyticsService.trackTransactionSubmitted,
+      ).toHaveBeenCalledWith({
+        origin: DEFAULT_METAMASK_ORIGIN,
+        accountType: 'tron:eoa',
+        chainIdCaip: Network.Mainnet,
+        transactionType: TransactionType.Send,
+        securityAlertResponse: 'Benign',
+      });
+    });
+
+    it('schedules tracking with the security properties nested under securityProperties', async () => {
+      await sendService.signAndSendTransaction({
+        scope: Network.Mainnet,
+        fromAccountId: TEST_ACCOUNT_ID,
+        transaction: createMockTransaction(),
+        context: {
+          securityProperties: {
+            securityAlertResponse: 'Benign',
+          },
+        },
+      });
+
+      expect(mockScheduleBackgroundEvent).toHaveBeenCalledWith({
+        method: BackgroundEventMethod.TrackTransaction,
+        params: {
+          txId: 'broadcast-tx-id',
+          scope: Network.Mainnet,
+          accountIds: [TEST_ACCOUNT_ID],
+          attempt: 0,
+          transactionType: TransactionType.Send,
+          securityProperties: {
+            securityAlertResponse: 'Benign',
+          },
+        },
+        duration: TRACK_TX_INTERVAL,
+      });
+    });
+
     it('classifies a unified TRC20 send as send rather than unknown', async () => {
       const transaction = createMockTrc20Transaction();
 
@@ -276,6 +329,7 @@ describe('SendService', () => {
     let mockTronWebFactory: any;
     let mockFeeCalculatorService: any;
     let mockSnapClient: any;
+    let mockScheduleBackgroundEvent: Mock;
     let mockTronWeb: any;
     let mockTransactionExpirationRefresherService: {
       ensureFreshMetadata: Mock;
@@ -415,8 +469,9 @@ describe('SendService', () => {
         computeFee: vi.fn(),
       };
 
+      mockScheduleBackgroundEvent = vi.fn();
       mockSnapClient = {
-        scheduleBackgroundEvent: vi.fn(),
+        scheduleBackgroundEvent: mockScheduleBackgroundEvent,
       };
 
       mockTransactionExpirationRefresherService = {

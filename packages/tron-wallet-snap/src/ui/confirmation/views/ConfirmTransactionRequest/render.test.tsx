@@ -9,7 +9,7 @@ import {
   extractScanParametersFromTransactionData,
 } from '../../../../clients/security-alerts-api/utils';
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
-import { Network } from '../../../../constants';
+import { KnownCaip19Id, Network, TokenMetadata } from '../../../../constants';
 import snapContext from '../../../../context';
 import type { AssetEntity } from '../../../../entities/assets';
 import { BackgroundEventMethod } from '../../../../handlers/cronjob/cronjob';
@@ -393,9 +393,9 @@ describe('ConfirmTransactionRequest render', () => {
           new Error('Failed to load'),
         );
 
-        const result = await callRender();
+        const outcome = await callRender();
 
-        expect(result).toBe(true);
+        expect(outcome.result).toBe(true);
         expect(mockTransactionScanService.scanTransaction).toHaveBeenCalled();
       },
     );
@@ -480,10 +480,159 @@ describe('ConfirmTransactionRequest render', () => {
     await withRender(async ({ callRender, mockSnapClient }) => {
       mockSnapClient.showDialog.mockResolvedValue(true);
 
-      const result = await callRender();
+      const outcome = await callRender();
 
-      expect(result).toBe(true);
+      expect(outcome.result).toBe(true);
     });
+  });
+
+  it('returns the security verdict shown in the dialog', async () => {
+    await withRender(async ({ callRender }) => {
+      const outcome = await callRender();
+
+      expect(outcome).toStrictEqual({
+        result: true,
+        context: {
+          securityProperties: { securityAlertResponse: 'Benign' },
+        },
+      });
+    });
+  });
+
+  it('marks token prices as fetched when external pricing is disabled', async () => {
+    await withRender(async ({ callRender, mockSnapClient }) => {
+      mockSnapClient.getPreferences.mockResolvedValue({
+        ...defaultPreferences,
+        useExternalPricingData: false,
+      });
+
+      await callRender();
+
+      expect(mockSnapClient.updateInterface).toHaveBeenCalledWith(
+        'interface-id-123',
+        expect.anything(),
+        expect.objectContaining({
+          tokenPricesFetchStatus: FetchStatus.Fetched,
+        }),
+      );
+    });
+  });
+
+  it('reports no security fields when only simulation is enabled', async () => {
+    await withRender(async ({ callRender, mockSnapClient }) => {
+      mockSnapClient.getPreferences.mockResolvedValue({
+        ...defaultPreferences,
+        useSecurityAlerts: false,
+        simulateOnChainActions: true,
+      });
+
+      const outcome = await callRender();
+
+      expect(outcome.context.securityProperties).toBeUndefined();
+    });
+  });
+
+  it('reports an error verdict without a description when the scan throws', async () => {
+    await withRender(async ({ callRender, mockTransactionScanService }) => {
+      mockTransactionScanService.scanTransaction.mockRejectedValue(
+        new Error('Scan failed'),
+      );
+
+      const outcome = await callRender();
+
+      expect(outcome).toStrictEqual({
+        result: true,
+        context: {
+          securityProperties: {
+            securityAlertResponse: 'Error',
+            securityAlertReason: 'Error',
+          },
+        },
+      });
+    });
+  });
+
+  it('reports an error verdict without a description when the scan returns no result', async () => {
+    await withRender(async ({ callRender, mockTransactionScanService }) => {
+      mockTransactionScanService.scanTransaction.mockResolvedValue(null);
+
+      const outcome = await callRender();
+
+      expect(outcome.context.securityProperties).toStrictEqual({
+        securityAlertResponse: 'Error',
+        securityAlertReason: 'Error',
+      });
+    });
+  });
+
+  it('resolves the icon URL for each fee asset', async () => {
+    await withRender(async ({ callRender, mockSnapClient }) => {
+      await callRender({
+        fees: [
+          {
+            type: 'base',
+            asset: {
+              unit: 'TRX',
+              type: KnownCaip19Id.TrxMainnet,
+              amount: '0.02',
+              fungible: true,
+            },
+          },
+        ] as never,
+      });
+
+      const [, context] = mockSnapClient.createInterface.mock
+        .calls[0] as unknown as [
+        unknown,
+        { fees: { asset: { iconUrl?: string } }[] },
+      ];
+      expect(context.fees[0]?.asset.iconUrl).toBe(
+        TokenMetadata[KnownCaip19Id.TrxMainnet].iconUrl,
+      );
+    });
+  });
+
+  it('reports no security fields for an unsupported contract type, even when the scan returns a verdict', async () => {
+    await withRender(
+      async ({ callRender, mockSnapClient, mockTransactionScanService }) => {
+        mockSnapClient.getPreferences.mockResolvedValue({
+          ...defaultPreferences,
+          useSecurityAlerts: true,
+        });
+        const trc10RawData = {
+          ...defaultTransactionRawData,
+          contract: [
+            {
+              ...defaultTransactionRawData.contract[0],
+              type: TronwebTypes.ContractType.TransferAssetContract,
+            },
+          ],
+        } as TronwebTypes.Transaction['raw_data'];
+
+        const outcome = await callRender({ transactionRawData: trc10RawData });
+
+        expect(
+          mockTransactionScanService.scanTransaction,
+        ).toHaveBeenCalledTimes(1);
+        expect(outcome.context.securityProperties).toBeUndefined();
+      },
+    );
+  });
+
+  it('reports no security fields when the scan service is missing', async () => {
+    await withRender(
+      { hasTransactionScanService: false },
+      async ({ callRender, mockSnapClient }) => {
+        mockSnapClient.getPreferences.mockResolvedValue({
+          ...defaultPreferences,
+          useSecurityAlerts: true,
+        });
+
+        const outcome = await callRender();
+
+        expect(outcome.context.securityProperties).toBeUndefined();
+      },
+    );
   });
 
   it('stores interface ID in state for background refresh', async () => {

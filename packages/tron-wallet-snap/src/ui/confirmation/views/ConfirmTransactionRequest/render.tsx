@@ -1,12 +1,16 @@
-import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  getTransactionSecurityProperties,
+} from '@metamask/snap-networks-utils';
 import type {
   ExtendedKeyringAccount,
   IStateManager,
   SecurityAlertsScanOption,
 } from '@metamask/snap-networks-utils';
-import type { DialogResult, Json } from '@metamask/snaps-sdk';
+import type { Json } from '@metamask/snaps-sdk';
 import type { Types as TronwebTypes } from 'tronweb';
 
+import { isContractTypeSupported } from '../../../../clients/security-alerts-api/utils';
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
 import { Network } from '../../../../constants';
 import snapContext from '../../../../context';
@@ -20,7 +24,10 @@ import { assertTransactionStructure } from '../../../../validation/transaction';
 import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
 import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
 import { CONFIRM_TRANSACTION_INTERFACE_NAME } from './types';
-import type { ConfirmTransactionRequestContext } from './types';
+import type {
+  ConfirmTransactionRequestContext,
+  ConfirmTransactionRequestResult,
+} from './types';
 
 export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
   scope: Network.Mainnet,
@@ -75,7 +82,7 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
  * @param incomingContext.origin - The origin string to display.
  * @param incomingContext.accountType - The account type for analytics.
  * @param incomingContext.transactionRawData - The raw transaction data for security scanning.
- * @returns A dialog result with the user's decision.
+ * @returns The user's decision and context data.
  */
 export async function render(
   snapClient: SnapClient,
@@ -91,7 +98,7 @@ export async function render(
     accountType: string;
     transactionRawData: TronwebTypes.Transaction['raw_data'];
   },
-): Promise<DialogResult> {
+): Promise<ConfirmTransactionRequestResult> {
   const { transactionScanService } = snapContext;
 
   const { transactionRawData } = incomingContext;
@@ -211,7 +218,24 @@ export async function render(
     });
   }
 
-  // 7. Return the dialog promise immediately (don't await it!)
+  // 7. Wait for the user's decision, then return it with the security properties
+  // of the scan that was shown.
   // Cleanup happens in the background refresh handler when it detects the interface is gone
-  return dialogPromise;
+  const result = await dialogPromise;
+
+  const validationRequested = securityScanEnabled && useSecurityAlerts;
+
+  // Without validation, or for a contract type the service skips, no response is
+  // stored, so there is no security data to report.
+  const securityProperties =
+    validationRequested && isContractTypeSupported(transactionRawData)
+      ? getTransactionSecurityProperties(context.scan)
+      : undefined;
+
+  return {
+    result,
+    context: {
+      securityProperties,
+    },
+  };
 }

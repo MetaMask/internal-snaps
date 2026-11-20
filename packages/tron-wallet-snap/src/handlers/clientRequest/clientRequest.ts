@@ -730,8 +730,8 @@ export class ClientRequestHandler {
      * Client requests come from MetaMask's own unified send flow, so the origin
      * is reported as MetaMask.
      */
-    const confirmed = await this.#confirmationHandler.confirmTransactionRequest(
-      {
+    const { confirmed, context } =
+      await this.#confirmationHandler.confirmTransactionRequest({
         scope,
         fromAddress: account.address,
         toAddress,
@@ -741,20 +741,21 @@ export class ClientRequestHandler {
         accountType: account.type,
         origin: DEFAULT_METAMASK_ORIGIN,
         transactionRawData: freshTransactionRawData,
-      },
-    );
+      });
 
     if (!confirmed) {
       throw new UserRejectedRequestError() as unknown as Error;
     }
 
     /**
-     * Send the built transaction
+     * Send the built transaction. The confirmation context is passed along so
+     * the submitted event reports what the user saw in the confirmation.
      */
     const result = await this.#sendService.signAndSendTransaction({
       scope,
       fromAccountId,
       transaction,
+      context,
     });
 
     // Immediately create and save a detailed pending Send transaction
