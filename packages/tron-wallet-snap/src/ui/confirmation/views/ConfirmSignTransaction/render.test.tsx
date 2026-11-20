@@ -1,5 +1,6 @@
 import type { FeeType } from '@metamask/keyring-api';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
+import type { Types as TronwebTypes } from 'tronweb';
 import type { Mocked, Mock } from 'vitest';
 
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
@@ -761,6 +762,55 @@ describe('ConfirmSignTransaction render', () => {
         SimulationStatus.Completed,
       );
       expect(finalContext.scanFetchStatus).toBe(FetchStatus.Fetched);
+    });
+  });
+
+  it('renders without token prices when the price fetch fails', async () => {
+    await withSnapContext(async ({ mockSnapClient, mockPriceApiClient }) => {
+      mockPriceApiClient.getMultipleSpotPrices.mockRejectedValue(
+        new Error('price API down'),
+      );
+
+      const request: TronWalletKeyringRequest = {
+        id: '00000000-0000-4000-8000-00000000000a',
+        origin: 'https://test.com',
+        account: mockAccount.id,
+        scope: Network.Mainnet,
+        request: {
+          method: TronMultichainMethod.SignTransaction,
+          params: {
+            address: mockAccount.address,
+            transaction: {
+              rawDataHex: toHex('transaction'),
+              type: 'TransferContract',
+            },
+          },
+        },
+      };
+
+      const mockRawData = {
+        contract: [],
+      };
+
+      // A failed price fetch falls back to empty prices, so render still completes.
+      expect(
+        await render(
+          request,
+          mockAccount,
+          mockRawData as unknown as TronwebTypes.Transaction['raw_data'],
+        ),
+      ).toBe(true);
+      expect(mockPriceApiClient.getMultipleSpotPrices).toHaveBeenCalled();
+
+      const finalContext = mockSnapClient.updateInterface.mock.calls.at(
+        -1,
+      )?.[2] as {
+        tokenPrices: Record<string, unknown>;
+        tokenPricesFetchStatus: string;
+      };
+
+      expect(finalContext.tokenPrices).toStrictEqual({});
+      expect(finalContext.tokenPricesFetchStatus).toBe(FetchStatus.Fetched);
     });
   });
 

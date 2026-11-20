@@ -38,9 +38,9 @@ export default mergeConfig(
         exclude: ['src/utils/logger.ts'],
         thresholds: {
           branches: 78.06,
-          functions: 86.9,
-          lines: 87.95,
-          statements: 87.86,
+          functions: 87.1,
+          lines: 87.98,
+          statements: 87.89,
         },
       },
     },
