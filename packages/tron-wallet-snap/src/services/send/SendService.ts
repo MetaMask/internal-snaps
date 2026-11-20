@@ -10,6 +10,7 @@ import { Networks, TRACK_TX_INTERVAL, ZERO } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
+import type { ConfirmTransactionRequestResult } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import {
   isSuccessfulBroadcast,
   throwOnTransientBroadcastFailure,
@@ -389,6 +390,7 @@ export class SendService {
     fromAccountId,
     transaction,
     origin = DEFAULT_METAMASK_ORIGIN,
+    context,
   }: {
     scope: Network;
     fromAccountId: string;
@@ -397,6 +399,7 @@ export class SendService {
       | TronwebTypes.Transaction<TronwebTypes.TransferAssetContract>
       | TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract>;
     origin?: string;
+    context?: ConfirmTransactionRequestResult['context'];
     // TODO: Replace `any` with type
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }): Promise<TronwebTypes.BroadcastReturn<any>> {
@@ -449,11 +452,14 @@ export class SendService {
     }
     const txId = result.txid ?? freshTransaction.txID;
 
+    const securityProperties = context?.securityProperties;
+
     await this.#analyticsService.trackTransactionSubmitted({
       origin,
       accountType: account.type,
       chainIdCaip: scope,
       transactionType,
+      ...securityProperties,
     });
 
     await this.#snapClient.scheduleBackgroundEvent({
@@ -464,6 +470,7 @@ export class SendService {
         accountIds: [fromAccountId],
         attempt: 0,
         transactionType,
+        ...(securityProperties ? { securityProperties } : {}),
       },
       duration: TRACK_TX_INTERVAL,
     });

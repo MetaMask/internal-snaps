@@ -6,6 +6,7 @@ import type {
   IStateManager,
   Logger,
   SecurityAlertsScanOption,
+  TransactionSecurityProperties,
 } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 
@@ -771,6 +772,7 @@ export class CronHandler {
    * @param params.accountIds - Account IDs to sync after confirmation (first account is always the sender)
    * @param params.attempt - Current attempt number (for retry logic)
    * @param params.transactionType - Classification resolved at submit time, carried so the finalized event reports the same flow
+   * @param params.securityProperties - Security verdict fields from the confirmation, if any
    */
   async trackTransaction({
     txId,
@@ -778,12 +780,14 @@ export class CronHandler {
     accountIds,
     attempt = 0,
     transactionType,
+    securityProperties,
   }: {
     txId: string;
     scope: Network;
     accountIds: string[];
     attempt: number;
     transactionType?: TransactionType;
+    securityProperties?: TransactionSecurityProperties;
   }): Promise<void> {
     this.#logger.info(
       `[Attempt ${attempt + 1}] Tracking transaction ${txId} on ${scope}...`,
@@ -822,6 +826,7 @@ export class CronHandler {
             accountIds,
             attempt: attempt + 1,
             ...(transactionType === undefined ? {} : { transactionType }),
+            ...(securityProperties === undefined ? {} : { securityProperties }),
           },
           duration: TRACK_TX_INTERVAL,
         });
@@ -859,6 +864,7 @@ export class CronHandler {
         chainIdCaip: scope,
         transactionStatus,
         transactionType,
+        ...securityProperties,
       });
     } catch (error) {
       this.#logger.error(
@@ -884,6 +890,7 @@ export class CronHandler {
           accountIds,
           attempt: attempt + 1,
           ...(transactionType === undefined ? {} : { transactionType }),
+          ...(securityProperties === undefined ? {} : { securityProperties }),
         },
         duration: TRACK_TX_INTERVAL,
       });
