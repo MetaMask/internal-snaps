@@ -15,16 +15,30 @@ import { ConfirmSignTransactionFormNames } from './events';
 import type { ConfirmSignTransactionContext } from './types';
 
 /**
+ * A rendered Snaps JSX element, as traversed by the helpers below.
+ */
+type RenderedElement = {
+  props?: Record<string, unknown>;
+};
+
+/**
+ * Checks whether a rendered node is a JSX element (a non-array object).
+ *
+ * @param node - The node to check.
+ * @returns Whether the node is an element.
+ */
+function isElement(node: unknown): node is RenderedElement {
+  return typeof node === 'object' && node !== null && !Array.isArray(node);
+}
+
+/**
  * Recursively searches a rendered JSX tree for an element with a given name.
  *
  * @param node - The current JSX node (element, array, or primitive).
  * @param name - The element `name` prop to look for.
  * @returns The matching element, or undefined.
  */
-function findByName(node: any, name: string): any {
-  if (!node || typeof node !== 'object') {
-    return undefined;
-  }
+function findByName(node: unknown, name: string): RenderedElement | undefined {
   if (Array.isArray(node)) {
     for (const child of node) {
       const found = findByName(child, name);
@@ -32,6 +46,9 @@ function findByName(node: any, name: string): any {
         return found;
       }
     }
+    return undefined;
+  }
+  if (!isElement(node)) {
     return undefined;
   }
   if (node.props?.name === name) {
@@ -46,7 +63,7 @@ function findByName(node: any, name: string): any {
  * @param node - The current JSX node (element, array, or primitive).
  * @returns All string children found in the tree.
  */
-function collectTexts(node: any): string[] {
+function collectTexts(node: unknown): string[] {
   if (node === null || node === undefined) {
     return [];
   }
@@ -56,10 +73,10 @@ function collectTexts(node: any): string[] {
   if (Array.isArray(node)) {
     return node.flatMap((child) => collectTexts(child));
   }
-  if (typeof node === 'object') {
-    const title =
-      typeof node.props?.title === 'string' ? [node.props.title] : [];
-    return [...title, ...collectTexts(node.props?.children)];
+  if (isElement(node)) {
+    const { props } = node;
+    const title = typeof props?.title === 'string' ? [props.title] : [];
+    return [...title, ...collectTexts(props?.children)];
   }
   return [];
 }
@@ -75,7 +92,7 @@ describe('ConfirmSignTransaction', () => {
     ],
     type: 'tron:eoa',
     scopes: [Network.Mainnet],
-    entropySource: 'entropy-source-1' as any,
+    entropySource: 'entropy-source-1',
     derivationPath: "m/44'/195'/0'/0/0",
     index: 0,
   };
@@ -106,23 +123,22 @@ describe('ConfirmSignTransaction', () => {
 
   const buildContext = (
     overrides: Partial<ConfirmSignTransactionContext> = {},
-  ): ConfirmSignTransactionContext =>
-    ({
-      scope: Network.Mainnet,
-      account: mockAccount,
-      transaction: { rawDataHex: '0a02beef', type: 'TransferContract' },
-      origin: 'https://example.com',
-      preferences: mockPreferences,
-      networkImage: '',
-      scan: buildScanResult(),
-      scanFetchStatus: FetchStatus.Fetched,
-      tokenPrices: {} as any,
-      tokenPricesFetchStatus: FetchStatus.Fetched,
-      fees: [] as any,
-      feesFetchStatus: FetchStatus.Fetched,
-      isInsufficientBalance: false,
-      ...overrides,
-    }) as ConfirmSignTransactionContext;
+  ): ConfirmSignTransactionContext => ({
+    scope: Network.Mainnet,
+    account: mockAccount,
+    transaction: { rawDataHex: '0a02beef', type: 'TransferContract' },
+    origin: 'https://example.com',
+    preferences: mockPreferences,
+    networkImage: '',
+    scan: buildScanResult(),
+    scanFetchStatus: FetchStatus.Fetched,
+    tokenPrices: {},
+    tokenPricesFetchStatus: FetchStatus.Fetched,
+    fees: [],
+    feesFetchStatus: FetchStatus.Fetched,
+    isInsufficientBalance: false,
+    ...overrides,
+  });
 
   const isConfirmDisabled = (
     context: ConfirmSignTransactionContext,
