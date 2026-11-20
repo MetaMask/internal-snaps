@@ -1,4 +1,4 @@
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 
 /**
  * Formats a number as currency.

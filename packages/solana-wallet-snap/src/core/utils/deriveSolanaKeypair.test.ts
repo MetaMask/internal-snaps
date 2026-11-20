@@ -113,7 +113,7 @@ describe('deriveSolanaKeypair', () => {
 
   describe('when the BIP32 entropy is invalid', () => {
     it('throws an error', async () => {
-      (getBip32Entropy as Mock).mockResolvedValue({} as any);
+      (getBip32Entropy as Mock).mockResolvedValue({});
 
       await expect(
         deriveSolanaKeypair({ derivationPath: `m/44'/501'/0'/0'` }),
@@ -134,7 +134,7 @@ describe('deriveSolanaKeypair', () => {
 });
 
 describe('deriveSolanaKeypairFromCoinTypeNode', () => {
-  const getCoinTypeNode = async () => {
+  const getCoinTypeNode = async (): Promise<SLIP10Node> => {
     return await SLIP10Node.fromDerivationPath({
       derivationPath: [MOCK_SEED_PHRASE_BYTES, `slip10:44'`, `slip10:501'`],
       curve: 'ed25519',

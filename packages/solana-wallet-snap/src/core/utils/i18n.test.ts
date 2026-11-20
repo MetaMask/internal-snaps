@@ -17,14 +17,17 @@ describe('i18n', () => {
   });
 
   it('falls back to the default language if the preferred locale is not available', () => {
-    const translate = i18n('fr' as any);
+    // @ts-expect-error - 'fr' is not an available locale; the fallback is
+    // what this test exercises.
+    const translate = i18n('fr');
     const message = translate('send.balance');
     expect(message).toBe(locales.en['send.balance'].message);
   });
 
   it('returns the key for a non-existent key', () => {
     const translate = i18n('en');
-    const message = translate('nonExistentKey' as any);
+    // @ts-expect-error - the key is intentionally absent from the dictionary.
+    const message = translate('nonExistentKey');
     expect(message).toBe('nonExistentKey');
   });
 });

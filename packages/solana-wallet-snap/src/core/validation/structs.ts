@@ -189,7 +189,7 @@ export const SolanaAddressStruct: Struct<string, null> = define(
     try {
       address(value);
       return true;
-    } catch (error) {
+    } catch {
       return 'Invalid Solana address';
     }
   },

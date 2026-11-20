@@ -1,4 +1,4 @@
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 
 /**
  * Converts raw token units to human-readable format.

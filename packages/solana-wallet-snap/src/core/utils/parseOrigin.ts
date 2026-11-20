@@ -6,14 +6,14 @@ import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
  * @param origin - The origin to parse.
  * @returns The parsed origin.
  */
-export function parseOrigin(origin: string) {
+export function parseOrigin(origin: string): string {
   if (origin === DEFAULT_METAMASK_ORIGIN) {
     return 'MetaMask';
   }
 
   try {
     return new URL(origin).hostname;
-  } catch (error) {
+  } catch {
     throw new Error('Invalid URL');
   }
 }

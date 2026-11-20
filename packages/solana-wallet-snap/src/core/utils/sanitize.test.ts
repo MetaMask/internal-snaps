@@ -21,8 +21,11 @@ describe('sanitize', () => {
 
     it('handles edge cases', () => {
       expect(sanitizeForSignInMessage('')).toBe('');
-      expect(sanitizeForSignInMessage(null as any)).toBe('');
-      expect(sanitizeForSignInMessage(undefined as any)).toBe('');
+      // @ts-expect-error - null and undefined are rejected by the type system,
+      // but the sanitizer must still tolerate them at runtime.
+      expect(sanitizeForSignInMessage(null)).toBe('');
+      // @ts-expect-error - see above.
+      expect(sanitizeForSignInMessage(undefined)).toBe('');
     });
   });
 
@@ -47,8 +50,10 @@ describe('sanitize', () => {
     });
 
     it('handles edge cases', () => {
-      expect(sanitizeDomain(null as any)).toBe('');
-      expect(sanitizeDomain(undefined as any)).toBe('');
+      // @ts-expect-error - the sanitizer must tolerate null at runtime.
+      expect(sanitizeDomain(null)).toBe('');
+      // @ts-expect-error - see above.
+      expect(sanitizeDomain(undefined)).toBe('');
     });
   });
 
@@ -81,8 +86,10 @@ describe('sanitize', () => {
     });
 
     it('handles edge cases', () => {
-      expect(sanitizeSolanaAddress(null as any)).toBe('');
-      expect(sanitizeSolanaAddress(undefined as any)).toBe('');
+      // @ts-expect-error - the sanitizer must tolerate null at runtime.
+      expect(sanitizeSolanaAddress(null)).toBe('');
+      // @ts-expect-error - see above.
+      expect(sanitizeSolanaAddress(undefined)).toBe('');
     });
   });
 
@@ -111,8 +118,10 @@ describe('sanitize', () => {
     });
 
     it('handles edge cases', () => {
-      expect(sanitizeTimestamp(null as any)).toBe('');
-      expect(sanitizeTimestamp(undefined as any)).toBe('');
+      // @ts-expect-error - the sanitizer must tolerate null at runtime.
+      expect(sanitizeTimestamp(null)).toBe('');
+      // @ts-expect-error - see above.
+      expect(sanitizeTimestamp(undefined)).toBe('');
     });
   });
 
@@ -154,8 +163,10 @@ describe('sanitize', () => {
 
     it('handles edge cases', () => {
       expect(sanitizeResources([])).toStrictEqual([]);
-      expect(sanitizeResources(null as any)).toStrictEqual([]);
-      expect(sanitizeResources(undefined as any)).toStrictEqual([]);
+      // @ts-expect-error - the sanitizer must tolerate a null list at runtime.
+      expect(sanitizeResources(null)).toStrictEqual([]);
+      // @ts-expect-error - see above.
+      expect(sanitizeResources(undefined)).toStrictEqual([]);
     });
   });
 });

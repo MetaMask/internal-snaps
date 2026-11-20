@@ -37,7 +37,7 @@ export type SolanaTransaction = {
     };
     rewards?: readonly Reward[] | null;
     // eslint-disable-next-line @typescript-eslint/naming-convention
-    status?: { Ok: any } | { Err: TransactionError };
+    status?: { Ok: null } | { Err: TransactionError };
     innerInstructions?:
       | readonly {
           index: number;

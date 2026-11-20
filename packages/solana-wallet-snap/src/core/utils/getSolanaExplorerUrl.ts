@@ -18,7 +18,7 @@ export function getSolanaExplorerUrl(
   scope: Network,
   type: 'address' | 'tx',
   value: string,
-) {
+): string {
   const { cluster } = Networks[scope];
 
   const url = buildUrl({
