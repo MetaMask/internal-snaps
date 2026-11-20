@@ -1,4 +1,4 @@
-import { add0x } from '@metamask/utils';
+import { add0x, hasProperty } from '@metamask/utils';
 import { TronWeb, Types as TronwebTypes } from 'tronweb';
 
 import type { SecurityScanPayload } from './types';
@@ -13,6 +13,46 @@ const SUPPORTED_CONTRACT_TYPES: ReadonlySet<TronwebTypes.ContractType> =
     TronwebTypes.ContractType.CreateSmartContract,
     TronwebTypes.ContractType.TriggerSmartContract,
   ]);
+
+/**
+ * Reads a numeric property from a contract parameter value.
+ *
+ * TronWeb types the parameter value as a union of contract-specific shapes, so
+ * individual fields are only readable once their presence is checked.
+ *
+ * @param value - The contract parameter value.
+ * @param property - The property to read.
+ * @returns The property value when it is a number, otherwise `undefined`.
+ */
+function readNumberProperty(
+  value: object,
+  property: string,
+): number | undefined {
+  const found = hasProperty(value, property)
+    ? (value as Record<string, unknown>)[property]
+    : undefined;
+
+  return typeof found === 'number' ? found : undefined;
+}
+
+/**
+ * Reads a non-empty string property from a contract parameter value.
+ *
+ * @param value - The contract parameter value.
+ * @param property - The property to read.
+ * @returns The property value when it is a non-empty string, otherwise
+ * `undefined`.
+ */
+function readStringProperty(
+  value: object,
+  property: string,
+): string | undefined {
+  const found = hasProperty(value, property)
+    ? (value as Record<string, unknown>)[property]
+    : undefined;
+
+  return typeof found === 'string' && found.length > 0 ? found : undefined;
+}
 
 /**
  * Checks whether the first contract type in the transaction is supported
@@ -59,11 +99,14 @@ export function extractScanParametersFromTransactionData(
     throw new Error('Could not extract scan parameters from transaction.');
   }
 
+  const contractCallValue = readNumberProperty(contractParam, 'call_value');
+  const transferAmount = readNumberProperty(contractParam, 'amount');
+
   let callValue = 0;
-  if ('call_value' in contractParam && contractParam.call_value) {
-    callValue = contractParam.call_value;
-  } else if ('amount' in contractParam && contractParam.amount) {
-    callValue = contractParam.amount;
+  if (contractCallValue) {
+    callValue = contractCallValue;
+  } else if (transferAmount) {
+    callValue = transferAmount;
   }
 
   const payload: SecurityScanPayload = {
@@ -71,14 +114,18 @@ export function extractScanParametersFromTransactionData(
     value: `0x${callValue.toString(16)}`,
   };
 
-  if ('contract_address' in contractParam && contractParam.contract_address) {
-    payload.to = TronWeb.address.fromHex(contractParam.contract_address);
-  } else if ('to_address' in contractParam && contractParam.to_address) {
-    payload.to = TronWeb.address.fromHex(contractParam.to_address);
+  const toAddress =
+    readStringProperty(contractParam, 'contract_address') ??
+    readStringProperty(contractParam, 'to_address');
+
+  if (toAddress) {
+    payload.to = TronWeb.address.fromHex(toAddress);
   }
 
-  if ('data' in contractParam && contractParam.data) {
-    payload.data = add0x(contractParam.data);
+  const data = readStringProperty(contractParam, 'data');
+
+  if (data) {
+    payload.data = add0x(data);
   }
 
   return payload;

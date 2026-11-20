@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { FeeType } from '@metamask/keyring-api';
 import type { Logger } from '@metamask/snap-networks-utils';
+import { hasProperty } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import { TronWeb } from 'tronweb';
 import type { Types as TronwebTypes } from 'tronweb';
@@ -597,7 +598,7 @@ export class FeeCalculatorService {
         throw new Error('Simulation yields failed result');
       }
 
-      if ('energy_used' in result) {
+      if (hasProperty(result, 'energy_used')) {
         const totalEnergy = result.energy_used;
 
         // Fetch deployer's available energy

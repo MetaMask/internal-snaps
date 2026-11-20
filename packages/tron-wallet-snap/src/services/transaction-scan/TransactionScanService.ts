@@ -7,6 +7,7 @@ import {
   DEFAULT_METAMASK_ORIGIN,
 } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
+import { hasProperty } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
 
@@ -234,7 +235,7 @@ export class TransactionScanService extends BaseTransactionScanService {
    */
   #isDisplayableChange(change: AssetChange): boolean {
     // NFT types (ERC721/ERC1155) use token_id instead of value
-    return 'token_id' in change || change.value !== undefined;
+    return hasProperty(change, 'token_id') || change.value !== undefined;
   }
 
   /**
@@ -272,10 +273,10 @@ export class TransactionScanService extends BaseTransactionScanService {
     change: AssetChange,
     decimals: number | undefined,
   ): string {
-    if ('token_id' in change) {
+    if (hasProperty(change, 'token_id')) {
       // NFT assets (ERC721): each token is a single unit
       // ERC1155: use the value field if present
-      return 'value' in change && typeof change.value === 'string'
+      return hasProperty(change, 'value') && typeof change.value === 'string'
         ? change.value
         : '1';
     }
