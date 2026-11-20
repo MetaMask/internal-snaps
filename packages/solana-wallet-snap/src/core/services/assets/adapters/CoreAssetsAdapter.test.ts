@@ -53,7 +53,7 @@ function createControllerAsset(options: {
       usdPrice: 0,
     },
     fiatValue: 0,
-  } as Asset;
+  };
 }
 
 /**
@@ -220,17 +220,9 @@ describe('CoreAssetsAdapter', () => {
           id: SOL_DEVNET_ASSET_ID,
           chainId: Network.Devnet,
         });
-        mockAssetsProvider.getAccountAssetsByScope.mockImplementation(
-          async (scope: `${string}:${string}`) => {
-            if (scope === Network.Mainnet) {
-              return { [SOL_MAINNET_ASSET_ID]: mainnetAsset };
-            }
-            if (scope === Network.Devnet) {
-              return { [SOL_DEVNET_ASSET_ID]: devnetAsset };
-            }
-            return {};
-          },
-        );
+        mockAssetsProvider.getAccountAssetsByScope
+          .mockResolvedValueOnce({ [SOL_MAINNET_ASSET_ID]: mainnetAsset })
+          .mockResolvedValueOnce({ [SOL_DEVNET_ASSET_ID]: devnetAsset });
 
         const assets = await adapter.getAccountAssets(ACCOUNT_ID);
 
@@ -254,14 +246,9 @@ describe('CoreAssetsAdapter', () => {
 
     it('rejects when any scope request fails', async () => {
       await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
-        mockAssetsProvider.getAccountAssetsByScope.mockImplementation(
-          async (scope: `${string}:${string}`) => {
-            if (scope === Network.Devnet) {
-              throw new Error('devnet failed');
-            }
-            return {};
-          },
-        );
+        mockAssetsProvider.getAccountAssetsByScope
+          .mockResolvedValueOnce({})
+          .mockRejectedValueOnce(new Error('devnet failed'));
 
         await expect(adapter.getAccountAssets(ACCOUNT_ID)).rejects.toThrow(
           'devnet failed',

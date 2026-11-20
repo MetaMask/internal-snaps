@@ -3,7 +3,6 @@ import { KeyringEvent } from '@metamask/keyring-api';
 import type {
   AccountAssetListUpdatedEvent,
   AccountBalancesUpdatedEvent,
-  Balance,
 } from '@metamask/keyring-api';
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import {
@@ -38,7 +37,6 @@ import type { NftApiClient } from '../../../clients/nft-api/NftApiClient';
 import type { TokenApiClient } from '../../../clients/token-api-client/TokenApiClient';
 import { Network, SolanaCaip19Tokens } from '../../../constants/solana';
 import type {
-  Caip10Address,
   NativeCaipAssetType,
   NftCaipAssetType,
   TokenCaipAssetType,
@@ -53,7 +51,7 @@ import type { AccountsService } from '../../accounts/AccountsService';
 import type { ConfigProvider } from '../../config';
 import type { SolanaConnection } from '../../connection';
 import type { AssetsRepository } from '../AssetsRepository';
-import type { AssetMetadata, NonFungibleAssetMetadata } from '../types';
+import type { AssetMetadata } from '../types';
 
 /**
  * Extends a token account as returned by the `getTokenAccountsByOwner` RPC method with the scope and the caip-19 asset type for convenience.
@@ -80,8 +78,6 @@ export class SnapAssetsAdapter {
 
   readonly #cache: ICache<Serializable>;
 
-  readonly #nftApiClient: NftApiClient;
-
   public static readonly cacheTtlsMilliseconds = {
     tokenAccountsByOwner: 5 * Duration.Second,
   };
@@ -94,7 +90,6 @@ export class SnapAssetsAdapter {
     accountsService,
     tokenApiClient,
     cache,
-    nftApiClient,
   }: {
     connection: SolanaConnection;
     logger: Logger;
@@ -103,6 +98,9 @@ export class SnapAssetsAdapter {
     accountsService: AccountsService;
     tokenApiClient: TokenApiClient;
     cache: ICache<Serializable>;
+    // The NFT asset paths are disabled, so this adapter no longer stores or
+    // reads the NFT client. The option stays in the contract because the snap
+    // context builds the client and passes it in.
     nftApiClient: NftApiClient;
   }) {
     this.#logger = logger.withPrefix('[🪙 SnapAssetsAdapter]');
@@ -112,7 +110,6 @@ export class SnapAssetsAdapter {
     this.#accountsService = accountsService;
     this.#tokenApiClient = tokenApiClient;
     this.#cache = cache;
-    this.#nftApiClient = nftApiClient;
   }
 
   #splitAssetsByType(assetTypes: CaipAssetType[]): {
@@ -166,57 +163,6 @@ export class SnapAssetsAdapter {
     return nativeTokensMetadata;
   }
 
-  async #getNftsMetadata(
-    assetTypes: NftCaipAssetType[],
-  ): Promise<Record<NftCaipAssetType, NonFungibleAssetMetadata | null>> {
-    const nftsMetadata = await this.#nftApiClient.getNftsMetadata(
-      assetTypes.map((assetType) => {
-        const { assetReference } = parseCaipAssetType(assetType);
-        return assetReference;
-      }),
-    );
-
-    const nftsMetadataMap: Record<NftCaipAssetType, NonFungibleAssetMetadata> =
-      {};
-
-    assetTypes.forEach((assetType, index) => {
-      const nftMetadata = nftsMetadata[index];
-
-      if (!nftMetadata) {
-        return;
-      }
-
-      const metadata = {
-        name: nftMetadata.name,
-        symbol: nftMetadata.name,
-        imageUrl: nftMetadata.imageUrl,
-        description: nftMetadata.description,
-        fungible: false as const,
-        isPossibleSpam: false, // FIXME: The isSpam should be part of the NFT item response, not balance, otherwise we can't get it here
-        attributes: Object.fromEntries(
-          nftMetadata.attributes.map(
-            (attr: { key: string; value: string | number }) => [
-              attr.key,
-              attr.value,
-            ],
-          ),
-        ),
-        collection: {
-          name: nftMetadata.collectionName,
-          address: nftMetadata.onchainCollectionAddress as Caip10Address,
-          symbol: nftMetadata.collectionSymbol,
-          tokenCount: nftMetadata.collectionCount,
-          creator: '' as Caip10Address, // FIXME: There can be more than one creator
-          imageUrl: nftMetadata.collectionImageUrl ?? '',
-        },
-      };
-
-      nftsMetadataMap[assetType] = metadata;
-    });
-
-    return nftsMetadataMap;
-  }
-
   async getAssetsMetadata(
     assetTypes: CaipAssetType[],
   ): Promise<Record<CaipAssetType, AssetMetadata | null>> {
@@ -225,20 +171,14 @@ export class SnapAssetsAdapter {
     const { nativeAssetTypes, tokenAssetTypes } =
       this.#splitAssetsByType(assetTypes);
 
-    const [
-      nativeTokensMetadata,
-      tokensMetadata,
-      // nftMetadata,
-    ] = await Promise.all([
-      this.#getNativeTokensMetadata(nativeAssetTypes),
-      this.#tokenApiClient.getTokensMetadata(tokenAssetTypes),
-      // this.#getNftsMetadata(nftAssetTypes),
-    ]);
+    const nativeTokensMetadata =
+      this.#getNativeTokensMetadata(nativeAssetTypes);
+    const tokensMetadata =
+      await this.#tokenApiClient.getTokensMetadata(tokenAssetTypes);
 
     return {
       ...nativeTokensMetadata,
       ...tokensMetadata,
-      // ...nftMetadata,
     };
   }
 
@@ -438,15 +378,7 @@ export class SnapAssetsAdapter {
 
     const tokenAssets = [...tokenAssetsByKey.values()];
 
-    // const nftAssets = await this.#fetchNftAssets(account, tokenAccounts.filter(
-    //   (token) => token.assetType.includes('/nft:'),
-    // ));
-
-    return [
-      ...nativeAssets,
-      ...tokenAssets,
-      // ...nftAssets,
-    ];
+    return [...nativeAssets, ...tokenAssets];
   }
 
   async getNativeAssetTypes(): Promise<NativeCaipAssetType[]> {
@@ -492,36 +424,6 @@ export class SnapAssetsAdapter {
     return results.flatMap((item) =>
       item.status === 'fulfilled' ? item.value : [],
     );
-  }
-
-  async #fetchNftAssets(
-    account: ExtendedKeyringAccount,
-    assetIds: NftCaipAssetType[],
-  ): Promise<Record<CaipAssetType, Balance>> {
-    const accountAddress = asAddress(account.address);
-
-    const nftAssets =
-      await this.#nftApiClient.listAddressSolanaNfts(accountAddress);
-    const balances: Record<CaipAssetType, Balance> = {};
-
-    for (const assetId of assetIds) {
-      const { assetReference } = parseCaipAssetType(assetId);
-
-      const nftAsset = nftAssets.find(
-        (nft) => nft.tokenAddress === assetReference,
-      );
-
-      if (!nftAsset) {
-        continue;
-      }
-
-      balances[assetId] = {
-        unit: nftAsset.nftToken.name,
-        amount: nftAsset.balance.toString(),
-      };
-    }
-
-    return balances;
   }
 
   async save(asset: AssetEntity): Promise<void> {
@@ -764,7 +666,7 @@ export class SnapAssetsAdapter {
     assetIds: CaipAssetType[],
   ): Promise<Record<CaipAssetType, AssetEntity | null>> {
     if (assetIds.length === 0) {
-      return {} as Record<CaipAssetType, AssetEntity | null>;
+      return {};
     }
 
     const accountAssets = await this.#getAccountAssetsOrEmpty(accountId);
@@ -774,7 +676,7 @@ export class SnapAssetsAdapter {
 
     return Object.fromEntries(
       assetIds.map((assetId) => [assetId, assetsByType.get(assetId) ?? null]),
-    ) as Record<CaipAssetType, AssetEntity | null>;
+    );
   }
 
   /**

@@ -78,7 +78,7 @@ describe('AssetsService', () => {
     const snap = {
       request: vi.fn(),
     };
-    (globalThis as any).snap = snap;
+    vi.stubGlobal('snap', snap);
 
     mockAssetsRepository = {
       findByKeyringAccountId: vi.fn(),
@@ -135,6 +135,7 @@ describe('AssetsService', () => {
   describe('fetchAccountAssets', () => {
     it('fetches native and token assets', async () => {
       vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        ...mockConnection.getRpc(Network.Mainnet),
         getBalance: vi.fn().mockReturnValueOnce({
           send: vi.fn().mockResolvedValue({
             value: 1000000000, // Native balance on Mainnet
@@ -152,7 +153,7 @@ describe('AssetsService', () => {
               value: [],
             }),
         }),
-      } as any);
+      });
 
       const assets = await assetsService.fetchAccountAssets(
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
@@ -163,6 +164,7 @@ describe('AssetsService', () => {
 
     it('does not fail on individual RPC call failures to fetch native assets', async () => {
       vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        ...mockConnection.getRpc(Network.Mainnet),
         getBalance: vi.fn().mockReturnValue({
           send: vi
             .fn()
@@ -180,7 +182,7 @@ describe('AssetsService', () => {
               value: [],
             }),
         }),
-      } as any);
+      });
 
       const assets = await assetsService.fetchAccountAssets(
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
@@ -191,6 +193,7 @@ describe('AssetsService', () => {
 
     it('does not fail on individual RPC call failures to fetch token assets', async () => {
       vi.spyOn(mockConnection, 'getRpc').mockReturnValue({
+        ...mockConnection.getRpc(Network.Mainnet),
         getBalance: vi.fn().mockReturnValueOnce({
           send: vi.fn().mockResolvedValue({
             value: 1000000000, // Native balance on Mainnet
@@ -201,7 +204,7 @@ describe('AssetsService', () => {
             .fn()
             .mockRejectedValueOnce(new Error('Error getting token accounts')),
         }),
-      } as any);
+      });
 
       const assets = await assetsService.fetchAccountAssets(
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
@@ -389,20 +392,6 @@ describe('AssetsService', () => {
       );
     });
 
-    // With isIncremental = false, we do emit events, even when no assets changed
-    it.skip('does not emit events when no assets changed', async () => {
-      vi.spyOn(mockAssetsRepository, 'getAll').mockResolvedValue(
-        MOCK_ASSET_ENTITIES,
-      );
-
-      await assetsService.saveMany(MOCK_ASSET_ENTITIES);
-      (emitSnapKeyringEvent as Mock).mockClear();
-
-      await assetsService.saveMany(MOCK_ASSET_ENTITIES);
-
-      expect(emitSnapKeyringEvent).not.toHaveBeenCalled();
-    });
-
     it('fetches saved assets before saving new assets to ensure correct change detection', async () => {
       const callOrder: string[] = [];
 
@@ -479,23 +468,6 @@ describe('AssetsService', () => {
             },
           },
         },
-      );
-    });
-
-    // With isIncremental = false, we do emit events, even when no assets changed
-    it.skip('does not incorrectly mark assets as new when they are already in the saved state', async () => {
-      // Mock that the asset already exists in saved state
-      vi.spyOn(mockAssetsRepository, 'getAll').mockResolvedValueOnce([
-        MOCK_ASSET_ENTITY_0,
-      ]);
-
-      await assetsService.saveMany([MOCK_ASSET_ENTITY_0]);
-
-      // Should not emit AccountAssetListUpdated since no assets were actually added/removed
-      expect(emitSnapKeyringEvent).not.toHaveBeenCalledWith(
-        snap,
-        KeyringEvent.AccountAssetListUpdated,
-        expect.any(Object),
       );
     });
 

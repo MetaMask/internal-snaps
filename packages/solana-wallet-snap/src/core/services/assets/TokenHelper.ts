@@ -1,11 +1,11 @@
-import type { Mint } from '@solana-program/token-2022';
+import type { Extension, Mint } from '@solana-program/token-2022';
 import {
   uiAmountToAmountForInterestBearingMintWithoutSimulation,
   uiAmountToAmountForScaledUiAmountMintWithoutSimulation,
 } from '@solana-program/token-2022';
 import type { Account, Address, Lamports } from '@solana/kit';
 import { lamports, unwrapOption } from '@solana/kit';
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 
 import type { Network } from '../../constants/solana';
 import type { SolanaConnection } from '../connection';
@@ -78,13 +78,19 @@ export class TokenHelper {
       const { decimals } = mintAccount.data ?? {};
 
       // Check for interest bearing mint extension
-      const interestBearingMintConfigState: any = extensions?.find(
-        (item: any) => item.__kind === 'InterestBearingConfig',
+      const interestBearingMintConfigState = extensions?.find(
+        (
+          item,
+        ): item is Extract<Extension, { __kind: 'InterestBearingConfig' }> =>
+          item.__kind === 'InterestBearingConfig',
       );
 
       // Check for scaled UI amount extension
-      const scaledUiAmountConfig: any = extensions?.find(
-        (item: any) => item.__kind === 'ScaledUiAmountConfig',
+      const scaledUiAmountConfig = extensions?.find(
+        (
+          item,
+        ): item is Extract<Extension, { __kind: 'ScaledUiAmountConfig' }> =>
+          item.__kind === 'ScaledUiAmountConfig',
       );
 
       // If no special extension, the amount in lamports is simply the uiAmount converted to lamports
@@ -120,7 +126,10 @@ export class TokenHelper {
       if (scaledUiAmountConfig) {
         let { multiplier } = scaledUiAmountConfig;
         // Use new multiplier if it's effective
-        if (timestamp >= scaledUiAmountConfig.newMultiplierEffectiveTimestamp) {
+        if (
+          timestamp >=
+          Number(scaledUiAmountConfig.newMultiplierEffectiveTimestamp)
+        ) {
           multiplier = scaledUiAmountConfig.newMultiplier;
         }
         const rawAmountLamports =
@@ -134,7 +143,7 @@ export class TokenHelper {
 
       // This should never happen due to the conditions above
       throw new Error('Unknown mint extension type');
-    } catch (error: any) {
+    } catch {
       const decimals = mintAccount?.data?.decimals ?? 9;
       return lamports(
         BigInt(
@@ -169,7 +178,7 @@ export class TokenHelper {
       ).dividedBy(fakeUiAmount.toString());
 
       return BigNumber(amount.toString()).dividedBy(multiplier).toString();
-    } catch (error: any) {
+    } catch {
       const decimals = mintAccount.data?.decimals ?? 9;
       return BigNumber(amount.toString())
         .dividedBy(10 ** decimals)
