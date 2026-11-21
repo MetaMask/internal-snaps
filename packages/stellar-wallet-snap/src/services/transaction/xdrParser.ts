@@ -541,8 +541,7 @@ export function parseTransferContractEventSafe(
       return null;
     }
 
-    // We only support transfers from and to Stellar addresses or contract addresses
-    // Muxed is blocked for now
+    // Accept G… / C… / CAP-84 W… (muxed contract). Muxed accounts (M…) stay rejected.
     if (
       !StellarAddressOrContractStruct.is(fromAddress) ||
       !StellarAddressOrContractStruct.is(toAddress)

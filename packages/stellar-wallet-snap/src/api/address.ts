@@ -44,6 +44,14 @@ export const StellarSecretKeyStruct = refine(
  */
 export type StellarSecretKey = Infer<typeof StellarSecretKeyStruct>;
 
+/**
+ * Validation struct for a Stellar account (`G…`), contract (`C…`), or CAP-84
+ * muxed contract (`W…`) address.
+ *
+ * Muxed accounts (`M…`) are not accepted. Wallet accounts remain non-muxed
+ * {@link StellarAddressStruct}; `W…` is allowed for destinations and event
+ * participants (e.g. SEP-41 `transfer` `to`).
+ */
 export const StellarAddressOrContractStruct = refine(
   nonempty(string()),
   'stellar_contract_or_address',
@@ -51,7 +59,8 @@ export const StellarAddressOrContractStruct = refine(
     try {
       if (
         !StrKey.isValidContract(value) &&
-        !StrKey.isValidEd25519PublicKey(value)
+        !StrKey.isValidEd25519PublicKey(value) &&
+        !StrKey.isValidMuxedContract(value)
       ) {
         return 'Invalid Stellar address or contract';
       }

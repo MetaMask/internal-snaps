@@ -1,10 +1,24 @@
 import { assert, StructError } from '@metamask/superstruct';
+import {
+  Account,
+  MuxedAccount,
+  encodeMuxedContractAddress,
+} from '@stellar/stellar-sdk';
 
 import {
   StellarAddressOrContractStruct,
   StellarAddressStruct,
   StellarSecretKeyStruct,
 } from './address';
+
+const accountAddress =
+  'GA7UCNSASSOPQYTRGJ2NC7TDBSXHMWK6JHS7AO6X2ZQAIQSTB5ELNFSO';
+const contractId = 'CASUP2OPFVEHCWGP2XLBXOV7DQIQIT42AQISG4MXAZGNLVFFN63X7WRT';
+const muxedContractAddress = encodeMuxedContractAddress(contractId, '123');
+const muxedAccountAddress = new MuxedAccount(
+  new Account(accountAddress, '0'),
+  '1',
+).accountId();
 
 describe('StellarAddressStruct', () => {
   it('accepts a valid Stellar address', () => {
@@ -16,10 +30,12 @@ describe('StellarAddressStruct', () => {
     ).not.toThrow();
   });
 
-  it('rejects an invalid Stellar address', () => {
-    const address = 'invalid-address';
-    expect(() => assert(address, StellarAddressStruct)).toThrow(StructError);
-  });
+  it.each(['invalid-address', muxedContractAddress, muxedAccountAddress])(
+    'rejects a non-G Stellar address: "%s"',
+    (address) => {
+      expect(() => assert(address, StellarAddressStruct)).toThrow(StructError);
+    },
+  );
 });
 
 describe('StellarSecretKeyStruct', () => {
@@ -53,16 +69,23 @@ describe('StellarAddressOrContractStruct', () => {
 
   it('accepts a valid Stellar contract', () => {
     expect(() =>
-      assert(
-        'CASUP2OPFVEHCWGP2XLBXOV7DQIQIT42AQISG4MXAZGNLVFFN63X7WRT',
-        StellarAddressOrContractStruct,
-      ),
+      assert(contractId, StellarAddressOrContractStruct),
     ).not.toThrow();
   });
 
-  it('rejects an invalid Stellar address or contract', () => {
+  it('accepts a CAP-84 muxed contract address', () => {
     expect(() =>
-      assert('invalid-address', StellarAddressOrContractStruct),
-    ).toThrow(StructError);
+      assert(muxedContractAddress, StellarAddressOrContractStruct),
+    ).not.toThrow();
+  });
+
+  it.each([
+    'invalid-address',
+    // Muxed accounts (M…) remain unsupported for this struct.
+    muxedAccountAddress,
+  ])('rejects an invalid Stellar address or contract: "%s"', (value) => {
+    expect(() => assert(value, StellarAddressOrContractStruct)).toThrow(
+      StructError,
+    );
   });
 });

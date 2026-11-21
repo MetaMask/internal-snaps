@@ -1,4 +1,10 @@
-import { Address, Asset, Keypair, xdr } from '@stellar/stellar-sdk';
+import {
+  Address,
+  Asset,
+  Keypair,
+  encodeMuxedContractAddress,
+  xdr,
+} from '@stellar/stellar-sdk';
 
 import {
   buildAuthEntryPreimageXdr,
@@ -27,6 +33,7 @@ import {
 const accountAddress =
   'GA7UCNSASSOPQYTRGJ2NC7TDBSXHMWK6JHS7AO6X2ZQAIQSTB5ELNFSO';
 const contractId = 'CASUP2OPFVEHCWGP2XLBXOV7DQIQIT42AQISG4MXAZGNLVFFN63X7WRT';
+const muxedContractAddress = encodeMuxedContractAddress(contractId, '123');
 
 /**
  * Builds address credentials wrapping a G-address.
@@ -133,6 +140,12 @@ describe('getAddress', () => {
     expect(getAddress(Address.fromString(accountAddress).toScAddress())).toBe(
       accountAddress,
     );
+  });
+
+  it('converts muxed-contract ScAddress to a W-strkey', () => {
+    expect(
+      getAddress(Address.fromString(muxedContractAddress).toScAddress()),
+    ).toBe(muxedContractAddress);
   });
 });
 
