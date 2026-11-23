@@ -608,7 +608,7 @@ describe('ConfirmTransactionRequest', () => {
       expect(serialized).toContain('"children":"0.000005 SOL"');
       expect(serialized).not.toContain('Sponsored by');
       expect(serialized).not.toContain('Fee paid by');
-      expect(serialized).not.toContain('You pay');
+      expect(serialized).not.toContain('"children":"Free"');
     });
 
     it('renders the paying account when another wallet account pays', () => {
@@ -625,84 +625,47 @@ describe('ConfirmTransactionRequest', () => {
       expect(serialized).toContain(
         `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:${sponsor}`,
       );
-      expect(serialized).not.toContain('You pay');
+      expect(serialized).not.toContain('"children":"Free"');
     });
 
-    it('renders a free sponsored transaction', () => {
+    it('renders the fee as free in a free sponsored transaction', () => {
       const serialized = renderWithFeePayment(sponsored({}));
 
-      expect(serialized).toContain('"children":"0.000005 SOL"');
       expect(serialized).toContain('Sponsored by');
       expect(serialized).toContain(
         `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:${sponsor}`,
       );
-      expect(serialized).toContain('You pay');
+      expect(serialized).toContain('"color":"muted"');
+      expect(serialized).toContain('"children":"0.000005 SOL"');
       expect(serialized).toContain('"children":"Free"');
       expect(serialized).toContain('"color":"success"');
+      expect(serialized).toContain('"fontWeight":"bold"');
+      expect(serialized).not.toContain('Account rent');
+      expect(serialized).not.toContain('Paid to sponsor');
       expect(serialized).not.toContain('Not free');
+      expect(serialized).not.toContain("Can't confirm");
     });
 
-    it('renders what the user pays when the sponsored transaction has costs', () => {
+    it('renders the plain fee row when the sponsored transaction has costs', () => {
       const serialized = renderWithFeePayment(
         sponsored({
           userCost: 'costs',
           userCosts: [
             { type: 'rent', lamports: '2039280' },
             { type: 'solToSponsor', lamports: '5000' },
-            {
-              type: 'tokenToSponsor',
-              mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-              amount: '150000',
-              decimals: 6,
-              symbol: 'USDC',
-            },
           ],
         }),
       );
 
-      expect(serialized).toContain('Not free');
-      expect(serialized).not.toContain('"children":"Free"');
-      expect(serialized).toContain('Account rent');
-      expect(serialized).toContain('"children":"0.00204 SOL"');
-      expect(serialized).toContain('Paid to sponsor');
+      expect(serialized).toContain('Sponsored by');
       expect(serialized).toContain('"children":"0.000005 SOL"');
-      expect(serialized).toContain('"children":"0.15 USDC"');
-      expect(serialized).not.toContain('charge you more than shown');
+      expect(serialized).not.toContain('"children":"Free"');
+      expect(serialized).not.toContain('Account rent');
+      expect(serialized).not.toContain('Paid to sponsor');
+      expect(serialized).not.toContain('Not free');
     });
 
-    it('falls back to the mint address when the token symbol is unknown', () => {
-      const serialized = renderWithFeePayment(
-        sponsored({
-          userCost: 'costs',
-          userCosts: [
-            {
-              type: 'tokenToSponsor',
-              mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-              amount: '150000',
-              decimals: 6,
-              symbol: null,
-            },
-          ],
-        }),
-      );
-
-      expect(serialized).toContain('"children":"0.15 EPjFW...TDt1v"');
-    });
-
-    it('warns that the user may pay more than the listed costs', () => {
-      const serialized = renderWithFeePayment(
-        sponsored({
-          userCost: 'costs',
-          userCosts: [{ type: 'solToSponsor', lamports: '5000' }],
-          mayCostMore: true,
-        }),
-      );
-
-      expect(serialized).toContain('Not free');
-      expect(serialized).toContain('charge you more than shown');
-    });
-
-    it('does not claim the transaction is free when it cannot be verified', () => {
+    it('renders the plain fee row when the transaction could not be verified', () => {
       const serialized = renderWithFeePayment(
         sponsored({
           userCost: 'unverified',
@@ -711,13 +674,13 @@ describe('ConfirmTransactionRequest', () => {
         }),
       );
 
-      expect(serialized).toContain(
+      expect(serialized).toContain('Sponsored by');
+      expect(serialized).toContain('"children":"0.000005 SOL"');
+      expect(serialized).not.toContain('"children":"Free"');
+      expect(serialized).not.toContain("Can't confirm");
+      expect(serialized).not.toContain(
         "can't check these programs: JUP6L...VTaV4.",
       );
-
-      expect(serialized).toContain('Sponsored by');
-      expect(serialized).toContain("Can't confirm");
-      expect(serialized).not.toContain('"children":"Free"');
     });
   });
 });

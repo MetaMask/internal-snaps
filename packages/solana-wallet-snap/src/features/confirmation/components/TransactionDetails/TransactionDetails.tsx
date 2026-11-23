@@ -1,5 +1,4 @@
 import { DEFAULT_METAMASK_ORIGIN, Asset } from '@metamask/snap-networks-utils';
-import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import type { SnapComponent } from '@metamask/snaps-sdk/jsx';
 import {
   Address,
@@ -10,87 +9,18 @@ import {
   Text,
   Tooltip,
 } from '@metamask/snaps-sdk/jsx';
-import { BigNumber } from 'bignumber.js';
 
 import { Domain } from '../../../../core/components/Domain/Domain';
 import type { Network } from '../../../../core/constants/solana';
 import { Networks } from '../../../../core/constants/solana';
 import type { FetchStatus, Preferences } from '../../../../core/types/snap';
 import { addressToCaip10 } from '../../../../core/utils/addressToCaip10';
-import { lamportsToSol } from '../../../../core/utils/conversion';
 import { formatCryptoBalance } from '../../../../core/utils/formatCryptoBalance';
 import { formatFiat } from '../../../../core/utils/formatFiat';
 import { i18n } from '../../../../core/utils/i18n';
 import { parseOrigin } from '../../../../core/utils/parseOrigin';
 import { tokenToFiat } from '../../../../core/utils/tokenToFiat';
-import type { FeePayment, UserFeeCost } from '../../utils/analyzeFeePayment';
-
-function truncateAddress(address: string): string {
-  return `${address.slice(0, 5)}...${address.slice(-5)}`;
-}
-
-/**
- * How each verdict of {@link FeePayment.userCost} is shown. The tooltip of
- * `costs` only applies when the user may pay more than the costs listed.
- */
-const USER_COST_DISPLAY = {
-  free: {
-    label: 'confirmation.youPay.free',
-    color: 'success',
-    fontWeight: 'bold',
-    tooltip: 'confirmation.youPay.free.tooltip',
-    icon: 'question',
-  },
-  unverified: {
-    label: 'confirmation.youPay.unverified',
-    color: 'warning',
-    fontWeight: 'regular',
-    tooltip: 'confirmation.youPay.unverified.tooltip',
-    icon: 'warning',
-  },
-  costs: {
-    label: 'confirmation.youPay.notFree',
-    color: 'warning',
-    fontWeight: 'regular',
-    tooltip: 'confirmation.youPay.mayCostMore.tooltip',
-    icon: 'warning',
-  },
-} as const;
-
-type SolAmountProps = {
-  amountInSol: string;
-  symbol: string;
-  currency: string;
-  locale: string;
-  nativePrice: number | null;
-  pricesError: boolean;
-  pricesFetching: boolean;
-};
-
-function renderSolAmount({
-  amountInSol,
-  symbol,
-  currency,
-  locale,
-  nativePrice,
-  pricesError,
-  pricesFetching,
-}: SolAmountProps): ComponentOrElement {
-  const fiat =
-    nativePrice && !pricesError
-      ? formatFiat(tokenToFiat(amountInSol, nativePrice), currency, locale)
-      : null;
-
-  return (
-    <Asset
-      symbol={symbol}
-      amount={formatCryptoBalance(amountInSol, locale)}
-      hideIcon
-      fiat={fiat}
-      isFiatLoading={pricesFetching}
-    />
-  );
-}
+import type { FeePayment } from '../../utils/analyzeFeePayment';
 
 type FeePayerRowProps = {
   feePayment: FeePayment;
@@ -130,135 +60,6 @@ const FeePayerRow: SnapComponent<FeePayerRowProps> = ({
         displayName
         avatar
       />
-    </Box>
-  );
-};
-
-type UserCostRowProps = {
-  userCost: Exclude<FeePayment['userCost'], null>;
-  mayCostMore: boolean;
-  uncheckedPrograms: string[];
-  preferences: Preferences;
-};
-
-const UserCostRow: SnapComponent<UserCostRowProps> = ({
-  userCost,
-  mayCostMore,
-  uncheckedPrograms,
-  preferences,
-}) => {
-  const translate = i18n(preferences.locale);
-  const display = USER_COST_DISPLAY[userCost];
-  // `free` is never reached with unchecked programs, so the suffix is empty there.
-  const showTooltip = userCost !== 'costs' || mayCostMore;
-  const uncheckedProgramsSuffix = uncheckedPrograms.length
-    ? ` ${translate('confirmation.youPay.uncheckedPrograms', {
-        programs: uncheckedPrograms.map(truncateAddress).join(', '),
-      })}`
-    : '';
-
-  return (
-    <Box alignment="space-between" direction="horizontal">
-      <Box alignment="space-between" direction="horizontal" center>
-        <Text fontWeight="medium" color="alternative">
-          {translate('confirmation.youPay')}
-        </Text>
-        {showTooltip ? (
-          <Tooltip
-            content={`${translate(display.tooltip)}${uncheckedProgramsSuffix}`}
-          >
-            <Icon name={display.icon} color="muted" />
-          </Tooltip>
-        ) : null}
-      </Box>
-      <Text fontWeight={display.fontWeight} color={display.color}>
-        {translate(display.label)}
-      </Text>
-    </Box>
-  );
-};
-
-type SolDisplayProps = {
-  scope: Network;
-  preferences: Preferences;
-  nativePrice: number | null;
-  fetchingPricesStatus: FetchStatus;
-};
-
-type RentRowProps = SolDisplayProps & {
-  rentLamports: string;
-};
-
-const RentRow: SnapComponent<RentRowProps> = ({
-  rentLamports,
-  scope,
-  preferences,
-  nativePrice,
-  fetchingPricesStatus,
-}) => {
-  const { currency, locale } = preferences;
-  const translate = i18n(locale);
-
-  return (
-    <Box alignment="space-between" direction="horizontal">
-      <Box alignment="space-between" direction="horizontal" center>
-        <Text color="alternative">{translate('confirmation.rent')}</Text>
-        <Tooltip content={translate('confirmation.rent.tooltip')}>
-          <Icon name="question" color="muted" />
-        </Tooltip>
-      </Box>
-      {renderSolAmount({
-        amountInSol: lamportsToSol(BigInt(rentLamports)).toString(),
-        symbol: Networks[scope].nativeToken.symbol,
-        currency,
-        locale,
-        nativePrice,
-        pricesError: fetchingPricesStatus === 'error',
-        pricesFetching: fetchingPricesStatus === 'fetching',
-      })}
-    </Box>
-  );
-};
-
-type PaidToSponsorRowProps = SolDisplayProps & {
-  cost: Exclude<UserFeeCost, { type: 'rent' }>;
-};
-
-const PaidToSponsorRow: SnapComponent<PaidToSponsorRowProps> = ({
-  cost,
-  scope,
-  preferences,
-  nativePrice,
-  fetchingPricesStatus,
-}) => {
-  const { currency, locale } = preferences;
-  const translate = i18n(locale);
-
-  return (
-    <Box alignment="space-between" direction="horizontal">
-      <Text color="alternative">{translate('confirmation.paidToSponsor')}</Text>
-      {cost.type === 'solToSponsor' ? (
-        renderSolAmount({
-          amountInSol: lamportsToSol(cost.lamports).toString(),
-          symbol: Networks[scope].nativeToken.symbol,
-          currency,
-          locale,
-          nativePrice,
-          pricesError: fetchingPricesStatus === 'error',
-          pricesFetching: fetchingPricesStatus === 'fetching',
-        })
-      ) : (
-        <Asset
-          symbol={cost.symbol ?? truncateAddress(cost.mint)}
-          amount={formatCryptoBalance(
-            BigNumber(cost.amount).shiftedBy(-cost.decimals).toString(),
-            locale,
-          )}
-          hideIcon
-          fiat={null}
-          isFiatLoading={false}
-        />
-      )}
     </Box>
   );
 };
@@ -342,12 +143,7 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
       : null;
 
   const feeInFiat = feeInSol ? toFiat(feeInSol) : null;
-
-  const rentLamports = feePayment?.userCosts.reduce(
-    (total, cost) =>
-      cost.type === 'rent' ? total + BigInt(cost.lamports) : total,
-    0n,
-  );
+  const freeSponsored = feePayment?.userCost === 'free';
 
   return (
     <Section>
@@ -414,7 +210,22 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
         <Text fontWeight="medium" color="alternative">
           {translate('confirmation.fee')}
         </Text>
-        {feeInSol ? (
+        {freeSponsored && feeInSol ? (
+          // shortcut: snaps-sdk has no strikethrough, so the waived fee is muted; revisit if the SDK adds one
+          <Box direction="horizontal" alignment="center">
+            <Text color="muted">
+              {`${formatCryptoBalance(feeInSol, locale)} ${
+                Networks[scope].nativeToken.symbol
+              }`}
+            </Text>
+            <Tooltip content={translate('confirmation.free.tooltip')}>
+              <Text color="success" fontWeight="bold">
+                {translate('confirmation.free')}
+              </Text>
+            </Tooltip>
+          </Box>
+        ) : null}
+        {!freeSponsored && feeInSol ? (
           <Asset
             symbol={Networks[scope].nativeToken.symbol}
             amount={formatCryptoBalance(feeInSol, locale)}
@@ -422,7 +233,8 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
             fiat={feeInFiat}
             isFiatLoading={pricesFetching}
           />
-        ) : (
+        ) : null}
+        {feeInSol ? null : (
           <Tooltip content={translate('confirmation.feeError')}>
             <Icon name="warning" />
           </Tooltip>
@@ -437,35 +249,6 @@ export const TransactionDetails: SnapComponent<TransactionDetailsProps> = ({
           preferences={preferences}
         />
       ) : null}
-      {feePayment?.userCost ? (
-        <UserCostRow
-          userCost={feePayment.userCost}
-          mayCostMore={feePayment.mayCostMore}
-          uncheckedPrograms={feePayment.uncheckedPrograms}
-          preferences={preferences}
-        />
-      ) : null}
-      {rentLamports ? (
-        <RentRow
-          rentLamports={rentLamports.toString()}
-          scope={scope}
-          preferences={preferences}
-          nativePrice={nativePrice}
-          fetchingPricesStatus={fetchingPricesStatus}
-        />
-      ) : null}
-      {feePayment?.userCosts.map((cost) =>
-        cost.type === 'rent' ? null : (
-          <PaidToSponsorRow
-            key={cost.type === 'tokenToSponsor' ? cost.mint : cost.type}
-            cost={cost}
-            scope={scope}
-            preferences={preferences}
-            nativePrice={nativePrice}
-            fetchingPricesStatus={fetchingPricesStatus}
-          />
-        ),
-      )}
     </Section>
   );
 };
