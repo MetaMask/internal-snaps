@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Require risk acknowledgement before confirming Solana transactions flagged as malicious. Confirm opens a danger-styled acknowledgement screen, and proceeding requires checking the risk checkbox ([#615](https://github.com/MetaMask/internal-snaps/pull/615)).
 
+### Changed
+
+- Rework how sponsored network fees are shown on transaction confirmations: the fee row itself shows a muted fee amount with a bold green "Free" label instead of a separate "You pay" row, and "Sponsored by" is the only added row. The "You pay", "Account rent" and "Paid to sponsor" rows are removed, and sponsored transactions that are not free show the plain network fee row as before. ([#664](https://github.com/MetaMask/internal-snaps/pull/664))
+
 ## [7.4.0]
 
 ### Added
