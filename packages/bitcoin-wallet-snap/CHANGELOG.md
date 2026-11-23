@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Slow or failing requests now emit `Snap Service Degraded` and `Snap Service Unavailable` Segment events. Esplora events are tagged with the network's CAIP-2 chain ID.
   - Price API give-ups are sent to Sentry without URLs, request params or response data. Esplora give-ups are still reported by their callers, as before.
   - Errors the policy already reported, including open-circuit rejections during account synchronization, are no longer sent to Sentry a second time.
+- `onAmountInput` now rejects the full spendable balance unless the amount covers the fee, matching `getMaxSendableAmount`; amount probes no longer drain the wallet ([#645](https://github.com/MetaMask/internal-snaps/pull/645))
 - `onAmountInput` now estimates the send fee and rejects amounts that cannot cover it, including when `toAddress` is omitted ([#586](https://github.com/MetaMask/internal-snaps/pull/586))
 
 ### Removed

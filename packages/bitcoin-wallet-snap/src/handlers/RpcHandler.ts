@@ -28,7 +28,7 @@ import {
   InexistentMethodError,
   ValidationError,
 } from '../entities';
-import type { CodifiedError, Logger } from '../entities';
+import type { BitcoinAccount, CodifiedError, Logger } from '../entities';
 import type {
   AccountUseCases,
   SendFlowUseCases,
@@ -369,24 +369,17 @@ export class RpcHandler {
         return INVALID_RESPONSE;
       }
 
-      try {
-        await this.#sendFlowUseCases.buildProbePsbt(
-          bitcoinAccount,
-          value,
-          toAddress,
-        );
-      } catch (error) {
-        // The balance alone is sufficient, so a funding failure is a fee shortfall.
-        if ((error as CodifiedError).message.includes('Insufficient funds')) {
-          return {
-            valid: false,
-            errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
-          };
-        }
-        throw error;
+      const probe = await this.#probeAmount(bitcoinAccount, value, toAddress);
+
+      // The balance alone is sufficient, so a funding failure is a fee shortfall.
+      if (probe === 'insufficient') {
+        return {
+          valid: false,
+          errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
+        };
       }
 
-      return NO_ERRORS_RESPONSE;
+      return probe === 'dust' ? INVALID_RESPONSE : NO_ERRORS_RESPONSE;
     } catch (error) {
       // We do not track this error as it is a user input.
 
@@ -395,6 +388,35 @@ export class RpcHandler {
         (error as CodifiedError).message,
       );
       return INVALID_RESPONSE;
+    }
+  }
+
+  /**
+   * Probes whether an exact amount can be funded and classifies the failure.
+   *
+   * @param account - The account sending the funds.
+   * @param amount - The amount to send, in BTC units.
+   * @param toAddress - The destination, when it is already known.
+   * @returns `fundable`, `insufficient` when the amount and fee exceed the
+   * balance, or `dust` when the amount is below the dust limit.
+   */
+  async #probeAmount(
+    account: BitcoinAccount,
+    amount: string,
+    toAddress?: string,
+  ): Promise<'fundable' | 'insufficient' | 'dust'> {
+    try {
+      await this.#sendFlowUseCases.buildProbePsbt(account, amount, toAddress);
+      return 'fundable';
+    } catch (error) {
+      const { message } = error as CodifiedError;
+      if (message.includes('Insufficient funds')) {
+        return 'insufficient';
+      }
+      if (/dust/iu.test(message)) {
+        return 'dust';
+      }
+      throw error;
     }
   }
 
@@ -430,32 +452,25 @@ export class RpcHandler {
       return { amount: '0' };
     }
 
-    // Exclude the full balance so the probe adds a recipient instead of
-    // draining the wallet, which would fold the fee into the output.
     let low = 0n;
-    let high = spendableSats - 1n;
+    let high = spendableSats;
     let maxSats = 0n;
 
     while (low <= high) {
       const mid = (low + high) / 2n;
+      const probe = await this.#probeAmount(
+        account,
+        formatBtcAmount(mid),
+        toAddress,
+      );
 
-      try {
-        await this.#sendFlowUseCases.buildProbePsbt(
-          account,
-          formatBtcAmount(mid),
-          toAddress,
-        );
+      if (probe === 'fundable') {
         maxSats = mid;
         low = mid + 1n;
-      } catch (error) {
-        const { message } = error as CodifiedError;
-        if (message.includes('Insufficient funds')) {
-          high = mid - 1n;
-        } else if (/dust/iu.test(message)) {
-          low = mid + 1n;
-        } else {
-          throw error;
-        }
+      } else if (probe === 'insufficient') {
+        high = mid - 1n;
+      } else {
+        low = mid + 1n;
       }
     }
 
