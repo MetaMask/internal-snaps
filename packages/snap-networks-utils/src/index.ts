@@ -44,6 +44,7 @@ export type {
 export { BaseTransactionScanService } from './services/security-alerts/BaseTransactionScanService';
 export {
   deriveSecurityAlert,
+  getScanOptions,
   getSecurityAlertDescription,
   getTransactionSecurityProperties,
   requiresMaliciousAcknowledgement,

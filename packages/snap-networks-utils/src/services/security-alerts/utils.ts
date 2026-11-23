@@ -2,7 +2,7 @@ import type { Infer } from '@metamask/superstruct';
 import { enums, is, object, optional, string } from '@metamask/superstruct';
 
 import { SecurityAlertResponse } from './types';
-import type { SecurityScanOutcome } from './types';
+import type { SecurityAlertsScanOption, SecurityScanOutcome } from './types';
 
 /**
  * The security response reported while a security scan is in progress.
@@ -173,6 +173,35 @@ export function getTransactionSecurityProperties(
     ...(isBenign ? {} : { securityAlertReason: reason }),
     ...(description ? { securityAlertDescription: description } : {}),
   };
+}
+
+/**
+ * Returns the Security Alerts scan options that the user's preferences enable.
+ * Missing preferences are treated as disabled.
+ *
+ * @param preferences - The preferences that control which scans run.
+ * @param preferences.simulateOnChainActions - Whether on-chain simulation is enabled.
+ * @param preferences.useSecurityAlerts - Whether security validation is enabled.
+ * @returns `simulation` and/or `validation`, in that order.
+ */
+export function getScanOptions({
+  simulateOnChainActions,
+  useSecurityAlerts,
+}: {
+  simulateOnChainActions?: boolean | null;
+  useSecurityAlerts?: boolean | null;
+}): SecurityAlertsScanOption[] {
+  const options: SecurityAlertsScanOption[] = [];
+
+  if (simulateOnChainActions) {
+    options.push('simulation');
+  }
+
+  if (useSecurityAlerts) {
+    options.push('validation');
+  }
+
+  return options;
 }
 
 /**

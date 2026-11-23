@@ -1,11 +1,13 @@
 import type { TransactionType } from '@metamask/keyring-api';
-import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  getScanOptions,
+} from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   ExtendedKeyringAccount,
   IStateManager,
   Logger,
-  SecurityAlertsScanOption,
   TransactionSecurityProperties,
 } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
@@ -437,15 +439,10 @@ export class CronHandler {
           });
 
         if (shouldRefreshScan) {
-          const options: SecurityAlertsScanOption[] = [];
-
-          if (simulateOnChainActions) {
-            options.push('simulation');
-          }
-
-          if (useSecurityAlerts) {
-            options.push('validation');
-          }
+          const options = getScanOptions({
+            simulateOnChainActions,
+            useSecurityAlerts,
+          });
 
           const scanAccount = {
             type: interfaceContext.accountType,
@@ -624,15 +621,10 @@ export class CronHandler {
       }
 
       if (shouldRefreshScan && rawData) {
-        const options: SecurityAlertsScanOption[] = [];
-
-        if (simulateOnChainActions) {
-          options.push('simulation');
-        }
-
-        if (useSecurityAlerts) {
-          options.push('validation');
-        }
+        const options = getScanOptions({
+          simulateOnChainActions,
+          useSecurityAlerts,
+        });
 
         try {
           scan = await this.#transactionScanService.scanTransaction({

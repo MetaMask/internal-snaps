@@ -19,7 +19,7 @@ import type { AssetEntity } from '../../entities/assets';
 import { TronMultichainMethod } from '../../handlers/keyring/keyring-types';
 import { TRX_IMAGE_SVG } from '../../static/tron-logo';
 import { FetchStatus } from '../../types/snap';
-import { getIconUrlForKnownAsset } from '../../ui/confirmation/utils/getIconUrlForKnownAsset';
+import { withFeeIcons } from '../../ui/confirmation/utils/withFeeIcons';
 import { render as renderConfirmSignMessage } from '../../ui/confirmation/views/ConfirmSignMessage/render';
 import { ConfirmSignTransaction } from '../../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction';
 import { render as renderConfirmSignTransaction } from '../../ui/confirmation/views/ConfirmSignTransaction/render';
@@ -307,16 +307,14 @@ export class ConfirmationHandler {
       ? new BigNumber(bandwidthAsset.rawAmount)
       : ZERO;
 
-    const fees = await this.#feeCalculatorService.computeFee({
+    const feeWithoutIcons = await this.#feeCalculatorService.computeFee({
       scope,
       transaction: unsignedTx,
       availableEnergy,
       availableBandwidth,
     });
 
-    fees.forEach((fee) => {
-      fee.asset.iconUrl = getIconUrlForKnownAsset(fee.asset.type);
-    });
+    const fees = withFeeIcons(feeWithoutIcons);
 
     let preferences;
     try {

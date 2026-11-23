@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Extend the "Transaction Added", "Transaction Rejected", "Transaction Approved", "Transaction Submitted", and "Transaction Finalized" lifecycle events with security fields ([#650](https://github.com/MetaMask/internal-snaps/pull/650), [#659](https://github.com/MetaMask/internal-snaps/pull/659))
   - Add `getTransactionSecurityProperties`, which builds the security fields of a transaction event
+- Add `getScanOptions`, which returns the Security Alerts scan options (`simulation` and/or `validation`) that the user's preferences enable ([#660](https://github.com/MetaMask/internal-snaps/pull/660))
 
 ### Changed
 
