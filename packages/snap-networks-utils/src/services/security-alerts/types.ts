@@ -64,6 +64,10 @@ export type SecurityScanOutcome = {
   validation?: {
     type?: string | null;
     reason?: string | null;
+    description?: string | null;
+  } | null;
+  error?: {
+    message?: string | null;
   } | null;
 };
 

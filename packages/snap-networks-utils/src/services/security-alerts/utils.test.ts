@@ -1,31 +1,53 @@
+import { is } from '@metamask/superstruct';
+
+import type { SecurityScanOutcome } from './types';
 import {
   deriveSecurityAlert,
   getSecurityAlertDescription,
   getTransactionSecurityProperties,
   requiresMaliciousAcknowledgement,
+  TransactionSecurityPropertiesStruct,
 } from './utils';
 
 describe('getTransactionSecurityProperties', () => {
-  it('returns no fields when no response is stored', () => {
-    expect(getTransactionSecurityProperties(null)).toStrictEqual({});
-    expect(getTransactionSecurityProperties(undefined)).toStrictEqual({});
-  });
+  const scanWith = (
+    validation: SecurityScanOutcome['validation'],
+    status = 'SUCCESS',
+  ): SecurityScanOutcome => ({ status, validation });
 
   it('marks a scan in progress as loading', () => {
-    expect(
-      getTransactionSecurityProperties({ response: 'Loading' }),
-    ).toStrictEqual({
+    expect(getTransactionSecurityProperties('Loading')).toStrictEqual({
       securityAlertResponse: 'Loading',
-      securityAlertReason: 'NotApplicable',
+      securityAlertReason: 'validation_in_progress',
     });
   });
 
+  it('reports an error when the scan request failed', () => {
+    expect(getTransactionSecurityProperties(null)).toStrictEqual({
+      securityAlertResponse: 'Error',
+      securityAlertReason: 'Error',
+    });
+  });
+
+  it.each(['Warning', 'Malicious', 'Error'] as const)(
+    'reports the %s verdict from the scan with its reason',
+    (type) => {
+      expect(
+        getTransactionSecurityProperties(
+          scanWith({ type, reason: 'transfer_farming' }),
+        ),
+      ).toStrictEqual({
+        securityAlertResponse: type,
+        securityAlertReason: 'transfer_farming',
+      });
+    },
+  );
+
   it('omits the reason for benign verdicts', () => {
     expect(
-      getTransactionSecurityProperties({
-        response: 'Benign',
-        reason: 'honeypot',
-      }),
+      getTransactionSecurityProperties(
+        scanWith({ type: 'Benign', reason: 'honeypot' }),
+      ),
     ).toStrictEqual({
       securityAlertResponse: 'Benign',
     });
@@ -33,11 +55,13 @@ describe('getTransactionSecurityProperties', () => {
 
   it('includes the reason and description for warning verdicts', () => {
     expect(
-      getTransactionSecurityProperties({
-        response: 'Warning',
-        reason: 'other',
-        description: 'Suspicious transfer',
-      }),
+      getTransactionSecurityProperties(
+        scanWith({
+          type: 'Warning',
+          reason: 'other',
+          description: 'Suspicious transfer',
+        }),
+      ),
     ).toStrictEqual({
       securityAlertResponse: 'Warning',
       securityAlertReason: 'other',
@@ -47,32 +71,75 @@ describe('getTransactionSecurityProperties', () => {
 
   it('uses NotApplicable for a non-benign verdict without a reason', () => {
     expect(
-      getTransactionSecurityProperties({
-        response: 'Malicious',
-        reason: null,
-      }),
+      getTransactionSecurityProperties(
+        scanWith({ type: 'Malicious', reason: null }),
+      ),
     ).toStrictEqual({
       securityAlertResponse: 'Malicious',
       securityAlertReason: 'NotApplicable',
     });
   });
 
-  it('omits the description when the response has none', () => {
+  it('omits the description when the scan has none', () => {
+    const properties = getTransactionSecurityProperties(
+      scanWith({ type: 'Warning', reason: 'other', description: '' }),
+    );
+
+    expect(properties).not.toHaveProperty('securityAlertDescription');
+  });
+
+  it('reports an error when the scan returned an error status without a verdict', () => {
+    expect(
+      getTransactionSecurityProperties(
+        scanWith({ type: null, reason: 'other' }, 'ERROR'),
+      ),
+    ).toStrictEqual({
+      securityAlertResponse: 'Error',
+      securityAlertReason: 'Error',
+    });
+  });
+
+  it('describes an error status with the error message of the scan', () => {
+    expect(
+      getTransactionSecurityProperties({
+        status: 'ERROR',
+        validation: null,
+        error: { message: 'Simulation failed' },
+      }),
+    ).toStrictEqual({
+      securityAlertResponse: 'Error',
+      securityAlertReason: 'Error',
+      securityAlertDescription: 'Simulation failed',
+    });
+  });
+
+  it('omits the description of an error status when the error has no message', () => {
     const properties = getTransactionSecurityProperties({
-      response: 'Warning',
-      reason: 'other',
-      description: '',
+      status: 'ERROR',
+      validation: null,
+      error: { message: null },
     });
 
     expect(properties).not.toHaveProperty('securityAlertDescription');
   });
 
-  it('uses NotApplicable for an error verdict without a reason', () => {
+  it('reports an error when a successful scan has no verdict', () => {
     expect(
-      getTransactionSecurityProperties({ response: 'Error' }),
+      getTransactionSecurityProperties(scanWith({ type: null, reason: null })),
     ).toStrictEqual({
       securityAlertResponse: 'Error',
-      securityAlertReason: 'NotApplicable',
+      securityAlertReason: 'Error',
+    });
+  });
+
+  it('reports an error when the verdict is not a known security response', () => {
+    expect(
+      getTransactionSecurityProperties(
+        scanWith({ type: 'Unknown', reason: 'transfer_farming' }),
+      ),
+    ).toStrictEqual({
+      securityAlertResponse: 'Error',
+      securityAlertReason: 'Error',
     });
   });
 });
@@ -140,4 +207,61 @@ describe('requiresMaliciousAcknowledgement', () => {
       expect(requiresMaliciousAcknowledgement(true, alert)).toBe(false);
     },
   );
+});
+
+describe('TransactionSecurityPropertiesStruct', () => {
+  it('accepts an empty object, since every field is optional', () => {
+    expect(is({}, TransactionSecurityPropertiesStruct)).toBe(true);
+  });
+
+  it('accepts every security verdict', () => {
+    const verdicts = [
+      'Benign',
+      'Warning',
+      'Malicious',
+      'Error',
+      'Loading',
+      'NotApplicable',
+    ];
+
+    verdicts.forEach((securityAlertResponse) => {
+      expect(
+        is({ securityAlertResponse }, TransactionSecurityPropertiesStruct),
+      ).toBe(true);
+    });
+  });
+
+  it('accepts a reason and a description', () => {
+    expect(
+      is(
+        {
+          securityAlertResponse: 'Warning',
+          securityAlertReason: 'validation_in_progress',
+          securityAlertDescription: 'Known scam address',
+        },
+        TransactionSecurityPropertiesStruct,
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects an unknown security verdict', () => {
+    expect(
+      is(
+        { securityAlertResponse: 'Unknown' },
+        TransactionSecurityPropertiesStruct,
+      ),
+    ).toBe(false);
+  });
+
+  it('rejects a reason that is not a string', () => {
+    expect(
+      is({ securityAlertReason: 1 }, TransactionSecurityPropertiesStruct),
+    ).toBe(false);
+  });
+
+  it('rejects unknown keys', () => {
+    expect(
+      is({ transactionType: 'send' }, TransactionSecurityPropertiesStruct),
+    ).toBe(false);
+  });
 });
