@@ -104,6 +104,21 @@ describe('extractSpecialAssetsFromMetadata', () => {
     expect(result.size).toBe(0);
   });
 
+  it('ignores invalid numeric strings', () => {
+    const result = extractSpecialAssetsFromMetadata({
+      accountId: ACCOUNT_ID,
+      assets: [
+        createAsset(KnownCaip19Id.TrxMainnet, {
+          energy: { available: '', limit: 'NaN' },
+          bandwidth: { available: 'Infinity', limit: 'not-a-number' },
+          staking: { rewards: ' 1' },
+        }),
+      ],
+    });
+
+    expect(result.size).toBe(0);
+  });
+
   it('accepts finite numbers and skips malformed sections', () => {
     const result = extractSpecialAssetsFromMetadata({
       accountId: ACCOUNT_ID,

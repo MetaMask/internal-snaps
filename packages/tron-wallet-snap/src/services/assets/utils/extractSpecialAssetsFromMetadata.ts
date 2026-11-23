@@ -7,9 +7,11 @@ import { toUiAmount } from '../../../utils/conversion';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const NUMERIC_STRING = /^-?\d+(\.\d+)?$/u;
+
 const readAmount = (value: unknown): string | undefined => {
   if (typeof value === 'string') {
-    return value;
+    return NUMERIC_STRING.test(value) ? value : undefined;
   }
 
   return typeof value === 'number' && Number.isFinite(value)

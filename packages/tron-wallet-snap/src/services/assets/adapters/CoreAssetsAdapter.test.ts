@@ -182,6 +182,17 @@ describe('CoreAssetsAdapter', () => {
         expect(asset).toBeNull();
       });
     });
+
+    it('returns null when a snap owned asset cannot be resolved', async () => {
+      await withCoreAssetsAdapter(async ({ adapter }) => {
+        const asset = await adapter.getAccountAssetByID(
+          ACCOUNT_ID,
+          ENERGY_ASSET_ID,
+        );
+
+        expect(asset).toBeNull();
+      });
+    });
   });
 
   describe('getAccountAssetsByIDs', () => {
@@ -308,6 +319,30 @@ describe('CoreAssetsAdapter', () => {
     it('falls back to the legacy special asset when metadata is absent', async () => {
       await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
         mockAssetsProvider.getAccountAssetsByIDs.mockResolvedValue({
+          [ENERGY_ASSET_ID]: createControllerAsset({
+            id: ENERGY_ASSET_ID,
+            amount: '42',
+            symbol: 'ENERGY',
+            decimals: 0,
+          }),
+        });
+
+        const [asset] = await adapter.getAccountAssetsByIDs(ACCOUNT_ID, [
+          ENERGY_ASSET_ID,
+        ]);
+
+        expect(asset).toMatchObject({ rawAmount: '42', uiAmount: '42' });
+      });
+    });
+
+    it('falls back to the legacy special asset when metadata is invalid', async () => {
+      await withCoreAssetsAdapter(async ({ adapter, mockAssetsProvider }) => {
+        mockAssetsProvider.getAccountAssetsByIDs.mockResolvedValue({
+          [MAINNET_ASSET_ID]: createControllerAsset({
+            id: MAINNET_ASSET_ID,
+            amount: '0',
+            balanceMetadata: { energy: { available: 'NaN' } },
+          }),
           [ENERGY_ASSET_ID]: createControllerAsset({
             id: ENERGY_ASSET_ID,
             amount: '42',
