@@ -186,6 +186,36 @@ function validateTokenChange(
   );
 }
 
+function validateSignerEffects(
+  signer: Address,
+  pre: ChainAccount | null,
+  post: ChainAccount | null,
+  { user, payer }: PreparedTransaction,
+  userFee: bigint,
+): void {
+  // A sponsored wallet can own token accounts without a native SOL account.
+  if (signer === user && payer !== user && pre === null && post === null) {
+    return;
+  }
+  requireValid(
+    pre &&
+      post &&
+      pre.owner === SYSTEM_PROGRAM_ADDRESS &&
+      post.owner === pre.owner &&
+      !pre.executable &&
+      !post.executable &&
+      pre.data[0] === '' &&
+      post.data[0] === '',
+    'invalid signer account',
+  );
+  if (signer === user) {
+    requireValid(
+      post.lamports === pre.lamports - userFee,
+      'unexpected user SOL movement',
+    );
+  }
+}
+
 function validatePaymentInstruction(
   instruction: PackPartnerInstruction,
   {
@@ -526,7 +556,6 @@ export class PackPartnerSigner {
       amount,
       user,
       provider,
-      payer,
       userUsdc,
       providerUsdc,
     } = prepared;
@@ -537,46 +566,14 @@ export class PackPartnerSigner {
         pre !== undefined && post !== undefined,
         'missing simulated account',
       );
-      if (accountAddress === userUsdc || accountAddress === providerUsdc) {
-        const userDelta = -amount;
-        validateTokenChange(
-          pre,
-          post,
-          accountAddress === userUsdc ? user : provider,
-          accountAddress === userUsdc ? userDelta : -userDelta,
-          usdcMint,
-          // Pack Partner's shared treasury changes between independent RPC
-          // reads. The single decoded transfer and user balance prove the exact
-          // amount; only the treasury's mint, owner and authority are compared.
-          accountAddress === userUsdc,
-        );
+      if (accountAddress === userUsdc) {
+        validateTokenChange(pre, post, user, -amount, usdcMint);
+      } else if (accountAddress === providerUsdc) {
+        // The shared treasury can move between RPC snapshots. The decoded
+        // payment and the user's exact debit already bind the transfer amount.
+        validateTokenChange(pre, post, provider, amount, usdcMint, false);
       } else if (accountAddress === user || accountAddress === provider) {
-        // A sponsored wallet can own token accounts without holding any SOL.
-        if (
-          accountAddress === user &&
-          payer !== user &&
-          pre === null &&
-          post === null
-        ) {
-          continue;
-        }
-        requireValid(
-          pre &&
-            post &&
-            pre.owner === SYSTEM_PROGRAM_ADDRESS &&
-            post.owner === pre.owner &&
-            !pre.executable &&
-            !post.executable &&
-            pre.data[0] === '' &&
-            post.data[0] === '',
-          'invalid signer account',
-        );
-        if (accountAddress === user) {
-          requireValid(
-            post.lamports === pre.lamports - userFee,
-            'unexpected user SOL movement',
-          );
-        }
+        validateSignerEffects(accountAddress, pre, post, prepared, userFee);
       } else {
         requireValid(sameAccount(pre, post), 'unexpected account change');
       }
