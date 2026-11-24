@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Load the shared merged locale catalog from `@metamask/snap-networks-utils` instead of per-snap `locales/` directories, reusing the same strings across snaps; conflicting shared copy is unified, which slightly changes some user-facing strings ([#575](https://github.com/MetaMask/internal-snaps/pull/575))
+
 ## [4.5.0]
 
 ### Added

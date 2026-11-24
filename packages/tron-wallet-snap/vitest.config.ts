@@ -38,7 +38,10 @@ export default mergeConfig(
         exclude: ['src/utils/logger.ts'],
         thresholds: {
           branches: 77.31,
-          functions: 86.5,
+          // Re-derived after the locale catalogs moved to
+          // `@metamask/snap-networks-utils`: the shared `createI18n` replaced
+          // fully-covered local i18n code, slightly lowering the ratio.
+          functions: 86.48,
           lines: 87.63,
           statements: 87.55,
         },
