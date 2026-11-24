@@ -1,0 +1,1133 @@
+{
+  "amount": {
+    "message": "Amount"
+  },
+  "asset": {
+    "message": "Asset"
+  },
+  "balance": {
+    "message": "Balance"
+  },
+  "base58": {
+    "message": "Invalid Bitcoin address"
+  },
+  "bech32": {
+    "message": "Invalid Bitcoin address"
+  },
+  "cancel": {
+    "message": "Cancel"
+  },
+  "clear": {
+    "message": "Clear"
+  },
+  "confirmation.account": {
+    "message": "Account"
+  },
+  "confirmation.accountActivation.address": {
+    "message": "Stellar address"
+  },
+  "confirmation.accountActivation.callToAction": {
+    "message": "Add XLM to your wallet to get started."
+  },
+  "confirmation.accountActivation.copyAddress": {
+    "message": "Copy Address"
+  },
+  "confirmation.accountActivation.description": {
+    "message": "On Stellar, your wallet must hold a minimum of 1 XLM before you can hold other assets."
+  },
+  "confirmation.accountActivation.title": {
+    "message": "Activate Stellar Wallet"
+  },
+  "confirmation.advanced.data": {
+    "message": "Data"
+  },
+  "confirmation.advanced.hide": {
+    "message": "Hide advanced"
+  },
+  "confirmation.advanced.programId": {
+    "message": "Program ID"
+  },
+  "confirmation.advanced.show": {
+    "message": "Show advanced"
+  },
+  "confirmation.advanced.unknownInstruction": {
+    "message": "Unknown"
+  },
+  "confirmation.asset": {
+    "message": "Asset"
+  },
+  "confirmation.authorization.authorizedAddress": {
+    "message": "Authorized address"
+  },
+  "confirmation.authorization.heading": {
+    "message": "Authorizations"
+  },
+  "confirmation.bandwidthConsumed": {
+    "message": "Bandwidth consumed"
+  },
+  "confirmation.cancelButton": {
+    "message": "Cancel"
+  },
+  "confirmation.closeButton": {
+    "message": "Close"
+  },
+  "confirmation.confirmButton": {
+    "message": "Confirm"
+  },
+  "confirmation.estimatedChanges": {
+    "message": "Estimated changes"
+  },
+  "confirmation.estimatedChanges.noChanges": {
+    "message": "No estimated changes"
+  },
+  "confirmation.estimatedChanges.notAvailable": {
+    "message": "Estimated changes are not available"
+  },
+  "confirmation.estimatedChanges.receive": {
+    "message": "You receive"
+  },
+  "confirmation.estimatedChanges.send": {
+    "message": "You send"
+  },
+  "confirmation.estimatedChanges.title": {
+    "message": "Estimated changes"
+  },
+  "confirmation.estimatedChanges.tooltip": {
+    "message": "Estimated changes are what might happen if you go through with this transaction. This is just a prediction, not a guarantee."
+  },
+  "confirmation.estimatedChanges.unsupportedContract": {
+    "message": "Unsupported contract for simulation"
+  },
+  "confirmation.estimatedChanges.witnessCreate": {
+    "message": "Registers your account as a Super Representative candidate and permanently burns 9,999 TRX."
+  },
+  "confirmation.fee": {
+    "message": "Network fee"
+  },
+  "confirmation.feeError": {
+    "message": "Unable to estimate fee"
+  },
+  "confirmation.from": {
+    "message": "From"
+  },
+  "confirmation.invocation.argument": {
+    "message": "Argument {index}"
+  },
+  "confirmation.invocation.contractAddress": {
+    "message": "Contract Address"
+  },
+  "confirmation.invocation.functionName": {
+    "message": "Function"
+  },
+  "confirmation.maliciousAck.back": {
+    "message": "Go back"
+  },
+  "confirmation.maliciousAck.checkbox": {
+    "message": "I have acknowledged the risk and still want to proceed"
+  },
+  "confirmation.maliciousAck.description": {
+    "message": "Security partners found high-risk signals in this request. If you continue, your funds can't be recovered."
+  },
+  "confirmation.maliciousAck.proceed": {
+    "message": "Confirm"
+  },
+  "confirmation.maliciousAck.title": {
+    "message": "High-risk request"
+  },
+  "confirmation.memo": {
+    "message": "Memo"
+  },
+  "confirmation.memo.add": {
+    "message": "Add"
+  },
+  "confirmation.memo.back": {
+    "message": "Back"
+  },
+  "confirmation.memo.description": {
+    "message": "Some accounts require a memo. Without it, your transfer may be delayed or lost."
+  },
+  "confirmation.memo.error.saveFailed": {
+    "message": "Could not save memo. Please try again."
+  },
+  "confirmation.memo.error.tooLong": {
+    "message": "Memo must be 28 bytes or fewer"
+  },
+  "confirmation.memo.none": {
+    "message": "None"
+  },
+  "confirmation.memo.placeholder": {
+    "message": "Enter memo"
+  },
+  "confirmation.memo.save": {
+    "message": "Save"
+  },
+  "confirmation.memo.title": {
+    "message": "Transaction memo"
+  },
+  "confirmation.memo.update": {
+    "message": "Update"
+  },
+  "confirmation.network": {
+    "message": "Network"
+  },
+  "confirmation.origin": {
+    "message": "Request from"
+  },
+  "confirmation.origin.tooltip": {
+    "message": "This is the site asking for your confirmation."
+  },
+  "confirmation.paidBy": {
+    "message": "Fee paid by"
+  },
+  "confirmation.paidBy.tooltip": {
+    "message": "Another account in your wallet pays the network fee for this transaction."
+  },
+  "confirmation.paidToSponsor": {
+    "message": "Paid to sponsor"
+  },
+  "confirmation.recipient": {
+    "message": "Recipient"
+  },
+  "confirmation.rent": {
+    "message": "Account rent"
+  },
+  "confirmation.rent.tooltip": {
+    "message": "SOL you set aside to create new accounts. You get it back when the accounts are closed."
+  },
+  "confirmation.requestOrigin": {
+    "message": "Request from"
+  },
+  "confirmation.reviewAlertsButton": {
+    "message": "Review alert"
+  },
+  "confirmation.securityScanAPIErrorMessage": {
+    "message": "Only continue if you trust every address involved."
+  },
+  "confirmation.securityScanAPIErrorTitle": {
+    "message": "Security scan failed"
+  },
+  "confirmation.securityScanErrorSubtitle": {
+    "message": "{reason}"
+  },
+  "confirmation.securityScanErrorTitle": {
+    "message": "Security scan failed"
+  },
+  "confirmation.securityScanInProgressMessage": {
+    "message": "This usually takes a few seconds."
+  },
+  "confirmation.securityScanInProgressTitle": {
+    "message": "Checking for security issues"
+  },
+  "confirmation.securityScanIncompleteSubtitle": {
+    "message": "{reason}. Only continue if you trust every address involved."
+  },
+  "confirmation.securityScanIncompleteTitle": {
+    "message": "Security scan incomplete"
+  },
+  "confirmation.securityScanUnavailableMessage": {
+    "message": "We couldn't complete this safety check. Only continue if you trust this site and/or every address involved."
+  },
+  "confirmation.securityScanUnavailableTitle": {
+    "message": "Security check unavailable"
+  },
+  "confirmation.sendAndConfirmTransaction.title": {
+    "message": "Sending and confirming transaction"
+  },
+  "confirmation.signAndSendTransaction.selfSend.description": {
+    "message": "The recipient address belongs to this wallet. The amount will stay in your account, but network fees still apply."
+  },
+  "confirmation.signAndSendTransaction.selfSend.title": {
+    "message": "Sending to your own address"
+  },
+  "confirmation.signAndSendTransaction.title": {
+    "message": "Transaction request"
+  },
+  "confirmation.signAuthEntry.expiresAt": {
+    "message": "Expires at ledger"
+  },
+  "confirmation.signAuthEntry.nonce": {
+    "message": "Nonce"
+  },
+  "confirmation.signAuthEntry.title": {
+    "message": "Authorize smart contract"
+  },
+  "confirmation.signAuthEntry.warning": {
+    "message": "You are authorizing a smart contract to act on your behalf. Only approve if you trust this site."
+  },
+  "confirmation.signChangeTrustOptIn.title": {
+    "message": "Add {asset} trustline"
+  },
+  "confirmation.signChangeTrustOptIn.updateTitle": {
+    "message": "Update {asset} trustline limit"
+  },
+  "confirmation.signChangeTrustOptOut.title": {
+    "message": "Remove {asset} trustline"
+  },
+  "confirmation.signIn.badAccount": {
+    "message": "This site is asking you to sign in using the wrong account."
+  },
+  "confirmation.signIn.badDomain": {
+    "message": "This site is asking you to sign in using the wrong domain."
+  },
+  "confirmation.signIn.chainId": {
+    "message": "Chain ID"
+  },
+  "confirmation.signIn.description": {
+    "message": "A site wants you to sign in to prove you own this account."
+  },
+  "confirmation.signIn.domain": {
+    "message": "Domain"
+  },
+  "confirmation.signIn.expirationTime": {
+    "message": "Expiration time"
+  },
+  "confirmation.signIn.issuedAt": {
+    "message": "Issued at"
+  },
+  "confirmation.signIn.message": {
+    "message": "Message"
+  },
+  "confirmation.signIn.nonce": {
+    "message": "Nonce"
+  },
+  "confirmation.signIn.notBefore": {
+    "message": "Not before"
+  },
+  "confirmation.signIn.requestId": {
+    "message": "Request ID"
+  },
+  "confirmation.signIn.resources": {
+    "message": "Resources"
+  },
+  "confirmation.signIn.signingInWith": {
+    "message": "Signing in with"
+  },
+  "confirmation.signIn.statement": {
+    "message": "Statement"
+  },
+  "confirmation.signIn.title": {
+    "message": "Sign-in request"
+  },
+  "confirmation.signIn.unknownDomain": {
+    "message": "Unknown domain"
+  },
+  "confirmation.signIn.version": {
+    "message": "Version"
+  },
+  "confirmation.signMessage.confirmButton": {
+    "message": "Sign"
+  },
+  "confirmation.signMessage.message": {
+    "message": "Message"
+  },
+  "confirmation.signMessage.title": {
+    "message": "Sign message"
+  },
+  "confirmation.signPsbt.confirmButton": {
+    "message": "Sign"
+  },
+  "confirmation.signPsbt.inputs": {
+    "message": "Inputs"
+  },
+  "confirmation.signPsbt.options": {
+    "message": "Options"
+  },
+  "confirmation.signPsbt.options.broadcast": {
+    "message": "Broadcast after signing"
+  },
+  "confirmation.signPsbt.options.fill": {
+    "message": "Auto-fill inputs"
+  },
+  "confirmation.signPsbt.output.change": {
+    "message": "Change"
+  },
+  "confirmation.signPsbt.output.opReturn": {
+    "message": "OP_RETURN (data)"
+  },
+  "confirmation.signPsbt.output.unknown": {
+    "message": "Unknown script"
+  },
+  "confirmation.signPsbt.outputs": {
+    "message": "Transaction outputs"
+  },
+  "confirmation.signPsbt.rawPsbt": {
+    "message": "Raw PSBT"
+  },
+  "confirmation.signPsbt.title": {
+    "message": "Sign Transaction"
+  },
+  "confirmation.signTransaction.title": {
+    "message": "Sign transaction"
+  },
+  "confirmation.simulationErrorSubtitle": {
+    "message": "{reason}"
+  },
+  "confirmation.simulationErrorTitle": {
+    "message": "This transaction is expected to fail."
+  },
+  "confirmation.simulationMessageAPIError": {
+    "message": "We couldn't complete this safety check. Only continue if you trust this site and/or every address involved."
+  },
+  "confirmation.simulationTitleAPIError": {
+    "message": "Security check unavailable"
+  },
+  "confirmation.sponsoredBy": {
+    "message": "Sponsored by"
+  },
+  "confirmation.sponsoredBy.tooltip": {
+    "message": "This account pays the network fee for this transaction."
+  },
+  "confirmation.to": {
+    "message": "To"
+  },
+  "confirmation.transaction.accountmerge": {
+    "message": "Merge account"
+  },
+  "confirmation.transaction.allowtrust": {
+    "message": "Allow trust"
+  },
+  "confirmation.transaction.beginsponsoringfuturereserves": {
+    "message": "Begin sponsoring future reserves"
+  },
+  "confirmation.transaction.bumpsequence": {
+    "message": "Bump sequence"
+  },
+  "confirmation.transaction.changetrust": {
+    "message": "Change trust line"
+  },
+  "confirmation.transaction.claimclaimablebalance": {
+    "message": "Claim claimable balance"
+  },
+  "confirmation.transaction.clawback": {
+    "message": "Clawback"
+  },
+  "confirmation.transaction.clawbackclaimablebalance": {
+    "message": "Clawback claimable balance"
+  },
+  "confirmation.transaction.createaccount": {
+    "message": "Create account"
+  },
+  "confirmation.transaction.createclaimablebalance": {
+    "message": "Create claimable balance"
+  },
+  "confirmation.transaction.createpassiveselloffer": {
+    "message": "Create passive sell offer"
+  },
+  "confirmation.transaction.endsponsoringfuturereserves": {
+    "message": "End sponsoring future reserves"
+  },
+  "confirmation.transaction.extendfootprintttl": {
+    "message": "Extend footprint TTL"
+  },
+  "confirmation.transaction.inflation": {
+    "message": "Inflation"
+  },
+  "confirmation.transaction.invokehostfunction": {
+    "message": "Invoke host function"
+  },
+  "confirmation.transaction.liquiditypooldeposit": {
+    "message": "Liquidity pool deposit"
+  },
+  "confirmation.transaction.liquiditypoolwithdraw": {
+    "message": "Liquidity pool withdraw"
+  },
+  "confirmation.transaction.managebuyoffer": {
+    "message": "Manage buy offer"
+  },
+  "confirmation.transaction.managedata": {
+    "message": "Manage data"
+  },
+  "confirmation.transaction.manageselloffer": {
+    "message": "Manage sell offer"
+  },
+  "confirmation.transaction.param.account": {
+    "message": "Account"
+  },
+  "confirmation.transaction.param.amount": {
+    "message": "Amount"
+  },
+  "confirmation.transaction.param.argument": {
+    "message": "Argument {index}"
+  },
+  "confirmation.transaction.param.arguments": {
+    "message": "Arguments"
+  },
+  "confirmation.transaction.param.asset": {
+    "message": "Asset"
+  },
+  "confirmation.transaction.param.assetCode": {
+    "message": "Asset code"
+  },
+  "confirmation.transaction.param.authorize": {
+    "message": "Authorize"
+  },
+  "confirmation.transaction.param.authorizedAddress": {
+    "message": "Authorized address"
+  },
+  "confirmation.transaction.param.balanceId": {
+    "message": "Balance ID"
+  },
+  "confirmation.transaction.param.bumpTo": {
+    "message": "Bump to"
+  },
+  "confirmation.transaction.param.buyAmount": {
+    "message": "Buy amount"
+  },
+  "confirmation.transaction.param.buying": {
+    "message": "Buying"
+  },
+  "confirmation.transaction.param.claimants": {
+    "message": "Claimants"
+  },
+  "confirmation.transaction.param.clearFlags": {
+    "message": "Clear flags"
+  },
+  "confirmation.transaction.param.contractId": {
+    "message": "Contract Address"
+  },
+  "confirmation.transaction.param.deployer": {
+    "message": "Deployer"
+  },
+  "confirmation.transaction.param.destAmount": {
+    "message": "Destination amount"
+  },
+  "confirmation.transaction.param.destAsset": {
+    "message": "Destination asset"
+  },
+  "confirmation.transaction.param.destMin": {
+    "message": "Destination minimum"
+  },
+  "confirmation.transaction.param.destination": {
+    "message": "Destination"
+  },
+  "confirmation.transaction.param.executableOwner": {
+    "message": "Executable Owner"
+  },
+  "confirmation.transaction.param.executableTag": {
+    "message": "Executable Tag"
+  },
+  "confirmation.transaction.param.executableType": {
+    "message": "Executable Type"
+  },
+  "confirmation.transaction.param.executableWasmHash": {
+    "message": "Executable Wasm Hash"
+  },
+  "confirmation.transaction.param.extendTo": {
+    "message": "Extend to"
+  },
+  "confirmation.transaction.param.flags": {
+    "message": "Flags"
+  },
+  "confirmation.transaction.param.from": {
+    "message": "From"
+  },
+  "confirmation.transaction.param.functionName": {
+    "message": "Function"
+  },
+  "confirmation.transaction.param.highThreshold": {
+    "message": "High threshold"
+  },
+  "confirmation.transaction.param.homeDomain": {
+    "message": "Home domain"
+  },
+  "confirmation.transaction.param.hostFunctionXdrBase64": {
+    "message": "Host function (XDR, base64)"
+  },
+  "confirmation.transaction.param.inflationDest": {
+    "message": "Inflation destination"
+  },
+  "confirmation.transaction.param.limit": {
+    "message": "Limit"
+  },
+  "confirmation.transaction.param.line": {
+    "message": "Trust line"
+  },
+  "confirmation.transaction.param.liquidityPoolId": {
+    "message": "Liquidity pool ID"
+  },
+  "confirmation.transaction.param.lowThreshold": {
+    "message": "Low threshold"
+  },
+  "confirmation.transaction.param.masterWeight": {
+    "message": "Master weight"
+  },
+  "confirmation.transaction.param.maxAmountA": {
+    "message": "Max amount A"
+  },
+  "confirmation.transaction.param.maxAmountB": {
+    "message": "Max amount B"
+  },
+  "confirmation.transaction.param.maxPrice": {
+    "message": "Max price"
+  },
+  "confirmation.transaction.param.medThreshold": {
+    "message": "Medium threshold"
+  },
+  "confirmation.transaction.param.minAmountA": {
+    "message": "Min amount A"
+  },
+  "confirmation.transaction.param.minAmountB": {
+    "message": "Min amount B"
+  },
+  "confirmation.transaction.param.minPrice": {
+    "message": "Min price"
+  },
+  "confirmation.transaction.param.name": {
+    "message": "Name"
+  },
+  "confirmation.transaction.param.note": {
+    "message": "Note"
+  },
+  "confirmation.transaction.param.offerId": {
+    "message": "Offer ID"
+  },
+  "confirmation.transaction.param.path": {
+    "message": "Path"
+  },
+  "confirmation.transaction.param.price": {
+    "message": "Price"
+  },
+  "confirmation.transaction.param.salt": {
+    "message": "Salt"
+  },
+  "confirmation.transaction.param.seller": {
+    "message": "Seller"
+  },
+  "confirmation.transaction.param.selling": {
+    "message": "Selling"
+  },
+  "confirmation.transaction.param.sendAmount": {
+    "message": "Send amount"
+  },
+  "confirmation.transaction.param.sendAsset": {
+    "message": "Send asset"
+  },
+  "confirmation.transaction.param.sendMax": {
+    "message": "Send max"
+  },
+  "confirmation.transaction.param.setFlags": {
+    "message": "Set flags"
+  },
+  "confirmation.transaction.param.signer": {
+    "message": "Signer"
+  },
+  "confirmation.transaction.param.signerEd25519": {
+    "message": "Signer (public key)"
+  },
+  "confirmation.transaction.param.signerPreAuthTx": {
+    "message": "Signer (pre-auth tx)"
+  },
+  "confirmation.transaction.param.signerSha256Hash": {
+    "message": "Signer (SHA-256)"
+  },
+  "confirmation.transaction.param.signerSignedPayload": {
+    "message": "Signer (signed payload)"
+  },
+  "confirmation.transaction.param.signerWeight": {
+    "message": "Signer weight"
+  },
+  "confirmation.transaction.param.source": {
+    "message": "Source"
+  },
+  "confirmation.transaction.param.sponsoredId": {
+    "message": "Sponsored account"
+  },
+  "confirmation.transaction.param.startingBalance": {
+    "message": "Starting balance"
+  },
+  "confirmation.transaction.param.trustor": {
+    "message": "Trustor"
+  },
+  "confirmation.transaction.param.valueBase64": {
+    "message": "Value (base64)"
+  },
+  "confirmation.transaction.pathpaymentstrictreceive": {
+    "message": "Path payment (strict receive)"
+  },
+  "confirmation.transaction.pathpaymentstrictsend": {
+    "message": "Path payment (strict send)"
+  },
+  "confirmation.transaction.payment": {
+    "message": "Payment"
+  },
+  "confirmation.transaction.restorefootprint": {
+    "message": "Restore footprint"
+  },
+  "confirmation.transaction.revokeaccountsponsorship": {
+    "message": "Revoke account sponsorship"
+  },
+  "confirmation.transaction.revokeclaimablebalancesponsorship": {
+    "message": "Revoke claimable balance sponsorship"
+  },
+  "confirmation.transaction.revokedatasponsorship": {
+    "message": "Revoke data sponsorship"
+  },
+  "confirmation.transaction.revokeliquiditypoolsponsorship": {
+    "message": "Revoke liquidity pool sponsorship"
+  },
+  "confirmation.transaction.revokeoffersponsorship": {
+    "message": "Revoke offer sponsorship"
+  },
+  "confirmation.transaction.revokesignersponsorship": {
+    "message": "Revoke signer sponsorship"
+  },
+  "confirmation.transaction.revoketrustlinesponsorship": {
+    "message": "Revoke trustline sponsorship"
+  },
+  "confirmation.transaction.setoptions": {
+    "message": "Set options"
+  },
+  "confirmation.transaction.settrustlineflags": {
+    "message": "Set trust line flags"
+  },
+  "confirmation.transaction.title": {
+    "message": "Transaction request"
+  },
+  "confirmation.transactionFee": {
+    "message": "Network fee"
+  },
+  "confirmation.txnError.expired": {
+    "message": "This transaction has expired. Close this request and try again."
+  },
+  "confirmation.txnError.generic": {
+    "message": "This transaction cannot be completed. Close this request and try again."
+  },
+  "confirmation.txnError.insufficientBalance": {
+    "message": "Insufficient balance for this transaction."
+  },
+  "confirmation.txnError.insufficientBalanceToCoverBaseReserve": {
+    "message": "Insufficient balance to cover the account reserve."
+  },
+  "confirmation.txnError.insufficientBalanceToCoverFee": {
+    "message": "Insufficient balance to cover the network fee."
+  },
+  "confirmation.txnError.invalidCreateAccountAmount": {
+    "message": "Update Send Amount. A new account requires 1 XLM minimum."
+  },
+  "confirmation.txnError.invalidCreateAccountAsset": {
+    "message": "The recipient's account must hold 1 XLM before it can receive this asset."
+  },
+  "confirmation.txnError.requiresMemo": {
+    "message": "This account requires a memo. Add a memo to continue."
+  },
+  "confirmation.txnError.trustlineExceedLimit": {
+    "message": "This payment would exceed the destination's trustline limit."
+  },
+  "confirmation.txnError.trustlineNonZeroBalance": {
+    "message": "Send or swap the remaining balance before removing this trustline."
+  },
+  "confirmation.txnError.trustlineNotAuthorized": {
+    "message": "The destination is not authorized to receive this asset."
+  },
+  "confirmation.txnError.trustlineNotFound": {
+    "message": "The destination has not activated a trustline for this asset."
+  },
+  "confirmation.txnError.trustlineNotFoundOnAccount": {
+    "message": "This account has not activated a trustline for this asset."
+  },
+  "confirmation.txnError.updateTrustlineLimit": {
+    "message": "The new trustline limit cannot be below the current balance."
+  },
+  "confirmation.validationErrorLearnMore": {
+    "message": "See details"
+  },
+  "confirmation.validationErrorSecurityAdviced": {
+    "message": "Powered by"
+  },
+  "confirmation.validationErrorSubtitle": {
+    "message": "If you approve this request, a third party known for scams will take all your assets."
+  },
+  "confirmation.validationErrorTitle": {
+    "message": "This is a deceptive request"
+  },
+  "confirmation.validationScanErrorSubtitle": {
+    "message": "{reason}"
+  },
+  "confirmation.validationScanErrorTitle": {
+    "message": "Security check unavailable"
+  },
+  "confirmation.validationWarningSubtitle": {
+    "message": "Only continue if you trust this site and/or every address involved."
+  },
+  "confirmation.validationWarningTitle": {
+    "message": "This request may be risky"
+  },
+  "confirmation.youPay": {
+    "message": "You pay"
+  },
+  "confirmation.youPay.free": {
+    "message": "Free"
+  },
+  "confirmation.youPay.free.tooltip": {
+    "message": "The sponsor pays the network fee and this transaction doesn't charge you any fee or rent. Any transfers are listed in the estimated changes."
+  },
+  "confirmation.youPay.mayCostMore.tooltip": {
+    "message": "MetaMask can't confirm this transaction won't charge you more than shown."
+  },
+  "confirmation.youPay.notFree": {
+    "message": "Not free"
+  },
+  "confirmation.youPay.uncheckedPrograms": {
+    "message": "MetaMask couldn't simulate the transaction and can't check these programs: {programs}."
+  },
+  "confirmation.youPay.unverified": {
+    "message": "Can't confirm"
+  },
+  "confirmation.youPay.unverified.tooltip": {
+    "message": "The sponsor pays the network fee, but MetaMask can't confirm this transaction won't charge you. Review the estimated changes."
+  },
+  "continue": {
+    "message": "Continue"
+  },
+  "descriptor": {
+    "message": "Failed to build transaction: invalid descriptor"
+  },
+  "error": {
+    "message": "Error"
+  },
+  "error.0": {
+    "message": "Invalid format"
+  },
+  "error.1000": {
+    "message": "Validation failed"
+  },
+  "error.2000": {
+    "message": "Resource not found"
+  },
+  "error.3000": {
+    "message": "Connection error"
+  },
+  "error.3100": {
+    "message": "One or more accounts failed to synchronize"
+  },
+  "error.4000": {
+    "message": "Wallet state corrupted"
+  },
+  "error.5000": {
+    "message": "Storage error"
+  },
+  "error.6000": {
+    "message": "Method not implemented or not supported"
+  },
+  "error.7000": {
+    "message": "Permission denied or insufficient authorization"
+  },
+  "error.8000": {
+    "message": "User action error"
+  },
+  "error.9000": {
+    "message": "Corrupted state, invariant not respected or failed assertion."
+  },
+  "error.internal": {
+    "message": "Internal error. Please try again later or contact support"
+  },
+  "feeRate": {
+    "message": "Fee rate"
+  },
+  "feeRateTooLow": {
+    "message": "Fee rate too low"
+  },
+  "feeTooLow": {
+    "message": "Fee too low"
+  },
+  "from": {
+    "message": "From"
+  },
+  "inputTooLarge": {
+    "message": "Invalid amount: too large"
+  },
+  "insufficientFunds": {
+    "message": "Funds are insufficient to cover amount plus fee"
+  },
+  "invalidBase58PayloadLength": {
+    "message": "Invalid Bitcoin address: invalid length"
+  },
+  "invalidCharacter": {
+    "message": "Invalid amount: invalid character"
+  },
+  "invalidLegacyPrefix": {
+    "message": "Invalid Bitcoin address: invalid legacy prefix"
+  },
+  "legacyAddressTooLong": {
+    "message": "Invalid Bitcoin address"
+  },
+  "lockTime": {
+    "message": "Failed to build transaction: requested lock time is too early"
+  },
+  "max": {
+    "message": "Max"
+  },
+  "miniscriptPsbt": {
+    "message": "Failed to build transaction: invalid miniscript PSBT"
+  },
+  "minutes": {
+    "message": "min"
+  },
+  "missingDigits": {
+    "message": "Invalid amount: missing digits"
+  },
+  "missingKeyOrigin": {
+    "message": "Invalid Bitcoin address: extended key is missing the origin"
+  },
+  "missingNonWitnessUtxo": {
+    "message": "Failed to build transaction: missing non-witness UTXO"
+  },
+  "network": {
+    "message": "Network"
+  },
+  "networkFee": {
+    "message": "Network fee"
+  },
+  "networkFeeTooltip": {
+    "message": "The total network fee"
+  },
+  "networkValidation": {
+    "message": "Invalid Bitcoin address: wrong network"
+  },
+  "no": {
+    "message": "No"
+  },
+  "noRecipients": {
+    "message": "Missing recipients"
+  },
+  "noUtxosSelected": {
+    "message": "Failed to build transaction: missing UTXOs"
+  },
+  "outOfRange": {
+    "message": "Invalid amount: out of range"
+  },
+  "outputBelowDustLimit": {
+    "message": "Amount below dust limit"
+  },
+  "policy": {
+    "message": "Failed to build transaction: invalid policy"
+  },
+  "psbt": {
+    "message": "Invalid PSBT"
+  },
+  "rbfSequenceCsv": {
+    "message": "Failed to build transaction: cannot enable RBF with a required OP_CSV"
+  },
+  "recipient": {
+    "message": "Recipient"
+  },
+  "recipientPlaceholder": {
+    "message": "Enter receiving address"
+  },
+  "review": {
+    "message": "Review"
+  },
+  "send": {
+    "message": "Send"
+  },
+  "send.amountField": {
+    "message": "Amount"
+  },
+  "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+    "message": "Amount must be greater than {minimumValue}"
+  },
+  "send.amountRequiredError": {
+    "message": "Amount is required"
+  },
+  "send.assetField": {
+    "message": "Token"
+  },
+  "send.balance": {
+    "message": "Balance"
+  },
+  "send.cancelButton": {
+    "message": "Cancel"
+  },
+  "send.confirmation.cancelButton": {
+    "message": "Cancel"
+  },
+  "send.confirmation.fee": {
+    "message": "Network fee"
+  },
+  "send.confirmation.from": {
+    "message": "From"
+  },
+  "send.confirmation.network": {
+    "message": "Network"
+  },
+  "send.confirmation.recipient": {
+    "message": "Recipient"
+  },
+  "send.confirmation.sendButton": {
+    "message": "Send"
+  },
+  "send.confirmation.title": {
+    "message": "Review"
+  },
+  "send.confirmation.transactionSpeed": {
+    "message": "Transaction speed"
+  },
+  "send.confirmation.viewTransaction": {
+    "message": "View transaction"
+  },
+  "send.continueButton": {
+    "message": "Continue"
+  },
+  "send.fromField": {
+    "message": "From"
+  },
+  "send.fromRequiredError": {
+    "message": "Account is required"
+  },
+  "send.insufficientBalance": {
+    "message": "Insufficient balance"
+  },
+  "send.insuffientSolToCoverFee": {
+    "message": "Insufficient SOL balance to cover the transaction fee"
+  },
+  "send.maxButton": {
+    "message": "Max"
+  },
+  "send.selectedTokenPriceNotAvailable": {
+    "message": "Prices for tokens in {currency} are currently not available. You are still able to send tokens."
+  },
+  "send.send-pending.subtitle": {
+    "message": "Your transaction was submitted."
+  },
+  "send.send-pending.title": {
+    "message": "Sending..."
+  },
+  "send.simulationMessageAPIError": {
+    "message": "Only continue if you trust every address involved."
+  },
+  "send.simulationMessageError": {
+    "message": "This transaction was reverted during simulation."
+  },
+  "send.simulationTitleAPIError": {
+    "message": "Because of an error, we couldn't check for security alerts."
+  },
+  "send.simulationTitleError": {
+    "message": "Transaction simulation failed"
+  },
+  "send.title": {
+    "message": "Send"
+  },
+  "send.toDomainResolutionStatus.error": {
+    "message": "Unable to resolve domain name."
+  },
+  "send.toDomainResolutionStatus.fetched": {
+    "message": "Domain name resolved."
+  },
+  "send.toDomainResolutionStatus.fetching": {
+    "message": "Resolving domain name..."
+  },
+  "send.toDomainResolutionStatus.initial": {
+    "message": "Domain"
+  },
+  "send.toField": {
+    "message": "To"
+  },
+  "send.toInvalidError": {
+    "message": "Invalid Solana address or domain name"
+  },
+  "send.toInvalidErrorDomain": {
+    "message": "Unable to resolve domain name"
+  },
+  "send.toPlaceholder": {
+    "message": "Enter public address or domain name"
+  },
+  "send.toRequiredError": {
+    "message": "To address is required"
+  },
+  "send.transaction-failure.subtitle": {
+    "message": "Unable to send {amount} {tokenSymbol}"
+  },
+  "send.transaction-failure.title": {
+    "message": "Transaction failed"
+  },
+  "send.transaction-success.subtitle": {
+    "message": "{amount} {tokenSymbol} was successfully sent"
+  },
+  "send.transaction-success.title": {
+    "message": "Sent"
+  },
+  "spendingPolicyRequired": {
+    "message": "Spending policy is required to spend from this keychain"
+  },
+  "toAddress": {
+    "message": "To"
+  },
+  "tooPrecise": {
+    "message": "Invalid amount: too precise"
+  },
+  "total": {
+    "message": "Total"
+  },
+  "transactionScan.errors.accountAlreadyInUse": {
+    "message": "An account with the same address already exists."
+  },
+  "transactionScan.errors.insufficientBalance": {
+    "message": "Insufficient balance"
+  },
+  "transactionScan.errors.insufficientFunds": {
+    "message": "Insufficient funds"
+  },
+  "transactionScan.errors.insufficientSol": {
+    "message": "Account does not have enough SOL to perform the operation."
+  },
+  "transactionScan.errors.invalidAddress": {
+    "message": "Invalid address"
+  },
+  "transactionScan.errors.invalidTransaction": {
+    "message": "Invalid transaction"
+  },
+  "transactionScan.errors.noTrustline": {
+    "message": "Trustline not found"
+  },
+  "transactionScan.errors.slippageToleranceExceeded": {
+    "message": "The transaction was reverted because the slippage tolerance was exceeded."
+  },
+  "transactionScan.errors.transactionBlockhashExpired": {
+    "message": "Please go back and try again"
+  },
+  "transactionScan.errors.transactionDeadlinePassed": {
+    "message": "Please go back and try again"
+  },
+  "transactionScan.errors.transactionExpired": {
+    "message": "Transaction expired"
+  },
+  "transactionScan.errors.unknownError": {
+    "message": "An unknown error occurred"
+  },
+  "transactionScan.errors.unsupportedEIP712Message": {
+    "message": "Unsupported method"
+  },
+  "transactionSpeed": {
+    "message": "Transaction speed"
+  },
+  "transactionSpeedTooltip": {
+    "message": "The estimated time of the transaction"
+  },
+  "unexpected": {
+    "message": "An unexpected error occurred"
+  },
+  "unknownError": {
+    "message": "An unknown error occurred"
+  },
+  "unknownHrp": {
+    "message": "Invalid Bitcoin address: unknown human-readable part"
+  },
+  "unknownUtxo": {
+    "message": "Failed to build transaction: unknown UTXO"
+  },
+  "version0": {
+    "message": "Failed to build transaction: invalid transaction version 0"
+  },
+  "version1Csv": {
+    "message": "Failed to build transaction: transaction version 1 cannot use OP_CSV"
+  },
+  "witnessProgram": {
+    "message": "Invalid Bitcoin address: witness program"
+  },
+  "witnessVersion": {
+    "message": "Invalid Bitcoin address: witness version"
+  },
+  "yes": {
+    "message": "Yes"
+  }
+}

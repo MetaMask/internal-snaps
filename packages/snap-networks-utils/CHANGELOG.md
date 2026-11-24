@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Add a single merged locale catalog shared by all wallet snaps under `locales/`, exposed through a `./locales/*` package export, and add a `createI18n` utility for building translators with per-message fallback to the fallback locale and `{placeholder}` interpolation ([#575](https://github.com/MetaMask/internal-snaps/pull/575))
 - `createFetchPolicy` now logs terminal failures at the error level instead of the warning level, and its `logger` option is typed as `Pick<Logger, 'warn' | 'error'>` ([#652](https://github.com/MetaMask/internal-snaps/pull/652))
   - Retries exhausted, the circuit opening, and failures to report either are now error logs
   - `AnalyticsService.trackEvent` likewise logs failed tracks at the error level
