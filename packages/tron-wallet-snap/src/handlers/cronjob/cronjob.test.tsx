@@ -1367,6 +1367,34 @@ describe('CronHandler', () => {
       );
     });
 
+    it('keeps the security verdict when rescheduling an unconfirmed transaction', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockSnapClient, mockTronHttpClient }) => {
+          mockTronHttpClient.getTransactionInfoById.mockResolvedValue(null);
+
+          await cronHandler.trackTransaction({
+            txId: TX_ID,
+            scope: Network.Mainnet,
+            accountIds: ACCOUNT_IDS,
+            attempt: 0,
+            securityProperties: { securityAlertResponse: 'Benign' },
+          });
+
+          expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+            method: BackgroundEventMethod.TrackTransaction,
+            params: {
+              txId: TX_ID,
+              scope: Network.Mainnet,
+              accountIds: ACCOUNT_IDS,
+              attempt: 1,
+              securityProperties: { securityAlertResponse: 'Benign' },
+            },
+            duration: TRACK_TX_INTERVAL,
+          });
+        },
+      );
+    });
+
     it('syncs accounts and emits finalized event when transaction confirms', async () => {
       await withTrackTransactionCronHandler(
         async ({
@@ -1403,6 +1431,88 @@ describe('CronHandler', () => {
             chainIdCaip: Network.Mainnet,
             transactionStatus: TransactionStatus.Confirmed,
             transactionType: TransactionType.Send,
+          });
+        },
+      );
+    });
+
+    it('validates the tracking params before tracking the transaction', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockTronHttpClient }) => {
+          mockTronHttpClient.getTransactionInfoById.mockResolvedValue(null);
+
+          await cronHandler.handleTrackTransaction({
+            jsonrpc: '2.0',
+            id: 1,
+            method: BackgroundEventMethod.TrackTransaction,
+            params: {
+              txId: TX_ID,
+              scope: Network.Mainnet,
+              accountIds: ACCOUNT_IDS,
+              attempt: 0,
+              securityProperties: { securityAlertResponse: 'Benign' },
+            },
+          });
+
+          expect(
+            mockTronHttpClient.getTransactionInfoById,
+          ).toHaveBeenCalledWith(Network.Mainnet, TX_ID);
+        },
+      );
+    });
+
+    it('rejects tracking params with security fields at the top level', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockTronHttpClient }) => {
+          await expect(
+            cronHandler.handleTrackTransaction({
+              jsonrpc: '2.0',
+              id: 1,
+              method: BackgroundEventMethod.TrackTransaction,
+              params: {
+                txId: TX_ID,
+                scope: Network.Mainnet,
+                accountIds: ACCOUNT_IDS,
+                attempt: 0,
+                securityAlertResponse: 'Benign',
+              },
+            }),
+          ).rejects.toThrow('securityAlertResponse');
+          expect(
+            mockTronHttpClient.getTransactionInfoById,
+          ).not.toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('reports the security verdict on the finalized event', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockAccountsService, mockTronHttpClient }) => {
+          const mockAccount = { id: ACCOUNT_ID, type: 'tron:eoa' };
+          mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
+            blockNumber: 100,
+            receipt: { result: 'SUCCESS' },
+          });
+          mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
+
+          await cronHandler.trackTransaction({
+            txId: TX_ID,
+            scope: Network.Mainnet,
+            accountIds: ACCOUNT_IDS,
+            attempt: 0,
+            transactionType: TransactionType.Send,
+            securityProperties: { securityAlertResponse: 'Benign' },
+          });
+
+          expect(
+            mockAnalyticsService.trackTransactionFinalized,
+          ).toHaveBeenCalledWith({
+            origin: DEFAULT_METAMASK_ORIGIN,
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+            transactionStatus: TransactionStatus.Confirmed,
+            transactionType: TransactionType.Send,
+            securityAlertResponse: 'Benign',
           });
         },
       );
@@ -1517,6 +1627,34 @@ describe('CronHandler', () => {
               method: BackgroundEventMethod.TrackTransaction,
               params: expect.objectContaining({
                 attempt: TRACK_TX_MAX_ATTEMPTS - 1,
+              }),
+            }),
+          );
+        },
+      );
+    });
+
+    it('keeps the security verdict when retrying after a transient error', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockSnapClient, mockTronHttpClient }) => {
+          mockTronHttpClient.getTransactionInfoById.mockRejectedValue(
+            new Error('Network error'),
+          );
+
+          await cronHandler.trackTransaction({
+            txId: TX_ID,
+            scope: Network.Mainnet,
+            accountIds: ACCOUNT_IDS,
+            attempt: 0,
+            securityProperties: { securityAlertResponse: 'Benign' },
+          });
+
+          expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith(
+            expect.objectContaining({
+              method: BackgroundEventMethod.TrackTransaction,
+              params: expect.objectContaining({
+                attempt: 1,
+                securityProperties: { securityAlertResponse: 'Benign' },
               }),
             }),
           );

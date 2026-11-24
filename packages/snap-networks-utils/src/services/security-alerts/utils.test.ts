@@ -3,11 +3,61 @@ import { is } from '@metamask/superstruct';
 import type { SecurityScanOutcome } from './types';
 import {
   deriveSecurityAlert,
+  getScanOptions,
   getSecurityAlertDescription,
   getTransactionSecurityProperties,
   requiresMaliciousAcknowledgement,
   TransactionSecurityPropertiesStruct,
 } from './utils';
+
+describe('getScanOptions', () => {
+  it('returns no options when simulation and security alerts are both disabled', () => {
+    expect(
+      getScanOptions({
+        simulateOnChainActions: false,
+        useSecurityAlerts: false,
+      }),
+    ).toStrictEqual([]);
+  });
+
+  it('returns simulation only when only simulation is enabled', () => {
+    expect(
+      getScanOptions({
+        simulateOnChainActions: true,
+        useSecurityAlerts: false,
+      }),
+    ).toStrictEqual(['simulation']);
+  });
+
+  it('returns validation only when only security alerts are enabled', () => {
+    expect(
+      getScanOptions({
+        simulateOnChainActions: false,
+        useSecurityAlerts: true,
+      }),
+    ).toStrictEqual(['validation']);
+  });
+
+  it('returns simulation before validation when both are enabled', () => {
+    expect(
+      getScanOptions({ simulateOnChainActions: true, useSecurityAlerts: true }),
+    ).toStrictEqual(['simulation', 'validation']);
+  });
+
+  it('treats missing preferences as disabled', () => {
+    expect(getScanOptions({})).toStrictEqual([]);
+    expect(getScanOptions({ simulateOnChainActions: null })).toStrictEqual([]);
+  });
+
+  it('treats any truthy preference value as enabled, as the scan callers did before', () => {
+    expect(
+      getScanOptions({
+        simulateOnChainActions: 1 as unknown as boolean,
+        useSecurityAlerts: 'yes' as unknown as boolean,
+      }),
+    ).toStrictEqual(['simulation', 'validation']);
+  });
+});
 
 describe('getTransactionSecurityProperties', () => {
   const scanWith = (

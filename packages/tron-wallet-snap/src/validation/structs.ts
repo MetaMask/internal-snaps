@@ -6,7 +6,10 @@ import {
   TrxAccountType,
 } from '@metamask/keyring-api';
 import { ExportAccountOptionsStruct } from '@metamask/keyring-api/v2';
-import { UuidStruct } from '@metamask/snap-networks-utils';
+import {
+  TransactionSecurityPropertiesStruct,
+  UuidStruct,
+} from '@metamask/snap-networks-utils';
 import type { Infer, Struct } from '@metamask/superstruct';
 import {
   array,
@@ -86,6 +89,7 @@ export const TrackTransactionParamsStruct = object({
   accountIds: array(string()),
   attempt: integer(),
   transactionType: optional(enums(Object.values(TransactionType))),
+  securityProperties: optional(TransactionSecurityPropertiesStruct),
 });
 
 /**

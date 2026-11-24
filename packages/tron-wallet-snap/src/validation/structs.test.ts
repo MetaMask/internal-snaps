@@ -1,7 +1,13 @@
 /* eslint-disable vitest/require-to-throw-message */
 import { assert, is } from '@metamask/superstruct';
 
-import { Base58Struct, Base64Struct } from './structs';
+import { Network } from '../constants';
+import {
+  Base58Struct,
+  Base64Struct,
+  PrivateKeyHexStruct,
+  TrackTransactionParamsStruct,
+} from './structs';
 
 describe('structs', () => {
   describe('Base58Struct', () => {
@@ -111,6 +117,78 @@ describe('structs', () => {
         expect(() => assert(base64String, Base64Struct)).toThrow(base64String);
         expect(is(base64String, Base64Struct)).toBe(false);
       });
+    });
+  });
+
+  describe('non-string values', () => {
+    it('rejects non-string Base58 and private key values', () => {
+      expect(is(123, Base58Struct)).toBe(false);
+      expect(is(123, PrivateKeyHexStruct)).toBe(false);
+    });
+  });
+
+  describe('TrackTransactionParamsStruct', () => {
+    const params = {
+      txId: 'tx-id',
+      scope: Network.Mainnet,
+      accountIds: ['account-id'],
+      attempt: 0,
+    };
+
+    it('accepts params without security properties', () => {
+      expect(is(params, TrackTransactionParamsStruct)).toBe(true);
+    });
+
+    it('accepts security properties nested under securityProperties', () => {
+      expect(
+        is(
+          {
+            ...params,
+            securityProperties: {
+              securityAlertResponse: 'Warning',
+              securityAlertReason: 'Malicious',
+              securityAlertDescription: 'Known scam address',
+            },
+          },
+          TrackTransactionParamsStruct,
+        ),
+      ).toBe(true);
+    });
+
+    it('rejects security fields sent at the top level', () => {
+      expect(
+        is(
+          { ...params, securityAlertResponse: 'Benign' },
+          TrackTransactionParamsStruct,
+        ),
+      ).toBe(false);
+    });
+
+    it('accepts the loading and not-applicable verdicts', () => {
+      expect(
+        is(
+          {
+            ...params,
+            securityProperties: {
+              securityAlertResponse: 'Loading',
+              securityAlertReason: 'NotApplicable',
+            },
+          },
+          TrackTransactionParamsStruct,
+        ),
+      ).toBe(true);
+    });
+
+    it('rejects an unknown security verdict', () => {
+      expect(
+        is(
+          {
+            ...params,
+            securityProperties: { securityAlertResponse: 'Unknown' },
+          },
+          TrackTransactionParamsStruct,
+        ),
+      ).toBe(false);
     });
   });
 });

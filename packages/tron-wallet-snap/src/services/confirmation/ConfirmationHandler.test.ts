@@ -19,6 +19,7 @@ import * as ConfirmSignMessageRender from '../../ui/confirmation/views/ConfirmSi
 import * as ConfirmSignTransactionComponent from '../../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction';
 import * as ConfirmSignTransactionRender from '../../ui/confirmation/views/ConfirmSignTransaction/render';
 import * as ConfirmTransactionRequestRender from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
+import type { ConfirmTransactionRequestResult } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AssetsService } from '../assets/AssetsService';
 import { AssetFetchError } from '../assets/errors';
@@ -194,6 +195,22 @@ async function withConfirmationHandler<ReturnValue>(
   });
 }
 
+/**
+ * Builds the outcome the ConfirmTransactionRequest render resolves to.
+ *
+ * @param overrides - Fields to override on the default outcome.
+ * @returns The render outcome.
+ */
+function buildConfirmTransactionRequestResult(
+  overrides: Partial<ConfirmTransactionRequestResult> = {},
+): ConfirmTransactionRequestResult {
+  return {
+    result: true,
+    context: {},
+    ...overrides,
+  };
+}
+
 describe('ConfirmationHandler', () => {
   beforeEach(() => {
     vi.spyOn(
@@ -208,7 +225,7 @@ describe('ConfirmationHandler', () => {
       .mockResolvedValue(undefined as never);
     mockRenderConfirmTransactionRequest = vi
       .spyOn(ConfirmTransactionRequestRender, 'render')
-      .mockResolvedValue(undefined as never);
+      .mockResolvedValue(buildConfirmTransactionRequestResult());
     mockGetIconUrlForKnownAsset = vi
       .spyOn(KnownAssetIcon, 'getIconUrlForKnownAsset')
       .mockReturnValue('mock-icon-url');
@@ -468,11 +485,16 @@ describe('ConfirmationHandler', () => {
 
     it('returns true and tracks approval when user confirms', async () => {
       await withConfirmationHandler(async ({ handler }) => {
-        mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+        mockRenderConfirmTransactionRequest.mockResolvedValue(
+          buildConfirmTransactionRequestResult(),
+        );
 
         const result = await handler.confirmTransactionRequest(defaultParams);
 
-        expect(result).toBe(true);
+        expect(result).toStrictEqual({
+          confirmed: true,
+          context: {},
+        });
         expect(mockAnalyticsService.trackTransactionAdded).toHaveBeenCalledWith(
           {
             origin: DEFAULT_METAMASK_ORIGIN,
@@ -495,13 +517,39 @@ describe('ConfirmationHandler', () => {
       });
     });
 
-    it('returns false and tracks rejection when user rejects', async () => {
+    it('returns the confirmation security properties with the result', async () => {
       await withConfirmationHandler(async ({ handler }) => {
-        mockRenderConfirmTransactionRequest.mockResolvedValue(null);
+        mockRenderConfirmTransactionRequest.mockResolvedValue(
+          buildConfirmTransactionRequestResult({
+            context: {
+              securityProperties: { securityAlertResponse: 'Benign' },
+            },
+          }),
+        );
 
         const result = await handler.confirmTransactionRequest(defaultParams);
 
-        expect(result).toBe(false);
+        expect(result).toStrictEqual({
+          confirmed: true,
+          context: {
+            securityProperties: { securityAlertResponse: 'Benign' },
+          },
+        });
+      });
+    });
+
+    it('returns false and tracks rejection when user rejects', async () => {
+      await withConfirmationHandler(async ({ handler }) => {
+        mockRenderConfirmTransactionRequest.mockResolvedValue(
+          buildConfirmTransactionRequestResult({ result: null }),
+        );
+
+        const result = await handler.confirmTransactionRequest(defaultParams);
+
+        expect(result).toStrictEqual({
+          confirmed: false,
+          context: {},
+        });
         expect(
           mockAnalyticsService.trackTransactionRejected,
         ).toHaveBeenCalledWith({
@@ -519,7 +567,9 @@ describe('ConfirmationHandler', () => {
     it('passes the raw origin and transactionRawData to render', async () => {
       await withConfirmationHandler(
         async ({ handler, mockSnapClient, mockState }) => {
-          mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+          mockRenderConfirmTransactionRequest.mockResolvedValue(
+            buildConfirmTransactionRequestResult(),
+          );
 
           await handler.confirmTransactionRequest({
             ...defaultParams,
@@ -541,7 +591,9 @@ describe('ConfirmationHandler', () => {
     it('passes the raw MetaMask origin to render so the scan can recognize it', async () => {
       await withConfirmationHandler(
         async ({ handler, mockSnapClient, mockState }) => {
-          mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+          mockRenderConfirmTransactionRequest.mockResolvedValue(
+            buildConfirmTransactionRequestResult(),
+          );
 
           await handler.confirmTransactionRequest({
             ...defaultParams,
@@ -557,9 +609,109 @@ describe('ConfirmationHandler', () => {
       );
     });
 
+    it('spreads the security properties of the outcome into Approved', async () => {
+      await withConfirmationHandler(async ({ handler }) => {
+        mockRenderConfirmTransactionRequest.mockResolvedValue(
+          buildConfirmTransactionRequestResult({
+            context: {
+              securityProperties: {
+                securityAlertResponse: 'Warning',
+                securityAlertReason: 'transfer_farming',
+              },
+            },
+          }),
+        );
+
+        await handler.confirmTransactionRequest(defaultParams);
+
+        expect(
+          mockAnalyticsService.trackTransactionApproved,
+        ).toHaveBeenCalledWith({
+          origin: DEFAULT_METAMASK_ORIGIN,
+          accountType: 'tron:eoa',
+          chainIdCaip: Network.Mainnet,
+          transactionType: TransactionType.Send,
+          securityAlertResponse: 'Warning',
+          securityAlertReason: 'transfer_farming',
+        });
+      });
+    });
+
+    it('spreads the security properties of the outcome into Rejected', async () => {
+      await withConfirmationHandler(async ({ handler }) => {
+        mockRenderConfirmTransactionRequest.mockResolvedValue(
+          buildConfirmTransactionRequestResult({
+            result: false,
+            context: {
+              securityProperties: {
+                securityAlertResponse: 'Malicious',
+                securityAlertReason: 'known_attacker',
+              },
+            },
+          }),
+        );
+
+        await handler.confirmTransactionRequest(defaultParams);
+
+        expect(
+          mockAnalyticsService.trackTransactionRejected,
+        ).toHaveBeenCalledWith({
+          origin: DEFAULT_METAMASK_ORIGIN,
+          accountType: 'tron:eoa',
+          chainIdCaip: Network.Mainnet,
+          transactionType: TransactionType.Send,
+          securityAlertResponse: 'Malicious',
+          securityAlertReason: 'known_attacker',
+        });
+      });
+    });
+
+    it('does not report a reason for a benign outcome on Approved', async () => {
+      await withConfirmationHandler(async ({ handler }) => {
+        mockRenderConfirmTransactionRequest.mockResolvedValue(
+          buildConfirmTransactionRequestResult({
+            context: {
+              securityProperties: { securityAlertResponse: 'Benign' },
+            },
+          }),
+        );
+
+        await handler.confirmTransactionRequest(defaultParams);
+
+        expect(
+          mockAnalyticsService.trackTransactionApproved,
+        ).toHaveBeenCalledWith({
+          origin: DEFAULT_METAMASK_ORIGIN,
+          accountType: 'tron:eoa',
+          chainIdCaip: Network.Mainnet,
+          transactionType: TransactionType.Send,
+          securityAlertResponse: 'Benign',
+        });
+      });
+    });
+
+    it('reports no security fields when the outcome has none', async () => {
+      await withConfirmationHandler(async ({ handler }) => {
+        mockRenderConfirmTransactionRequest.mockResolvedValue(
+          buildConfirmTransactionRequestResult({
+            context: {},
+          }),
+        );
+
+        await handler.confirmTransactionRequest(defaultParams);
+
+        expect(
+          vi.mocked(mockAnalyticsService.trackTransactionApproved).mock
+            .calls[0]?.[0],
+        ).not.toHaveProperty('securityAlertResponse');
+      });
+    });
+
     it('clears the interface ID after render completes', async () => {
       await withConfirmationHandler(async ({ handler, mockState }) => {
-        mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+        mockRenderConfirmTransactionRequest.mockResolvedValue(
+          buildConfirmTransactionRequestResult(),
+        );
 
         await handler.confirmTransactionRequest(defaultParams);
 
@@ -572,12 +724,14 @@ describe('ConfirmationHandler', () => {
 
     it('logs error but does not throw when clearing interface ID fails', async () => {
       await withConfirmationHandler(async ({ handler, mockState }) => {
-        mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+        mockRenderConfirmTransactionRequest.mockResolvedValue(
+          buildConfirmTransactionRequestResult(),
+        );
         mockState.setKey.mockRejectedValue(new Error('state write failed'));
 
         const result = await handler.confirmTransactionRequest(defaultParams);
 
-        expect(result).toBe(true);
+        expect(result.confirmed).toBe(true);
         expect(mockState.setKey).toHaveBeenCalledWith(
           'mapInterfaceNameToId.confirmTransaction',
           null,
@@ -590,7 +744,9 @@ describe('ConfirmationHandler', () => {
         async ({ handler, mockSnapClient, mockState }) => {
           const error = new Error('state write failed');
 
-          mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+          mockRenderConfirmTransactionRequest.mockResolvedValue(
+            buildConfirmTransactionRequestResult(),
+          );
           mockState.setKey.mockRejectedValue(error);
 
           await handler.confirmTransactionRequest(defaultParams);
@@ -628,6 +784,25 @@ describe('ConfirmationHandler', () => {
         },
       },
     };
+
+    it('rejects a request with an unhandled method', async () => {
+      await withConfirmationHandler(async ({ handler }) => {
+        await expect(
+          handler.handleKeyringRequest({
+            request: {
+              ...request,
+              request: {
+                ...request.request,
+                method: 'tron_unknownMethod' as never,
+              },
+            },
+            account: mockAccount,
+          }),
+        ).rejects.toThrow(
+          'Unhandled keyring request method: tron_unknownMethod',
+        );
+      });
+    });
 
     it('passes deserialized raw data when rendering signTransaction confirmation', async () => {
       await withConfirmationHandler(async ({ handler, mockTronWeb }) => {

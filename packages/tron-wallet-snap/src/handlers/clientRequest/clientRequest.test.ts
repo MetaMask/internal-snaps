@@ -5,7 +5,10 @@ import {
 } from '@metamask/keyring-api';
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
-import { InvalidParamsError } from '@metamask/snaps-sdk';
+import {
+  InvalidParamsError,
+  UserRejectedRequestError,
+} from '@metamask/snaps-sdk';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
@@ -4032,6 +4035,68 @@ describe('ClientRequestHandler - confirmSend validation', () => {
     );
   });
 
+  it('does not sign or send the transaction when the user rejects the send', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+        mockConfirmationHandler,
+        mockTransactionExpirationRefresherService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '1',
+          method: ClientRequestMethod.ConfirmSend,
+          params: {
+            fromAccountId: TEST_ACCOUNT_ID,
+            toAddress: TEST_TO_ADDRESS,
+            amount: '10',
+            assetId: Networks[scope].nativeToken.id,
+          },
+        };
+
+        mockAccountsService.findById.mockResolvedValue({
+          id: TEST_ACCOUNT_ID,
+          address: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
+          entropySource: 'test-entropy',
+          derivationPath: [],
+          type: 'tron:basic',
+        });
+        mockAssetsService.fetchAccountAssetsByIDs.mockResolvedValue([
+          {
+            assetType: Networks[scope].nativeToken.id,
+            symbol: 'TRX',
+            decimals: 6,
+            uiAmount: '100',
+            rawAmount: '100000000',
+          },
+          { rawAmount: '1000' },
+          { rawAmount: '50000' },
+        ]);
+        mockSendService.validateSend.mockResolvedValue({ valid: true });
+        mockSendService.buildTransaction.mockResolvedValue({});
+        mockFeeCalculatorService.computeFee.mockResolvedValue([]);
+        mockTransactionExpirationRefresherService.ensureFreshRawData.mockResolvedValue(
+          { expiration: 1_700_000_060_000 },
+        );
+
+        // User rejects.
+        mockConfirmationHandler.confirmTransactionRequest.mockResolvedValue({
+          confirmed: false,
+          context: {},
+        });
+
+        await expect(handler.handle(request)).rejects.toThrow(
+          UserRejectedRequestError,
+        );
+        expect(mockSendService.signAndSendTransaction).not.toHaveBeenCalled();
+      },
+    );
+  });
+
   it('refreshes transaction raw data before send confirmation when validateSend returns valid', async () => {
     await withClientRequestHandler(
       async ({
@@ -4107,10 +4172,13 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         ] as ComputeFeeResult;
         mockFeeCalculatorService.computeFee.mockResolvedValue(mockFees);
 
-        // User confirms.
-        mockConfirmationHandler.confirmTransactionRequest.mockResolvedValue(
-          true,
-        );
+        // User confirms, and the confirmation context is carried along.
+        mockConfirmationHandler.confirmTransactionRequest.mockResolvedValue({
+          confirmed: true,
+          context: {
+            securityProperties: { securityAlertResponse: 'Benign' },
+          },
+        });
 
         // Transaction sent successfully.
         mockSendService.signAndSendTransaction.mockResolvedValue({
@@ -4156,7 +4224,13 @@ describe('ClientRequestHandler - confirmSend validation', () => {
             transactionRawData: freshTransactionRawData,
           }),
         );
-        expect(mockSendService.signAndSendTransaction).toHaveBeenCalled();
+        expect(mockSendService.signAndSendTransaction).toHaveBeenCalledWith(
+          expect.objectContaining({
+            context: {
+              securityProperties: { securityAlertResponse: 'Benign' },
+            },
+          }),
+        );
 
         // Verify the handler returns the submitted transaction.
         expect(result).toMatchObject({
