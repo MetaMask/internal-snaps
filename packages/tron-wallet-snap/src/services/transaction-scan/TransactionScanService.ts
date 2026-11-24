@@ -76,6 +76,7 @@ export class TransactionScanService extends BaseTransactionScanService {
           code: null,
           message: 'Tron transactions must contain exactly one contract entry.',
         },
+        validationError: null,
         simulationStatus: SimulationStatus.Failed,
       };
     }
@@ -90,6 +91,7 @@ export class TransactionScanService extends BaseTransactionScanService {
         estimatedChanges: { assets: [] },
         validation: { type: null, reason: null },
         error: null,
+        validationError: null,
         simulationStatus: SimulationStatus.Skipped,
       };
     }
@@ -120,7 +122,7 @@ export class TransactionScanService extends BaseTransactionScanService {
         );
       }
 
-      const scan = this.#mapScan(result);
+      const scan = this.#mapScan(result, options);
 
       await this.trackScanCompleted(
         { origin, scope, accountType: account?.type },
@@ -160,10 +162,12 @@ export class TransactionScanService extends BaseTransactionScanService {
    * Maps the raw API response to our internal scan result format.
    *
    * @param result - The raw API response.
+   * @param options - The requested scan sections.
    * @returns The mapped scan result.
    */
   #mapScan(
     result: SecurityAlertSimulationValidationResponse,
+    options: SecurityAlertsScanOption[],
   ): TransactionScanResult {
     const status = this.#resolveStatus(result);
 
@@ -177,8 +181,10 @@ export class TransactionScanService extends BaseTransactionScanService {
       validation: {
         type: result.validation?.result_type ?? null,
         reason: result.validation?.reason ?? null,
+        description: result.validation?.description ?? null,
       },
       error: this.#mapSimulationError(result.simulation),
+      validationError: this.#mapValidationError(result, options),
       simulationStatus:
         status === 'ERROR'
           ? SimulationStatus.Failed
@@ -287,6 +293,32 @@ export class TransactionScanService extends BaseTransactionScanService {
     }
 
     return '0';
+  }
+
+  /**
+   * Maps a failed validation from the API response. A requested validation
+   * that returned an `Error` result type is a validation error. It is kept
+   * apart from the simulation error, which describes the transaction itself.
+   *
+   * @param result - The raw API response.
+   * @param options - The requested scan sections.
+   * @returns The mapped validation error, or null if the validation did not fail.
+   */
+  #mapValidationError(
+    result: SecurityAlertSimulationValidationResponse,
+    options: SecurityAlertsScanOption[],
+  ): TransactionScanError | null {
+    const { validation } = result;
+
+    if (options.includes('validation') && validation?.result_type === 'Error') {
+      return {
+        type: 'validation',
+        code: validation.reason ?? null,
+        message: validation.description ?? null,
+      };
+    }
+
+    return null;
   }
 
   /**

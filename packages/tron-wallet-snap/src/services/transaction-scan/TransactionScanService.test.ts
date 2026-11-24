@@ -913,6 +913,65 @@ describe('TransactionScanService', () => {
       });
     });
 
+    it('maps an Error verdict to the validation error', async () => {
+      const service = new TransactionScanService({
+        securityAlertsApiClient: createMockSecurityAlertsApiClient({
+          simulation: { status: 'Success' },
+          validation: {
+            status: 'Success',
+            result_type: 'Error',
+            reason: 'validation_failed',
+            description: 'The validation failed',
+          },
+        }),
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: createMockTrackError(),
+      });
+
+      const result = await service.scanTransaction({
+        accountAddress: mockAccount.address,
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://example.com',
+        scope: Network.Mainnet,
+      });
+
+      expect(result).toMatchObject({
+        validation: {
+          type: 'Error',
+          reason: 'validation_failed',
+          description: 'The validation failed',
+        },
+        validationError: {
+          type: 'validation',
+          code: 'validation_failed',
+          message: 'The validation failed',
+        },
+        error: null,
+      });
+    });
+
+    it('reports no validation error for a benign verdict', async () => {
+      const service = new TransactionScanService({
+        securityAlertsApiClient: createMockSecurityAlertsApiClient({
+          simulation: { status: 'Success' },
+          validation: { status: 'Success', result_type: 'Benign' },
+        }),
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: createMockTrackError(),
+      });
+
+      const result = await service.scanTransaction({
+        accountAddress: mockAccount.address,
+        transactionRawData: createWellFormedTransactionRawData(),
+        origin: 'https://example.com',
+        scope: Network.Mainnet,
+      });
+
+      expect(result).toMatchObject({ validationError: null });
+    });
+
     it('maps a simulation error to the scan error', async () => {
       const mockTrackError = createMockTrackError();
 

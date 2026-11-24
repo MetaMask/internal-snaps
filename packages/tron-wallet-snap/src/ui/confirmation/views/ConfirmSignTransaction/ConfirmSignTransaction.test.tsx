@@ -101,6 +101,7 @@ describe('ConfirmSignTransaction', () => {
     estimatedChanges: { assets: [] },
     validation: { type: 'Benign', reason: null },
     error: null,
+    validationError: null,
     ...overrides,
   });
 

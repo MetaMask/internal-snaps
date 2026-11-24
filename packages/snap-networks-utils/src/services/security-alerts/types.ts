@@ -66,9 +66,6 @@ export type SecurityScanOutcome = {
     reason?: string | null;
     description?: string | null;
   } | null;
-  error?: {
-    message?: string | null;
-  } | null;
 };
 
 /**

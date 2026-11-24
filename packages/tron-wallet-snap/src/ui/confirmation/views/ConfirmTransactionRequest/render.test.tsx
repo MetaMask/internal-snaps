@@ -113,6 +113,7 @@ const defaultScanResult: TransactionScanResult = {
     reason: null,
   },
   error: null,
+  validationError: null,
 };
 
 const defaultTransactionRawData = buildTransactionRawData({
@@ -765,6 +766,26 @@ describe('ConfirmTransactionRequest render', () => {
       expect(
         getSecurityProperties(true, unsupportedRawData, defaultScanResult),
       ).toBeUndefined();
+    });
+
+    it('does not report a simulation error as the security error', () => {
+      const scan = {
+        ...defaultScanResult,
+        validation: { type: null, reason: null },
+        error: {
+          type: 'simulation',
+          code: null,
+          message: 'Insufficient funds',
+        },
+        validationError: null,
+      };
+
+      expect(
+        getSecurityProperties(true, defaultTransactionRawData, scan),
+      ).toStrictEqual({
+        securityAlertResponse: 'Error',
+        securityAlertReason: 'Error',
+      });
     });
 
     it('returns the security properties of the shown scan when validation applies', () => {
