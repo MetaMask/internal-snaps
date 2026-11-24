@@ -3,6 +3,11 @@ import { assert } from '@metamask/utils';
 /* eslint-disable @typescript-eslint/explicit-function-return-type -- Fixture helpers preserve their inferred shapes. */
 /* eslint-disable id-denylist -- Solana RPC names its simulation error field `err`. */
 import {
+  COMPUTE_BUDGET_PROGRAM_ADDRESS,
+  getSetComputeUnitLimitInstruction,
+  getSetComputeUnitPriceInstruction,
+} from '@solana-program/compute-budget';
+import {
   SYSTEM_PROGRAM_ADDRESS,
   getTransferSolInstruction,
 } from '@solana-program/system';
@@ -104,6 +109,7 @@ describe('PackPartnerSigner purchases and shared guards', () => {
     userPays = false,
     amount = 25_000_000n,
     extra = [],
+    purchaseInstructions = (memo, payment) => [memo, payment],
     extraUserSpend = 0n,
     treasuryDrift = 0n,
     userLamports = 1_000_000n,
@@ -120,6 +126,10 @@ describe('PackPartnerSigner purchases and shared guards', () => {
     userPays?: boolean;
     amount?: bigint;
     extra?: Instruction[];
+    purchaseInstructions?: (
+      memo: Instruction,
+      payment: ReturnType<typeof getTransferCheckedInstruction>,
+    ) => Instruction[];
     extraUserSpend?: bigint;
     treasuryDrift?: bigint;
     userLamports?: bigint | null;
@@ -180,34 +190,32 @@ describe('PackPartnerSigner purchases and shared guards', () => {
           : createTransactionMessage({ version }),
       ),
     );
-    const message = appendTransactionMessageInstructions(
-      [
-        {
-          programAddress: transactionMemoProgram,
-          data: new Uint8Array([1]),
-          accounts: [
-            { address: provider.address, role: AccountRole.READONLY_SIGNER },
-            ...(additionalSigner
-              ? [
-                  {
-                    address: additionalSigner,
-                    role: AccountRole.READONLY_SIGNER,
-                  },
-                ]
-              : []),
-          ],
-        },
-        getTransferCheckedInstruction({
-          source: userAta,
-          mint,
-          destination: providerAta,
-          authority: user.address,
-          amount,
-          decimals: 6,
-          multiSigners: [],
-        }),
-        ...extra,
+    const memo: Instruction = {
+      programAddress: transactionMemoProgram,
+      data: new Uint8Array([1]),
+      accounts: [
+        { address: provider.address, role: AccountRole.READONLY_SIGNER },
+        ...(additionalSigner
+          ? [
+              {
+                address: additionalSigner,
+                role: AccountRole.READONLY_SIGNER,
+              },
+            ]
+          : []),
       ],
+    };
+    const payment = getTransferCheckedInstruction({
+      source: userAta,
+      mint,
+      destination: providerAta,
+      authority: user.address,
+      amount,
+      decimals: 6,
+      multiSigners: [],
+    });
+    const message = appendTransactionMessageInstructions(
+      [...purchaseInstructions(memo, payment), ...extra],
       baseMessage,
     );
     // Transfer authority supplied as address needs its signer role explicitly marked.
@@ -509,6 +517,157 @@ describe('PackPartnerSigner purchases and shared guards', () => {
       ),
     ).rejects.toThrow(/Pack Partner|Unexpected/u);
     expect(deriveSolanaKeypair).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      'missing memo',
+      (_memo, payment) => [payment],
+      'invalid transaction shape',
+    ],
+    [
+      'duplicate memo',
+      (memo, payment) => [memo, memo, payment],
+      'invalid transaction shape',
+    ],
+    [
+      'duplicate transfer',
+      (memo, payment) => [memo, payment, payment],
+      'invalid transaction shape',
+    ],
+    [
+      'memo with unrelated account',
+      (memo, payment) => [
+        {
+          ...memo,
+          accounts: [{ address: recipient, role: AccountRole.READONLY }],
+        },
+        payment,
+      ],
+      'invalid memo',
+    ],
+    [
+      'unexpected transfer account',
+      (memo, payment) => [
+        memo,
+        {
+          ...payment,
+          accounts: [
+            ...payment.accounts,
+            { address: recipient, role: AccountRole.READONLY },
+          ],
+        },
+      ],
+      'unexpected transfer accounts',
+    ],
+    [
+      'unchecked transfer',
+      (memo, payment) => [memo, { ...payment, data: Uint8Array.of(3) }],
+      'only checked USDC transfers are allowed',
+    ],
+  ] satisfies [
+    string,
+    (
+      memo: Instruction,
+      payment: ReturnType<typeof getTransferCheckedInstruction>,
+    ) => Instruction[],
+    string,
+  ][])(
+    'rejects %s before simulation or key derivation',
+    async (_name, purchaseInstructions, errorMessage) => {
+      const { account, wire } = await fixture({ purchaseInstructions });
+      await expect(
+        new PackPartnerSigner(connection).signBuy(
+          account,
+          wire,
+          { amount: '25000000' },
+          Network.Mainnet,
+        ),
+      ).rejects.toThrow(errorMessage);
+      expect(rpc.simulateTransaction).not.toHaveBeenCalled();
+      expect(deriveSolanaKeypair).not.toHaveBeenCalled();
+    },
+  );
+
+  const computeLimit = getSetComputeUnitLimitInstruction({ units: 100_000 });
+  const computePrice = getSetComputeUnitPriceInstruction({
+    microLamports: 10n,
+  });
+
+  it.each([
+    [
+      'duplicate compute limit',
+      [computeLimit, computeLimit],
+      'invalid compute budget',
+    ],
+    [
+      'duplicate compute price',
+      [computePrice, computePrice],
+      'invalid compute budget',
+    ],
+    [
+      'compute budget with accounts',
+      [
+        {
+          ...computeLimit,
+          accounts: [{ address: recipient, role: AccountRole.READONLY }],
+        },
+      ],
+      'invalid compute budget',
+    ],
+    [
+      'unsupported compute instruction',
+      [
+        {
+          programAddress: COMPUTE_BUDGET_PROGRAM_ADDRESS,
+          data: Uint8Array.of(1),
+        },
+      ],
+      'unsupported compute instruction',
+    ],
+    [
+      'truncated compute limit',
+      [{ ...computeLimit, data: Uint8Array.of(2) }],
+      'unsupported compute instruction',
+    ],
+    [
+      'zero compute limit',
+      [getSetComputeUnitLimitInstruction({ units: 0 })],
+      'invalid compute limit',
+    ],
+    [
+      'excessive compute limit',
+      [getSetComputeUnitLimitInstruction({ units: 1_400_001 })],
+      'invalid compute limit',
+    ],
+  ] satisfies [string, Instruction[], string][])(
+    'rejects %s before simulation or key derivation',
+    async (_name, extra, errorMessage) => {
+      const { account, wire } = await fixture({ extra });
+      await expect(
+        new PackPartnerSigner(connection).signBuy(
+          account,
+          wire,
+          { amount: '25000000' },
+          Network.Mainnet,
+        ),
+      ).rejects.toThrow(errorMessage);
+      expect(rpc.simulateTransaction).not.toHaveBeenCalled();
+      expect(deriveSolanaKeypair).not.toHaveBeenCalled();
+    },
+  );
+
+  it('accepts one compute limit and one compute price alongside the payment', async () => {
+    const { account, wire } = await fixture({
+      extra: [computeLimit, computePrice],
+    });
+    const result = await new PackPartnerSigner(connection).signBuy(
+      account,
+      wire,
+      { amount: '25000000' },
+      Network.Mainnet,
+    );
+    expect(result.signedTransaction).toStrictEqual(expect.any(String));
   });
 
   it('rejects an extra SOL transfer hidden in the same presigned message', async () => {
