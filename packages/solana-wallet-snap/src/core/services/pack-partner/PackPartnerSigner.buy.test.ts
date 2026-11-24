@@ -44,7 +44,8 @@ import { PackPartnerSigner } from './PackPartnerSigner';
 const userSeed = new Uint8Array(32).fill(1);
 const providerSeed = new Uint8Array(32).fill(2);
 const rotatedProviderSeed = new Uint8Array(32).fill(3);
-const { usdcMint } = getPackPartnerNetworkConfig(Network.Mainnet);
+const originalNetworkConfig = getPackPartnerNetworkConfig;
+const { usdcMint } = originalNetworkConfig(Network.Mainnet);
 const memoProgram = address('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 // Test-only second allowlisted program: production remains pinned to reviewed programs.
 const rotatedMemoProgram = address(
@@ -125,6 +126,22 @@ describe('PackPartnerSigner purchases and shared guards', () => {
     paymentOwner?: Address;
     additionalSigner?: Address;
   } = {}) {
+    vi.spyOn(DeriveSolanaKeypair, 'deriveSolanaKeypair');
+    const trustedProviders = await Promise.all(
+      [providerSeed, rotatedProviderSeed].map((seed) =>
+        createKeyPairSignerFromPrivateKeyBytes(seed),
+      ),
+    );
+    vi.spyOn(
+      PackPartnerConstants,
+      'getPackPartnerNetworkConfig',
+    ).mockImplementation((scope) => ({
+      ...originalNetworkConfig(scope),
+      signers: trustedProviders.map(
+        ({ address: providerAddress }) => providerAddress,
+      ),
+      memoPrograms: [memoProgram, rotatedMemoProgram],
+    }));
     const { usdcMint: mint } = getPackPartnerNetworkConfig(network);
     const user = await createKeyPairSignerFromPrivateKeyBytes(userSeed);
     const provider =
@@ -265,27 +282,6 @@ describe('PackPartnerSigner purchases and shared guards', () => {
       provider,
     };
   }
-
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    vi.spyOn(DeriveSolanaKeypair, 'deriveSolanaKeypair');
-    const trustedProviders = await Promise.all(
-      [providerSeed, rotatedProviderSeed].map((seed) =>
-        createKeyPairSignerFromPrivateKeyBytes(seed),
-      ),
-    );
-    const getNetworkConfig = PackPartnerConstants.getPackPartnerNetworkConfig;
-    vi.spyOn(
-      PackPartnerConstants,
-      'getPackPartnerNetworkConfig',
-    ).mockImplementation((scope) => ({
-      ...getNetworkConfig(scope),
-      signers: trustedProviders.map(
-        ({ address: providerAddress }) => providerAddress,
-      ),
-      memoPrograms: [memoProgram, rotatedMemoProgram],
-    }));
-  });
 
   it.each([false, true])(
     'validates and signs a buy (user pays fees: %s)',

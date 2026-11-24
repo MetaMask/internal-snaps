@@ -23,17 +23,6 @@ const operations = [
 ] as const;
 
 describe.each(operations)('$method client request', ({ method, context }) => {
-  const findById = vi.fn();
-  const signPackPartnerBuy = vi.fn();
-  const signAndSendTransaction = vi.fn();
-  const confirmSend = vi.fn();
-  const walletService = {
-    signPackPartnerBuy,
-    signAndSendTransaction,
-  };
-  const signingMethod = walletService[method];
-  let handler: ClientRequestHandler;
-
   const makeRequest = (
     overrides: Record<string, Json> = {},
   ): JsonRpcRequest => ({
@@ -49,13 +38,23 @@ describe.each(operations)('$method client request', ({ method, context }) => {
     },
   });
 
-  beforeEach(() => {
-    vi.resetAllMocks();
-    findById.mockResolvedValue(account);
-    signingMethod.mockResolvedValue(signedResponse);
-    handler = new ClientRequestHandler(
+  const setup = (): {
+    handler: ClientRequestHandler;
+    findById: ReturnType<typeof vi.fn>;
+    signingMethod: ReturnType<typeof vi.fn>;
+    signAndSendTransaction: ReturnType<typeof vi.fn>;
+    confirmSend: ReturnType<typeof vi.fn>;
+  } => {
+    const findById = vi.fn().mockResolvedValue(account);
+    const signingMethod = vi.fn().mockResolvedValue(signedResponse);
+    const signAndSendTransaction = vi.fn();
+    const confirmSend = vi.fn();
+    const handler = new ClientRequestHandler(
       { findById } as unknown as AccountsService,
-      walletService as unknown as WalletService,
+      {
+        [method]: signingMethod,
+        signAndSendTransaction,
+      } as unknown as WalletService,
       {
         log: vi.fn(),
         withPrefix: vi.fn().mockReturnThis(),
@@ -63,9 +62,24 @@ describe.each(operations)('$method client request', ({ method, context }) => {
       { confirmSend } as unknown as SendService,
       {} as ApproveTokenService,
     );
-  });
+    return {
+      handler,
+      findById,
+      signingMethod,
+      signAndSendTransaction,
+      confirmSend,
+    };
+  };
 
   it('uses the keyring account and returns the signed transaction without sending or confirming', async () => {
+    const {
+      handler,
+      findById,
+      signingMethod,
+      signAndSendTransaction,
+      confirmSend,
+    } = setup();
+
     const response = await handler.handle(makeRequest());
 
     expect(findById).toHaveBeenCalledWith(account.id);
@@ -81,6 +95,8 @@ describe.each(operations)('$method client request', ({ method, context }) => {
   });
 
   it('rejects an unknown account before signing', async () => {
+    const { handler, findById, signingMethod } = setup();
+
     findById.mockResolvedValue(null);
 
     await expect(handler.handle(makeRequest())).rejects.toThrow(
@@ -95,6 +111,9 @@ describe.each(operations)('$method client request', ({ method, context }) => {
   ])(
     'rejects account scope $supported when $requested was requested',
     async ({ requested, supported }) => {
+      const { handler, findById, signingMethod, signAndSendTransaction } =
+        setup();
+
       findById.mockResolvedValue({ ...account, scopes: [supported] });
 
       await expect(
@@ -108,6 +127,9 @@ describe.each(operations)('$method client request', ({ method, context }) => {
   );
 
   it('passes devnet scope to the guarded signer', async () => {
+    const { handler, findById, signingMethod, signAndSendTransaction } =
+      setup();
+
     findById.mockResolvedValue({ ...account, scopes: [Network.Devnet] });
 
     await handler.handle(makeRequest({ scope: Network.Devnet }));
@@ -122,6 +144,9 @@ describe.each(operations)('$method client request', ({ method, context }) => {
   });
 
   it('propagates transaction validation failures without sending or confirming', async () => {
+    const { handler, signingMethod, signAndSendTransaction, confirmSend } =
+      setup();
+
     signingMethod.mockRejectedValue(
       new Error('Pack Partner signature invalid'),
     );
@@ -136,6 +161,8 @@ describe.each(operations)('$method client request', ({ method, context }) => {
   it.each(['accountId', 'scope', 'transaction', 'context'])(
     'requires the %s parameter before account lookup',
     async (field) => {
+      const { handler, findById, signingMethod } = setup();
+
       const params: Record<string, Json> = {
         accountId: account.id,
         scope: Network.Mainnet,
@@ -155,6 +182,8 @@ describe.each(operations)('$method client request', ({ method, context }) => {
   it.each(Object.keys(context))(
     'requires context.%s before account lookup',
     async (field) => {
+      const { handler, findById, signingMethod } = setup();
+
       const incompleteContext: Record<string, Json> = { ...context };
       delete incompleteContext[field];
 
@@ -187,6 +216,8 @@ describe.each(operations)('$method client request', ({ method, context }) => {
   ] satisfies [string, Record<string, Json>][])(
     'rejects %s before account lookup',
     async (_name, overrides) => {
+      const { handler, findById, signingMethod } = setup();
+
       await expect(handler.handle(makeRequest(overrides))).rejects.toThrow(
         'Invalid method parameter(s).',
       );
@@ -211,6 +242,8 @@ describe.each(operations)('$method client request', ({ method, context }) => {
   ])(
     'rejects non-canonical or out-of-range atomic amount %s',
     async (amount) => {
+      const { handler, signingMethod } = setup();
+
       await expect(
         handler.handle(makeRequest({ context: { ...context, amount } })),
       ).rejects.toThrow('Invalid method parameter(s).');
@@ -221,6 +254,8 @@ describe.each(operations)('$method client request', ({ method, context }) => {
   it.each(['1', '18446744073709551615'])(
     'accepts the u64 boundary %s without number coercion',
     async (amount) => {
+      const { handler, signingMethod } = setup();
+
       await handler.handle(makeRequest({ context: { ...context, amount } }));
 
       expect(signingMethod).toHaveBeenCalledWith(
