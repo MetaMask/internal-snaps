@@ -21,6 +21,7 @@ import {
   createTransactionMessage,
   appendTransactionMessageInstructions,
   setTransactionMessageFeePayer,
+  setTransactionMessageConfig,
   setTransactionMessageLifetimeUsingBlockhash,
   getBase64Encoder,
   getBase64Decoder,
@@ -98,6 +99,8 @@ const tokenAccount = (
 
 describe('PackPartnerSigner purchases and shared guards', () => {
   async function fixture({
+    version = 'legacy',
+    lookupMint = false,
     userPays = false,
     amount = 25_000_000n,
     extra = [],
@@ -112,6 +115,8 @@ describe('PackPartnerSigner purchases and shared guards', () => {
     paymentOwner,
     additionalSigner,
   }: {
+    version?: 'legacy' | 0 | 1;
+    lookupMint?: boolean;
     userPays?: boolean;
     amount?: bigint;
     extra?: Instruction[];
@@ -163,7 +168,16 @@ describe('PackPartnerSigner purchases and shared guards', () => {
       },
       setTransactionMessageFeePayer(
         userPays ? user.address : provider.address,
-        createTransactionMessage({ version: 'legacy' }),
+        version === 1
+          ? setTransactionMessageConfig(
+              {
+                computeUnitLimit: 100_000,
+                loadedAccountsDataSizeLimit: 1_000_000,
+                priorityFeeLamports: 100n,
+              },
+              createTransactionMessage({ version: 1 }),
+            )
+          : createTransactionMessage({ version }),
       ),
     );
     const message = appendTransactionMessageInstructions(
@@ -201,11 +215,14 @@ describe('PackPartnerSigner purchases and shared guards', () => {
       ...message,
       instructions: message.instructions.map((ix) => ({
         ...ix,
-        accounts: (ix.accounts ?? []).map((a) =>
-          a.address === user.address
-            ? { ...a, role: AccountRole.READONLY_SIGNER }
-            : a,
-        ),
+        accounts: (ix.accounts ?? []).map((a) => {
+          if (a.address === user.address) {
+            return { ...a, role: AccountRole.READONLY_SIGNER };
+          }
+          return lookupMint && a.address === mint
+            ? { ...a, lookupTableAddress: recipient, addressIndex: 0 }
+            : a;
+        }),
       })),
     });
     const transaction = await partiallySignTransaction(
@@ -283,10 +300,18 @@ describe('PackPartnerSigner purchases and shared guards', () => {
     };
   }
 
-  it.each([false, true])(
-    'validates and signs a buy (user pays fees: %s)',
-    async (userPays) => {
+  it.each([
+    { version: 'legacy', userPays: false },
+    { version: 'legacy', userPays: true },
+    { version: 0, userPays: false },
+    { version: 0, userPays: true },
+    { version: 1, userPays: false },
+    { version: 1, userPays: true },
+  ] as const)(
+    'validates and signs a version $version buy (user pays fees: $userPays)',
+    async ({ version, userPays }) => {
       const { account, wire, transaction, user, provider } = await fixture({
+        version,
         userPays,
       });
       const result = await new PackPartnerSigner(connection).signBuy(
@@ -314,6 +339,20 @@ describe('PackPartnerSigner purchases and shared guards', () => {
       expect(rpc.sendTransaction).not.toHaveBeenCalled();
     },
   );
+
+  it('rejects a v0 payment using a lookup table before simulation or key derivation', async () => {
+    const { account, wire } = await fixture({ version: 0, lookupMint: true });
+    await expect(
+      new PackPartnerSigner(connection).signBuy(
+        account,
+        wire,
+        { amount: '25000000' },
+        Network.Mainnet,
+      ),
+    ).rejects.toThrow('lookup tables are unsupported');
+    expect(rpc.simulateTransaction).not.toHaveBeenCalled();
+    expect(deriveSolanaKeypair).not.toHaveBeenCalled();
+  });
 
   it.each([
     { network: Network.Mainnet, userLamports: null },

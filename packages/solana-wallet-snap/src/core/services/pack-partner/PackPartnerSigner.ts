@@ -285,11 +285,8 @@ export class PackPartnerSigner {
       transaction.messageBytes,
     );
     // No unreviewed lookup-table resolution or extra signer can widen the template.
-    const lookupTables = Reflect.get(compiled, 'addressTableLookups') as
-      | readonly unknown[]
-      | undefined;
     requireValid(
-      !lookupTables || lookupTables.length === 0,
+      compiled.version !== 0 || !compiled.addressTableLookups?.length,
       'lookup tables are unsupported',
     );
     requireValid(compiled.staticAccounts.length <= 100, 'too many accounts');
