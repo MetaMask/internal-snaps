@@ -1,6 +1,6 @@
 import { BdkErrorCode } from '@metamask/bitcoindevkit';
+import enMessages from '@metamask/snap-networks-utils/locales/en.json';
 
-import enMessages from '../../../locales/en.json';
 import { CurrencyUnit } from '../../entities';
 import { displayAmount, displayOrigin, errorCodeToLabel } from './format';
 
