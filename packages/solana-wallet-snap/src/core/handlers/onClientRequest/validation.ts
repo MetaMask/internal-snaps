@@ -99,6 +99,27 @@ export type SignAndSendTransactionResponse = Infer<
   typeof SignAndSendTransactionResponseStruct
 >;
 
+/** Atomic USDC units, with no decimals or precision-losing number conversion. */
+const PackPartnerAmountStruct = refine(
+  string(),
+  'PackPartnerAmount',
+  (value) =>
+    /^[1-9]\d{0,19}$/u.test(value) &&
+    BigInt(value) <= 18_446_744_073_709_551_615n,
+);
+
+export const SignPackPartnerBuyRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.SignPackPartnerBuy),
+  params: object({
+    accountId: UuidStruct,
+    transaction: Base64Struct,
+    scope: enums([Network.Mainnet, Network.Devnet]),
+    context: object({ amount: PackPartnerAmountStruct }),
+  }),
+});
+
 /**
  * onConfirmSend request/response validation.
  */

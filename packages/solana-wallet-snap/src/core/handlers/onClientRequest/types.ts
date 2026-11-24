@@ -3,6 +3,7 @@ export const ClientRequestMethod = {
     'signAndSendTransactionWithoutConfirmation',
   ConfirmSend: 'confirmSend',
   SignAndSendTransaction: 'signAndSendTransaction',
+  SignPackPartnerBuy: 'signPackPartnerBuy',
   ComputeFee: 'computeFee',
   GetMaxSendableAmount: 'getMaxSendableAmount',
   OnAddressInput: 'onAddressInput',
