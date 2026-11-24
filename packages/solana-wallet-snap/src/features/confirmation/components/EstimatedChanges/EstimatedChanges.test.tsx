@@ -52,7 +52,7 @@ describe('EstimatedChanges', () => {
 
   it('renders not available when the scan fetch fails', () => {
     expect(render({ changes: null, scanFetchStatus: 'error' })).toContain(
-      'Not available',
+      'Estimated changes are not available',
     );
   });
 
@@ -64,17 +64,19 @@ describe('EstimatedChanges', () => {
 
     expect(serialized).toContain('-1.5 SOL');
     expect(serialized).not.toContain('"type":"Skeleton"');
-    expect(serialized).not.toContain('Not available');
+    expect(serialized).not.toContain('Estimated changes are not available');
   });
 
   it('renders no changes when simulation returned an empty asset diff', () => {
-    expect(render({ changes: { assets: [] } })).toContain('No changes');
+    expect(render({ changes: { assets: [] } })).toContain(
+      'No estimated changes',
+    );
   });
 
   it('renders not available when simulation did not return a result', () => {
     const serialized = render({ changes: null });
 
-    expect(serialized).toContain('Not available');
-    expect(serialized).not.toContain('No changes');
+    expect(serialized).toContain('Estimated changes are not available');
+    expect(serialized).not.toContain('No estimated changes');
   });
 });

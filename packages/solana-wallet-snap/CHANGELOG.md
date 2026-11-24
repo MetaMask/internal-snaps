@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Require risk acknowledgement before confirming Solana transactions flagged as malicious. Confirm opens a danger-styled acknowledgement screen, and proceeding requires checking the risk checkbox ([#615](https://github.com/MetaMask/internal-snaps/pull/615)).
 
+### Changed
+
+- Load the shared merged locale catalog from `@metamask/snap-networks-utils` instead of per-snap `locales/` directories, reusing the same strings across snaps; conflicting shared copy is unified, which slightly changes some user-facing strings ([#575](https://github.com/MetaMask/internal-snaps/pull/575))
+
 ## [7.4.0]
 
 ### Added
