@@ -233,8 +233,8 @@ describe('ConfirmTransactionRequest', () => {
       });
 
       expect(serialized).toContain('This request may be risky');
-      expect(serialized).toContain('Not available');
-      expect(serialized).not.toContain('No changes');
+      expect(serialized).toContain('Estimated changes are not available');
+      expect(serialized).not.toContain('No estimated changes');
       expect(serialized).not.toContain('Security check unavailable');
       expect(serialized).not.toContain('"disabled":true');
     });

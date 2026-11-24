@@ -45,7 +45,7 @@ describe('getErrorMessage', () => {
         { type: 'simulation', code: 'UnmappedCode', message: null },
         preferences,
       ),
-    ).toBe('An unknown error occurred.');
+    ).toBe('An unknown error occurred');
   });
 
   it('returns the unknown error copy when there is neither a code nor a message', () => {
@@ -54,6 +54,6 @@ describe('getErrorMessage', () => {
         { type: 'simulation', code: null, message: null },
         preferences,
       ),
-    ).toBe('An unknown error occurred.');
+    ).toBe('An unknown error occurred');
   });
 });
