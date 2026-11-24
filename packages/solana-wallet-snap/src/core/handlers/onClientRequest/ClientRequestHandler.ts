@@ -109,7 +109,7 @@ export class ClientRequestHandler {
    * @throws {InvalidParamsError} If the params are invalid.
    */
   async handle(request: JsonRpcRequest): Promise<Json> {
-    this.#logger.log('Handling client request', { method: request.method });
+    this.#logger.log('Handling client request', request);
 
     const { method } = request;
 
