@@ -59,10 +59,14 @@ export class TransactionScanService extends BaseTransactionScanService {
     options: TransactionScanOption[];
     accountType?: string;
   }): Promise<TransactionScanResult | null> {
+    const validationRequested = options.includes(
+      TransactionScanOption.Validation,
+    );
+    const simulationRequested = options.includes(
+      TransactionScanOption.Simulation,
+    );
     try {
-      const preflightValidationErrorResult = options.includes(
-        TransactionScanOption.Simulation,
-      )
+      const preflightValidationErrorResult = simulationRequested
         ? this.#preflightValidation(transaction, scope)
         : null;
 
@@ -89,7 +93,9 @@ export class TransactionScanService extends BaseTransactionScanService {
         accountAddress,
       );
 
-      await this.trackScanCompleted({ origin, scope, accountType }, scan);
+      if (validationRequested) {
+        await this.trackScanCompleted({ origin, scope, accountType }, scan);
+      }
 
       return scan;
     } catch (error: unknown) {
@@ -99,7 +105,9 @@ export class TransactionScanService extends BaseTransactionScanService {
 
       await this.trackError(error);
 
-      await this.trackScanFailed({ origin, scope, accountType });
+      if (validationRequested) {
+        await this.trackScanFailed({ origin, scope, accountType });
+      }
 
       return null;
     }
@@ -192,7 +200,7 @@ export class TransactionScanService extends BaseTransactionScanService {
 
     const preflightValidationError = preflightValidationErrorResult ?? null;
 
-    const validationError =
+    const apiValidationError =
       validation?.status === 'Error'
         ? this.#mapError(TransactionScanOption.Validation, validation.error)
         : null;
@@ -201,19 +209,19 @@ export class TransactionScanService extends BaseTransactionScanService {
       validation,
       options,
     });
-    // Prefer the simulation revert: it carries the actionable reason (e.g.
-    // "insufficient balance"). Preflight expiration is next — a local time-bound
-    // failure the user can act on. A validation `Error` only means Blockaid
-    // could not produce a verdict, so it must not mask simulation or preflight
-    // failures.
-    const error =
-      simulationError ??
-      preflightValidationError ??
-      validationError ??
-      missingResultError;
+    const error = simulationError ?? preflightValidationError;
+    const validationError = apiValidationError ?? missingResultError;
 
     return {
-      status: error ? 'ERROR' : 'SUCCESS',
+      // Status follows the security validation outcome. A simulation or
+      // preflight failure stays on `error` and does not hide a successful
+      // validation. A requested validation that is missing or not successful
+      // is an error even when simulation succeeded.
+      status:
+        options.includes(TransactionScanOption.Validation) &&
+        validation?.status !== 'Success'
+          ? 'ERROR'
+          : 'SUCCESS',
       estimatedChanges: {
         assets:
           simulation?.status === 'Success'
@@ -228,6 +236,7 @@ export class TransactionScanService extends BaseTransactionScanService {
           ? this.#mapValidation(validation)
           : null,
       error,
+      validationError,
     };
   }
 

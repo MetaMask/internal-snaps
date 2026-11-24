@@ -429,6 +429,25 @@ describe('MemoEdit event handlers', () => {
       expect(scheduleSpy).not.toHaveBeenCalled();
       expect(updateInterfaceIfExists).not.toHaveBeenCalled();
     });
+
+    it('treats a non-form event as an empty memo and restarts refresh', async () => {
+      vi.mocked(getInterfaceContextIfExists).mockResolvedValue(liveSendContext);
+
+      await handlers[MemoEditFormNames.Form]?.({
+        id: 'interface-id',
+        event: buttonEvent(MemoEditFormNames.Form),
+        context: liveSendContext,
+      });
+
+      expect(updateInterfaceIfExists).toHaveBeenCalledWith(
+        'interface-id',
+        'RENDERED',
+        expect.objectContaining({
+          memo: '',
+          backgroundEventId: 'new-event-id',
+        }),
+      );
+    });
   });
 
   describe('Back', () => {
