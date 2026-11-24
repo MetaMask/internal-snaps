@@ -2,12 +2,15 @@ import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 import {
   COMPUTE_BUDGET_PROGRAM_ADDRESS,
+  SET_COMPUTE_UNIT_LIMIT_DISCRIMINATOR,
+  SET_COMPUTE_UNIT_PRICE_DISCRIMINATOR,
   parseSetComputeUnitLimitInstruction,
   parseSetComputeUnitPriceInstruction,
 } from '@solana-program/compute-budget';
 import { SYSTEM_PROGRAM_ADDRESS } from '@solana-program/system';
 import {
   TOKEN_PROGRAM_ADDRESS,
+  TRANSFER_CHECKED_DISCRIMINATOR,
   findAssociatedTokenPda,
   getTokenDecoder,
   getTokenEncoder,
@@ -183,6 +186,83 @@ function validateTokenChange(
   );
 }
 
+function validatePaymentInstruction(
+  instruction: PackPartnerInstruction,
+  {
+    userUsdc,
+    providerUsdc,
+    user,
+    config: { usdcMint },
+    amount,
+  }: PreparedTransaction,
+): void {
+  requireValid(
+    instruction.data.length === 10 &&
+      instruction.data[0] === TRANSFER_CHECKED_DISCRIMINATOR,
+    'only checked USDC transfers are allowed',
+  );
+  const transfer = parseTransferCheckedInstruction(instruction);
+  requireValid(
+    instruction.accounts.length === 4 ||
+      (instruction.accounts.length === 5 &&
+        instruction.accounts[4]?.address === user &&
+        isSignerRole(instruction.accounts[4].role)),
+    'unexpected transfer accounts',
+  );
+  requireValid(
+    transfer.accounts.source?.address === userUsdc &&
+      transfer.accounts.destination?.address === providerUsdc &&
+      transfer.accounts.mint?.address === usdcMint &&
+      transfer.accounts.authority?.address === user &&
+      isSignerRole(transfer.accounts.authority.role) &&
+      transfer.data.amount === amount &&
+      transfer.data.decimals === 6,
+    'USDC transfer does not match confirmed intent',
+  );
+}
+
+function validateComputeBudgetInstruction(
+  instruction: PackPartnerInstruction,
+  computeKinds: Set<number>,
+): void {
+  const kind = instruction.data[0];
+  requireValid(
+    kind !== undefined &&
+      !computeKinds.has(kind) &&
+      instruction.accounts.length === 0,
+    'invalid compute budget',
+  );
+  requireValid(
+    (kind === SET_COMPUTE_UNIT_LIMIT_DISCRIMINATOR &&
+      instruction.data.length === 5) ||
+      (kind === SET_COMPUTE_UNIT_PRICE_DISCRIMINATOR &&
+        instruction.data.length === 9),
+    'unsupported compute instruction',
+  );
+  if (kind === SET_COMPUTE_UNIT_LIMIT_DISCRIMINATOR) {
+    const { units } = parseSetComputeUnitLimitInstruction(instruction).data;
+    requireValid(units > 0 && units <= 1_400_000, 'invalid compute limit');
+  } else {
+    parseSetComputeUnitPriceInstruction(instruction);
+  }
+  computeKinds.add(kind);
+}
+
+function validateMemoInstruction(
+  instruction: PackPartnerInstruction,
+  { user, provider }: PreparedTransaction,
+): void {
+  requireValid(
+    instruction.data.length > 0 &&
+      instruction.accounts.every(
+        (account) =>
+          (account.address === user || account.address === provider) &&
+          isSignerRole(account.role),
+      ),
+    'invalid memo',
+  );
+}
+
 /**
  * Internal Pack Partner signing boundary. Decode → authenticate → validate
  * instructions and simulated effects → derive key → sign the same message.
@@ -333,13 +413,8 @@ export class PackPartnerSigner {
    */
   #validateInstructions(prepared: PreparedTransaction): void {
     const {
-      config: { memoPrograms, usdcMint },
-      amount,
-      user,
-      provider,
       instructions,
-      userUsdc,
-      providerUsdc,
+      config: { memoPrograms },
     } = prepared;
     let transferCount = 0;
     let memoCount = 0;
@@ -352,73 +427,14 @@ export class PackPartnerSigner {
         accounts: raw.accounts ?? [],
       };
       if (instruction.programAddress === TOKEN_PROGRAM_ADDRESS) {
-        requireValid(
-          instruction.data.length === 10 && instruction.data[0] === 12,
-          'only checked USDC transfers are allowed',
-        );
-        const transfer = parseTransferCheckedInstruction(instruction);
-        const authority = user;
-        requireValid(
-          instruction.accounts.length === 4 ||
-            (instruction.accounts.length === 5 &&
-              instruction.accounts[4]?.address === authority &&
-              isSignerRole(instruction.accounts[4].role)),
-          'unexpected transfer accounts',
-        );
-        requireValid(
-          transfer.accounts.source?.address === userUsdc &&
-            transfer.accounts.destination?.address === providerUsdc &&
-            transfer.accounts.mint?.address === usdcMint &&
-            transfer.accounts.authority?.address === authority &&
-            isSignerRole(transfer.accounts.authority.role) &&
-            transfer.data.amount === amount &&
-            transfer.data.decimals === 6,
-          'USDC transfer does not match confirmed intent',
-        );
+        validatePaymentInstruction(instruction, prepared);
         transferCount += 1;
       } else if (
         instruction.programAddress === COMPUTE_BUDGET_PROGRAM_ADDRESS
       ) {
-        const kind = instruction.data[0];
-        requireValid(
-          kind !== undefined &&
-            !computeKinds.has(kind) &&
-            instruction.accounts.length === 0,
-          'invalid compute budget',
-        );
-        requireValid(
-          (kind === 2 && instruction.data.length === 5) ||
-            (kind === 3 && instruction.data.length === 9),
-          'unsupported compute instruction',
-        );
-        if (kind === 2) {
-          const { units } = parseSetComputeUnitLimitInstruction(
-            instruction as Parameters<
-              typeof parseSetComputeUnitLimitInstruction
-            >[0],
-          ).data;
-          requireValid(
-            units > 0 && units <= 1_400_000,
-            'invalid compute limit',
-          );
-        } else {
-          parseSetComputeUnitPriceInstruction(
-            instruction as Parameters<
-              typeof parseSetComputeUnitPriceInstruction
-            >[0],
-          );
-        }
-        computeKinds.add(kind);
+        validateComputeBudgetInstruction(instruction, computeKinds);
       } else if (memoPrograms.includes(instruction.programAddress)) {
-        requireValid(
-          instruction.data.length > 0 &&
-            instruction.accounts.every(
-              (a) =>
-                (a.address === user || a.address === provider) &&
-                isSignerRole(a.role),
-            ),
-          'invalid memo',
-        );
+        validateMemoInstruction(instruction, prepared);
         memoCount += 1;
       } else {
         requireValid(false, 'unsupported instruction');
