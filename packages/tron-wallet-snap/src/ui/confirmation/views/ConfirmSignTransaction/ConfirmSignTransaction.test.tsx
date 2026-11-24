@@ -153,8 +153,7 @@ describe('ConfirmSignTransaction', () => {
     message: null,
   };
 
-  const SIMULATION_ERROR_TITLE =
-    'This transaction was reverted during simulation.';
+  const SIMULATION_ERROR_TITLE = 'This transaction is expected to fail.';
   const FRIENDLY_EXPIRED_MESSAGE = 'Please go back and try again';
 
   const renderTexts = (context: ConfirmSignTransactionContext): string[] => {
