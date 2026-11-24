@@ -1,0 +1,470 @@
+{
+  "locale": "id",
+  "messages": {
+    "MmssingNonWitnessUtxo": {
+      "message": "Gagal membangun transaksi: UTXO non-witness hilang"
+    },
+    "amount": {
+      "message": "Jumlah"
+    },
+    "asset": {
+      "message": "Aset"
+    },
+    "balance": {
+      "message": "Saldo"
+    },
+    "base58": {
+      "message": "Alamat Bitcoin tidak valid"
+    },
+    "bech32": {
+      "message": "Alamat Bitcoin tidak valid"
+    },
+    "cancel": {
+      "message": "Batal"
+    },
+    "clear": {
+      "message": "Hapus"
+    },
+    "confirmation.account": {
+      "message": "Akun"
+    },
+    "confirmation.advanced.hide": {
+      "message": "Sembunyikan lanjutan"
+    },
+    "confirmation.advanced.programId": {
+      "message": "ID Program"
+    },
+    "confirmation.advanced.show": {
+      "message": "Tampilkan lanjutan"
+    },
+    "confirmation.advanced.unknownInstruction": {
+      "message": "Tidak dikenal"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Bandwidth yang digunakan"
+    },
+    "confirmation.cancelButton": {
+      "message": "Batal"
+    },
+    "confirmation.confirmButton": {
+      "message": "Konfirmasikan"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "Estimasi perubahan"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Tidak ada perubahan"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Tidak tersedia"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Anda menerima"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Anda mengirim"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Estimasi perubahan"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Estimasi perubahan merupakan hal yang mungkin terjadi jika Anda melakukan transaksi ini. Ini hanyalah prediksi, bukan jaminan."
+    },
+    "confirmation.fee": {
+      "message": "Biaya jaringan"
+    },
+    "confirmation.feeError": {
+      "message": "Tidak dapat memperkirakan biaya"
+    },
+    "confirmation.from": {
+      "message": "Dari"
+    },
+    "confirmation.network": {
+      "message": "Jaringan"
+    },
+    "confirmation.origin": {
+      "message": "Permintaan dari"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "DApp yang meminta tanda tangan"
+    },
+    "confirmation.requestOrigin": {
+      "message": "Permintaan dari"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "Permintaan transaksi"
+    },
+    "confirmation.signIn.badAccount": {
+      "message": "Situs ini meminta Anda masuk menggunakan akun yang salah."
+    },
+    "confirmation.signIn.chainId": {
+      "message": "ID Chain"
+    },
+    "confirmation.signIn.description": {
+      "message": "Sebuah situs ingin Anda masuk untuk membuktikan bahwa Anda merupakan pemilik akun ini."
+    },
+    "confirmation.signIn.expirationTime": {
+      "message": "Waktu kedaluwarsa"
+    },
+    "confirmation.signIn.issuedAt": {
+      "message": "Diterbitkan pada"
+    },
+    "confirmation.signIn.message": {
+      "message": "Pesan"
+    },
+    "confirmation.signIn.notBefore": {
+      "message": "Tidak sebelum"
+    },
+    "confirmation.signIn.requestId": {
+      "message": "ID Permintaan"
+    },
+    "confirmation.signIn.resources": {
+      "message": "Sumber daya"
+    },
+    "confirmation.signIn.signingInWith": {
+      "message": "Masuk dengan"
+    },
+    "confirmation.signIn.statement": {
+      "message": "Laporan"
+    },
+    "confirmation.signIn.title": {
+      "message": "Permintaan masuk"
+    },
+    "confirmation.signIn.unknownDomain": {
+      "message": "Domain tak dikenal"
+    },
+    "confirmation.signIn.version": {
+      "message": "Versi"
+    },
+    "confirmation.signMessage.confirmButton": {
+      "message": "Tanda tangani"
+    },
+    "confirmation.signMessage.message": {
+      "message": "Pesan"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Tanda tangani pesan"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signing request"
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "Alasan: {reason}"
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Transaksi ini dikembalikan selama simulasi."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Hanya lanjutkan jika Anda mempercayai setiap alamat yang terlibat."
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "Karena kesalahan, kami tidak dapat memeriksa peringatan keamanan."
+    },
+    "confirmation.to": {
+      "message": "Ke"
+    },
+    "confirmation.transaction.title": {
+      "message": "Permintaan transaksi"
+    },
+    "confirmation.transactionFee": {
+      "message": "Biaya jaringan"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "Pelajari selengkapnya"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Saran keamanan dari"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Jika Anda menyetujui permintaan ini, pihak ketiga yang terdeteksi melakukan penipuan akan mengambil semua aset Anda."
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Ini adalah permintaan tipuan"
+    },
+    "continue": {
+      "message": "Lanjutkan"
+    },
+    "error": {
+      "message": "Kesalahan"
+    },
+    "error.0": {
+      "message": "Format tidak valid"
+    },
+    "error.1000": {
+      "message": "Validasi gagal"
+    },
+    "error.2000": {
+      "message": "Sumber daya tidak ditemukan"
+    },
+    "error.3000": {
+      "message": "Kesalahan koneksi"
+    },
+    "error.4000": {
+      "message": "Keadaan wallet rusak"
+    },
+    "error.5000": {
+      "message": "Kesalahan penyimpanan"
+    },
+    "error.6000": {
+      "message": "Metode tidak diimplementasikan atau tidak didukung"
+    },
+    "error.7000": {
+      "message": "Izin ditolak atau otorisasi tidak cukup"
+    },
+    "error.8000": {
+      "message": "Kesalahan tindakan pengguna"
+    },
+    "error.9000": {
+      "message": "Keadaan rusak, invarianta tidak dihormati atau asersi gagal."
+    },
+    "error.internal": {
+      "message": "Kesalahan internal. Silakan coba lagi nanti atau hubungi dukungan"
+    },
+    "feeRate": {
+      "message": "Tingkat biaya"
+    },
+    "feeRateTooLow": {
+      "message": "Tingkat biaya terlalu rendah"
+    },
+    "feeTooLow": {
+      "message": "Biaya terlalu rendah"
+    },
+    "from": {
+      "message": "Dari"
+    },
+    "inputTooLarge": {
+      "message": "Jumlah tidak valid: terlalu besar"
+    },
+    "insufficientFunds": {
+      "message": "Dana tidak cukup untuk menutupi jumlah plus biaya"
+    },
+    "invalidBase58PayloadLength": {
+      "message": "Alamat Bitcoin tidak valid: panjang tidak valid"
+    },
+    "invalidCharacter": {
+      "message": "Jumlah tidak valid: karakter tidak valid"
+    },
+    "invalidLegacyPrefix": {
+      "message": "Alamat Bitcoin tidak valid: prefix legacy tidak valid"
+    },
+    "legacyAddressTooLong": {
+      "message": "Alamat Bitcoin tidak valid"
+    },
+    "max": {
+      "message": "Maks"
+    },
+    "minutes": {
+      "message": "menit"
+    },
+    "missingDigits": {
+      "message": "Jumlah tidak valid: digit hilang"
+    },
+    "network": {
+      "message": "Jaringan"
+    },
+    "networkFee": {
+      "message": "Biaya jaringan"
+    },
+    "networkFeeTooltip": {
+      "message": "Total biaya jaringan"
+    },
+    "networkValidation": {
+      "message": "Alamat Bitcoin tidak valid: jaringan salah"
+    },
+    "noRecipients": {
+      "message": "Penerima hilang"
+    },
+    "noUtxosSelected": {
+      "message": "Gagal membangun transaksi: UTXOs hilang"
+    },
+    "outOfRange": {
+      "message": "Jumlah tidak valid: di luar jangkauan"
+    },
+    "outputBelowDustLimit": {
+      "message": "Jumlah di bawah batas dust"
+    },
+    "psbt": {
+      "message": "PSBT tidak valid"
+    },
+    "recipient": {
+      "message": "Penerima"
+    },
+    "recipientPlaceholder": {
+      "message": "Masukkan alamat penerima"
+    },
+    "review": {
+      "message": "Tinjau"
+    },
+    "reviewTransactionWarning": {
+      "message": "Tinjau transaksi sebelum melanjutkan"
+    },
+    "send": {
+      "message": "Kirim"
+    },
+    "send.amountField": {
+      "message": "Jumlah"
+    },
+    "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+      "message": "Jumlah harus lebih besar dari {minimumValue}"
+    },
+    "send.amountRequiredError": {
+      "message": "Jumlah diperlukan"
+    },
+    "send.balance": {
+      "message": "Saldo"
+    },
+    "send.cancelButton": {
+      "message": "Batal"
+    },
+    "send.confirmation.cancelButton": {
+      "message": "Batal"
+    },
+    "send.confirmation.fee": {
+      "message": "Biaya jaringan"
+    },
+    "send.confirmation.from": {
+      "message": "Dari"
+    },
+    "send.confirmation.network": {
+      "message": "Jaringan"
+    },
+    "send.confirmation.recipient": {
+      "message": "Penerima"
+    },
+    "send.confirmation.sendButton": {
+      "message": "Kirim"
+    },
+    "send.confirmation.title": {
+      "message": "Tinjau"
+    },
+    "send.confirmation.transactionSpeed": {
+      "message": "Kecepatan transaksi"
+    },
+    "send.confirmation.viewTransaction": {
+      "message": "Lihat transaksi"
+    },
+    "send.continueButton": {
+      "message": "Lanjutkan"
+    },
+    "send.fromField": {
+      "message": "Dari"
+    },
+    "send.fromRequiredError": {
+      "message": "Akun diperlukan"
+    },
+    "send.insufficientBalance": {
+      "message": "Saldo tidak cukup"
+    },
+    "send.insuffientSolToCoverFee": {
+      "message": "Saldo SOL tidak cukup untuk menutupi biaya transaksi"
+    },
+    "send.maxButton": {
+      "message": "Maks"
+    },
+    "send.selectedTokenPriceNotAvailable": {
+      "message": "Harga token dalam {currency} tidak tersedia untuk saat ini. Anda masih dapat mengirim token."
+    },
+    "send.send-pending.subtitle": {
+      "message": "Transaksi Anda telah dikirimkan."
+    },
+    "send.send-pending.title": {
+      "message": "Mengirim..."
+    },
+    "send.simulationMessageAPIError": {
+      "message": "Lanjutkan hanya jika Anda memercayai setiap alamat yang terlibat."
+    },
+    "send.simulationMessageError": {
+      "message": "Transaksi ini dikembalikan selama simulasi."
+    },
+    "send.simulationTitleAPIError": {
+      "message": "Terjadi kesalahan sehingga kami tidak dapat memeriksa peringatan keamanan."
+    },
+    "send.simulationTitleError": {
+      "message": "Simulasi transaksi gagal"
+    },
+    "send.title": {
+      "message": "Kirim"
+    },
+    "send.toField": {
+      "message": "Ke"
+    },
+    "send.toInvalidError": {
+      "message": "Alamat Solana tidak valid"
+    },
+    "send.toPlaceholder": {
+      "message": "Masukkan alamat publik"
+    },
+    "send.toRequiredError": {
+      "message": "Alamat kirim diperlukan"
+    },
+    "send.transaction-failure.subtitle": {
+      "message": "Tidak dapat mengirim {amount} {tokenSymbol}"
+    },
+    "send.transaction-failure.title": {
+      "message": "Transaksi gagal"
+    },
+    "send.transaction-success.subtitle": {
+      "message": "{amount} {tokenSymbol} berhasil dikirim"
+    },
+    "send.transaction-success.title": {
+      "message": "Terkirim"
+    },
+    "sending": {
+      "message": "Mengirim"
+    },
+    "toAddress": {
+      "message": "Ke"
+    },
+    "tooPrecise": {
+      "message": "Jumlah tidak valid: terlalu presisi"
+    },
+    "transactionScan.errors.accountAlreadyInUse": {
+      "message": "Akun dengan alamat yang sama sudah ada."
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Saldo tidak mencukupi"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Dana tidak mencukupi"
+    },
+    "transactionScan.errors.insufficientSol": {
+      "message": "Akun tidak memiliki cukup SOL untuk melakukan operasi."
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Alamat tidak valid"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Transaksi tidak valid"
+    },
+    "transactionScan.errors.slippageToleranceExceeded": {
+      "message": "Transaksi dibatalkan karena toleransi selip telah terlampaui."
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred."
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Metode tidak didukung"
+    },
+    "transactionSpeed": {
+      "message": "Kecepatan transaksi"
+    },
+    "transactionSpeedTooltip": {
+      "message": "Estimasi waktu transaksi"
+    },
+    "unexpected": {
+      "message": "Terjadi kesalahan tak terduga"
+    },
+    "unknownError": {
+      "message": "Terjadi kesalahan yang tidak diketahui"
+    },
+    "unknownUtxo": {
+      "message": "Gagal membangun transaksi: UTXO tidak dikenal"
+    },
+    "witnessProgram": {
+      "message": "Alamat Bitcoin tidak valid: program witness"
+    },
+    "witnessVersion": {
+      "message": "Alamat Bitcoin tidak valid: versi witness"
+    }
+  }
+}

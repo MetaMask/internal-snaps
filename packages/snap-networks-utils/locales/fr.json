@@ -1,0 +1,461 @@
+{
+  "locale": "fr",
+  "messages": {
+    "MmssingNonWitnessUtxo": {
+      "message": "Échec de la construction de la transaction : UTXO non-witness manquant"
+    },
+    "amount": {
+      "message": "Montant"
+    },
+    "asset": {
+      "message": "Actif"
+    },
+    "balance": {
+      "message": "Solde"
+    },
+    "base58": {
+      "message": "Adresse Bitcoin invalide"
+    },
+    "bech32": {
+      "message": "Adresse Bitcoin invalide"
+    },
+    "cancel": {
+      "message": "Annuler"
+    },
+    "clear": {
+      "message": "Effacer"
+    },
+    "confirmation.account": {
+      "message": "Compte"
+    },
+    "confirmation.advanced.data": {
+      "message": "Données"
+    },
+    "confirmation.advanced.hide": {
+      "message": "Masquer les options avancées"
+    },
+    "confirmation.advanced.programId": {
+      "message": "Identifiant du programme"
+    },
+    "confirmation.advanced.show": {
+      "message": "Afficher les options avancées"
+    },
+    "confirmation.advanced.unknownInstruction": {
+      "message": "Inconnu"
+    },
+    "confirmation.bandwidthConsumed": {
+      "message": "Bande passante utilisée"
+    },
+    "confirmation.cancelButton": {
+      "message": "Annuler"
+    },
+    "confirmation.confirmButton": {
+      "message": "Confirmer"
+    },
+    "confirmation.estimatedChanges": {
+      "message": "Changements estimés"
+    },
+    "confirmation.estimatedChanges.noChanges": {
+      "message": "Aucun changement"
+    },
+    "confirmation.estimatedChanges.notAvailable": {
+      "message": "Non disponible"
+    },
+    "confirmation.estimatedChanges.receive": {
+      "message": "Vous recevez"
+    },
+    "confirmation.estimatedChanges.send": {
+      "message": "Vous envoyez"
+    },
+    "confirmation.estimatedChanges.title": {
+      "message": "Changements estimés"
+    },
+    "confirmation.estimatedChanges.tooltip": {
+      "message": "Les changements estimés représentent ce qui pourrait se produire si vous effectuez cette transaction. Il s’agit juste d’une estimation fournie à titre d’information."
+    },
+    "confirmation.fee": {
+      "message": "Frais de réseau"
+    },
+    "confirmation.feeError": {
+      "message": "Impossible d’estimer les frais"
+    },
+    "confirmation.from": {
+      "message": "De"
+    },
+    "confirmation.network": {
+      "message": "Réseau"
+    },
+    "confirmation.origin": {
+      "message": "Demande de la part de"
+    },
+    "confirmation.origin.tooltip": {
+      "message": "Le dApp demandant la signature"
+    },
+    "confirmation.requestOrigin": {
+      "message": "Demande de la part de"
+    },
+    "confirmation.signAndSendTransaction.title": {
+      "message": "Demande de transaction"
+    },
+    "confirmation.signIn.badAccount": {
+      "message": "Ce site vous demande de vous connecter en utilisant le mauvais compte."
+    },
+    "confirmation.signIn.chainId": {
+      "message": "ID de chaîne"
+    },
+    "confirmation.signIn.description": {
+      "message": "Un site vous demande de vous connecter pour prouver que vous êtes le titulaire de ce compte."
+    },
+    "confirmation.signIn.expirationTime": {
+      "message": "Délai d’expiration"
+    },
+    "confirmation.signIn.issuedAt": {
+      "message": "Émis à"
+    },
+    "confirmation.signIn.notBefore": {
+      "message": "Pas avant"
+    },
+    "confirmation.signIn.requestId": {
+      "message": "ID de la demande"
+    },
+    "confirmation.signIn.resources": {
+      "message": "Ressources"
+    },
+    "confirmation.signIn.signingInWith": {
+      "message": "Se connecter avec"
+    },
+    "confirmation.signIn.statement": {
+      "message": "Déclaration"
+    },
+    "confirmation.signIn.title": {
+      "message": "Demande de connexion"
+    },
+    "confirmation.signIn.unknownDomain": {
+      "message": "Domaine inconnu"
+    },
+    "confirmation.signMessage.confirmButton": {
+      "message": "Signer"
+    },
+    "confirmation.signMessage.title": {
+      "message": "Signer le message"
+    },
+    "confirmation.signTransaction.title": {
+      "message": "Signing request"
+    },
+    "confirmation.simulationErrorSubtitle": {
+      "message": "Motif : {reason}"
+    },
+    "confirmation.simulationErrorTitle": {
+      "message": "Cette transaction a été annulée pendant la simulation."
+    },
+    "confirmation.simulationMessageAPIError": {
+      "message": "Ne continuez que si vous faites confiance à chaque adresse impliquée."
+    },
+    "confirmation.simulationTitleAPIError": {
+      "message": "En raison d'une erreur, nous n'avons pas pu vérifier les alertes de sécurité."
+    },
+    "confirmation.to": {
+      "message": "À"
+    },
+    "confirmation.transaction.title": {
+      "message": "Demande de transaction"
+    },
+    "confirmation.transactionFee": {
+      "message": "Frais de réseau"
+    },
+    "confirmation.validationErrorLearnMore": {
+      "message": "En savoir plus"
+    },
+    "confirmation.validationErrorSecurityAdviced": {
+      "message": "Conseils de sécurité fournis par"
+    },
+    "confirmation.validationErrorSubtitle": {
+      "message": "Si vous approuvez cette demande, un tiers connu pour ses activités frauduleuses pourrait s’emparer de tous vos actifs."
+    },
+    "confirmation.validationErrorTitle": {
+      "message": "Cette demande est trompeuse"
+    },
+    "continue": {
+      "message": "Continuer"
+    },
+    "error": {
+      "message": "Erreur"
+    },
+    "error.0": {
+      "message": "Format invalide"
+    },
+    "error.1000": {
+      "message": "Validation échouée"
+    },
+    "error.2000": {
+      "message": "Ressource non trouvée"
+    },
+    "error.3000": {
+      "message": "Erreur de connexion"
+    },
+    "error.4000": {
+      "message": "État du portefeuille corrompu"
+    },
+    "error.5000": {
+      "message": "Erreur de stockage"
+    },
+    "error.6000": {
+      "message": "Méthode non implémentée ou non supportée"
+    },
+    "error.7000": {
+      "message": "Permission refusée ou autorisation insuffisante"
+    },
+    "error.8000": {
+      "message": "Erreur d'action de l'utilisateur"
+    },
+    "error.9000": {
+      "message": "État corrompu, invariante non respectée ou assertion échouée."
+    },
+    "error.internal": {
+      "message": "Erreur interne. Veuillez réessayer plus tard ou contacter le support"
+    },
+    "feeRate": {
+      "message": "Taux de frais"
+    },
+    "feeRateTooLow": {
+      "message": "Taux de frais trop bas"
+    },
+    "feeTooLow": {
+      "message": "Frais trop bas"
+    },
+    "from": {
+      "message": "De"
+    },
+    "inputTooLarge": {
+      "message": "Montant invalide : trop grand"
+    },
+    "insufficientFunds": {
+      "message": "Fonds insuffisants pour couvrir le montant plus les frais"
+    },
+    "invalidBase58PayloadLength": {
+      "message": "Adresse Bitcoin invalide : longueur invalide"
+    },
+    "invalidCharacter": {
+      "message": "Montant invalide : caractère invalide"
+    },
+    "invalidLegacyPrefix": {
+      "message": "Adresse Bitcoin invalide : préfixe legacy invalide"
+    },
+    "legacyAddressTooLong": {
+      "message": "Adresse Bitcoin invalide"
+    },
+    "missingDigits": {
+      "message": "Montant invalide : chiffres manquants"
+    },
+    "network": {
+      "message": "Réseau"
+    },
+    "networkFee": {
+      "message": "Frais de réseau"
+    },
+    "networkFeeTooltip": {
+      "message": "Les frais de réseau totaux"
+    },
+    "networkValidation": {
+      "message": "Adresse Bitcoin invalide : réseau incorrect"
+    },
+    "noRecipients": {
+      "message": "Destinataires manquants"
+    },
+    "noUtxosSelected": {
+      "message": "Échec de la construction de la transaction : UTXOs manquants"
+    },
+    "outOfRange": {
+      "message": "Montant invalide : hors plage"
+    },
+    "outputBelowDustLimit": {
+      "message": "Montant en dessous de la limite dust"
+    },
+    "psbt": {
+      "message": "PSBT invalide"
+    },
+    "recipient": {
+      "message": "Destinataire"
+    },
+    "recipientPlaceholder": {
+      "message": "Entrez l'adresse de réception"
+    },
+    "review": {
+      "message": "Vérifier"
+    },
+    "reviewTransactionWarning": {
+      "message": "Vérifiez la transaction avant de continuer"
+    },
+    "send": {
+      "message": "Envoyer"
+    },
+    "send.amountField": {
+      "message": "Montant"
+    },
+    "send.amountGreatherThanMinimumBalanceForRentExemptionError": {
+      "message": "Le montant doit être supérieur à {minimumValue}"
+    },
+    "send.amountRequiredError": {
+      "message": "Le champ « Montant » ne peut pas être vide"
+    },
+    "send.assetField": {
+      "message": "Jeton"
+    },
+    "send.balance": {
+      "message": "Solde"
+    },
+    "send.cancelButton": {
+      "message": "Annuler"
+    },
+    "send.confirmation.cancelButton": {
+      "message": "Annuler"
+    },
+    "send.confirmation.fee": {
+      "message": "Frais de réseau"
+    },
+    "send.confirmation.from": {
+      "message": "Expéditeur"
+    },
+    "send.confirmation.network": {
+      "message": "Réseau"
+    },
+    "send.confirmation.recipient": {
+      "message": "Destinataire"
+    },
+    "send.confirmation.sendButton": {
+      "message": "Envoyer"
+    },
+    "send.confirmation.title": {
+      "message": "Examiner"
+    },
+    "send.confirmation.transactionSpeed": {
+      "message": "Vitesse de transaction"
+    },
+    "send.confirmation.viewTransaction": {
+      "message": "Voir la transaction"
+    },
+    "send.continueButton": {
+      "message": "Continuer"
+    },
+    "send.fromField": {
+      "message": "Expéditeur"
+    },
+    "send.fromRequiredError": {
+      "message": "Le champ « Compte » ne peut pas être vide"
+    },
+    "send.insufficientBalance": {
+      "message": "Solde insuffisant"
+    },
+    "send.insuffientSolToCoverFee": {
+      "message": "Solde de SOL insuffisant pour couvrir les frais de transaction"
+    },
+    "send.maxButton": {
+      "message": "Maximum"
+    },
+    "send.selectedTokenPriceNotAvailable": {
+      "message": "Le prix des jetons en {currency} n’est pas disponible pour le moment. Vous pouvez toujours envoyer des jetons."
+    },
+    "send.send-pending.subtitle": {
+      "message": "Votre transaction a été soumise."
+    },
+    "send.send-pending.title": {
+      "message": "En cours d’envoi…"
+    },
+    "send.simulationMessageAPIError": {
+      "message": "Ne continuez que si vous faites confiance à toutes les adresses concernées."
+    },
+    "send.simulationMessageError": {
+      "message": "Cette transaction a été annulée pendant la simulation."
+    },
+    "send.simulationTitleAPIError": {
+      "message": "En raison d’une erreur, nous n’avons pas pu vérifier les alertes de sécurité."
+    },
+    "send.simulationTitleError": {
+      "message": "La simulation de la transaction a échoué"
+    },
+    "send.title": {
+      "message": "Envoyer"
+    },
+    "send.toField": {
+      "message": "Destinataire"
+    },
+    "send.toInvalidError": {
+      "message": "Adresse Solana non valide"
+    },
+    "send.toPlaceholder": {
+      "message": "Saisissez l’adresse publique"
+    },
+    "send.toRequiredError": {
+      "message": "L’adresse du destinataire est requise"
+    },
+    "send.transaction-failure.subtitle": {
+      "message": "Impossible d’envoyer {amount} {tokenSymbol}"
+    },
+    "send.transaction-failure.title": {
+      "message": "La transaction a échoué"
+    },
+    "send.transaction-success.subtitle": {
+      "message": "{amount} {tokenSymbol} a été envoyé avec succès"
+    },
+    "send.transaction-success.title": {
+      "message": "Envoyé"
+    },
+    "sending": {
+      "message": "Envoi"
+    },
+    "toAddress": {
+      "message": "À"
+    },
+    "tooPrecise": {
+      "message": "Montant invalide : trop précis"
+    },
+    "transactionScan.errors.accountAlreadyInUse": {
+      "message": "Un compte avec la même adresse existe déjà."
+    },
+    "transactionScan.errors.insufficientBalance": {
+      "message": "Solde insuffisant"
+    },
+    "transactionScan.errors.insufficientFunds": {
+      "message": "Fonds insuffisants"
+    },
+    "transactionScan.errors.insufficientSol": {
+      "message": "Le compte ne dispose pas de suffisamment de SOL pour effectuer l’opération."
+    },
+    "transactionScan.errors.invalidAddress": {
+      "message": "Adresse invalide"
+    },
+    "transactionScan.errors.invalidTransaction": {
+      "message": "Transaction invalide"
+    },
+    "transactionScan.errors.slippageToleranceExceeded": {
+      "message": "La transaction a été annulée, car la tolérance de slippage a été dépassée."
+    },
+    "transactionScan.errors.unknownError": {
+      "message": "An unknown error occurred."
+    },
+    "transactionScan.errors.unsupportedEIP712Message": {
+      "message": "Méthode non prise en charge"
+    },
+    "transactionSpeed": {
+      "message": "Vitesse de transaction"
+    },
+    "transactionSpeedTooltip": {
+      "message": "Le temps estimé de la transaction"
+    },
+    "unexpected": {
+      "message": "Une erreur inattendue s'est produite"
+    },
+    "unknownError": {
+      "message": "Une erreur inconnue s'est produite"
+    },
+    "unknownUtxo": {
+      "message": "Échec de la construction de la transaction : UTXO inconnu"
+    },
+    "witnessProgram": {
+      "message": "Adresse Bitcoin invalide : programme witness"
+    },
+    "witnessVersion": {
+      "message": "Adresse Bitcoin invalide : version witness"
+    }
+  }
+}

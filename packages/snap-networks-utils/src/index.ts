@@ -56,6 +56,8 @@ export type {
   TransactionSecurityProperties,
 } from './services/security-alerts/utils';
 export { safeMerge } from './utils/safeMerge/safeMerge';
+export { createI18n, FALLBACK_LANGUAGE } from './utils/i18n/i18n';
+export type { LocaleMessages, Locales, Translate } from './utils/i18n/i18n';
 export {
   resolveFlowTransactionType,
   resolveUnifiedSwapTransactionType,
