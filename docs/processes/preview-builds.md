@@ -15,8 +15,8 @@ Generally, when working with preview builds, you will follow this process:
 To publish preview builds:
 
 1. Create a pull request with the changes to your package(s).
-2. Post a comment on the pull request with the text `@metamaskbot publish-preview`. The `publish-preview` GitHub action will kick off to generate and publish preview builds for all packages in the monorepo.
-3. After a few minutes, you will see a new comment that lists the newly published packages along with their versions.
+2. Go to the [Publish a preview build](https://github.com/MetaMask/internal-snaps/actions/workflows/publish-preview.yml) workflow, click "Run workflow", and enter the pull request number (or a branch name). By default, only packages changed compared to the base branch are published; you can instead provide a list of packages to publish.
+3. After a few minutes, you will see a new comment on the pull request that lists the newly published packages along with their versions.
 
 This workflow is available to members of the MetaMask engineering team on GitHub. Independent contributors should use [local builds](./local-builds.md) instead.
 
