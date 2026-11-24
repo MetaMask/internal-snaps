@@ -338,6 +338,7 @@ describe('PackPartnerSigner purchases and shared guards', () => {
 
       expect(result.signedTransaction).toStrictEqual(expect.any(String));
       expect(deriveSolanaKeypair).toHaveBeenCalledTimes(1);
+      expect(rpc.getFeeForMessage).not.toHaveBeenCalled();
       expect(rpc.sendTransaction).not.toHaveBeenCalled();
     },
   );
@@ -502,7 +503,7 @@ describe('PackPartnerSigner purchases and shared guards', () => {
   it.each([null, 0n, -1n])(
     'rejects unavailable or invalid network fees: %s',
     async (fee) => {
-      const { account, wire } = await fixture();
+      const { account, wire } = await fixture({ userPays: true });
       rpc.getFeeForMessage.mockReturnValue(
         request({ context: { slot: 1n }, value: fee }),
       );
@@ -520,45 +521,39 @@ describe('PackPartnerSigner purchases and shared guards', () => {
     },
   );
 
-  it.each([false, true])(
-    'accepts the exact network fee cap (user pays: %s)',
-    async (userPays) => {
-      const { account, wire } = await fixture({
-        userPays,
-        fee: PACK_PARTNER_MAX_FEE,
-      });
+  it('accepts the exact network fee cap when the user pays', async () => {
+    const { account, wire } = await fixture({
+      userPays: true,
+      fee: PACK_PARTNER_MAX_FEE,
+    });
 
-      expect(
-        await new PackPartnerSigner(connection).signBuy(
-          account,
-          wire,
-          { amount: '25000000' },
-          Network.Mainnet,
-        ),
-      ).toMatchObject({ signedTransaction: expect.any(String) });
-      expect(deriveSolanaKeypair).toHaveBeenCalledTimes(1);
-    },
-  );
+    expect(
+      await new PackPartnerSigner(connection).signBuy(
+        account,
+        wire,
+        { amount: '25000000' },
+        Network.Mainnet,
+      ),
+    ).toMatchObject({ signedTransaction: expect.any(String) });
+    expect(deriveSolanaKeypair).toHaveBeenCalledTimes(1);
+  });
 
-  it.each([false, true])(
-    'rejects network fees above the cap (user pays: %s)',
-    async (userPays) => {
-      const { account, wire } = await fixture({
-        userPays,
-        fee: PACK_PARTNER_MAX_FEE + 1n,
-      });
+  it('rejects network fees above the cap when the user pays', async () => {
+    const { account, wire } = await fixture({
+      userPays: true,
+      fee: PACK_PARTNER_MAX_FEE + 1n,
+    });
 
-      await expect(
-        new PackPartnerSigner(connection).signBuy(
-          account,
-          wire,
-          { amount: '25000000' },
-          Network.Mainnet,
-        ),
-      ).rejects.toThrow(/fee exceeds cap/u);
-      expect(deriveSolanaKeypair).not.toHaveBeenCalled();
-    },
-  );
+    await expect(
+      new PackPartnerSigner(connection).signBuy(
+        account,
+        wire,
+        { amount: '25000000' },
+        Network.Mainnet,
+      ),
+    ).rejects.toThrow(/fee exceeds cap/u);
+    expect(deriveSolanaKeypair).not.toHaveBeenCalled();
+  });
 
   it.each([false, true])(
     'rejects simulated SOL spending beyond the network fee (user pays: %s)',

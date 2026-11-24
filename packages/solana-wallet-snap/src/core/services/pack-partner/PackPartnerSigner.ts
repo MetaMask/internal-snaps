@@ -85,7 +85,7 @@ type SimulatedEffects = Readonly<{
   addresses: readonly Address[];
   before: readonly (ChainAccount | null)[];
   after: readonly (ChainAccount | null)[];
-  fee: bigint;
+  userFee: bigint;
 }>;
 
 /**
@@ -438,7 +438,7 @@ export class PackPartnerSigner {
    *
    * @param wire - Original transaction bytes, never recompiled or given a new blockhash.
    * @param prepared - Authenticated transaction and network-bound RPC.
-   * @returns Complete before/after account snapshots and the checked network fee.
+   * @returns Complete before/after account snapshots and the fee charged to the user.
    */
   async #simulateTransaction(
     wire: string,
@@ -456,19 +456,23 @@ export class PackPartnerSigner {
       before.value.length === addresses.length,
       'incomplete account snapshot',
     );
-    const fee = await rpc
-      .getFeeForMessage(
-        getBase64Decoder().decode(
-          transaction.messageBytes,
-        ) as TransactionMessageBytesBase64,
-        { commitment: 'confirmed', minContextSlot: before.context.slot },
-      )
-      .send();
-    requireValid(
-      fee.value !== null && fee.value > 0n,
-      'fee unavailable or blockhash expired',
-    );
-    requireValid(fee.value <= PACK_PARTNER_MAX_FEE, 'total fee exceeds cap');
+    let userFee = 0n;
+    if (prepared.payer === prepared.user) {
+      const fee = await rpc
+        .getFeeForMessage(
+          getBase64Decoder().decode(
+            transaction.messageBytes,
+          ) as TransactionMessageBytesBase64,
+          { commitment: 'confirmed', minContextSlot: before.context.slot },
+        )
+        .send();
+      requireValid(
+        fee.value !== null && fee.value > 0n,
+        'fee unavailable or blockhash expired',
+      );
+      requireValid(fee.value <= PACK_PARTNER_MAX_FEE, 'total fee exceeds cap');
+      userFee = fee.value;
+    }
     // Deliberately unsigned: no private key is derived until simulation passes.
     const simulation = await rpc
       .simulateTransaction(wire as Base64EncodedWireTransaction, {
@@ -489,7 +493,7 @@ export class PackPartnerSigner {
       addresses,
       before: before.value,
       after: simulation.value.accounts,
-      fee: fee.value,
+      userFee,
     };
   }
 
@@ -503,7 +507,7 @@ export class PackPartnerSigner {
     prepared: PreparedTransaction,
     effects: SimulatedEffects,
   ): void {
-    const { addresses, before, after, fee } = effects;
+    const { addresses, before, after, userFee } = effects;
     const {
       config: { usdcMint },
       amount,
@@ -556,7 +560,7 @@ export class PackPartnerSigner {
         );
         if (accountAddress === user) {
           requireValid(
-            post.lamports === pre.lamports - (payer === user ? fee : 0n),
+            post.lamports === pre.lamports - userFee,
             'unexpected user SOL movement',
           );
         }
