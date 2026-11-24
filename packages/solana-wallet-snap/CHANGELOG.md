@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add client-only guarded Pack Partner purchase signing on Solana mainnet and devnet.
+- Add the client-only `signPackPartnerBuy` method to sign Pack Partner purchases on Solana mainnet and devnet ([#655](https://github.com/MetaMask/internal-snaps/pull/655)).
 - Require risk acknowledgement before confirming Solana transactions flagged as malicious. Confirm opens a danger-styled acknowledgement screen, and proceeding requires checking the risk checkbox ([#615](https://github.com/MetaMask/internal-snaps/pull/615)).
 
 ## [7.4.0]
