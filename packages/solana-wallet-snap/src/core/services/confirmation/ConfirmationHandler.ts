@@ -1,5 +1,6 @@
 import { SolMethod } from '@metamask/keyring-api';
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import type { Json } from '@metamask/snaps-sdk';
 import { assert, union } from '@metamask/superstruct';
 
 import { render as renderConfirmSignIn } from '../../../features/confirmation/views/ConfirmSignIn/render';
@@ -8,6 +9,7 @@ import {
   DEFAULT_CONFIRMATION_CONTEXT,
   render as renderConfirmTransactionRequest,
 } from '../../../features/confirmation/views/ConfirmTransactionRequest/render';
+import type { ConfirmTransactionRequestResult } from '../../../features/confirmation/views/ConfirmTransactionRequest/types';
 import { ScheduleBackgroundEventMethod } from '../../handlers/onCronjob/backgroundEvents/ScheduleBackgroundEventMethod';
 import type { SolanaKeyringRequest } from '../../handlers/onKeyringRequest/structs';
 import { resolveTransactionType } from '../../utils/transactionType';
@@ -17,6 +19,15 @@ import {
 } from '../wallet/structs';
 
 /**
+ * The outcome of a keyring confirmation. `context` carries the security verdict
+ * the user saw for a transaction, and is omitted for the other requests.
+ */
+type ConfirmationOutcome = {
+  confirmed: boolean;
+  context?: ConfirmTransactionRequestResult['context'];
+};
+
+/**
  * Wraps the confirmation logic for the keyring API.
  *
  * It is responsible for rendering the confirmation UI and handling the side effects that need to happen when the transaction is shown in confirmation UI.
@@ -24,16 +35,16 @@ import {
 export class ConfirmationHandler {
   /**
    * Handles the confirmation of a request, based on the method of the request.
-   * Renders the appropriate confirmation UI for the request, and returns whether the request was confirmed.
+   * Renders the appropriate confirmation UI for the request, and returns the user's decision.
    *
    * @param request - The request to confirm.
    * @param account - The account that the request is for.
-   * @returns Whether the request was confirmed.
+   * @returns The user's decision. For a transaction, it also carries the security verdict the user saw, when one is reported.
    */
   async handleKeyringRequest(
     request: SolanaKeyringRequest,
     account: ExtendedKeyringAccount,
-  ): Promise<boolean> {
+  ): Promise<ConfirmationOutcome> {
     const {
       request: { method },
     } = request;
@@ -59,12 +70,12 @@ export class ConfirmationHandler {
    *
    * @param request - The request to confirm.
    * @param account - The account that the request is for.
-   * @returns Whether the request was confirmed.
+   * @returns The user's decision, carrying the security verdict the user saw when one is reported.
    */
   async #handleConfirmTransactionRequest(
     request: SolanaKeyringRequest,
     account: ExtendedKeyringAccount,
-  ): Promise<boolean> {
+  ): Promise<ConfirmationOutcome> {
     assert(
       request.request,
       union([
@@ -108,7 +119,7 @@ export class ConfirmationHandler {
       },
     });
 
-    const isConfirmed = await renderConfirmTransactionRequest({
+    const { result, context } = await renderConfirmTransactionRequest({
       ...DEFAULT_CONFIRMATION_CONTEXT,
       scope,
       method,
@@ -117,7 +128,16 @@ export class ConfirmationHandler {
       account,
     });
 
-    if (isConfirmed) {
+    /**
+     * The verdict the user saw, carried by the Approved and Rejected events
+     * only. Added is dispatched before the user decides, so it has none.
+     */
+    const { securityProperties } = context;
+    const securityMetadata: Record<string, Json> = securityProperties
+      ? { securityProperties }
+      : {};
+
+    if (result) {
       // Trigger the side effects that need to happen when the transaction is approved
       await snap.request({
         method: 'snap_scheduleBackgroundEvent',
@@ -131,13 +151,14 @@ export class ConfirmationHandler {
                 scope,
                 origin,
                 transactionType,
+                ...securityMetadata,
               },
             },
           },
         },
       });
 
-      return true;
+      return { confirmed: true, context };
     }
 
     // Trigger the side effects that need to happen when the transaction is rejected
@@ -153,13 +174,14 @@ export class ConfirmationHandler {
               scope,
               origin,
               transactionType,
+              ...securityMetadata,
             },
           },
         },
       },
     });
 
-    return false;
+    return { confirmed: false, context };
   }
 
   /**
@@ -167,14 +189,14 @@ export class ConfirmationHandler {
    *
    * @param request - The request to confirm.
    * @param account - The account that the request is for.
-   * @returns Whether the request was confirmed.
+   * @returns The user's decision.
    */
   async #handleConfirmSignMessage(
     request: SolanaKeyringRequest,
     account: ExtendedKeyringAccount,
-  ): Promise<boolean> {
+  ): Promise<ConfirmationOutcome> {
     const isConfirmed = await renderConfirmSignMessage(request, account);
-    return Boolean(isConfirmed);
+    return { confirmed: Boolean(isConfirmed) };
   }
 
   /**
@@ -182,13 +204,13 @@ export class ConfirmationHandler {
    *
    * @param request - The request to confirm.
    * @param account - The account that the request is for.
-   * @returns Whether the request was confirmed.
+   * @returns The user's decision.
    */
   async #handleConfirmSignIn(
     request: SolanaKeyringRequest,
     account: ExtendedKeyringAccount,
-  ): Promise<boolean> {
+  ): Promise<ConfirmationOutcome> {
     const isConfirmed = await renderConfirmSignIn(request, account);
-    return Boolean(isConfirmed);
+    return { confirmed: Boolean(isConfirmed) };
   }
 }

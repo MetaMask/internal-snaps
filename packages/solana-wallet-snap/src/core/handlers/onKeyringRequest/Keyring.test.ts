@@ -618,7 +618,7 @@ describe('SolanaKeyring', () => {
       vi.spyOn(
         mockConfirmationHandler,
         'handleKeyringRequest',
-      ).mockResolvedValue(true);
+      ).mockResolvedValue({ confirmed: true });
 
       await expect(keyring.submitRequest(request)).rejects.toThrow(
         'The requested account and/or method has not been authorized by the user.',
@@ -633,7 +633,7 @@ describe('SolanaKeyring', () => {
       vi.spyOn(
         mockConfirmationHandler,
         'handleKeyringRequest',
-      ).mockResolvedValue(true);
+      ).mockResolvedValue({ confirmed: true });
 
       const message = 'SGVsbG8sIHdvcmxkIQ=='; // "Hello, world!" in base64
 
@@ -670,7 +670,7 @@ describe('SolanaKeyring', () => {
       vi.spyOn(
         mockConfirmationHandler,
         'handleKeyringRequest',
-      ).mockResolvedValue(false);
+      ).mockResolvedValue({ confirmed: false });
 
       const request: KeyringRequest = {
         account: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
@@ -690,6 +690,72 @@ describe('SolanaKeyring', () => {
 
       await expect(keyring.submitRequest(request)).rejects.toThrow(
         'User rejected the request.',
+      );
+    });
+  });
+
+  describe('submitRequest security telemetry', () => {
+    const signAndSendRequest = {
+      account: MOCK_SOLANA_KEYRING_ACCOUNT_0.id,
+      id: crypto.randomUUID(),
+      request: {
+        method: SolMethod.SignAndSendTransaction,
+        params: {
+          account: {
+            address: MOCK_SOLANA_KEYRING_ACCOUNT_0.address,
+          },
+          transaction: 'SGVsbG8sIHdvcmxkIQ==', // "Hello, world!" in base64
+          scope: Network.Devnet,
+        },
+      },
+      scope: Network.Devnet,
+      origin: 'https://metamask.io',
+    };
+
+    it('passes the verdict from the confirmation to the wallet service when a transaction is sent', async () => {
+      const securityProperties = {
+        securityAlertResponse: 'Benign' as const,
+      };
+      vi.spyOn(mockState, 'getKey').mockResolvedValueOnce(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+      vi.spyOn(
+        mockConfirmationHandler,
+        'handleKeyringRequest',
+      ).mockResolvedValue({ confirmed: true, context: { securityProperties } });
+
+      await keyring.submitRequest(signAndSendRequest);
+
+      expect(mockWalletService.signAndSendTransaction).toHaveBeenCalledWith(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        'SGVsbG8sIHdvcmxkIQ==',
+        Network.Devnet,
+        'https://metamask.io',
+        undefined,
+        undefined,
+        securityProperties,
+      );
+    });
+
+    it('does not pass a verdict when the confirmation reports none', async () => {
+      vi.spyOn(mockState, 'getKey').mockResolvedValueOnce(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+      vi.spyOn(
+        mockConfirmationHandler,
+        'handleKeyringRequest',
+      ).mockResolvedValue({ confirmed: true });
+
+      await keyring.submitRequest(signAndSendRequest);
+
+      expect(mockWalletService.signAndSendTransaction).toHaveBeenCalledWith(
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+        'SGVsbG8sIHdvcmxkIQ==',
+        Network.Devnet,
+        'https://metamask.io',
+        undefined,
+        undefined,
+        undefined,
       );
     });
   });

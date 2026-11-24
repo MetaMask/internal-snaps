@@ -485,6 +485,7 @@ describe('TransactionScan', () => {
           validation: {
             result_type: 'Error',
             reason: 'Validation unavailable',
+            description: 'The validation service is unavailable',
           },
         },
         error_details: {
@@ -512,7 +513,7 @@ describe('TransactionScan', () => {
         validationError: {
           type: 'validation',
           code: 'Validation unavailable',
-          message: 'Validation unavailable',
+          message: 'The validation service is unavailable',
         },
         validation: { type: 'Error', reason: 'Validation unavailable' },
       });

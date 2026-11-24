@@ -200,6 +200,7 @@ export class TransactionScanService extends BaseTransactionScanService {
       validation: {
         type: result.result?.validation?.result_type ?? null,
         reason: result.result?.validation?.reason ?? null,
+        description: result.result?.validation?.description ?? null,
       },
       error: simulationError,
       validationError,
@@ -257,7 +258,7 @@ export class TransactionScanService extends BaseTransactionScanService {
       return {
         type: 'validation',
         code: validation.reason ?? null,
-        message: validation.reason ?? null,
+        message: validation.description ?? null,
       };
     }
 

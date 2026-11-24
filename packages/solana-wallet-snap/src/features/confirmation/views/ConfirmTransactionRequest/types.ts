@@ -1,5 +1,8 @@
 import type { SolMethod } from '@metamask/keyring-api';
-import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  TransactionSecurityProperties,
+} from '@metamask/snap-networks-utils';
 
 import type { SpotPrices } from '../../../../core/clients/price-api/types';
 import type { Network } from '../../../../core/constants/solana';
@@ -35,5 +38,20 @@ export type ConfirmTransactionRequestContext = {
   advanced: {
     shown: boolean;
     instructions: InstructionParseResult[];
+  };
+};
+
+/**
+ * The user's decision in the ConfirmTransactionRequest dialog, with context data.
+ */
+export type ConfirmTransactionRequestResult = {
+  /** Whether the user confirmed the transaction. */
+  result: boolean;
+  context: {
+    /**
+     * The security properties of the verdict shown in the dialog, ready to
+     * report. Omitted when the dialog produced no security data.
+     */
+    securityProperties?: TransactionSecurityProperties;
   };
 };

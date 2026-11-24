@@ -123,6 +123,7 @@ export const SimulationStruct = type({
 export const ValidationStruct = type({
   result_type: optional(string()),
   reason: optional(nullable(string())),
+  description: optional(nullable(string())),
 });
 
 const ResultStruct = type({

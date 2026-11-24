@@ -516,12 +516,10 @@ export class SolanaKeyring implements KeyringSnapRpc {
 
     assert(scope, NetworkStruct);
 
-    const isConfirmed = await this.#confirmationHandler.handleKeyringRequest(
-      request,
-      account,
-    );
+    const { confirmed, context } =
+      await this.#confirmationHandler.handleKeyringRequest(request, account);
 
-    if (!isConfirmed) {
+    if (!confirmed) {
       throw new UserRejectedRequestError() as unknown as Error;
     }
 
@@ -534,6 +532,8 @@ export class SolanaKeyring implements KeyringSnapRpc {
           scope,
           origin,
           options,
+          undefined,
+          context?.securityProperties,
         );
       }
       case SolMethod.SignTransaction: {

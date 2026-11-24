@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add security fields to the "Transaction Approved", "Transaction Rejected", "Transaction Submitted", and "Transaction Finalized" events for in-app sends and dApp transactions ([#674](https://github.com/MetaMask/internal-snaps/pull/674))
+  - Sign-only requests report only "Transaction Approved" and "Transaction Rejected", since nothing is submitted
+
 ## [7.5.0]
 
 ### Added

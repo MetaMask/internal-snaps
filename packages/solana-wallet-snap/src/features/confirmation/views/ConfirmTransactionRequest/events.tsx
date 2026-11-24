@@ -2,6 +2,7 @@ import type { SecurityAlertResponse } from '@metamask/snap-networks-utils';
 import {
   MaliciousAcknowledgementFormNames,
   requiresMaliciousAcknowledgement,
+  serialize,
 } from '@metamask/snap-networks-utils';
 import type { InputChangeEvent } from '@metamask/snaps-sdk';
 
@@ -69,12 +70,27 @@ async function updateLatestContext(
 }
 
 /**
- * Marks the confirmation interface as confirmed and clears its mapping.
+ * Resolves the confirmation interface with the user's result and the latest
+ * stored context, then clears its mapping. Render computes the security
+ * verdict from that context.
+ *
+ * The context must be read under the interface lock, so it is the context the
+ * user acted on. The interface is deleted once it resolves, so the context
+ * cannot be read afterward.
  *
  * @param id - The ID of the interface to resolve.
+ * @param result - Whether the user confirmed the transaction.
+ * @param context - The latest stored context, or `null` if there is none.
  */
-async function resolveConfirmation(id: string): Promise<void> {
-  await resolveInterface(id, true);
+async function resolveResult(
+  id: string,
+  result: boolean,
+  context: Context | null,
+): Promise<void> {
+  await resolveInterface(id, {
+    result,
+    context: context === null ? null : serialize(context),
+  });
   await state.deleteKey(
     `mapInterfaceNameToId.${CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME}`,
   );
@@ -108,10 +124,11 @@ async function onShowAdvancedButtonClick({
  * @param params.id - The ID of the interface to update.
  */
 async function onCancelButtonClick({ id }: { id: string }): Promise<void> {
-  await resolveInterface(id, false);
-  await state.deleteKey(
-    `mapInterfaceNameToId.${CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME}`,
-  );
+  await withInterfaceLock(id, async () => {
+    const context = await getInterfaceContext<Context>(id);
+
+    await resolveResult(id, false, context);
+  });
 }
 
 /**
@@ -142,7 +159,7 @@ async function onConfirmButtonClick({ id }: { id: string }): Promise<void> {
       return;
     }
 
-    await resolveConfirmation(id);
+    await resolveResult(id, true, context);
   });
 }
 
@@ -220,7 +237,7 @@ async function onProceedButtonClick({ id }: { id: string }): Promise<void> {
       return;
     }
 
-    await resolveConfirmation(id);
+    await resolveResult(id, true, context);
   });
 }
 

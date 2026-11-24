@@ -1,5 +1,9 @@
 import type { KeyringRequest } from '@metamask/keyring-api';
 import { KeyringRpcMethod, SolMethod } from '@metamask/keyring-api';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  serialize,
+} from '@metamask/snap-networks-utils';
 import { installSnap } from '@metamask/snaps-jest';
 
 import { MOCK_SPOT_PRICES } from '../../../../core/clients/price-api/mocks/spot-prices';
@@ -371,6 +375,7 @@ describe('render tracking', () => {
       render,
       createInterface,
       getPreferences,
+      showDialog,
       trackError,
       calculateFee,
       extractDestinationAddress,
@@ -466,8 +471,8 @@ describe('render tracking', () => {
     transactionScanService.scanTransaction.mockRejectedValue(scanError);
     analyzeFeePayment.mockRejectedValue(feePaymentError);
 
-    await expect(
-      render({
+    expect(
+      await render({
         method: SolMethod.SignAndSendTransaction,
         scope: Network.Mainnet,
         transaction: 'transaction',
@@ -476,7 +481,10 @@ describe('render tracking', () => {
         },
         origin: 'https://metamask.io',
       } as unknown as ConfirmTransactionRequestContext),
-    ).resolves.toBe('dialog-result');
+    ).toStrictEqual({
+      result: false,
+      context: { securityProperties: undefined },
+    });
 
     expect(trackError).toHaveBeenCalledWith(destinationExtractError);
     expect(trackError).toHaveBeenCalledWith(pricesError);
@@ -484,6 +492,67 @@ describe('render tracking', () => {
     expect(trackError).toHaveBeenCalledWith(scanError);
     expect(trackError).toHaveBeenCalledWith(feePaymentError);
     expect(trackError).toHaveBeenCalledTimes(5);
+  });
+
+  it('computes the verdict from the context the dialog resolved with', async () => {
+    const { render, showDialog } = await setupTest();
+    const securityProperties = {
+      securityAlertResponse: 'Malicious',
+      securityAlertReason: 'known_attacker',
+      securityAlertDescription: 'Known attacker involved in the transaction',
+    };
+    const decidedContext = {
+      method: SolMethod.SignAndSendTransaction,
+      origin: DEFAULT_METAMASK_ORIGIN,
+      preferences: { useSecurityAlerts: true },
+      scan: {
+        status: 'SUCCESS',
+        estimatedChanges: { assets: [] },
+        validation: {
+          type: 'Malicious',
+          reason: 'known_attacker',
+          description: 'Known attacker involved in the transaction',
+        },
+        error: null,
+        validationError: null,
+      },
+    };
+    showDialog.mockResolvedValue({
+      result: true,
+      context: serialize(decidedContext),
+    });
+
+    expect(
+      await render({
+        method: SolMethod.SignAndSendTransaction,
+        scope: Network.Mainnet,
+        transaction: 'transaction',
+        account: {
+          address: 'BLw3RweJmfbTapJRgnPRvd962YDjFYAnVGd1p5hmZ5tP',
+        },
+        origin: 'https://metamask.io',
+      } as unknown as ConfirmTransactionRequestContext),
+    ).toStrictEqual({ result: true, context: { securityProperties } });
+  });
+
+  it('reports no security properties when the dialog resolved without a context', async () => {
+    const { render, showDialog } = await setupTest();
+    showDialog.mockResolvedValue({ result: true, context: null });
+
+    expect(
+      await render({
+        method: SolMethod.SignAndSendTransaction,
+        scope: Network.Mainnet,
+        transaction: 'transaction',
+        account: {
+          address: 'BLw3RweJmfbTapJRgnPRvd962YDjFYAnVGd1p5hmZ5tP',
+        },
+        origin: 'https://metamask.io',
+      } as unknown as ConfirmTransactionRequestContext),
+    ).toStrictEqual({
+      result: true,
+      context: { securityProperties: undefined },
+    });
   });
 
   it('tells the fee analysis when the instructions cannot be parsed', async () => {

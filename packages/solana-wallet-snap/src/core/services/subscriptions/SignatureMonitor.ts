@@ -1,6 +1,11 @@
 import type { TransactionType } from '@metamask/keyring-api';
-import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
-import { assert, string } from '@metamask/superstruct';
+import type {
+  AnalyticsService,
+  Logger,
+  TransactionSecurityProperties,
+} from '@metamask/snap-networks-utils';
+import { TransactionSecurityPropertiesStruct } from '@metamask/snap-networks-utils';
+import { assert, is, string } from '@metamask/superstruct';
 import { Duration } from '@metamask/utils';
 import { signature as asSignature } from '@solana/kit';
 import { get } from 'lodash';
@@ -98,6 +103,7 @@ export class SignatureMonitor {
    * @param origin - The origin of the transaction.
    * @param transactionType - The classification resolved by the caller. When
    * omitted, the on-chain classification is used once the transaction is mapped.
+   * @param securityProperties - The security verdict the user saw when confirming the transaction, if any. It is stored with the subscription and reported on Transaction Finalized.
    */
   async monitor(
     signature: string,
@@ -106,6 +112,7 @@ export class SignatureMonitor {
     network: Network,
     origin: string,
     transactionType?: TransactionType,
+    securityProperties?: TransactionSecurityProperties,
   ): Promise<void> {
     this.#logger.info(`Monitoring signature`, {
       signature,
@@ -131,6 +138,7 @@ export class SignatureMonitor {
         accountId,
         origin,
         ...(transactionType === undefined ? {} : { transactionType }),
+        ...(securityProperties === undefined ? {} : { securityProperties }),
       },
     };
 
@@ -169,6 +177,15 @@ export class SignatureMonitor {
         | TransactionType
         | undefined;
 
+      const secProperties = get(subscription, 'metadata.securityProperties');
+
+      const securityProperties = is(
+        secProperties,
+        TransactionSecurityPropertiesStruct,
+      )
+        ? secProperties
+        : undefined;
+
       const account = await this.#accountService.findById(accountId);
       if (!account) {
         throw new Error(`Account not found: ${accountId}`);
@@ -198,6 +215,7 @@ export class SignatureMonitor {
             transactionType:
               transactionType ??
               (transaction.type as TransactionType | undefined),
+            ...securityProperties,
           });
           break;
         default:
