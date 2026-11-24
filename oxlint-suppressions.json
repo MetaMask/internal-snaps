@@ -283,6 +283,11 @@
       "count": 1
     }
   },
+  "packages/snap-networks-utils/src/ui/PaymentReference/PaymentReferenceScreen.tsx": {
+    "typescript/no-unsafe-return": {
+      "count": 1
+    }
+  },
   "packages/snap-networks-utils/src/ui/TransactionAlert/TransactionAlert.tsx": {
     "typescript/no-unsafe-return": {
       "count": 4
