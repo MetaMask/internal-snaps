@@ -10,7 +10,7 @@ export const SUPPORTED_SCOPES =
 /**
  * Private-key export encoding supported by this snap.
  *
- * `hex` (XRPL secp256k1 private key: `00` + 32-byte hex). 
+ * `hex` (XRPL secp256k1 private key: `00` + 32-byte hex).
  * TODO: use `base58` if the account is ed25519
  */
 export const PRIVATE_KEY_EXPORT_ENCODING = 'hex' as const;

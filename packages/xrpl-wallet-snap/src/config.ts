@@ -135,8 +135,9 @@ const ENVIRONMENT = {
   networks: {
     [KnownCaip2ChainId.Mainnet]: {
       // TODO: remove the default values once the env vars are set
-      rpcUrl: process.env.XRPL_RPC_URL_MAINNET || "https://xrplcluster.com",
-      clioUrl: process.env.XRPL_CLIO_URL_MAINNET || "https://s1.ripple.com:51234",
+      rpcUrl: process.env.XRPL_RPC_URL_MAINNET || 'https://xrplcluster.com',
+      clioUrl:
+        process.env.XRPL_CLIO_URL_MAINNET || 'https://s1.ripple.com:51234',
       explorerBaseUrl:
         process.env.XRPL_EXPLORER_MAINNET_BASE_URL ||
         DEFAULT_EXPLORER_MAINNET_BASE_URL,
