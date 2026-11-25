@@ -11,3 +11,4 @@ packages/snap-networks-utils @MetaMask/networks @MetaMask/emerging-opportunities
 packages/tron-wallet-snap @MetaMask/networks @MetaMask/emerging-opportunities
 packages/solana-wallet-snap @MetaMask/networks @MetaMask/emerging-opportunities
 packages/stellar-wallet-snap @MetaMask/networks @MetaMask/emerging-opportunities
+packages/xrpl-wallet-snap @MetaMask/networks @MetaMask/emerging-opportunities

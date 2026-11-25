@@ -1,0 +1,311 @@
+import type { FetchPolicyError } from '@metamask/snap-networks-utils';
+import {
+  BrokenCircuitError,
+  createSnapErrorHandling,
+  FetchPolicyErrorName,
+} from '@metamask/snap-networks-utils';
+import type { Struct } from '@metamask/superstruct';
+import { assert, enums, object, type } from '@metamask/superstruct';
+
+import { logger } from './logger';
+import { getSnapProvider } from './snap';
+
+export { isSnapRpcError } from '@metamask/snap-networks-utils';
+export type { SnapRpcError } from '@metamask/snap-networks-utils';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- must accept arbitrary `Error` subclass ctor signatures
+export type AnyErrorConstructor = abstract new (...args: any[]) => Error;
+
+/**
+ * Re-throws `error` when it is an instance of **any** constructor in `exceptionClasses` (subclasses
+ * count). Otherwise throws `fallback`. Typical use after logging in an API client `catch` so known
+ * domain errors propagate unchanged. Use a one-element array when only one type should match.
+ *
+ * @param error - Value from a `catch` clause.
+ * @param exceptionClasses - `Error` subclass constructors to match with `instanceof`, in order.
+ * @param fallback - Error to throw when nothing matches.
+ */
+export function rethrowIfInstanceElseThrow<Err extends Error>(
+  error: unknown,
+  exceptionClasses: readonly AnyErrorConstructor[],
+  fallback: Err,
+): never {
+  for (const ExceptionClass of exceptionClasses) {
+    if (error instanceof ExceptionClass) {
+      throw error;
+    }
+  }
+  throw fallback;
+}
+
+export type XrplSnapExceptionOptions = {
+  cause?: unknown;
+  data?: Record<string, unknown>;
+};
+
+/**
+ * A custom error class that extends the built-in Error class and adds a `data` property.
+ * Instances are serialized by {@link trackError} / `snap_trackError` and forwarded to
+ * MetaMask's Sentry pipeline, which applies platform-side scrubbing of sensitive fields.
+ */
+export class XrplSnapException extends Error {
+  readonly data?: Record<string, unknown>;
+
+  constructor(message: string, options?: XrplSnapExceptionOptions) {
+    super(message, { cause: options?.cause });
+    this.name = new.target.name;
+    this.data = options?.data;
+
+    // Explicitly hides this constructor from the stack trace if supported.
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
+  }
+}
+
+export type HttpError = Error & {
+  code?: string;
+  response?: {
+    status?: number;
+    statusText?: string;
+    headers?: Headers | Record<string, unknown>;
+    data?: unknown;
+  };
+};
+
+/** Network and transport error codes commonly surfaced by `fetch`. */
+export const KnownHttpErrorCode = {
+  CertExpired: 'CERT_HAS_EXPIRED',
+  UnableToGetIssuerCertLoc: 'UNABLE_TO_GET_ISSUER_CERT_LOC',
+  UnableToVerifyLeafSignature: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  CertAltNameInvalid: 'ERR_TLS_CERT_ALTNAME_INVALID',
+  ConnectionRefused: 'ECONNREFUSED',
+  Timeout: 'ETIMEDOUT',
+  ConnectionAborted: 'ECONNABORTED',
+  NotFound: 'ENOTFOUND',
+  ConnectionReset: 'ECONNRESET',
+  AbortError: 'AbortError',
+  Canceled: 'ERR_CANCELED',
+  CustomErrCanceled: 'CanceledError',
+} as const;
+
+type KnownHttpErrorCode =
+  (typeof KnownHttpErrorCode)[keyof typeof KnownHttpErrorCode];
+
+const KnownHttpErrorCodeSet = new Set<string>(
+  Object.values(KnownHttpErrorCode),
+);
+
+/**
+ * @param code - A transport error code from a caught error.
+ * @returns Whether `code` is one of {@link KnownHttpErrorCode}.
+ */
+const isKnownHttpErrorCode = (code: string): code is KnownHttpErrorCode =>
+  KnownHttpErrorCodeSet.has(code);
+
+const KnownHttpErrorCodesStruct = object({
+  cause: type({
+    code: enums(Object.values(KnownHttpErrorCode)),
+  }),
+});
+
+/** Base for HTTP API client errors (transport, request shape, response shape). */
+export class ApiException extends XrplSnapException {
+  constructor(message: string, options?: XrplSnapExceptionOptions) {
+    super(message, options);
+    this.name = 'ApiException';
+  }
+}
+
+/** Network-level HTTP failure (timeout, DNS, TLS, abort, etc.). */
+export class HttpException extends ApiException {
+  constructor(message: string, options?: XrplSnapExceptionOptions) {
+    super(message, options);
+    this.name = 'HttpException';
+  }
+}
+
+/** Non-success HTTP status from a completed response. */
+export class HttpResponseException extends HttpException {
+  constructor(statusCode: number, options?: XrplSnapExceptionOptions) {
+    super(`HTTP error! status: ${statusCode}`, options);
+    this.name = 'HttpResponseException';
+  }
+}
+
+/** Request parameters failed validation before the HTTP call. */
+export class InvalidHttpRequestParamsException extends ApiException {
+  constructor(message: string, options?: XrplSnapExceptionOptions) {
+    super(message, options);
+    this.name = 'InvalidHttpRequestParamsException';
+  }
+}
+
+/** Response body failed validation after a successful HTTP status. */
+export class InvalidHttpResponseException extends ApiException {
+  constructor(message: string, options?: XrplSnapExceptionOptions) {
+    super(message, options);
+    this.name = 'InvalidHttpResponseException';
+  }
+}
+
+/**
+ * Validates API request parameters and throws {@link InvalidHttpRequestParamsException} on failure.
+ *
+ * @param params - Request payload or query parameters to validate.
+ * @param struct - Superstruct schema for the validated shape.
+ */
+export function assertHttpRequestParams<Validated>(
+  params: unknown,
+  struct: Struct<Validated>,
+): asserts params is Validated {
+  try {
+    assert(params, struct);
+  } catch (error) {
+    throw new InvalidHttpRequestParamsException(
+      'Invalid API request parameters',
+      { cause: error },
+    );
+  }
+}
+
+/**
+ * Validates an API response body and throws {@link InvalidHttpResponseException} on failure.
+ *
+ * @param response - Parsed response body to validate.
+ * @param struct - Superstruct schema for `response`.
+ */
+export function assertHttpResponse<Response>(
+  response: unknown,
+  struct: Struct<Response>,
+): asserts response is Response {
+  try {
+    assert(response, struct);
+  } catch (error) {
+    throw new InvalidHttpResponseException('Invalid API response', {
+      cause: error,
+    });
+  }
+}
+
+/**
+ * @param error - Value from a `catch` clause.
+ * @returns A known HTTP error code from `error.cause.code` or `error.code`.
+ */
+function getHttpErrorCode(error: Error): KnownHttpErrorCode | undefined {
+  if (KnownHttpErrorCodesStruct.is(error)) {
+    return error.cause?.code;
+  }
+
+  const { code } = error as { code?: string };
+  return code !== undefined && isKnownHttpErrorCode(code) ? code : undefined;
+}
+
+/**
+ * Whether `error` represents a transient HTTP transport failure.
+ * Used by API clients to decide between fail-fast and partial-result recovery.
+ *
+ * @param error - Value from a `catch` clause or rejected batch entry.
+ * @returns `true` for network, timeout, abort, and non-2xx HTTP status errors.
+ */
+export function isHttpException(
+  error: unknown,
+): error is HttpException | (Error & { cause?: { code: string } }) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  if (error instanceof HttpException) {
+    return true;
+  }
+
+  if (error.name === KnownHttpErrorCode.AbortError) {
+    return true;
+  }
+
+  return getHttpErrorCode(error) !== undefined;
+}
+
+/**
+ * Wraps raw transport errors in {@link HttpException}; leaves other values unchanged.
+ *
+ * @param error - Value from a `catch` clause.
+ * @returns `error` when it is already an {@link HttpException}, a new {@link HttpException}
+ * when `error` is a recognized transport failure, otherwise `error` unchanged.
+ */
+export function normalizeHttpException(error: unknown): unknown {
+  const normalizedError = normalizeFetchPolicyException(error);
+  if (!(normalizedError instanceof Error)) {
+    return normalizedError;
+  }
+
+  if (normalizedError instanceof HttpException) {
+    return normalizedError;
+  }
+
+  if (!isHttpException(normalizedError)) {
+    return normalizedError;
+  }
+
+  const code = getHttpErrorCode(normalizedError);
+  return new HttpException(
+    code ? `HTTP error! cause: ${code}` : 'HTTP error!',
+    { cause: normalizedError },
+  );
+}
+
+/**
+ * Restores the API client's public HTTP exceptions after policy execution.
+ *
+ * @param error - Error emitted by the shared fetch policy.
+ * @returns A compatible HTTP exception, or the original error.
+ */
+function normalizeFetchPolicyException(error: unknown): unknown {
+  if (!(error instanceof Error)) {
+    return error;
+  }
+
+  const policyError = error as FetchPolicyError;
+  if (policyError.httpStatus !== undefined) {
+    return new HttpResponseException(policyError.httpStatus, { cause: error });
+  }
+  if (
+    error.name === FetchPolicyErrorName.Network ||
+    error.name === FetchPolicyErrorName.Timeout ||
+    error instanceof BrokenCircuitError
+  ) {
+    return new HttpException(error.message, { cause: error });
+  }
+  return error;
+}
+
+/**
+ * @param error - Value from a `catch` clause.
+ * @returns Whether `error` is an invalid request/response shape error.
+ */
+export function isInvalidApiRequestOrResponseException(
+  error: unknown,
+): error is InvalidHttpRequestParamsException | InvalidHttpResponseException {
+  return (
+    error instanceof InvalidHttpRequestParamsException ||
+    error instanceof InvalidHttpResponseException
+  );
+}
+
+/**
+ * Checks if the error is a {@link XrplSnapException} (including subclasses).
+ *
+ * @param error - Value from a `catch` clause.
+ * @returns Whether `error` is a {@link XrplSnapException} (including subclasses).
+ */
+export function isXrplSnapException(
+  error: unknown,
+): error is XrplSnapException {
+  return error instanceof XrplSnapException;
+}
+
+export const { trackError, withCatchAndThrowSnapError } =
+  createSnapErrorHandling({
+    getSnapProvider,
+    logError: logger.error.bind(logger),
+  });
