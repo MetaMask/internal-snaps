@@ -23,7 +23,7 @@
   ],
   "main": "./dist/bundle.js",
   "publishConfig": {
-    "access": "public",
+    "access": "private",
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
