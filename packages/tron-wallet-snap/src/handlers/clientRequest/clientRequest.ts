@@ -903,7 +903,7 @@ export class ClientRequestHandler {
     if (requestBalance.isGreaterThan(accountBalance)) {
       return {
         valid: false,
-        errors: [SendErrorCodes.InsufficientBalance],
+        errors: [{ code: SendErrorCodes.InsufficientBalance }],
       };
     }
 

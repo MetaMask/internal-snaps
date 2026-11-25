@@ -3179,7 +3179,7 @@ describe('ClientRequestHandler - computeStakeFee', () => {
 
         expect(result).toStrictEqual({
           valid: false,
-          errors: [SendErrorCodes.InsufficientBalance],
+          errors: [{ code: SendErrorCodes.InsufficientBalance }],
         });
         expect(mockFeeCalculatorService.computeFee).not.toHaveBeenCalled();
       },
