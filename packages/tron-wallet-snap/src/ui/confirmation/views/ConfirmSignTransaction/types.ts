@@ -1,4 +1,8 @@
-import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import type {
+  ExtendedKeyringAccount,
+  TransactionSecurityProperties,
+} from '@metamask/snap-networks-utils';
+import type { DialogResult } from '@metamask/snaps-sdk';
 
 import type { SpotPrices } from '../../../../clients/price-api/types';
 import type { Network } from '../../../../constants';
@@ -27,4 +31,19 @@ export type ConfirmSignTransactionContext = {
   fees: ComputeFeeResult;
   feesFetchStatus: FetchStatus;
   isInsufficientBalance: boolean;
+};
+
+/**
+ * The user's decision in the ConfirmSignTransaction dialog, with context data.
+ */
+export type ConfirmSignTransactionResult = {
+  /** The dialog result. `true` when the user confirmed. */
+  result: DialogResult;
+  context: {
+    /**
+     * The security properties of the scan shown in the dialog, ready to report.
+     * `undefined` when the dialog produced no security data.
+     */
+    securityProperties?: TransactionSecurityProperties;
+  };
 };
