@@ -1,6 +1,6 @@
 {
   "name": "@metamask/xrpl-wallet-snap",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "A Xrpl wallet Snap",
   "keywords": [
     "Ethereum",
@@ -23,7 +23,7 @@
   ],
   "main": "./dist/bundle.js",
   "publishConfig": {
-    "access": "private",
+    "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
