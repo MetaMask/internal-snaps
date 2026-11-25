@@ -1,13 +1,7 @@
-import { InternalError } from '@metamask/snaps-sdk';
-
 import { mockBrazeSdk } from '../tests/braze';
 import { stubSnap } from '../tests/snap';
 import { brazeSdkLoader } from './braze-sdk';
-import {
-  FLUSH_TIMEOUT_MS,
-  MAX_PERSISTED_STORAGE_SIZE,
-  STORAGE_STATE_KEY,
-} from './constants';
+import { FLUSH_TIMEOUT_MS, STORAGE_STATE_KEY } from './constants';
 import { GuardedXMLHttpRequest, drainRequests } from './network';
 import type { BrazeConfig } from './runtime';
 import { resetRuntime, withBraze } from './runtime';
@@ -250,40 +244,6 @@ describe('withBraze', () => {
       version: 1,
       items: { 'ab.storage.userId': 'profile' },
     });
-  });
-
-  it('destroys the SDK and wipes the storage when it grows too large', async () => {
-    const { state, request } = stubSnap();
-    const { initialize, destroy } = mockBrazeSdk();
-
-    const error = await withBraze(CONFIG, () => {
-      storageShim.setItem(
-        'ab.storage.events',
-        'x'.repeat(MAX_PERSISTED_STORAGE_SIZE),
-      );
-    }).catch((caught: unknown) => caught);
-
-    expect(error).toBeInstanceOf(InternalError);
-    expect(error).toMatchObject({
-      message: 'The Braze storage reached its size limit and was wiped.',
-      data: {
-        size: expect.any(Number),
-        limit: MAX_PERSISTED_STORAGE_SIZE,
-      },
-    });
-
-    expect(destroy).toHaveBeenCalledTimes(1);
-    expect(state.get(STORAGE_STATE_KEY)).toStrictEqual({
-      version: 1,
-      items: {},
-    });
-
-    request.mockClear();
-    await withBraze(CONFIG, () => undefined);
-    expect(initialize).toHaveBeenCalledTimes(2);
-    expect(request).toHaveBeenCalledWith(
-      expect.objectContaining({ method: 'snap_getState' }),
-    );
   });
 
   it('keeps the SDK when persisting the storage fails', async () => {

@@ -14,6 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Sets the user's language in Braze from the optional `language` param, an ISO 639-1 code, only when it changed for that user.
   - Only reports the device time zone to Braze, without the user agent, platform, or browser language.
   - Only lets the SDK `POST` to `https://<endpoint>/api/v3/data/`, within request size, response size, concurrency, and time limits.
-  - Persists the SDK storage once per request in unencrypted snap state, without the in-app message triggers, and wipes it above 256 KB.
+  - Persists the SDK storage once per request in unencrypted snap state, without the in-app message triggers.
 
 [Unreleased]: https://github.com/MetaMask/internal-snaps/

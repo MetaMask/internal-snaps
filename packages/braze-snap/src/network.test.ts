@@ -1,6 +1,6 @@
 import nock from 'nock';
 
-import { MAX_PERSISTED_STORAGE_SIZE, NETWORK_LIMITS } from './constants';
+import { NETWORK_LIMITS } from './constants';
 import {
   GuardedXMLHttpRequest,
   abortRequests,
@@ -146,12 +146,12 @@ describe('GuardedXMLHttpRequest', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('sends a body as large as the persisted storage', async () => {
+  it('sends a body up to the request size limit', async () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response('{}'));
 
-    const body = 'x'.repeat(MAX_PERSISTED_STORAGE_SIZE);
+    const body = 'x'.repeat(NETWORK_LIMITS.maxRequestBodyBytes);
 
     expect(await send({ body }).result).toBe('load');
     expect(fetchSpy).toHaveBeenCalledTimes(1);

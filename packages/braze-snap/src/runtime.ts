@@ -1,15 +1,8 @@
-import { InternalError } from '@metamask/snaps-sdk';
-
 import type { BrazeSdk } from './braze-sdk';
 import { brazeSdkLoader } from './braze-sdk';
-import { FLUSH_TIMEOUT_MS, MAX_PERSISTED_STORAGE_SIZE } from './constants';
+import { FLUSH_TIMEOUT_MS } from './constants';
 import { abortRequests, drainRequests, setAllowedEndpoint } from './network';
-import {
-  StorageLimitError,
-  commitStorage,
-  hydrateStorage,
-  resetStorage,
-} from './storage';
+import { commitStorage, hydrateStorage } from './storage';
 
 export type BrazeConfig = {
   apiKey: string;
@@ -101,39 +94,13 @@ async function flush(brazeSdk: BrazeSdk): Promise<void> {
 }
 
 /**
- * Destroy the SDK and forget its storage, after the storage grew too large.
- */
-async function resetSdk(): Promise<void> {
-  sdk?.destroy();
-  initializedConfig = null;
-  abortRequests();
-  await drainRequests();
-  resetStorage();
-}
-
-/**
  * Stop network access, wait for the SDK to settle, and persist its storage.
- *
- * @throws {InternalError} If the storage was above the size limit. It is a
- * snap error so that the client does not treat it as a crash.
  */
 async function settle(): Promise<void> {
   abortRequests();
   await drainRequests();
   setAllowedEndpoint(null);
-
-  try {
-    await commitStorage();
-  } catch (error) {
-    if (error instanceof StorageLimitError) {
-      await resetSdk();
-      throw new InternalError(
-        'The Braze storage reached its size limit and was wiped.',
-        { size: error.size, limit: MAX_PERSISTED_STORAGE_SIZE },
-      ) as Error;
-    }
-    throw error;
-  }
+  await commitStorage();
 }
 
 export type WithBrazeOptions = {

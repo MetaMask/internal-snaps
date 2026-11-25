@@ -1,7 +1,6 @@
 import { stubSnap } from '../tests/snap';
-import { MAX_PERSISTED_STORAGE_SIZE, STORAGE_STATE_KEY } from './constants';
+import { STORAGE_STATE_KEY } from './constants';
 import {
-  StorageLimitError,
   commitStorage,
   hydrateStorage,
   resetStorage,
@@ -198,39 +197,6 @@ describe('storage', () => {
 
       expect(request).toHaveBeenCalledTimes(2);
     });
-
-    it('wipes the storage instead of writing it when it is too large', async () => {
-      const { state } = stubSnap({
-        [STORAGE_STATE_KEY]: { version: 1, items: { [KEY]: 'device' } },
-      });
-      await hydrateStorage();
-
-      snapStorage.setItem('language', 'fr');
-      storageShim.setItem(
-        'ab.storage.events',
-        'x'.repeat(MAX_PERSISTED_STORAGE_SIZE),
-      );
-
-      await expect(commitStorage()).rejects.toThrow(StorageLimitError);
-      expect(state.get(STORAGE_STATE_KEY)).toStrictEqual({
-        version: 1,
-        items: {},
-      });
-      expect(storageShim).toHaveLength(0);
-      expect(snapStorage.getItem('language')).toBeNull();
-    });
-
-    it('does not write the wiped storage again', async () => {
-      const { request } = stubSnap();
-      await hydrateStorage();
-      storageShim.setItem(KEY, 'x'.repeat(MAX_PERSISTED_STORAGE_SIZE));
-      await expect(commitStorage()).rejects.toThrow(StorageLimitError);
-      request.mockClear();
-
-      await commitStorage();
-
-      expect(request).not.toHaveBeenCalled();
-    });
   });
 
   describe('resetStorage', () => {
@@ -251,15 +217,5 @@ describe('storage', () => {
       expect(storageShim.getItem(KEY)).toBe('device');
       expect(storageShim.getItem('ab.storage.other')).toBeNull();
     });
-  });
-});
-
-describe('StorageLimitError', () => {
-  it('reports the size', () => {
-    const error = new StorageLimitError(300_000);
-
-    expect(error.name).toBe('StorageLimitError');
-    expect(error.size).toBe(300_000);
-    expect(error.message).toContain('300000');
   });
 });

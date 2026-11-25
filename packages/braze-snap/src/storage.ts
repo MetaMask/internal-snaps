@@ -2,7 +2,6 @@ import { hasProperty, isObject } from '@metamask/utils';
 
 import {
   IN_MEMORY_KEY_PREFIX,
-  MAX_PERSISTED_STORAGE_SIZE,
   PERSISTED_KEY_PREFIX,
   SNAP_KEY_PREFIX,
   STORAGE_STATE_KEY,
@@ -12,22 +11,6 @@ type PersistedStorage = {
   version: 1;
   items: Record<string, string>;
 };
-
-/**
- * Thrown when the SDK storage grows past the persisted size limit. The
- * storage has been wiped when this is thrown.
- */
-export class StorageLimitError extends Error {
-  readonly size: number;
-
-  constructor(size: number) {
-    super(
-      `Braze storage reached ${size} units, above the ${MAX_PERSISTED_STORAGE_SIZE} limit. It has been wiped.`,
-    );
-    this.name = 'StorageLimitError';
-    this.size = size;
-  }
-}
 
 const items = new Map<string, string>();
 
@@ -191,9 +174,7 @@ export async function hydrateStorage(): Promise<void> {
 
 /**
  * Persist the items the SDK changed during the request. Does nothing when
- * nothing changed. Wipes the storage instead when it is above the size limit.
- *
- * @throws {StorageLimitError} If the storage was above the size limit.
+ * nothing changed.
  */
 export async function commitStorage(): Promise<void> {
   const persistedItems = getPersistableItems();
@@ -201,13 +182,6 @@ export async function commitStorage(): Promise<void> {
 
   if (serialized === lastCommitted) {
     return;
-  }
-
-  if (serialized.length > MAX_PERSISTED_STORAGE_SIZE) {
-    clearItems();
-    await writeStorage({});
-    lastCommitted = JSON.stringify({});
-    throw new StorageLimitError(serialized.length);
   }
 
   await writeStorage(persistedItems);

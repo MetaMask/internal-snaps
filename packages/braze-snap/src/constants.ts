@@ -59,20 +59,11 @@ export const IN_MEMORY_KEY_PREFIX = 'ab.storage.triggers';
 export const SNAP_KEY_PREFIX = 'metamask.';
 
 /**
- * The maximum size of the persisted SDK storage, in UTF-16 code units of its
- * JSON serialization. Above this, the storage is wiped instead of written.
- */
-export const MAX_PERSISTED_STORAGE_SIZE = 256 * 1024;
-
-/**
  * Limits applied to requests made by the SDK.
  */
 export const NETWORK_LIMITS = {
-  // The SDK sends its whole queue in one request and queues it again when the
-  // request fails, so a smaller limit would block sending for good once the
-  // queue outgrows it.
-  maxRequestBodyBytes: MAX_PERSISTED_STORAGE_SIZE,
-  maxResponseBodyBytes: 256 * 1024,
+  maxRequestBodyBytes: 1024 * 1024,
+  maxResponseBodyBytes: 1024 * 1024,
   maxConcurrentRequests: 4,
   requestTimeoutMs: 20_000,
 };
