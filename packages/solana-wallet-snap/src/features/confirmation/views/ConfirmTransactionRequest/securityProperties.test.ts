@@ -68,6 +68,22 @@ describe('getSecurityProperties', () => {
     expect(getSecurityProperties(context)).toBeUndefined();
   });
 
+  it('returns undefined when security alerts are disabled and a scan is still running', () => {
+    // A simulation-only scan can be running while security alerts are off.
+    const context = buildContext({
+      preferences: {
+        locale: 'en',
+        currency: 'usd',
+        useSecurityAlerts: false,
+        simulateOnChainActions: true,
+      } as ConfirmTransactionRequestContext['preferences'],
+      scan: null,
+      scanFetchStatus: 'fetching',
+    });
+
+    expect(getSecurityProperties(context)).toBeUndefined();
+  });
+
   it('reports the verdict of a dApp-originated transaction', () => {
     const context = buildContext({ origin: 'https://dapp.example' });
 
@@ -132,6 +148,18 @@ describe('getSecurityProperties', () => {
     expect(getSecurityProperties(context)).toStrictEqual({
       securityAlertResponse: 'Error',
       securityAlertReason: 'Error',
+    });
+  });
+
+  it('reports Loading when the dialog was cancelled during the initial scan', () => {
+    const context = buildContext({
+      scan: null,
+      scanFetchStatus: 'fetching',
+    });
+
+    expect(getSecurityProperties(context)).toStrictEqual({
+      securityAlertResponse: 'Loading',
+      securityAlertReason: 'validation_in_progress',
     });
   });
 

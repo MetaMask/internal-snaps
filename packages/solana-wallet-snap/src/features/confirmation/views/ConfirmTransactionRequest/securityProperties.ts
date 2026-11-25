@@ -2,6 +2,7 @@ import type { TransactionSecurityProperties } from '@metamask/snap-networks-util
 import {
   deserialize,
   getTransactionSecurityProperties,
+  SECURITY_ALERT_LOADING_RESPONSE,
 } from '@metamask/snap-networks-utils';
 import type { Json } from '@metamask/snaps-sdk';
 import { isObject } from '@metamask/utils';
@@ -13,8 +14,9 @@ import type { ConfirmTransactionRequestContext } from './types';
  * `undefined` when there is nothing to report: there is no context, or security
  * alerts were disabled.
  *
- * The scan is reported as it is. A failed refresh keeps the stored verdict, and
- * the dialog may show that verdict as unavailable, so the two can differ.
+ * A scan that is still running is reported as `Loading`. Otherwise the scan is
+ * reported as it is. A failed refresh keeps the stored verdict, and the dialog
+ * may show that verdict as unavailable, so the two can differ.
  *
  * @param context - The confirmation context at the time of the decision, or `null` when the dialog gave none.
  * @returns The security properties, or `undefined`.
@@ -26,7 +28,12 @@ export function getSecurityProperties(
     return undefined;
   }
 
-  return getTransactionSecurityProperties(context.scan);
+  // A scan that is still running has not failed, so report it as in progress
+  // rather than as an error.
+  const isFetching = context.scanFetchStatus === 'fetching';
+  const scan = isFetching ? SECURITY_ALERT_LOADING_RESPONSE : context.scan;
+
+  return getTransactionSecurityProperties(scan);
 }
 
 /**
