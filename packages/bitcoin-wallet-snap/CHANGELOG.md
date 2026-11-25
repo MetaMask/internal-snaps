@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- fix(bitcoin): log Sentry sync failure reporting at error level ([#653](https://github.com/MetaMask/internal-snaps/pull/653))
+- Release/24.0.0 ([#644](https://github.com/MetaMask/internal-snaps/pull/644))
+- chore(bitcoin): clean up integration test suppressions ([#638](https://github.com/MetaMask/internal-snaps/pull/638))
+- perf(bitcoin): speed up integration tests ([#584](https://github.com/MetaMask/internal-snaps/pull/584))
+- chore(lint): replace `eslint` with `oxlint` ([#596](https://github.com/MetaMask/internal-snaps/pull/596))
+- chore: add shared vitest config + update `create-package` to use vitest ([#580](https://github.com/MetaMask/internal-snaps/pull/580))
+- Release 23.0.0 ([#577](https://github.com/MetaMask/internal-snaps/pull/577))
+- chore(bitcoin): vitest ([#573](https://github.com/MetaMask/internal-snaps/pull/573))
+
 ### Added
 
 - Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for BTC: the spendable balance minus the network fee, or `0` when no amount can pass ([#587](https://github.com/MetaMask/internal-snaps/pull/587))

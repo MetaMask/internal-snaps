@@ -7,4 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- feat: initialize `xrpl-wallet-snap` ([#675](https://github.com/MetaMask/internal-snaps/pull/675))
+
 [Unreleased]: https://github.com/MetaMask/internal-snaps/
