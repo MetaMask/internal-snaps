@@ -148,14 +148,17 @@ describe('ConfirmationHandler', () => {
     } as unknown as SolanaKeyringRequest;
 
     it('schedules Added then Approved and returns true when the user confirms', async () => {
-      mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+      mockRenderConfirmTransactionRequest.mockResolvedValue({
+        result: true,
+        context: {},
+      });
 
-      const isConfirmed = await confirmationHandler.handleKeyringRequest(
+      const result = await confirmationHandler.handleKeyringRequest(
         request,
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
       );
 
-      expect(isConfirmed).toBe(true);
+      expect(result).toStrictEqual({ confirmed: true, context: {} });
       expect(mockRenderConfirmTransactionRequest).toHaveBeenCalledWith(
         expect.objectContaining({ method }),
       );
@@ -174,14 +177,17 @@ describe('ConfirmationHandler', () => {
     });
 
     it('schedules Added then Rejected and returns false when the user cancels', async () => {
-      mockRenderConfirmTransactionRequest.mockResolvedValue(false);
+      mockRenderConfirmTransactionRequest.mockResolvedValue({
+        result: false,
+        context: {},
+      });
 
-      const isConfirmed = await confirmationHandler.handleKeyringRequest(
+      const result = await confirmationHandler.handleKeyringRequest(
         request,
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
       );
 
-      expect(isConfirmed).toBe(false);
+      expect(result).toStrictEqual({ confirmed: false, context: {} });
       expect(mockSnapRequest.mock.calls).toStrictEqual([
         [
           expectedScheduleCall(
@@ -197,33 +203,125 @@ describe('ConfirmationHandler', () => {
     });
 
     /**
-     * Dismissing the dialog without pressing a button resolves to `undefined`
-     * (and `snap_dialog` may resolve to `null`). The rejection branch must be
-     * reached for any falsy result, not just a literal `false` — otherwise the
-     * `Added` event is left orphaned with no terminal event.
+     * A dismissed dialog is turned into a non-confirmation by the render. The
+     * rejection branch must still be reached for it, otherwise the `Added`
+     * event is left orphaned with no terminal event.
      */
-    it.each([undefined, null])(
-      'schedules Rejected when the dialog resolves to %p',
-      async (dialogResult) => {
-        mockRenderConfirmTransactionRequest.mockResolvedValue(
-          dialogResult as unknown as boolean,
-        );
+    it('schedules Rejected when the render reports no confirmation', async () => {
+      mockRenderConfirmTransactionRequest.mockResolvedValue({
+        result: false,
+        context: {},
+      });
 
-        const isConfirmed = await confirmationHandler.handleKeyringRequest(
-          request,
-          MOCK_SOLANA_KEYRING_ACCOUNT_0,
-        );
+      const result = await confirmationHandler.handleKeyringRequest(
+        request,
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
 
-        expect(isConfirmed).toBe(false);
-        expect(getScheduledMethods()).toStrictEqual([
-          ScheduleBackgroundEventMethod.OnTransactionAdded,
-          ScheduleBackgroundEventMethod.OnTransactionRejected,
-        ]);
-      },
-    );
+      expect(result).toStrictEqual({ confirmed: false, context: {} });
+      expect(getScheduledMethods()).toStrictEqual([
+        ScheduleBackgroundEventMethod.OnTransactionAdded,
+        ScheduleBackgroundEventMethod.OnTransactionRejected,
+      ]);
+    });
+
+    it('returns the verdict the render reported and carries it into Approved', async () => {
+      const securityProperties = {
+        securityAlertResponse: 'Malicious',
+        securityAlertReason: 'known_attacker',
+        securityAlertDescription:
+          "Security alert: A known attacker's account is involved in the transaction",
+      };
+      mockRenderConfirmTransactionRequest.mockResolvedValue({
+        result: true,
+        context: { securityProperties },
+      });
+
+      const result = await confirmationHandler.handleKeyringRequest(
+        { ...request, origin: DEFAULT_METAMASK_ORIGIN },
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+
+      expect(result).toStrictEqual({
+        confirmed: true,
+        context: { securityProperties },
+      });
+      const approvedCall = mockSnapRequest.mock.calls[1]?.[0] as {
+        params: { request: { params: { metadata: unknown } } };
+      };
+      expect(approvedCall.params.request.params.metadata).toStrictEqual({
+        scope: mockTransactionRequest.scope,
+        origin: DEFAULT_METAMASK_ORIGIN,
+        transactionType: TransactionType.Send,
+        securityProperties,
+      });
+    });
+
+    it('carries the verdict the render reported into Rejected', async () => {
+      const securityProperties = {
+        securityAlertResponse: 'Warning',
+        securityAlertReason: 'honeypot',
+        securityAlertDescription:
+          'Security alert: The account invests funds in a token that is part of an orchestrated honeypot scheme',
+      };
+      mockRenderConfirmTransactionRequest.mockResolvedValue({
+        result: false,
+        context: { securityProperties },
+      });
+
+      const result = await confirmationHandler.handleKeyringRequest(
+        { ...request, origin: DEFAULT_METAMASK_ORIGIN },
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+
+      expect(result).toStrictEqual({
+        confirmed: false,
+        context: { securityProperties },
+      });
+      const rejectedCall = mockSnapRequest.mock.calls[1]?.[0] as {
+        params: { request: { method: string; params: { metadata: unknown } } };
+      };
+      expect(rejectedCall.params.request.method).toBe(
+        ScheduleBackgroundEventMethod.OnTransactionRejected,
+      );
+      expect(rejectedCall.params.request.params.metadata).toStrictEqual({
+        scope: mockTransactionRequest.scope,
+        origin: DEFAULT_METAMASK_ORIGIN,
+        transactionType: TransactionType.Send,
+        securityProperties,
+      });
+    });
+
+    it('carries the verdict of a dApp transaction into Approved, classified as unknown', async () => {
+      const securityProperties = {
+        securityAlertResponse: 'Benign',
+      };
+      mockRenderConfirmTransactionRequest.mockResolvedValue({
+        result: true,
+        context: { securityProperties },
+      });
+
+      await confirmationHandler.handleKeyringRequest(
+        { ...request, origin: 'https://dapp.example' },
+        MOCK_SOLANA_KEYRING_ACCOUNT_0,
+      );
+
+      const approvedCall = mockSnapRequest.mock.calls[1]?.[0] as {
+        params: { request: { params: { metadata: unknown } } };
+      };
+      expect(approvedCall.params.request.params.metadata).toStrictEqual({
+        scope: mockTransactionRequest.scope,
+        origin: 'https://dapp.example',
+        transactionType: TransactionType.Unknown,
+        securityProperties,
+      });
+    });
 
     it('reports a MetaMask-originated transaction as a send', async () => {
-      mockRenderConfirmTransactionRequest.mockResolvedValue(true);
+      mockRenderConfirmTransactionRequest.mockResolvedValue({
+        result: true,
+        context: {},
+      });
 
       await confirmationHandler.handleKeyringRequest(
         { ...request, origin: DEFAULT_METAMASK_ORIGIN },
@@ -249,7 +347,10 @@ describe('ConfirmationHandler', () => {
     });
 
     it('does not schedule Approved when the user rejects', async () => {
-      mockRenderConfirmTransactionRequest.mockResolvedValue(false);
+      mockRenderConfirmTransactionRequest.mockResolvedValue({
+        result: false,
+        context: {},
+      });
 
       await confirmationHandler.handleKeyringRequest(
         request,
@@ -271,24 +372,24 @@ describe('ConfirmationHandler', () => {
     it('returns false and schedules no transaction events when rejected', async () => {
       mockRenderConfirmSignMessage.mockResolvedValue(false);
 
-      const isConfirmed = await confirmationHandler.handleKeyringRequest(
+      const result = await confirmationHandler.handleKeyringRequest(
         request,
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
       );
 
-      expect(isConfirmed).toBe(false);
+      expect(result).toStrictEqual({ confirmed: false });
       expect(mockSnapRequest).not.toHaveBeenCalled();
     });
 
     it('returns true when approved', async () => {
       mockRenderConfirmSignMessage.mockResolvedValue(true);
 
-      const isConfirmed = await confirmationHandler.handleKeyringRequest(
+      const result = await confirmationHandler.handleKeyringRequest(
         request,
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
       );
 
-      expect(isConfirmed).toBe(true);
+      expect(result).toStrictEqual({ confirmed: true });
       expect(mockSnapRequest).not.toHaveBeenCalled();
     });
   });
@@ -302,24 +403,24 @@ describe('ConfirmationHandler', () => {
     it('returns false and schedules no transaction events when rejected', async () => {
       mockRenderConfirmSignIn.mockResolvedValue(false);
 
-      const isConfirmed = await confirmationHandler.handleKeyringRequest(
+      const result = await confirmationHandler.handleKeyringRequest(
         request,
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
       );
 
-      expect(isConfirmed).toBe(false);
+      expect(result).toStrictEqual({ confirmed: false });
       expect(mockSnapRequest).not.toHaveBeenCalled();
     });
 
     it('returns true when approved', async () => {
       mockRenderConfirmSignIn.mockResolvedValue(true);
 
-      const isConfirmed = await confirmationHandler.handleKeyringRequest(
+      const result = await confirmationHandler.handleKeyringRequest(
         request,
         MOCK_SOLANA_KEYRING_ACCOUNT_0,
       );
 
-      expect(isConfirmed).toBe(true);
+      expect(result).toStrictEqual({ confirmed: true });
       expect(mockSnapRequest).not.toHaveBeenCalled();
     });
   });

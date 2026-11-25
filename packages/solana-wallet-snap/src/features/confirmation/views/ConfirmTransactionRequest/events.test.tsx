@@ -1,5 +1,9 @@
 import { SolMethod } from '@metamask/keyring-api';
-import { MaliciousAcknowledgementFormNames } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  MaliciousAcknowledgementFormNames,
+  serialize,
+} from '@metamask/snap-networks-utils';
 import type { UserInputEvent } from '@metamask/snaps-sdk';
 import { UserInputEventType } from '@metamask/snaps-sdk';
 import type { Mock } from 'vitest';
@@ -190,7 +194,7 @@ describe('confirm transaction request events', () => {
 
     it('allows proceeding after acknowledging a malicious request with a remote execution failure', async () => {
       const name = MaliciousAcknowledgementFormNames.Proceed;
-      await runEvent(name, buttonEvent(name), {
+      const storedContext: ConfirmTransactionRequestContext = {
         ...baseContext,
         acknowledgementScreen: true,
         acknowledged: true,
@@ -205,9 +209,13 @@ describe('confirm transaction request events', () => {
           },
           validationError: null,
         },
-      });
+      };
+      await runEvent(name, buttonEvent(name), storedContext);
 
-      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, true);
+      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
+        result: true,
+        context: serialize(storedContext),
+      });
       expect(updateInterface).not.toHaveBeenCalled();
     });
 
@@ -234,7 +242,7 @@ describe('confirm transaction request events', () => {
 
     it('allows proceeding after a scan outage despite a retained remote execution error', async () => {
       const name = MaliciousAcknowledgementFormNames.Proceed;
-      await runEvent(name, buttonEvent(name), {
+      const storedContext: ConfirmTransactionRequestContext = {
         ...baseContext,
         acknowledgementScreen: true,
         acknowledged: true,
@@ -250,9 +258,13 @@ describe('confirm transaction request events', () => {
           },
           validationError: null,
         },
-      });
+      };
+      await runEvent(name, buttonEvent(name), storedContext);
 
-      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, true);
+      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
+        result: true,
+        context: serialize(storedContext),
+      });
     });
 
     it('returns to the confirmation view on back', async () => {
@@ -276,11 +288,12 @@ describe('confirm transaction request events', () => {
 
     it('uses the latest stored context instead of the event context on proceed', async () => {
       const name = MaliciousAcknowledgementFormNames.Proceed;
-      (getInterfaceContext as Mock).mockResolvedValue({
+      const storedContext: ConfirmTransactionRequestContext = {
         ...baseContext,
         acknowledgementScreen: true,
         acknowledged: true,
-      });
+      };
+      (getInterfaceContext as Mock).mockResolvedValue(storedContext);
 
       await eventHandlers[name]?.({
         id: INTERFACE_ID,
@@ -292,7 +305,10 @@ describe('confirm transaction request events', () => {
         },
       } as never);
 
-      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, true);
+      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
+        result: true,
+        context: serialize(storedContext),
+      });
     });
 
     it('waits for an in-flight interface update before reading the context on proceed', async () => {
@@ -303,11 +319,12 @@ describe('confirm transaction request events', () => {
           release = resolve;
         });
       });
-      (getInterfaceContext as Mock).mockResolvedValue({
+      const storedContext: ConfirmTransactionRequestContext = {
         ...baseContext,
         acknowledgementScreen: true,
         acknowledged: true,
-      });
+      };
+      (getInterfaceContext as Mock).mockResolvedValue(storedContext);
 
       const proceed = eventHandlers[name]?.({
         id: INTERFACE_ID,
@@ -321,7 +338,114 @@ describe('confirm transaction request events', () => {
       release();
       await Promise.all([inFlightUpdate, proceed]);
 
-      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, true);
+      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
+        result: true,
+        context: serialize(storedContext),
+      });
+    });
+  });
+
+  describe('resolved value', () => {
+    const warningScan = {
+      status: 'SUCCESS' as const,
+      estimatedChanges: { assets: [] },
+      validation: { type: 'Warning', reason: 'honeypot' },
+      error: null,
+      validationError: null,
+    };
+
+    const attackerScan = {
+      status: 'SUCCESS' as const,
+      estimatedChanges: { assets: [] },
+      validation: { type: 'Malicious', reason: 'known_attacker' },
+      error: null,
+      validationError: null,
+    };
+
+    const benignScan = {
+      status: 'SUCCESS' as const,
+      estimatedChanges: { assets: [] },
+      validation: { type: 'Benign', reason: null },
+      error: null,
+      validationError: null,
+    };
+
+    const sendContext = (
+      overrides: Partial<ConfirmTransactionRequestContext> = {},
+    ): ConfirmTransactionRequestContext => ({
+      ...baseContext,
+      origin: DEFAULT_METAMASK_ORIGIN,
+      ...overrides,
+    });
+
+    it('resolves a confirmed send with the context the user saw', async () => {
+      const name = ConfirmSignAndSendTransactionFormNames.Confirm;
+      const storedContext = sendContext({ scan: warningScan });
+      await runEvent(name, buttonEvent(name), storedContext);
+
+      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
+        result: true,
+        context: serialize(storedContext),
+      });
+    });
+
+    it('resolves a proceed after acknowledging a malicious verdict with the context the user saw', async () => {
+      const name = MaliciousAcknowledgementFormNames.Proceed;
+      const storedContext = sendContext({
+        acknowledgementScreen: true,
+        acknowledged: true,
+        scan: attackerScan,
+      });
+      await runEvent(name, buttonEvent(name), storedContext);
+
+      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
+        result: true,
+        context: serialize(storedContext),
+      });
+    });
+
+    it('resolves a cancel with the context the user saw', async () => {
+      const name = ConfirmSignAndSendTransactionFormNames.Cancel;
+      const storedContext = sendContext({ scan: warningScan });
+      await runEvent(name, buttonEvent(name), storedContext);
+
+      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
+        result: false,
+        context: serialize(storedContext),
+      });
+    });
+
+    it('resolves a cancel with no context when the interface has none', async () => {
+      const name = ConfirmSignAndSendTransactionFormNames.Cancel;
+      (getInterfaceContext as Mock).mockResolvedValue(null);
+
+      await eventHandlers[name]?.({
+        id: INTERFACE_ID,
+        event: buttonEvent(name),
+        context: baseContext,
+      } as never);
+
+      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
+        result: false,
+        context: null,
+      });
+    });
+
+    it('resolves with the latest stored context rather than the event context', async () => {
+      const name = ConfirmSignAndSendTransactionFormNames.Confirm;
+      const storedContext = sendContext({ scan: warningScan });
+      (getInterfaceContext as Mock).mockResolvedValue(storedContext);
+
+      await eventHandlers[name]?.({
+        id: INTERFACE_ID,
+        event: buttonEvent(name),
+        context: sendContext({ scan: benignScan }),
+      } as never);
+
+      expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
+        result: true,
+        context: serialize(storedContext),
+      });
     });
   });
 

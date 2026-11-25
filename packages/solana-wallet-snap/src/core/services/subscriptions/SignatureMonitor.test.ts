@@ -153,6 +153,36 @@ describe('SignatureMonitor', () => {
       );
     });
 
+    it('stores caller-supplied security properties in the subscription metadata', async () => {
+      const securityProperties = {
+        securityAlertResponse: 'Warning' as const,
+        securityAlertReason: 'honeypot',
+        securityAlertDescription:
+          'Security alert: The account invests funds in a token that is part of an orchestrated honeypot scheme',
+      };
+
+      await signatureMonitor.monitor(
+        signature,
+        accountId,
+        commitment,
+        network,
+        origin,
+        TransactionType.Send,
+        securityProperties,
+      );
+
+      expect(mockSubscriptionService.subscribe).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: {
+            accountId,
+            origin,
+            transactionType: TransactionType.Send,
+            securityProperties,
+          },
+        }),
+      );
+    });
+
     it('registers a connection recovery handler', async () => {
       await signatureMonitor.monitor(
         signature,
@@ -252,6 +282,86 @@ describe('SignatureMonitor', () => {
       expect(mockSubscriptionService.unsubscribe).toHaveBeenCalledWith(
         mockSubscription.id,
       );
+    });
+
+    it('tracks Transaction Finalized with the security properties stored on the subscription', async () => {
+      const securityProperties = {
+        securityAlertResponse: 'Malicious' as const,
+        securityAlertReason: 'known_attacker',
+        securityAlertDescription:
+          "Security alert: A known attacker's account is involved in the transaction",
+      };
+      const mockSubscription = {
+        id: 'subscription-id-123',
+        method: 'signatureSubscribe',
+        network: Network.Mainnet,
+        params: [signature, { commitment, enableReceivedNotification: false }],
+        metadata: {
+          accountId,
+          origin,
+          transactionType: TransactionType.Send,
+          securityProperties,
+        },
+      } as unknown as Subscription;
+
+      await signatureMonitor.monitor(
+        signature,
+        accountId,
+        'confirmed',
+        network,
+        origin,
+        TransactionType.Send,
+        securityProperties,
+      );
+
+      const handler = notificationHandlers[0]!;
+      await handler({} as unknown as SignatureNotification, mockSubscription);
+
+      expect(
+        mockAnalyticsService.trackTransactionFinalized,
+      ).toHaveBeenCalledWith({
+        origin,
+        accountType: mockAccount.type,
+        chainIdCaip: mockTransaction.chain,
+        transactionStatus: mockTransaction.status,
+        transactionType: TransactionType.Send,
+        ...securityProperties,
+      });
+    });
+
+    it('ignores malformed security properties on the subscription', async () => {
+      const mockSubscription = {
+        id: 'subscription-id-123',
+        method: 'signatureSubscribe',
+        network: Network.Mainnet,
+        params: [signature, { commitment, enableReceivedNotification: false }],
+        metadata: {
+          accountId,
+          origin,
+          securityProperties: { securityAlertResponse: 42 },
+        },
+      } as unknown as Subscription;
+
+      await signatureMonitor.monitor(
+        signature,
+        accountId,
+        'confirmed',
+        network,
+        origin,
+      );
+
+      const handler = notificationHandlers[0]!;
+      await handler({} as unknown as SignatureNotification, mockSubscription);
+
+      expect(
+        mockAnalyticsService.trackTransactionFinalized,
+      ).toHaveBeenCalledWith({
+        origin,
+        accountType: mockAccount.type,
+        chainIdCaip: mockTransaction.chain,
+        transactionStatus: mockTransaction.status,
+        transactionType: mockTransaction.type,
+      });
     });
 
     it('prefers the caller-supplied classification over the on-chain type on finalized', async () => {

@@ -16,6 +16,7 @@ export type TransactionScanEstimatedChanges = {
 export type TransactionScanValidation = {
   type: string | null;
   reason: string | null;
+  description?: string | null;
 };
 
 export type TransactionScanError = {

@@ -10,6 +10,7 @@ import type {
   AnalyticsService,
   ExtendedKeyringAccount,
   Logger,
+  TransactionSecurityProperties,
 } from '@metamask/snap-networks-utils';
 import type { Infer } from '@metamask/superstruct';
 import { assert, instance, object } from '@metamask/superstruct';
@@ -282,6 +283,7 @@ export class WalletService {
    * @param options.maxRetries - The maximum number of retries.
    * @param options.commitment - The commitment.
    * @param transactionType - A classification already known by the caller. When omitted, it is derived from the origin.
+   * @param securityProperties - The security verdict the user saw when confirming the transaction, if any. It is reported on Transaction Submitted and carried to Transaction Finalized.
    * @returns A Promise that resolves to the signed transaction.
    */
   async signAndSendTransaction(
@@ -291,6 +293,7 @@ export class WalletService {
     origin: string,
     options?: SolanaSignAndSendTransactionOptions,
     transactionType?: TransactionType,
+    securityProperties?: TransactionSecurityProperties,
   ): Promise<SolanaSignAndSendTransactionResponse> {
     this.#logger.log('Signing and sending transaction', account);
 
@@ -373,6 +376,7 @@ export class WalletService {
       accountType: account.type,
       chainIdCaip: scope,
       transactionType: resolvedTransactionType,
+      ...securityProperties,
     });
 
     // Immediately save and emit a pending transaction, so the client can show
@@ -405,6 +409,7 @@ export class WalletService {
       // classification may override the on-chain type on `Transaction
       // Finalized`; origin-derived defaults must not.
       explicitTransactionType,
+      securityProperties,
     );
 
     const result = {

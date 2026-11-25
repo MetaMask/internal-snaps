@@ -22,6 +22,54 @@ describe('transaction background events', () => {
 
   it.each([
     {
+      handler: onTransactionApproved,
+      method: ScheduleBackgroundEventMethod.OnTransactionApproved,
+      track: 'trackTransactionApproved',
+    },
+    {
+      handler: onTransactionRejected,
+      method: ScheduleBackgroundEventMethod.OnTransactionRejected,
+      track: 'trackTransactionRejected',
+    },
+  ] as const)(
+    'forwards the security properties carried by $method',
+    async ({ handler, method, track }) => {
+      const securityProperties = {
+        securityAlertResponse: 'Warning',
+        securityAlertReason: 'honeypot',
+        securityAlertDescription:
+          'Security alert: The account invests funds in a token that is part of an orchestrated honeypot scheme',
+      };
+
+      await handler({
+        request: {
+          id: '1',
+          jsonrpc: '2.0',
+          method,
+          params: {
+            accountId: account.id,
+            metadata: {
+              scope: Network.Mainnet,
+              origin,
+              transactionType: TransactionType.Send,
+              securityProperties,
+            },
+          },
+        },
+      });
+
+      expect(analyticsService[track]).toHaveBeenCalledWith({
+        origin,
+        accountType: account.type,
+        chainIdCaip: Network.Mainnet,
+        transactionType: TransactionType.Send,
+        ...securityProperties,
+      });
+    },
+  );
+
+  it.each([
+    {
       handler: onTransactionAdded,
       method: ScheduleBackgroundEventMethod.OnTransactionAdded,
       track: 'trackTransactionAdded',

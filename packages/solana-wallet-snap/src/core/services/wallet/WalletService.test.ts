@@ -382,6 +382,7 @@ describe('WalletService', () => {
             scope,
             'https://metamask.io',
             undefined,
+            undefined,
           );
         });
 
@@ -399,6 +400,7 @@ describe('WalletService', () => {
             'confirmed',
             scope,
             DEFAULT_METAMASK_ORIGIN,
+            undefined,
             undefined,
           );
         });
@@ -418,6 +420,62 @@ describe('WalletService', () => {
             chainIdCaip: scope,
             origin: 'https://metamask.io',
             transactionType: TransactionType.Unknown,
+          });
+        });
+
+        it('reports the security properties passed by the caller on Submitted and monitors them for Finalized', async () => {
+          const securityProperties = {
+            securityAlertResponse: 'Malicious' as const,
+            securityAlertReason: 'known_attacker',
+            securityAlertDescription:
+              "Security alert: A known attacker's account is involved in the transaction",
+          };
+
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            DEFAULT_METAMASK_ORIGIN,
+            undefined,
+            TransactionType.Send,
+            securityProperties,
+          );
+
+          expect(
+            mockAnalyticsService.trackTransactionSubmitted,
+          ).toHaveBeenCalledWith({
+            accountType: fromAccount.type,
+            chainIdCaip: scope,
+            origin: DEFAULT_METAMASK_ORIGIN,
+            transactionType: TransactionType.Send,
+            ...securityProperties,
+          });
+          expect(mockSignatureMonitor.monitor).toHaveBeenCalledWith(
+            signature,
+            fromAccount.id,
+            'confirmed',
+            scope,
+            DEFAULT_METAMASK_ORIGIN,
+            TransactionType.Send,
+            securityProperties,
+          );
+        });
+
+        it('reports no security properties when the caller passes none', async () => {
+          await service.signAndSendTransaction(
+            fromAccount,
+            transactionMessageBase64Encoded,
+            scope,
+            DEFAULT_METAMASK_ORIGIN,
+          );
+
+          expect(
+            mockAnalyticsService.trackTransactionSubmitted,
+          ).toHaveBeenCalledWith({
+            accountType: fromAccount.type,
+            chainIdCaip: scope,
+            origin: DEFAULT_METAMASK_ORIGIN,
+            transactionType: TransactionType.Send,
           });
         });
 
@@ -503,6 +561,7 @@ describe('WalletService', () => {
             scope,
             DEFAULT_METAMASK_ORIGIN,
             TransactionType.TokenApprove,
+            undefined,
           );
         });
 
@@ -534,6 +593,7 @@ describe('WalletService', () => {
             scope,
             DEFAULT_METAMASK_ORIGIN,
             TransactionType.Swap,
+            undefined,
           );
         });
 
@@ -565,6 +625,7 @@ describe('WalletService', () => {
             scope,
             DEFAULT_METAMASK_ORIGIN,
             TransactionType.BridgeSend,
+            undefined,
           );
         });
 
@@ -599,6 +660,7 @@ describe('WalletService', () => {
             scope,
             dappOrigin,
             undefined,
+            undefined,
           );
         });
 
@@ -631,6 +693,7 @@ describe('WalletService', () => {
             scope,
             DEFAULT_METAMASK_ORIGIN,
             TransactionType.TokenApprove,
+            undefined,
           );
         });
 
