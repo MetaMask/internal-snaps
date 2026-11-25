@@ -45,6 +45,10 @@ on:
         required: false
       STELLAR_HORIZON_URL_TESTNET:
         required: false
+      XRPL_RPC_URL_MAINNET:
+        required: false
+      XRPL_CLIO_URL_MAINNET:
+        required: false
 
 permissions:
   contents: read
