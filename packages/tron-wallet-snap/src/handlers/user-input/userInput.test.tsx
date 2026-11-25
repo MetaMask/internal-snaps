@@ -41,6 +41,7 @@ const scan: TransactionScanResult = {
   estimatedChanges: { assets: [] },
   validation: { type: 'Malicious', reason: null },
   error: null,
+  validationError: null,
 };
 
 const render = (context: Context): ComponentOrElement =>

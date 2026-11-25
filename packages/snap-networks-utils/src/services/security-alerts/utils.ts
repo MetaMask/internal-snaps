@@ -127,8 +127,8 @@ export function deriveSecurityAlert(type?: string | null): string | null {
  * - `'Loading'` while the scan is in progress, with reason `validation_in_progress`.
  * - `null` when the scan request failed, which is reported as `Error` with reason `Error`.
  * - A scan without a known verdict, including a successful one with an
- *   unrecognized verdict, is reported as `Error` with reason `Error`, and its
- *   error message as the description when it has one.
+ *   unrecognized verdict, is reported as `Error` with reason `Error`. A
+ *   simulation error is not a security error, so it is never reported here.
  * - Otherwise, the scan's verdict, with its reason and description.
  *
  * `reason` is omitted for `Benign`. Other verdicts report `NotApplicable` when
@@ -154,12 +154,9 @@ export function getTransactionSecurityProperties(
   const verdict = scan?.validation?.type;
 
   if (!is(verdict, SecurityScanVerdictStruct)) {
-    const description = scan?.error?.message;
-
     return {
       securityAlertResponse: SecurityAlertResponse.Error,
       securityAlertReason: SECURITY_ALERT_ERROR_REASON,
-      ...(description ? { securityAlertDescription: description } : {}),
     };
   }
 

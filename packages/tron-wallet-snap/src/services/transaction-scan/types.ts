@@ -17,6 +17,7 @@ export type TransactionScanEstimatedChanges = {
 export type TransactionScanValidation = {
   type: 'Benign' | 'Warning' | 'Malicious' | 'Error' | null;
   reason: string | null;
+  description?: string | null;
 };
 
 export type TransactionScanError = {
@@ -39,5 +40,6 @@ export type TransactionScanResult = {
   estimatedChanges: TransactionScanEstimatedChanges;
   validation: TransactionScanValidation;
   error: TransactionScanError | null;
+  validationError: TransactionScanError | null;
   simulationStatus: SimulationStatus;
 };

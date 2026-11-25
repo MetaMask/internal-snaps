@@ -134,6 +134,7 @@ function buildMockScanResult(
     },
     validation: { type: 'Benign', reason: null },
     error: null,
+    validationError: null,
     ...overrides,
   };
 }
@@ -1139,6 +1140,7 @@ describe('CronHandler', () => {
             estimatedChanges: { assets: [] },
             validation: { type: 'Malicious', reason: null },
             error: null,
+            validationError: null,
           });
           await cronHandler.refreshSignTransaction();
 

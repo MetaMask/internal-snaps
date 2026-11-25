@@ -80,6 +80,7 @@ const mockScanResult: TransactionScanResult = {
     reason: null,
   },
   error: null,
+  validationError: null,
 };
 
 const mockAssets: AssetEntity[] = [
@@ -803,6 +804,7 @@ describe('ConfirmSignTransaction render', () => {
           estimatedChanges: { assets: [] },
           validation: { type: 'Malicious', reason: null },
           error: null,
+          validationError: null,
         });
 
         const request: TronWalletKeyringRequest = {

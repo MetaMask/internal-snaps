@@ -22,4 +22,5 @@ export const EXPIRED_TRANSACTION_SCAN: TransactionScanResult = {
     code: null,
     message: null,
   },
+  validationError: null,
 };

@@ -149,28 +149,34 @@ describe('getTransactionSecurityProperties', () => {
     });
   });
 
-  it('describes an error status with the error message of the scan', () => {
+  it('does not describe an error status with the validation error of the scan', () => {
+    // A variable avoids the excess property check, since the scan type has no
+    // `validationError` field.
+    const scanWithValidationError = {
+      status: 'ERROR',
+      validation: null,
+      validationError: { message: 'Validation failed' },
+    };
+
     expect(
-      getTransactionSecurityProperties({
-        status: 'ERROR',
-        validation: null,
-        error: { message: 'Simulation failed' },
-      }),
+      getTransactionSecurityProperties(scanWithValidationError),
     ).toStrictEqual({
       securityAlertResponse: 'Error',
       securityAlertReason: 'Error',
-      securityAlertDescription: 'Simulation failed',
     });
   });
 
-  it('omits the description of an error status when the error has no message', () => {
-    const properties = getTransactionSecurityProperties({
+  it('does not describe an error status with a simulation error', () => {
+    const simulationFailure = {
       status: 'ERROR',
       validation: null,
-      error: { message: null },
-    });
+      error: { message: 'Insufficient funds' },
+    };
 
-    expect(properties).not.toHaveProperty('securityAlertDescription');
+    expect(getTransactionSecurityProperties(simulationFailure)).toStrictEqual({
+      securityAlertResponse: 'Error',
+      securityAlertReason: 'Error',
+    });
   });
 
   it('reports an error when a successful scan has no verdict', () => {
