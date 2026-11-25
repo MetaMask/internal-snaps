@@ -57,10 +57,16 @@ describe('browser shims', () => {
     );
   });
 
-  it('refuses to create other elements', () => {
-    expect(() => documentShim.createElement('script')).toThrow(
-      'Unsupported element: script',
-    );
+  it('returns inert stubs for other elements', () => {
+    const element = documentShim.createElement('div') as {
+      style: object;
+      setAttribute: (name: string, value: string) => void;
+      appendChild: (child: unknown) => void;
+    };
+
+    expect(element.style).toStrictEqual({});
+    expect(element.setAttribute('id', 'x')).toBeUndefined();
+    expect(element.appendChild({})).toBeUndefined();
   });
 
   it('uses a placeholder location', () => {
@@ -94,16 +100,24 @@ describe('browser shims', () => {
     vi.useFakeTimers();
     const timeoutHandler = vi.fn();
     const intervalHandler = vi.fn();
-    windowShim.setTimeout(timeoutHandler, 10);
+    (windowShim.setTimeout as (...args: unknown[]) => unknown)(
+      timeoutHandler,
+      10,
+      'arg',
+    );
     const cleared = windowShim.setTimeout(timeoutHandler, 10);
     windowShim.clearTimeout(cleared as ReturnType<typeof setTimeout>);
-    const interval = windowShim.setInterval(intervalHandler, 10);
+    const interval = (
+      windowShim.setInterval as (...args: unknown[]) => unknown
+    )(intervalHandler, 10, 'tick');
     vi.advanceTimersByTime(25);
     windowShim.clearInterval(interval as ReturnType<typeof setInterval>);
     vi.advanceTimersByTime(25);
     vi.useRealTimers();
 
     expect(timeoutHandler).toHaveBeenCalledTimes(1);
+    expect(timeoutHandler).toHaveBeenCalledWith('arg');
     expect(intervalHandler).toHaveBeenCalledTimes(2);
+    expect(intervalHandler).toHaveBeenCalledWith('tick');
   });
 });

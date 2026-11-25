@@ -107,21 +107,22 @@ describe('GuardedXMLHttpRequest', () => {
     scope.done();
   });
 
-  it('drops invalid request headers', async () => {
+  it('forwards request headers including long values', async () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response('{}'));
+    const longSignature = 'x'.repeat(2048);
 
     await send({
       headers: {
         'Content-type': 'application/json',
-        'Bad Header': 'value',
-        'X-Long': 'x'.repeat(1025),
+        'X-Braze-Auth-Signature': longSignature,
       },
     }).result;
 
     expect(fetchSpy.mock.calls[0]?.[1]?.headers).toStrictEqual({
       'Content-type': 'application/json',
+      'X-Braze-Auth-Signature': longSignature,
     });
   });
 

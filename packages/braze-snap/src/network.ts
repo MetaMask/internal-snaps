@@ -1,9 +1,5 @@
 import { ALLOWED_REQUEST_PATHS, NETWORK_LIMITS } from './constants';
 
-const HEADER_NAME_REGEX = /^[A-Za-z0-9-]{1,64}$/u;
-
-const MAX_HEADER_VALUE_LENGTH = 1024;
-
 let allowedUrls: ReadonlySet<string> = new Set();
 
 const controllers = new Set<AbortController>();
@@ -108,14 +104,7 @@ export class GuardedXMLHttpRequest {
   }
 
   setRequestHeader(name: string, value: string): void {
-    const headerName = String(name);
-    const headerValue = String(value);
-    if (
-      HEADER_NAME_REGEX.test(headerName) &&
-      headerValue.length <= MAX_HEADER_VALUE_LENGTH
-    ) {
-      this.#requestHeaders[headerName] = headerValue;
-    }
+    this.#requestHeaders[String(name)] = String(value);
   }
 
   getAllResponseHeaders(): string {

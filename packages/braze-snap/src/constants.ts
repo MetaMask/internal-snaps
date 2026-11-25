@@ -4,29 +4,9 @@
 export const ALLOWED_ORIGIN = 'metamask';
 
 /**
- * Braze SDK endpoints look like `sdk.iad-01.braze.com` or `sdk.fra-01.braze.eu`.
- */
-export const BRAZE_ENDPOINT_REGEX = /^sdk\.[a-z0-9-]+\.braze\.(?:com|eu)$/u;
-
-/**
- * Braze Web SDK API keys are UUIDs.
- */
-export const BRAZE_API_KEY_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
-
-/**
  * The paths the SDK may `POST` to on the configured endpoint.
  */
 export const ALLOWED_REQUEST_PATHS = ['/api/v3/data/'] as const;
-
-/**
- * Braze user languages are ISO 639-1 codes, such as `en` or `fr`.
- */
-export const LANGUAGE_REGEX = /^[a-z]{2}$/u;
-
-export const MAX_PROFILE_ID_LENGTH = 256;
-
-export const MAX_APP_VERSION_LENGTH = 64;
 
 /**
  * How long to wait for the SDK to report a flush before committing anyway.

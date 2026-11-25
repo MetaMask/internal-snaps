@@ -1,31 +1,39 @@
 import type { Infer } from '@metamask/superstruct';
 import {
   boolean,
+  nonempty,
   object,
   optional,
-  pattern,
-  size,
+  refine,
   string,
 } from '@metamask/superstruct';
 
-import {
-  BRAZE_API_KEY_REGEX,
-  BRAZE_ENDPOINT_REGEX,
-  LANGUAGE_REGEX,
-  MAX_APP_VERSION_LENGTH,
-  MAX_PROFILE_ID_LENGTH,
-} from './constants';
+/**
+ * Check that a Braze endpoint is a bare `host[:port]` without a scheme, path,
+ * query, fragment, or credentials.
+ *
+ * @param value - The endpoint string.
+ * @returns Whether the value is a valid bare host.
+ */
+function isBareHost(value: string): boolean {
+  try {
+    const url = new URL(`https://${value}`);
+    return url.host === value && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
 
 export const BrazeConfigStruct = object({
-  apiKey: pattern(string(), BRAZE_API_KEY_REGEX),
-  endpoint: pattern(string(), BRAZE_ENDPOINT_REGEX),
-  appVersion: size(string(), 1, MAX_APP_VERSION_LENGTH),
+  apiKey: nonempty(string()),
+  endpoint: refine(nonempty(string()), 'Braze endpoint', isBareHost),
+  appVersion: nonempty(string()),
   enableLogging: optional(boolean()),
 });
 
 export const SyncUserParamsStruct = object({
-  profileId: size(string(), 1, MAX_PROFILE_ID_LENGTH),
-  language: optional(pattern(string(), LANGUAGE_REGEX)),
+  profileId: nonempty(string()),
+  language: optional(nonempty(string())),
   config: BrazeConfigStruct,
 });
 

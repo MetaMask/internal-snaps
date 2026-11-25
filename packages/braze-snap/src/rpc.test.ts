@@ -102,10 +102,13 @@ describe('onRpcRequest', () => {
       ['missing params', undefined],
       ['an empty profile ID', { ...PARAMS, profileId: '' }],
       ['a null profile ID', { ...PARAMS, profileId: null }],
-      ['a long profile ID', { ...PARAMS, profileId: 'x'.repeat(257) }],
       [
-        'an endpoint outside Braze',
-        { ...PARAMS, config: { ...PARAMS.config, endpoint: 'example.com' } },
+        'an empty API key',
+        { ...PARAMS, config: { ...PARAMS.config, apiKey: '' } },
+      ],
+      [
+        'an empty endpoint',
+        { ...PARAMS, config: { ...PARAMS.config, endpoint: '' } },
       ],
       [
         'an endpoint with a path',
@@ -128,13 +131,40 @@ describe('onRpcRequest', () => {
         },
       ],
       [
-        'a malformed API key',
-        { ...PARAMS, config: { ...PARAMS.config, apiKey: 'key' } },
+        'an endpoint with credentials',
+        {
+          ...PARAMS,
+          config: {
+            ...PARAMS.config,
+            endpoint: 'user:pass@sdk.iad-01.braze.com',
+          },
+        },
+      ],
+      [
+        'an endpoint with only a username',
+        {
+          ...PARAMS,
+          config: {
+            ...PARAMS.config,
+            endpoint: 'user@sdk.iad-01.braze.com',
+          },
+        },
+      ],
+      [
+        'an endpoint with invalid host syntax',
+        {
+          ...PARAMS,
+          config: {
+            ...PARAMS.config,
+            endpoint: '[invalid',
+          },
+        },
       ],
       [
         'an empty app version',
         { ...PARAMS, config: { ...PARAMS.config, appVersion: '' } },
       ],
+      ['an empty language', { ...PARAMS, language: '' }],
       [
         'unknown config fields',
         { ...PARAMS, config: { ...PARAMS.config, baseUrl: 'example.com' } },
@@ -146,9 +176,6 @@ describe('onRpcRequest', () => {
           device: { userAgent: 'Mozilla/5.0', platform: 'MacIntel' },
         },
       ],
-      ['a language with a region', { ...PARAMS, language: 'en-US' }],
-      ['a language name', { ...PARAMS, language: 'english' }],
-      ['an uppercase language', { ...PARAMS, language: 'EN' }],
       ['unknown fields', { ...PARAMS, extra: true }],
     ])('rejects %s', async (_, params) => {
       const { changeUser } = mockBrazeSdk();
@@ -218,14 +245,15 @@ describe('onRpcRequest', () => {
       });
     });
 
-    it('accepts EU endpoints and the logging flag', async () => {
+    it('accepts custom endpoints, non-UUID test keys, and the logging flag', async () => {
       const { changeUser } = mockBrazeSdk();
 
       await call(BrazeMethod.SyncUser, {
         ...PARAMS,
         config: {
           ...PARAMS.config,
-          endpoint: 'sdk.fra-02.braze.eu',
+          apiKey: 'synthetic-test-key',
+          endpoint: 'localhost:8080',
           enableLogging: true,
         },
       });
