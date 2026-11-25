@@ -149,7 +149,7 @@ describe('errors', () => {
     ])('wraps transport code %s in HttpException', (code) => {
       const error = Object.assign(new Error('transport'), { code });
 
-      expect(isHttpException(error)).toStrictEqual(true);
+      expect(isHttpException(error)).tobe(true);
       expect(normalizeHttpException(error)).toBeInstanceOf(HttpException);
     });
 
