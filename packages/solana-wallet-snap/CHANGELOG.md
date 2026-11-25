@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.5.0]
+
 ### Added
 
-- Require risk acknowledgement before confirming Solana transactions flagged as malicious. Confirm opens a danger-styled acknowledgement screen, and proceeding requires checking the risk checkbox ([#615](https://github.com/MetaMask/internal-snaps/pull/615)).
+- Require risk acknowledgement before confirming Solana transactions flagged as malicious. Confirm opens a danger-styled acknowledgement screen, and proceeding requires checking the risk checkbox. ([#615](https://github.com/MetaMask/internal-snaps/pull/615))
 
 ## [7.4.0]
 
@@ -135,7 +137,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING:** Re-licensed split into LICENSE.MIT or LICENSE.APACHE2 files (SPDX expression unchanged) ([#72](https://github.com/MetaMask/internal-snaps/pull/72))
 - This package was migrated from [snap-solana-wallet](https://github.com/MetaMask/snap-solana-wallet). See the source repository for the original [changelog](https://github.com/MetaMask/snap-solana-wallet/blob/main/packages/snap/CHANGELOG.md). ([#72](https://github.com/MetaMask/internal-snaps/pull/72))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.4.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.5.0...HEAD
+[7.5.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.4.0...@metamask/solana-wallet-snap@7.5.0
 [7.4.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.3.0...@metamask/solana-wallet-snap@7.4.0
 [7.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.2.0...@metamask/solana-wallet-snap@7.3.0
 [7.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/solana-wallet-snap@7.1.0...@metamask/solana-wallet-snap@7.2.0

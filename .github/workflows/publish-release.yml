@@ -67,7 +67,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: yarn build
         env:
-          LOG_LEVEL: error
+          LOG_LEVEL: silent
           DEFAULT_ADDRESS_TYPE: ${{ secrets.DEFAULT_ADDRESS_TYPE }}
           ESPLORA_BITCOIN: ${{ secrets.ESPLORA_BITCOIN }}
           ESPLORA_TESTNET: ${{ secrets.ESPLORA_TESTNET }}
