@@ -90,7 +90,7 @@ jobs:
           "STELLAR_RPC_URL_MAINNET": "${{ secrets.STELLAR_RPC_URL_MAINNET }}",
           "STELLAR_HORIZON_URL_MAINNET": "${{ secrets.STELLAR_HORIZON_URL_MAINNET }}",
           "STELLAR_RPC_URL_TESTNET": "${{ secrets.STELLAR_RPC_URL_TESTNET }}",
-          "STELLAR_HORIZON_URL_TESTNET": "${{ secrets.STELLAR_HORIZON_URL_TESTNET }}"
+          "STELLAR_HORIZON_URL_TESTNET": "${{ secrets.STELLAR_HORIZON_URL_TESTNET }}",
           "XRPL_RPC_URL_MAINNET": "${{ secrets.XRPL_RPC_URL_MAINNET }}",
           "XRPL_CLIO_URL_MAINNET": "${{ secrets.XRPL_CLIO_URL_MAINNET }}",
         }
