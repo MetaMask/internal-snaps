@@ -18,6 +18,7 @@ import * as KnownAssetIcon from '../../ui/confirmation/utils/getIconUrlForKnownA
 import * as ConfirmSignMessageRender from '../../ui/confirmation/views/ConfirmSignMessage/render';
 import * as ConfirmSignTransactionComponent from '../../ui/confirmation/views/ConfirmSignTransaction/ConfirmSignTransaction';
 import * as ConfirmSignTransactionRender from '../../ui/confirmation/views/ConfirmSignTransaction/render';
+import type { ConfirmSignTransactionResult } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import * as ConfirmTransactionRequestRender from '../../ui/confirmation/views/ConfirmTransactionRequest/render';
 import type { ConfirmTransactionRequestResult } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
 import { mockLogger } from '../../utils/mockLogger';
@@ -211,6 +212,22 @@ function buildConfirmTransactionRequestResult(
   };
 }
 
+/**
+ * Builds the result the ConfirmSignTransaction render resolves to.
+ *
+ * @param overrides - Fields to override on the default result.
+ * @returns The render result.
+ */
+function buildConfirmSignTransactionResult(
+  overrides: Partial<ConfirmSignTransactionResult> = {},
+): ConfirmSignTransactionResult {
+  return {
+    result: true,
+    context: {},
+    ...overrides,
+  };
+}
+
 describe('ConfirmationHandler', () => {
   beforeEach(() => {
     vi.spyOn(
@@ -222,7 +239,7 @@ describe('ConfirmationHandler', () => {
     );
     mockRenderConfirmSignTransaction = vi
       .spyOn(ConfirmSignTransactionRender, 'render')
-      .mockResolvedValue(undefined as never);
+      .mockResolvedValue(buildConfirmSignTransactionResult());
     mockRenderConfirmTransactionRequest = vi
       .spyOn(ConfirmTransactionRequestRender, 'render')
       .mockResolvedValue(buildConfirmTransactionRequestResult());
@@ -809,7 +826,9 @@ describe('ConfirmationHandler', () => {
         mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
           rawData,
         );
-        mockRenderConfirmSignTransaction.mockResolvedValue(true);
+        mockRenderConfirmSignTransaction.mockResolvedValue(
+          buildConfirmSignTransactionResult(),
+        );
 
         await handler.handleKeyringRequest({
           request,
@@ -835,7 +854,9 @@ describe('ConfirmationHandler', () => {
         mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
           rawData,
         );
-        mockRenderConfirmSignTransaction.mockResolvedValue(true);
+        mockRenderConfirmSignTransaction.mockResolvedValue(
+          buildConfirmSignTransactionResult(),
+        );
 
         const result = await handler.handleKeyringRequest({
           request,
@@ -877,7 +898,9 @@ describe('ConfirmationHandler', () => {
         mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
           rawData,
         );
-        mockRenderConfirmSignTransaction.mockResolvedValue(false);
+        mockRenderConfirmSignTransaction.mockResolvedValue(
+          buildConfirmSignTransactionResult({ result: false }),
+        );
 
         const result = await handler.handleKeyringRequest({
           request,
@@ -906,7 +929,11 @@ describe('ConfirmationHandler', () => {
           mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
             rawData,
           );
-          mockRenderConfirmSignTransaction.mockResolvedValue(dialogResult);
+          mockRenderConfirmSignTransaction.mockResolvedValue(
+            buildConfirmSignTransactionResult({
+              result: dialogResult as never,
+            }),
+          );
 
           const result = await handler.handleKeyringRequest({
             request,
@@ -980,7 +1007,9 @@ describe('ConfirmationHandler', () => {
           mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
             contractRawData,
           );
-          mockRenderConfirmSignTransaction.mockResolvedValue(true);
+          mockRenderConfirmSignTransaction.mockResolvedValue(
+            buildConfirmSignTransactionResult(),
+          );
 
           await handler.handleKeyringRequest({
             request,
@@ -998,6 +1027,102 @@ describe('ConfirmationHandler', () => {
         });
       },
     );
+
+    it('reports the security verdict shown in the sign confirmation on Approved', async () => {
+      await withConfirmationHandler(async ({ handler, mockTronWeb }) => {
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+          rawData,
+        );
+        mockRenderConfirmSignTransaction.mockResolvedValue(
+          buildConfirmSignTransactionResult({
+            context: {
+              securityProperties: {
+                securityAlertResponse: 'Warning',
+                securityAlertReason: 'transfer_farming',
+              },
+            },
+          }),
+        );
+
+        await handler.handleKeyringRequest({
+          request,
+          account: mockAccount,
+        });
+
+        expect(
+          mockAnalyticsService.trackTransactionApproved,
+        ).toHaveBeenCalledWith({
+          origin: request.origin,
+          accountType: mockAccount.type,
+          chainIdCaip: Network.Mainnet,
+          transactionType: TransactionType.Send,
+          securityAlertResponse: 'Warning',
+          securityAlertReason: 'transfer_farming',
+        });
+        expect(
+          mockAnalyticsService.trackTransactionRejected,
+        ).not.toHaveBeenCalled();
+      });
+    });
+
+    it('reports the security verdict shown in the sign confirmation on Rejected', async () => {
+      await withConfirmationHandler(async ({ handler, mockTronWeb }) => {
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+          rawData,
+        );
+        mockRenderConfirmSignTransaction.mockResolvedValue(
+          buildConfirmSignTransactionResult({
+            result: false,
+            context: {
+              securityProperties: {
+                securityAlertResponse: 'Malicious',
+                securityAlertReason: 'known_attacker',
+              },
+            },
+          }),
+        );
+
+        await handler.handleKeyringRequest({
+          request,
+          account: mockAccount,
+        });
+
+        expect(
+          mockAnalyticsService.trackTransactionRejected,
+        ).toHaveBeenCalledWith({
+          origin: request.origin,
+          accountType: mockAccount.type,
+          chainIdCaip: Network.Mainnet,
+          transactionType: TransactionType.Send,
+          securityAlertResponse: 'Malicious',
+          securityAlertReason: 'known_attacker',
+        });
+        expect(
+          mockAnalyticsService.trackTransactionApproved,
+        ).not.toHaveBeenCalled();
+      });
+    });
+
+    it('reports no security fields when the sign confirmation has none', async () => {
+      await withConfirmationHandler(async ({ handler, mockTronWeb }) => {
+        mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
+          rawData,
+        );
+        mockRenderConfirmSignTransaction.mockResolvedValue(
+          buildConfirmSignTransactionResult(),
+        );
+
+        await handler.handleKeyringRequest({
+          request,
+          account: mockAccount,
+        });
+
+        expect(
+          vi.mocked(mockAnalyticsService.trackTransactionApproved).mock
+            .calls[0]?.[0],
+        ).not.toHaveProperty('securityAlertResponse');
+      });
+    });
 
     it('does not track transaction events for signMessage requests', async () => {
       await withConfirmationHandler(async ({ handler }) => {

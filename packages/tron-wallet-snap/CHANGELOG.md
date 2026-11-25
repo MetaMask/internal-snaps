@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add security telemetry fields to the "Transaction Approved", "Transaction Rejected", "Transaction Submitted", and "Transaction Finalized" events for the send flow ([#660](https://github.com/MetaMask/internal-snaps/pull/660))
+- Add security telemetry fields to the "Transaction Approved" and "Transaction Rejected" events for dApp transaction signing ([#662](https://github.com/MetaMask/internal-snaps/pull/662))
 
 ### Fixed
 
