@@ -1,5 +1,5 @@
 {
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "Manage Xrpl using MetaMask",
   "proposedName": "Xrpl",
   "repository": {
@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "MZgdg1kseUzF6YWiuqtOLGhl6CK9zHlHpLmfIYNhSNc=",
+    "shasum": "wiZib/XXNf8xG+OZv9DyR7HsDXPJxOICOrvn9Q1R+t0=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
