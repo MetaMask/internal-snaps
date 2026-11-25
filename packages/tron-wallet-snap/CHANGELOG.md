@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Return `computeStakeFee` validation errors as `{ code }` objects instead of bare strings, matching the other client request handlers ([#672](https://github.com/MetaMask/internal-snaps/pull/672))
 - Derive Tron staking positions and account resources from the TRX asset's balance metadata when the assets migration is active, instead of relying on legacy special asset entries from the controller ([#658](https://github.com/MetaMask/internal-snaps/pull/658))
 
 ## [4.5.0]
