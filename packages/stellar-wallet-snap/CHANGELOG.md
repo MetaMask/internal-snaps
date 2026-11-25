@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.2.0]
-
 ### Added
 
 - Add the `getMaxSendableAmount` client request method, returning the maximum amount that would pass `onAmountInput` for XLM and classic assets. XLM leaves the minimum reserve and the inclusion fee, token balances require XLM to cover the fee, and the result is `0` when no amount can pass ([#594](https://github.com/MetaMask/internal-snaps/pull/594))
@@ -148,8 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial package release ([#181](https://github.com/MetaMask/internal-snaps/pull/181))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@2.2.0...HEAD
-[2.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@2.1.0...@metamask/stellar-wallet-snap@2.2.0
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@2.1.0...HEAD
 [2.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@2.0.0...@metamask/stellar-wallet-snap@2.1.0
 [2.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.3.0...@metamask/stellar-wallet-snap@2.0.0
 [1.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/stellar-wallet-snap@1.2.0...@metamask/stellar-wallet-snap@1.3.0

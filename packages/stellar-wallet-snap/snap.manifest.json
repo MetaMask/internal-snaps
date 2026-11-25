@@ -1,5 +1,5 @@
 {
-  "version": "2.2.0",
+  "version": "2.1.0",
   "description": "Manage Stellar using MetaMask",
   "proposedName": "Stellar",
   "repository": {
@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/internal-snaps.git"
   },
   "source": {
-    "shasum": "0LFBooQ/bO4MBw4/0itNyj71TVnsg7PX4dLdZ0z6mt0=",
+    "shasum": "/E6ME+3g/GcNz7O4B4M0fl0cmmN+JBNCd9CJWrNOHg4=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
