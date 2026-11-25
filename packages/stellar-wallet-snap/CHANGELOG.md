@@ -9,15 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.2.0]
 
-### Uncategorized
-
-- fix(stellar): log real failures at error level ([#657](https://github.com/MetaMask/internal-snaps/pull/657))
-- Release/24.0.0 ([#644](https://github.com/MetaMask/internal-snaps/pull/644))
-- fix(stellar-wallet-snap): roll back Horizon fixture cases cleanly ([#605](https://github.com/MetaMask/internal-snaps/pull/605))
-- chore(lint): replace `eslint` with `oxlint` ([#596](https://github.com/MetaMask/internal-snaps/pull/596))
-- chore: add shared vitest config + update `create-package` to use vitest ([#580](https://github.com/MetaMask/internal-snaps/pull/580))
-- Release 23.0.0 ([#577](https://github.com/MetaMask/internal-snaps/pull/577))
-
 ### Added
 
 - Add the `getMaxSendableAmount` client request method, returning the maximum amount that would pass `onAmountInput` for XLM and classic assets. XLM leaves the minimum reserve and the inclusion fee, token balances require XLM to cover the fee, and the result is `0` when no amount can pass ([#594](https://github.com/MetaMask/internal-snaps/pull/594))
