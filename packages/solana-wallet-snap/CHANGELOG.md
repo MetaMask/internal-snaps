@@ -7,14 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- fix(solana): log real failures at error level ([#656](https://github.com/MetaMask/internal-snaps/pull/656))
-- feat(stellar): fetch policy observability ([#642](https://github.com/MetaMask/internal-snaps/pull/642))
-
 ### Added
 
-- Require risk acknowledgement before confirming Solana transactions flagged as malicious. Confirm opens a danger-styled acknowledgement screen, and proceeding requires checking the risk checkbox. ([#615](https://github.com/MetaMask/internal-snaps/pull/615))
+- Require risk acknowledgement before confirming Solana transactions flagged as malicious. Confirm opens a danger-styled acknowledgement screen, and proceeding requires checking the risk checkbox ([#615](https://github.com/MetaMask/internal-snaps/pull/615)).
 
 ## [7.4.0]
 

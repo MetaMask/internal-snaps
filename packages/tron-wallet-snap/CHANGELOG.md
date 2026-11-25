@@ -7,12 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
-
-- fix(tron): log real failures at error level ([#654](https://github.com/MetaMask/internal-snaps/pull/654))
-- chore(tron): align security scan copy ([#647](https://github.com/MetaMask/internal-snaps/pull/647))
-- feat(stellar): fetch policy observability ([#642](https://github.com/MetaMask/internal-snaps/pull/642))
-
 ### Added
 
 - Add security telemetry fields to the "Transaction Approved", "Transaction Rejected", "Transaction Submitted", and "Transaction Finalized" events for the send flow ([#660](https://github.com/MetaMask/internal-snaps/pull/660))
