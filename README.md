@@ -25,5 +25,6 @@ Each snap in this repository has its own README with installation and usage inst
 - [`@metamask/solana-wallet-snap`](packages/solana-wallet-snap)
 - [`@metamask/stellar-wallet-snap`](packages/stellar-wallet-snap)
 - [`@metamask/tron-wallet-snap`](packages/tron-wallet-snap)
+- [`@metamask/xrpl-wallet-snap`](packages/xrpl-wallet-snap)
 
 <!-- end package list -->
