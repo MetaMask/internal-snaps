@@ -1,0 +1,1 @@
+export { onRpcRequest } from './rpc';

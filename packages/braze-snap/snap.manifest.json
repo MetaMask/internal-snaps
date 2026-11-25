@@ -1,0 +1,28 @@
+{
+  "version": "0.0.0",
+  "description": "Runs the Braze Web SDK for MetaMask in an isolated snap",
+  "proposedName": "Braze",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetaMask/internal-snaps.git"
+  },
+  "source": {
+    "shasum": "S23ocpOEx7xQB+2l58sjjX6Lk39ZfS4CvJBJ6gsQ1nw=",
+    "location": {
+      "npm": {
+        "filePath": "dist/bundle.js",
+        "packageName": "@metamask/braze-snap",
+        "registry": "https://registry.npmjs.org/"
+      }
+    }
+  },
+  "initialPermissions": {
+    "endowment:rpc": {
+      "allowedOrigins": ["metamask"]
+    },
+    "endowment:network-access": {},
+    "snap_manageState": {}
+  },
+  "platformVersion": "12.0.1",
+  "manifestVersion": "0.1"
+}

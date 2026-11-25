@@ -1,0 +1,236 @@
+import type { JsonRpcRequest } from '@metamask/utils';
+
+import { mockBrazeSdk } from '../tests/braze';
+import { stubSnap } from '../tests/snap';
+import { BrazeMethod, onRpcRequest } from './rpc';
+import { resetRuntime } from './runtime';
+import { resetStorage } from './storage';
+
+const PARAMS = {
+  profileId: 'profile-id',
+  config: {
+    apiKey: '00000000-0000-0000-0000-000000000000',
+    endpoint: 'sdk.iad-01.braze.com',
+    appVersion: '13.0.0',
+  },
+};
+
+/**
+ * Call the RPC handler.
+ *
+ * @param method - The method.
+ * @param params - The params.
+ * @param origin - The origin.
+ * @returns The handler result.
+ */
+async function call(
+  method: string,
+  params: unknown,
+  origin = 'metamask',
+): Promise<unknown> {
+  return onRpcRequest({
+    origin,
+    originMetadata: null,
+    request: {
+      jsonrpc: '2.0',
+      id: 1,
+      method,
+      params,
+    } as JsonRpcRequest,
+  });
+}
+
+describe('onRpcRequest', () => {
+  beforeEach(() => {
+    resetRuntime();
+    resetStorage();
+    stubSnap();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('rejects requests from other origins', async () => {
+    const { changeUser } = mockBrazeSdk();
+
+    await expect(
+      call(BrazeMethod.SyncUser, PARAMS, 'https://example.com'),
+    ).rejects.toThrow(expect.objectContaining({ code: 4100 }));
+    expect(changeUser).not.toHaveBeenCalled();
+  });
+
+  it('rejects unknown methods', async () => {
+    await expect(call('wipeData', {})).rejects.toThrow(
+      'The method does not exist / is not available.',
+    );
+  });
+
+  describe('syncUser', () => {
+    it('changes the user when it differs from the current one', async () => {
+      const { changeUser } = mockBrazeSdk('other-profile-id');
+
+      expect(await call(BrazeMethod.SyncUser, PARAMS)).toBeNull();
+      expect(changeUser).toHaveBeenCalledWith('profile-id');
+    });
+
+    it('changes the user when there is none', async () => {
+      const { changeUser } = mockBrazeSdk();
+
+      await call(BrazeMethod.SyncUser, PARAMS);
+
+      expect(changeUser).toHaveBeenCalledWith('profile-id');
+    });
+
+    it('keeps the current user when it is the same', async () => {
+      const { changeUser } = mockBrazeSdk('profile-id');
+
+      await call(BrazeMethod.SyncUser, PARAMS);
+
+      expect(changeUser).not.toHaveBeenCalled();
+    });
+
+    it('flushes so the SDK can start a new session', async () => {
+      const { requestImmediateDataFlush } = mockBrazeSdk('profile-id');
+
+      await call(BrazeMethod.SyncUser, PARAMS);
+
+      expect(requestImmediateDataFlush).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['missing params', undefined],
+      ['an empty profile ID', { ...PARAMS, profileId: '' }],
+      ['a null profile ID', { ...PARAMS, profileId: null }],
+      ['a long profile ID', { ...PARAMS, profileId: 'x'.repeat(257) }],
+      [
+        'an endpoint outside Braze',
+        { ...PARAMS, config: { ...PARAMS.config, endpoint: 'example.com' } },
+      ],
+      [
+        'an endpoint with a path',
+        {
+          ...PARAMS,
+          config: {
+            ...PARAMS.config,
+            endpoint: 'sdk.iad-01.braze.com/evil',
+          },
+        },
+      ],
+      [
+        'an endpoint with a scheme',
+        {
+          ...PARAMS,
+          config: {
+            ...PARAMS.config,
+            endpoint: 'https://sdk.iad-01.braze.com',
+          },
+        },
+      ],
+      [
+        'a malformed API key',
+        { ...PARAMS, config: { ...PARAMS.config, apiKey: 'key' } },
+      ],
+      [
+        'an empty app version',
+        { ...PARAMS, config: { ...PARAMS.config, appVersion: '' } },
+      ],
+      [
+        'unknown config fields',
+        { ...PARAMS, config: { ...PARAMS.config, baseUrl: 'example.com' } },
+      ],
+      [
+        'device details',
+        {
+          ...PARAMS,
+          device: { userAgent: 'Mozilla/5.0', platform: 'MacIntel' },
+        },
+      ],
+      ['a language with a region', { ...PARAMS, language: 'en-US' }],
+      ['a language name', { ...PARAMS, language: 'english' }],
+      ['an uppercase language', { ...PARAMS, language: 'EN' }],
+      ['unknown fields', { ...PARAMS, extra: true }],
+    ])('rejects %s', async (_, params) => {
+      const { changeUser } = mockBrazeSdk();
+
+      await expect(call(BrazeMethod.SyncUser, params)).rejects.toThrow(
+        expect.objectContaining({ code: -32602 }),
+      );
+      expect(changeUser).not.toHaveBeenCalled();
+    });
+
+    describe('language', () => {
+      it('sets the language of the user', async () => {
+        const { setLanguage } = mockBrazeSdk();
+
+        await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
+
+        expect(setLanguage).toHaveBeenCalledWith('fr');
+      });
+
+      it('does not set the same language again for the same user', async () => {
+        const { setLanguage } = mockBrazeSdk();
+
+        await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
+        await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
+
+        expect(setLanguage).toHaveBeenCalledTimes(1);
+      });
+
+      it('sets a changed language', async () => {
+        const { setLanguage } = mockBrazeSdk();
+
+        await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
+        await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'de' });
+
+        expect(setLanguage.mock.calls).toStrictEqual([['fr'], ['de']]);
+      });
+
+      it('sets the language again for another user', async () => {
+        const { setLanguage } = mockBrazeSdk();
+
+        await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
+        await call(BrazeMethod.SyncUser, {
+          ...PARAMS,
+          profileId: 'other-profile-id',
+          language: 'fr',
+        });
+
+        expect(setLanguage).toHaveBeenCalledTimes(2);
+      });
+
+      it('tries again when the SDK does not accept the language', async () => {
+        const { setLanguage } = mockBrazeSdk();
+        setLanguage.mockReturnValueOnce(false);
+
+        await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
+        await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
+
+        expect(setLanguage).toHaveBeenCalledTimes(2);
+      });
+
+      it('leaves the language unchanged when none is given', async () => {
+        const { setLanguage } = mockBrazeSdk();
+
+        await call(BrazeMethod.SyncUser, PARAMS);
+
+        expect(setLanguage).not.toHaveBeenCalled();
+      });
+    });
+
+    it('accepts EU endpoints and the logging flag', async () => {
+      const { changeUser } = mockBrazeSdk();
+
+      await call(BrazeMethod.SyncUser, {
+        ...PARAMS,
+        config: {
+          ...PARAMS.config,
+          endpoint: 'sdk.fra-02.braze.eu',
+          enableLogging: true,
+        },
+      });
+
+      expect(changeUser).toHaveBeenCalledWith('profile-id');
+    });
+  });
+});
