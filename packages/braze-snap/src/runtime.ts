@@ -136,9 +136,14 @@ async function settle(): Promise<void> {
   }
 }
 
+export type WithBrazeOptions = {
+  flush?: boolean;
+};
+
 async function run<Result>(
   config: BrazeConfig,
   callback: (brazeSdk: BrazeSdk) => Result | Promise<Result>,
+  { flush: shouldFlush = false }: WithBrazeOptions = {},
 ): Promise<Result> {
   await hydrateStorage();
   setAllowedEndpoint(config.endpoint);
@@ -147,7 +152,11 @@ async function run<Result>(
     sdk ??= await brazeSdkLoader.load();
     initializeSdk(sdk, config);
     const result = await callback(sdk);
-    await flush(sdk);
+    if (shouldFlush) {
+      await flush(sdk);
+    } else {
+      await waitAtMost(drainRequests(), FLUSH_TIMEOUT_MS);
+    }
     return result;
   } finally {
     await settle();
@@ -157,20 +166,23 @@ async function run<Result>(
 /**
  * Run a callback against the SDK for the length of one snap request.
  *
- * The SDK only has network access while the callback and the flush that
- * follows run. Its storage is persisted once, after every request settled.
- * Calls are serialized, so requests never interleave.
+ * The SDK only has network access while the callback (and any optional flush
+ * that follows) runs. Its storage is persisted once, after every request
+ * settled. Calls are serialized, so requests never interleave.
  *
  * @param config - The Braze config.
- * @param callback - The callback, called with the initialized SDK. The flush
- * starts once it resolves.
+ * @param callback - The callback, called with the initialized SDK.
+ * @param options - Options for the request.
+ * @param options.flush - Whether to call `requestImmediateDataFlush` after the
+ * callback resolves before tearing down network access.
  * @returns The value returned by the callback.
  */
 export async function withBraze<Result>(
   config: BrazeConfig,
   callback: (brazeSdk: BrazeSdk) => Result | Promise<Result>,
+  options?: WithBrazeOptions,
 ): Promise<Result> {
-  const result = queue.then(async () => run(config, callback));
+  const result = queue.then(async () => run(config, callback, options));
   queue = result.catch(() => undefined);
   return result;
 }

@@ -59,8 +59,9 @@ function setLanguage(sdk: BrazeSdk, profileId: string, language: string): void {
 
 /**
  * Identify the device as the given Braze user. Changes the user only when it
- * differs from the current one, then flushes so the SDK can start a new
- * session if the previous one expired.
+ * differs from the current one, then flushes because `setLanguage` only queues
+ * attributes in storage and `initialize` does not renew an expired session
+ * before the snap runtime tears down timers at the end of the request.
  *
  * @param params - The validated params.
  * @param params.profileId - The canonical profile ID of the user.
@@ -73,14 +74,18 @@ async function syncUser({
   language,
   config,
 }: SyncUserParams): Promise<void> {
-  await withBraze(config, (sdk) => {
-    if (sdk.getUser()?.getUserId() !== profileId) {
-      sdk.changeUser(profileId);
-    }
-    if (language !== undefined) {
-      setLanguage(sdk, profileId, language);
-    }
-  });
+  await withBraze(
+    config,
+    (sdk) => {
+      if (sdk.getUser()?.getUserId() !== profileId) {
+        sdk.changeUser(profileId);
+      }
+      if (language !== undefined) {
+        setLanguage(sdk, profileId, language);
+      }
+    },
+    { flush: true },
+  );
 }
 
 export const onRpcRequest: OnRpcRequestHandler = async ({

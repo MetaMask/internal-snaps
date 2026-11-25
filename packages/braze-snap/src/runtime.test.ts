@@ -123,6 +123,15 @@ describe('withBraze', () => {
     expect(await withBraze(CONFIG, () => 'result')).toBe('result');
   });
 
+  it('does not flush unless requested', async () => {
+    stubSnap();
+    const { requestImmediateDataFlush } = mockBrazeSdk();
+
+    await withBraze(CONFIG, () => undefined);
+
+    expect(requestImmediateDataFlush).not.toHaveBeenCalled();
+  });
+
   it('hydrates, runs, flushes, then persists once', async () => {
     const { request } = stubSnap();
     const { requestImmediateDataFlush } = mockBrazeSdk();
@@ -137,10 +146,14 @@ describe('withBraze', () => {
       onFlushed?.(true);
     });
 
-    await withBraze(CONFIG, () => {
-      calls.push('callback');
-      storageShim.setItem('ab.storage.userId', 'profile');
-    });
+    await withBraze(
+      CONFIG,
+      () => {
+        calls.push('callback');
+        storageShim.setItem('ab.storage.userId', 'profile');
+      },
+      { flush: true },
+    );
 
     expect(calls).toStrictEqual([
       'snap_getState',
@@ -184,7 +197,7 @@ describe('withBraze', () => {
       onFlushed?.(true);
     });
 
-    await withBraze(CONFIG, () => undefined);
+    await withBraze(CONFIG, () => undefined, { flush: true });
 
     expect(loaded).toBe(true);
   });
@@ -204,11 +217,15 @@ describe('withBraze', () => {
     );
     let requestLoaded: Promise<boolean> | undefined;
 
-    const result = withBraze(CONFIG, () => {
-      setTimeout(() => {
-        requestLoaded = sendDataRequest();
-      }, FLUSH_TIMEOUT_MS / 2);
-    });
+    const result = withBraze(
+      CONFIG,
+      () => {
+        setTimeout(() => {
+          requestLoaded = sendDataRequest();
+        }, FLUSH_TIMEOUT_MS / 2);
+      },
+      { flush: true },
+    );
     while (requestImmediateDataFlush.mock.calls.length === 0) {
       await Promise.resolve();
     }
