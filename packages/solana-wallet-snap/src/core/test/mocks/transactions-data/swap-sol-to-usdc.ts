@@ -1,7 +1,6 @@
 import { address, blockhash, lamports } from '@solana/kit';
 import type {
   Base58EncodedBytes,
-  Slot,
   StringifiedBigInt,
   StringifiedNumber,
 } from '@solana/kit';

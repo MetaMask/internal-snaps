@@ -14,6 +14,7 @@ import type {
 import { assert } from '@metamask/superstruct';
 
 import type { ConfigProvider } from '../../services/config';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import { useCache } from '../../utils/caching';
 import { trackError } from '../../utils/errors';
 import logger from '../../utils/logger';
@@ -57,6 +58,7 @@ export class NftApiClient {
     this.#policy = createFetchPolicy({
       service: 'nft_api',
       logger: _logger,
+      ...fetchPolicyReporting,
     });
   }
 

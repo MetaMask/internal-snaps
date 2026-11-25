@@ -1,3 +1,6 @@
+import { Types as TronwebTypes } from 'tronweb';
+import type { Mock } from 'vitest';
+
 import { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Network } from '../../constants';
 import { mockLogger } from '../../utils/mockLogger';
@@ -8,6 +11,26 @@ import {
 } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
 import type { TransactionWithMetadata } from '../transaction-expiration-refresher/types';
 
+type MockBlock = {
+  blockID: string;
+  block_header: { raw_data: { number: number; timestamp: number } };
+};
+
+type MockTronWeb = {
+  trx: {
+    getCurrentBlock: Mock;
+    getBlockByNumber: Mock;
+  };
+  utils: {
+    deserializeTx: { deserializeTransaction: Mock };
+    transaction: {
+      txJsonToPb: Mock;
+      txPbToRawDataHex: Mock;
+      txPbToTxID: Mock;
+    };
+  };
+};
+
 const createBlock = ({
   number,
   timestamp,
@@ -16,7 +39,7 @@ const createBlock = ({
   number: number;
   timestamp: number;
   hashSegment?: string;
-}) => ({
+}): MockBlock => ({
   blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
   block_header: {
     raw_data: {
@@ -26,7 +49,7 @@ const createBlock = ({
   },
 });
 
-const getRefBlockBytes = (number: number) =>
+const getRefBlockBytes = (number: number): string =>
   number.toString(16).slice(-4).padStart(4, '0');
 
 const createTransaction = ({
@@ -35,31 +58,30 @@ const createTransaction = ({
 }: {
   block: ReturnType<typeof createBlock>;
   expiration: number;
-}) =>
-  ({
-    visible: false,
-    txID: 'original-tx-id',
-    raw_data: {
-      contract: [
-        {
-          type: 'TransferContract',
-          parameter: {
-            type_url: 'type.googleapis.com/protocol.TransferContract',
-            value: {
-              owner_address: `41${'a'.repeat(40)}`,
-              to_address: `41${'b'.repeat(40)}`,
-              amount: 1000000,
-            },
+}): TransactionWithMetadata & { visible: boolean } => ({
+  visible: false,
+  txID: 'original-tx-id',
+  raw_data: {
+    contract: [
+      {
+        type: TronwebTypes.ContractType.TransferContract,
+        parameter: {
+          type_url: 'type.googleapis.com/protocol.TransferContract',
+          value: {
+            owner_address: `41${'a'.repeat(40)}`,
+            to_address: `41${'b'.repeat(40)}`,
+            amount: 1000000,
           },
         },
-      ],
-      ref_block_bytes: getRefBlockBytes(block.block_header.raw_data.number),
-      ref_block_hash: block.blockID.slice(16, 32),
-      expiration,
-      timestamp: block.block_header.raw_data.timestamp,
-    },
-    raw_data_hex: 'original-raw-data-hex',
-  }) as TransactionWithMetadata;
+      },
+    ],
+    ref_block_bytes: getRefBlockBytes(block.block_header.raw_data.number),
+    ref_block_hash: block.blockID.slice(16, 32),
+    expiration,
+    timestamp: block.block_header.raw_data.timestamp,
+  },
+  raw_data_hex: 'original-raw-data-hex',
+});
 
 describe('transaction metadata', () => {
   const now = 1_700_000_000_000;
@@ -79,7 +101,7 @@ describe('transaction metadata', () => {
   }: {
     currentBlock?: ReturnType<typeof createBlock>;
     referencedBlock?: ReturnType<typeof createBlock>;
-  } = {}) => ({
+  } = {}): MockTronWeb => ({
     trx: {
       getCurrentBlock: vi.fn().mockResolvedValue(currentBlock),
       getBlockByNumber: vi
@@ -91,14 +113,23 @@ describe('transaction metadata', () => {
         deserializeTransaction: vi.fn(),
       },
       transaction: {
-        txJsonToPb: vi.fn().mockImplementation((transaction) => transaction),
+        txJsonToPb: vi
+          .fn()
+          .mockImplementation(
+            (transaction: TronwebTypes.Transaction) => transaction,
+          ),
         txPbToRawDataHex: vi.fn().mockReturnValue('refreshed-raw-data-hex'),
         txPbToTxID: vi.fn().mockReturnValue('0xrefreshed-tx-id'),
       },
     },
   });
 
-  const createService = (tronWeb: ReturnType<typeof createTronWeb>) => {
+  const createService = (
+    tronWeb: ReturnType<typeof createTronWeb>,
+  ): {
+    service: TransactionExpirationRefresherService;
+    tronWebFactory: { createClient: Mock; executeRead: Mock };
+  } => {
     const tronWebFactory = {
       createClient: vi.fn().mockReturnValue(tronWeb),
       executeRead: vi
@@ -264,8 +295,8 @@ describe('transaction metadata', () => {
     expect(transaction.raw_data_hex).toBe(originalTransaction.raw_data_hex);
     expect(transaction.txID).toBe(originalTransaction.txID);
     expect(tronWeb.trx.getBlockByNumber).not.toHaveBeenCalled();
-    const serializedTransaction =
-      tronWeb.utils.transaction.txJsonToPb.mock.calls[0]?.[0];
+    const serializedTransaction = tronWeb.utils.transaction.txJsonToPb.mock
+      .calls[0]?.[0] as TronwebTypes.Transaction;
     expect(serializedTransaction).not.toBe(transaction);
     expect(serializedTransaction.raw_data.ref_block_bytes).toBe(
       result.raw_data.ref_block_bytes,

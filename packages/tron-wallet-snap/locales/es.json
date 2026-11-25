@@ -43,6 +43,18 @@
     "confirmation.cancelButton": {
       "message": "Cancelar"
     },
+    "confirmation.maliciousAck.title": {
+      "message": "High-risk request"
+    },
+    "confirmation.maliciousAck.description": {
+      "message": "Security partners found high-risk signals in this request. If you continue, your funds can't be recovered."
+    },
+    "confirmation.maliciousAck.checkbox": {
+      "message": "I have acknowledged the risk and still want to proceed"
+    },
+    "confirmation.maliciousAck.back": {
+      "message": "Go back"
+    },
     "confirmation.signMessage.title": {
       "message": "Firmar mensaje"
     },
@@ -68,10 +80,10 @@
       "message": "Registra tu cuenta como candidato a Super Representante y quema permanentemente 9999 TRX."
     },
     "confirmation.simulationTitleAPIError": {
-      "message": "Debido a un error, no pudimos verificar alertas de seguridad."
+      "message": "Security check unavailable"
     },
     "confirmation.simulationMessageAPIError": {
-      "message": "Solo continúe si confía en cada dirección involucrada."
+      "message": "We couldn't complete this safety check. Only continue if you trust this site and/or every address involved."
     },
     "confirmation.simulationErrorTitle": {
       "message": "Esta transacción se revirtió durante la simulación."
@@ -92,10 +104,10 @@
       "message": "Solo continúe si confía en este sitio y/o en todas las direcciones involucradas."
     },
     "confirmation.validationErrorLearnMore": {
-      "message": "Más información"
+      "message": "See details"
     },
     "confirmation.validationErrorSecurityAdviced": {
-      "message": "Asesoramiento de seguridad por"
+      "message": "Powered by"
     },
     "confirmation.securityScanInProgressTitle": {
       "message": "Comprobando problemas de seguridad"

@@ -1,7 +1,9 @@
+import * as snapNetworksUtils from '@metamask/snap-networks-utils';
 import { buildUrl } from '@metamask/snap-networks-utils';
 import type { MockedFunction } from 'vitest';
 
 import { KnownCaip2ChainId } from '../../../api';
+import { fetchPolicyReporting } from '../../../utils/analytics';
 import {
   HttpException,
   HttpResponseException,
@@ -51,6 +53,22 @@ describe('TokenApiClient', () => {
   });
 
   const createClient = () => new TokenApiClient({ baseUrl }, mockFetch);
+
+  it('reports outages through its fetch policy', () => {
+    const createFetchPolicySpy = vi.spyOn(
+      snapNetworksUtils,
+      'createFetchPolicy',
+    );
+
+    createClient();
+
+    expect(createFetchPolicySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        service: 'token_api',
+        ...fetchPolicyReporting,
+      }),
+    );
+  });
 
   describe('getAssetsByAssetIds', () => {
     it('requests token API with assetIds in query and returns parsed body', async () => {

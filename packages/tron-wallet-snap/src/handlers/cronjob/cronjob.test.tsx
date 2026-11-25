@@ -1,13 +1,18 @@
 import { TransactionStatus, TransactionType } from '@metamask/keyring-api';
-import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  MaliciousAcknowledgementFormNames,
+} from '@metamask/snap-networks-utils';
 import type {
   AnalyticsService,
   IStateManager,
 } from '@metamask/snap-networks-utils';
+import { UserInputEventType } from '@metamask/snaps-sdk';
+import { strict as assert } from 'node:assert';
 import type { Mocked, Mock } from 'vitest';
 
 import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
-import type { SnapClient } from '../../clients/snap/SnapClient';
+import { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
@@ -26,6 +31,7 @@ import { FetchStatus } from '../../types/snap';
 import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import type { ConfirmSignTransactionContext } from '../../ui/confirmation/views/ConfirmSignTransaction/types';
 import type { ConfirmTransactionRequestContext } from '../../ui/confirmation/views/ConfirmTransactionRequest/types';
+import { createEventHandlers as createAcknowledgementHandlers } from '../../ui/confirmation/views/MaliciousAcknowledgement/events';
 import { mockLogger } from '../../utils/mockLogger';
 import { BackgroundEventMethod, CronHandler } from './cronjob';
 
@@ -47,6 +53,7 @@ type MockSnapClient = Mocked<
     | 'scheduleBackgroundEvent'
     | 'getPreferences'
     | 'trackError'
+    | 'withInterfaceLock'
   >
 >;
 
@@ -75,7 +82,7 @@ type InterfaceContext =
 
 const MOCK_BLOCK_TIMESTAMP = 1_700_000_000_000;
 
-const getRefBlockBytes = (number: number) =>
+const getRefBlockBytes = (number: number): string =>
   number.toString(16).slice(-4).padStart(4, '0');
 
 const createBlock = ({
@@ -86,7 +93,10 @@ const createBlock = ({
   number: number;
   timestamp: number;
   hashSegment?: string;
-}) => ({
+}): {
+  blockID: string;
+  block_header: { raw_data: { number: number; timestamp: number } };
+} => ({
   blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
 
   block_header: {
@@ -190,7 +200,7 @@ function buildMockInterfaceContext(
       ref_block_hash: '',
       expiration: 0,
       timestamp: 0,
-    } as any,
+    },
     accountType: 'tron:eoa',
     ...overrides,
   };
@@ -214,7 +224,7 @@ function buildMockSignTransactionInterfaceContext(
       methods: ['signMessage', 'signTransaction'],
       type: 'tron:eoa',
       scopes: [Network.Mainnet],
-      entropySource: 'entropy-source-1' as any,
+      entropySource: 'entropy-source-1',
       derivationPath: "m/44'/195'/0'/0/0",
       index: 0,
     },
@@ -266,6 +276,9 @@ function buildMockSnapClient(
     scheduleBackgroundEvent: vi.fn().mockResolvedValue(undefined),
     getPreferences: vi.fn().mockResolvedValue({}),
     trackError: vi.fn().mockResolvedValue(undefined),
+    withInterfaceLock: vi.fn(async (_id, callback) =>
+      callback(),
+    ) as MockSnapClient['withInterfaceLock'],
   };
 }
 
@@ -352,7 +365,11 @@ function buildMockTronWebFactory({
           }),
         },
         transaction: {
-          txJsonToPb: vi.fn().mockImplementation((transaction) => transaction),
+          txJsonToPb: vi
+            .fn()
+            .mockImplementation(
+              (transaction: JsonTransactionRawData) => transaction,
+            ),
           txPbToRawDataHex: vi.fn().mockReturnValue('refreshed-raw-data-hex'),
           txPbToTxID: vi.fn().mockReturnValue('0xrefreshed-tx-id'),
         },
@@ -371,6 +388,7 @@ function buildMockTronWebFactory({
  * @param deps.mockState - The mock State.
  * @param deps.mockTransactionScanService - The mock TransactionScanService.
  * @param deps.transactionExpirationRefresherService - The transaction metadata refresher.
+ * @param deps.mockPriceApiClient - The price API client.
  * @returns A CronHandler instance wired to the mocks.
  */
 function buildCronHandler({
@@ -378,10 +396,12 @@ function buildCronHandler({
   mockState,
   mockTransactionScanService,
   transactionExpirationRefresherService,
+  mockPriceApiClient,
 }: {
   mockSnapClient: MockSnapClient;
   mockState: MockState;
   mockTransactionScanService: MockTransactionScanService;
+  mockPriceApiClient: { getMultipleSpotPrices: Mock };
   transactionExpirationRefresherService: Pick<
     TransactionExpirationRefresherService,
     'ensureFreshRawData' | 'deserializeTransaction' | 'isTransactionExpired'
@@ -392,7 +412,7 @@ function buildCronHandler({
     accountsService: {} as AccountsService,
     snapClient: mockSnapClient as unknown as SnapClient,
     state: mockState as unknown as IStateManager<UnencryptedStateValue>,
-    priceApiClient: {} as PriceApiClient,
+    priceApiClient: mockPriceApiClient as unknown as PriceApiClient,
     tronHttpClient: {} as TronHttpClient,
     transactionScanService:
       mockTransactionScanService as unknown as TransactionScanService,
@@ -411,6 +431,7 @@ type WithCronHandlerCallback = (payload: {
   mockState: MockState;
   mockTransactionScanService: MockTransactionScanService;
   mockTronWebFactory: MockTronWebFactory;
+  mockPriceApiClient: { getMultipleSpotPrices: Mock };
 }) => Promise<void> | void;
 
 /**
@@ -461,6 +482,9 @@ async function withCronHandler(
   const mockState = buildMockState(mapInterfaceNameToId);
   const mockTransactionScanService =
     buildMockTransactionScanService(scanResult);
+  const mockPriceApiClient = {
+    getMultipleSpotPrices: vi.fn().mockResolvedValue({}),
+  };
   const mockTronWebFactory = buildMockTronWebFactory({
     currentBlock,
     currentBlockError,
@@ -470,8 +494,11 @@ async function withCronHandler(
     new TransactionExpirationRefresherService({
       tronWebFactory: mockTronWebFactory as unknown as TronWebFactory,
     });
-  const passThroughTransactionExpirationRefresherService = {
-    ensureFreshRawData: vi.fn(async ({ rawData }) => rawData),
+  const passThroughTransactionExpirationRefresherService: Pick<
+    TransactionExpirationRefresherService,
+    'ensureFreshRawData' | 'deserializeTransaction' | 'isTransactionExpired'
+  > = {
+    ensureFreshRawData: async ({ rawData }) => rawData,
     deserializeTransaction:
       transactionExpirationRefresherService.deserializeTransaction.bind(
         transactionExpirationRefresherService,
@@ -487,6 +514,7 @@ async function withCronHandler(
     mockSnapClient,
     mockState,
     mockTransactionScanService,
+    mockPriceApiClient,
     transactionExpirationRefresherService: refreshRawData
       ? transactionExpirationRefresherService
       : passThroughTransactionExpirationRefresherService,
@@ -497,11 +525,77 @@ async function withCronHandler(
     mockSnapClient,
     mockState,
     mockTransactionScanService,
+    mockPriceApiClient,
     mockTronWebFactory,
   });
 }
 
 describe('CronHandler', () => {
+  it.each([
+    {
+      name: 'send scan',
+      run: (handler: CronHandler): Promise<void> =>
+        handler.refreshConfirmationSend(),
+    },
+    {
+      name: 'prices',
+      run: (handler: CronHandler): Promise<void> =>
+        handler.refreshConfirmationPrices(),
+    },
+  ])(
+    'locks $name context updates but not external requests',
+    async ({ run }) => {
+      const context = buildMockInterfaceContext();
+      await withCronHandler(
+        { interfaceContext: context },
+        async ({
+          cronHandler,
+          mockSnapClient,
+          mockTransactionScanService,
+          mockPriceApiClient,
+        }) => {
+          let locked = false;
+          mockSnapClient.withInterfaceLock.mockImplementation(
+            async (_id, callback) => {
+              locked = true;
+              try {
+                return await callback();
+              } finally {
+                locked = false;
+              }
+            },
+          );
+          mockSnapClient.updateInterface.mockImplementation(async () => {
+            expect(locked).toBe(true);
+            return null;
+          });
+          mockTransactionScanService.scanTransaction.mockImplementation(
+            async () => {
+              expect(locked).toBe(false);
+              return buildMockScanResult();
+            },
+          );
+          mockPriceApiClient.getMultipleSpotPrices.mockImplementation(
+            async () => {
+              expect(locked).toBe(false);
+              return {};
+            },
+          );
+          mockSnapClient.getInterfaceContext
+            .mockResolvedValueOnce(context)
+            .mockResolvedValue({ ...context, acknowledged: true });
+          await run(cronHandler);
+          expect(mockSnapClient.withInterfaceLock).toHaveBeenCalledTimes(2);
+          expect(mockSnapClient.updateInterface).toHaveBeenCalledTimes(2);
+          expect(
+            mockSnapClient.updateInterface.mock.calls[0]?.[2],
+          ).toMatchObject({ acknowledged: true });
+          expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalled();
+        },
+      );
+    },
+  );
+
   describe('refreshConfirmationSend', () => {
     it('refreshes transaction validity without scanning when both scan preferences are disabled', async () => {
       const context = buildMockInterfaceContext();
@@ -673,7 +767,9 @@ describe('CronHandler', () => {
 
           // The final update should have scanFetchStatus: FetchStatus.Error
           const lastUpdateCall = mockSnapClient.updateInterface.mock.calls[1];
-          const contextArg = lastUpdateCall?.[2] as any;
+          const contextArg = lastUpdateCall?.[2] as
+            | InterfaceContext
+            | undefined;
           expect(contextArg?.scanFetchStatus).toBe(FetchStatus.Error);
         },
       );
@@ -730,7 +826,228 @@ describe('CronHandler', () => {
     });
   });
 
+  it.each([
+    {
+      flow: 'send',
+      buildContext: buildMockInterfaceContext,
+      interfaceName: 'confirmTransaction',
+      refresh: (handler: CronHandler): Promise<void> =>
+        handler.refreshConfirmationSend(),
+    },
+    {
+      flow: 'sign',
+      buildContext: buildMockSignTransactionInterfaceContext,
+      interfaceName: CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME,
+      refresh: (handler: CronHandler): Promise<void> =>
+        handler.refreshSignTransaction(),
+    },
+  ])(
+    'preserves malicious acknowledgement during a $flow background refresh',
+    async ({ buildContext, interfaceName, refresh }) => {
+      const context = buildContext();
+      const interfaceContext = {
+        ...context,
+        acknowledgementScreen: true,
+        acknowledged: true,
+      };
+      await withCronHandler(
+        {
+          interfaceContext,
+          mapInterfaceNameToId: {
+            [interfaceName]: 'interface-id-456',
+          },
+        },
+        async ({ cronHandler, mockSnapClient }) => {
+          await refresh(cronHandler);
+          expect(mockSnapClient.updateInterface).toHaveBeenCalledTimes(2);
+          for (const call of mockSnapClient.updateInterface.mock.calls) {
+            expect(call[2]).toMatchObject({
+              acknowledgementScreen: true,
+              acknowledged: true,
+            });
+            expect(JSON.stringify(call[1])).toContain('High-risk request');
+            expect(JSON.stringify(call[1])).not.toContain('"disabled":true');
+          }
+        },
+      );
+    },
+  );
+
   describe('refreshSignTransaction', () => {
+    it('preserves the checkbox and an expired scan when their updates overlap', async () => {
+      const initial = {
+        ...buildMockSignTransactionInterfaceContext(),
+        acknowledgementScreen: true,
+        acknowledged: false,
+      };
+      await withCronHandler(
+        {
+          interfaceContext: initial,
+          transactionExpired: true,
+          mapInterfaceNameToId: {
+            [CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME]: 'interface-id-456',
+          },
+        },
+        async ({ cronHandler, mockSnapClient, mockTransactionScanService }) => {
+          let context: ConfirmSignTransactionContext = initial;
+          let releaseScan!: () => void;
+          let scanStarted!: () => void;
+          let releaseCheckbox!: () => void;
+          let checkboxStarted!: () => void;
+          let refreshWaiting!: () => void;
+          const scanGate = new Promise<void>((resolve) => {
+            releaseScan = resolve;
+          });
+          const scanReady = new Promise<void>((resolve) => {
+            scanStarted = resolve;
+          });
+          const checkboxGate = new Promise<void>((resolve) => {
+            releaseCheckbox = resolve;
+          });
+          const checkboxReady = new Promise<void>((resolve) => {
+            checkboxStarted = resolve;
+          });
+          const refreshReady = new Promise<void>((resolve) => {
+            refreshWaiting = resolve;
+          });
+          const snapClient = new SnapClient();
+          mockSnapClient.withInterfaceLock
+            .mockImplementationOnce(async (id, callback) =>
+              snapClient.withInterfaceLock(id, callback),
+            )
+            .mockImplementationOnce(async (id, callback) =>
+              snapClient.withInterfaceLock(id, callback),
+            )
+            .mockImplementationOnce(async (id, callback) => {
+              refreshWaiting();
+              return await snapClient.withInterfaceLock(id, callback);
+            })
+            .mockImplementation(async (id, callback) =>
+              snapClient.withInterfaceLock(id, callback),
+            );
+          mockSnapClient.getInterfaceContext
+            .mockResolvedValueOnce(initial)
+            .mockResolvedValueOnce(initial)
+            .mockImplementationOnce(async () => {
+              const snapshot = context;
+              checkboxStarted();
+              await checkboxGate;
+              return snapshot;
+            })
+            .mockImplementation(async () => context);
+          mockSnapClient.updateInterface.mockImplementation(
+            async (_id, _ui, next) => {
+              context = next as ConfirmSignTransactionContext;
+              return null;
+            },
+          );
+          mockTransactionScanService.scanTransaction.mockImplementation(
+            async () => {
+              scanStarted();
+              await scanGate;
+              return buildMockScanResult();
+            },
+          );
+          const resolveInterface = vi.fn();
+          const client = {
+            ...mockSnapClient,
+            resolveInterface,
+          } as unknown as SnapClient;
+          const handlers = createAcknowledgementHandlers(client);
+          const onCheckbox =
+            handlers[MaliciousAcknowledgementFormNames.Acknowledge];
+          const onProceed = handlers[MaliciousAcknowledgementFormNames.Proceed];
+          assert(onCheckbox);
+          assert(onProceed);
+          const refresh = cronHandler.refreshSignTransaction();
+          await scanReady;
+          const checkbox = onCheckbox({
+            id: 'interface-id-456',
+            event: {
+              type: UserInputEventType.InputChangeEvent,
+              name: MaliciousAcknowledgementFormNames.Acknowledge,
+              value: true,
+            },
+          });
+          await checkboxReady;
+          releaseScan();
+          await refreshReady;
+          expect(mockSnapClient.updateInterface).toHaveBeenCalledTimes(1);
+          releaseCheckbox();
+          await Promise.all([checkbox, refresh]);
+          expect(context.acknowledged).toBe(true);
+          expect(context.scan?.error?.type).toBe('TransactionTaposExpired');
+          await onProceed({
+            id: 'interface-id-456',
+            event: {
+              type: UserInputEventType.ButtonClickEvent,
+              name: MaliciousAcknowledgementFormNames.Proceed,
+            },
+          });
+          expect(resolveInterface).not.toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('locks both context updates and performs the security scan outside the lock', async () => {
+      await withCronHandler(
+        {
+          interfaceContext: buildMockSignTransactionInterfaceContext(),
+          mapInterfaceNameToId: {
+            [CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME]: 'interface-id-456',
+          },
+        },
+        async ({ cronHandler, mockSnapClient, mockTransactionScanService }) => {
+          let locked = false;
+          mockSnapClient.withInterfaceLock.mockImplementation(
+            async (_id, callback) => {
+              locked = true;
+              try {
+                return await callback();
+              } finally {
+                locked = false;
+              }
+            },
+          );
+          mockSnapClient.updateInterface.mockImplementation(async () => {
+            expect(locked).toBe(true);
+            return null;
+          });
+          mockTransactionScanService.scanTransaction.mockImplementation(
+            async () => {
+              expect(locked).toBe(false);
+              return buildMockScanResult();
+            },
+          );
+          await cronHandler.refreshSignTransaction();
+          expect(mockSnapClient.withInterfaceLock).toHaveBeenCalledTimes(2);
+          expect(mockSnapClient.updateInterface).toHaveBeenCalledTimes(2);
+          expect(mockTransactionScanService.scanTransaction).toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('uses the latest context for the initial fetching update', async () => {
+      const context = buildMockSignTransactionInterfaceContext();
+      await withCronHandler(
+        {
+          interfaceContext: context,
+          mapInterfaceNameToId: {
+            [CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME]: 'interface-id-456',
+          },
+        },
+        async ({ cronHandler, mockSnapClient }) => {
+          mockSnapClient.getInterfaceContext
+            .mockResolvedValueOnce(context)
+            .mockResolvedValue({ ...context, acknowledged: true });
+          await cronHandler.refreshSignTransaction();
+          expect(
+            mockSnapClient.updateInterface.mock.calls[0]?.[2],
+          ).toMatchObject({ acknowledged: true });
+        },
+      );
+    });
+
     it('rescans the original payload without modifying it', async () => {
       const blockTimestamp = MOCK_BLOCK_TIMESTAMP;
       const currentBlock = createBlock({
@@ -816,15 +1133,20 @@ describe('CronHandler', () => {
           transactionExpired: true,
         },
         async ({ cronHandler, mockSnapClient, mockTransactionScanService }) => {
+          mockTransactionScanService.scanTransaction.mockResolvedValue({
+            status: 'SUCCESS',
+            simulationStatus: SimulationStatus.Completed,
+            estimatedChanges: { assets: [] },
+            validation: { type: 'Malicious', reason: null },
+            error: null,
+          });
           await cronHandler.refreshSignTransaction();
 
           const finalUpdateCall = mockSnapClient.updateInterface.mock.calls[1];
           const finalContext =
             finalUpdateCall?.[2] as ConfirmSignTransactionContext;
 
-          // A benign security scan is overridden by the local TAPOS-expiry
-          // detection: an expired transaction won't broadcast regardless of the
-          // contract simulation result.
+          // Expiry replaces the simulation result while preserving the verdict.
           expect(mockTransactionScanService.scanTransaction).toHaveBeenCalled();
           expect(finalContext.scan?.simulationStatus).toBe(
             SimulationStatus.Failed,
@@ -832,6 +1154,7 @@ describe('CronHandler', () => {
           expect(finalContext.scan?.error?.type).toBe(
             'TransactionTaposExpired',
           );
+          expect(finalContext.scan?.validation.type).toBe('Malicious');
           expect(finalContext.scanFetchStatus).toBe(FetchStatus.Fetched);
         },
       );
@@ -881,6 +1204,10 @@ describe('CronHandler', () => {
           expect(finalContext.scan?.error?.type).toBe(
             'TransactionTaposExpired',
           );
+          expect(finalContext.scan?.validation).toStrictEqual({
+            type: 'Error',
+            reason: null,
+          });
           expect(finalContext.scanFetchStatus).toBe(FetchStatus.Fetched);
         },
       );
@@ -899,8 +1226,9 @@ describe('CronHandler', () => {
         mockSnapClient,
         mockState,
         mockTransactionScanService,
+        mockPriceApiClient: { getMultipleSpotPrices: vi.fn() },
         transactionExpirationRefresherService: {
-          ensureFreshRawData: vi.fn(async ({ rawData }) => rawData),
+          ensureFreshRawData: async ({ rawData }) => rawData,
           deserializeTransaction: vi
             .fn()
             .mockRejectedValue(new Error('deserialize failed')),
@@ -1039,6 +1367,34 @@ describe('CronHandler', () => {
       );
     });
 
+    it('keeps the security verdict when rescheduling an unconfirmed transaction', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockSnapClient, mockTronHttpClient }) => {
+          mockTronHttpClient.getTransactionInfoById.mockResolvedValue(null);
+
+          await cronHandler.trackTransaction({
+            txId: TX_ID,
+            scope: Network.Mainnet,
+            accountIds: ACCOUNT_IDS,
+            attempt: 0,
+            securityProperties: { securityAlertResponse: 'Benign' },
+          });
+
+          expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
+            method: BackgroundEventMethod.TrackTransaction,
+            params: {
+              txId: TX_ID,
+              scope: Network.Mainnet,
+              accountIds: ACCOUNT_IDS,
+              attempt: 1,
+              securityProperties: { securityAlertResponse: 'Benign' },
+            },
+            duration: TRACK_TX_INTERVAL,
+          });
+        },
+      );
+    });
+
     it('syncs accounts and emits finalized event when transaction confirms', async () => {
       await withTrackTransactionCronHandler(
         async ({
@@ -1051,7 +1407,7 @@ describe('CronHandler', () => {
           mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
             blockNumber: 100,
             receipt: { result: 'SUCCESS' },
-          } as any);
+          });
           mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
 
           await cronHandler.trackTransaction({
@@ -1080,6 +1436,88 @@ describe('CronHandler', () => {
       );
     });
 
+    it('validates the tracking params before tracking the transaction', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockTronHttpClient }) => {
+          mockTronHttpClient.getTransactionInfoById.mockResolvedValue(null);
+
+          await cronHandler.handleTrackTransaction({
+            jsonrpc: '2.0',
+            id: 1,
+            method: BackgroundEventMethod.TrackTransaction,
+            params: {
+              txId: TX_ID,
+              scope: Network.Mainnet,
+              accountIds: ACCOUNT_IDS,
+              attempt: 0,
+              securityProperties: { securityAlertResponse: 'Benign' },
+            },
+          });
+
+          expect(
+            mockTronHttpClient.getTransactionInfoById,
+          ).toHaveBeenCalledWith(Network.Mainnet, TX_ID);
+        },
+      );
+    });
+
+    it('rejects tracking params with security fields at the top level', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockTronHttpClient }) => {
+          await expect(
+            cronHandler.handleTrackTransaction({
+              jsonrpc: '2.0',
+              id: 1,
+              method: BackgroundEventMethod.TrackTransaction,
+              params: {
+                txId: TX_ID,
+                scope: Network.Mainnet,
+                accountIds: ACCOUNT_IDS,
+                attempt: 0,
+                securityAlertResponse: 'Benign',
+              },
+            }),
+          ).rejects.toThrow('securityAlertResponse');
+          expect(
+            mockTronHttpClient.getTransactionInfoById,
+          ).not.toHaveBeenCalled();
+        },
+      );
+    });
+
+    it('reports the security verdict on the finalized event', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockAccountsService, mockTronHttpClient }) => {
+          const mockAccount = { id: ACCOUNT_ID, type: 'tron:eoa' };
+          mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
+            blockNumber: 100,
+            receipt: { result: 'SUCCESS' },
+          });
+          mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
+
+          await cronHandler.trackTransaction({
+            txId: TX_ID,
+            scope: Network.Mainnet,
+            accountIds: ACCOUNT_IDS,
+            attempt: 0,
+            transactionType: TransactionType.Send,
+            securityProperties: { securityAlertResponse: 'Benign' },
+          });
+
+          expect(
+            mockAnalyticsService.trackTransactionFinalized,
+          ).toHaveBeenCalledWith({
+            origin: DEFAULT_METAMASK_ORIGIN,
+            accountType: mockAccount.type,
+            chainIdCaip: Network.Mainnet,
+            transactionStatus: TransactionStatus.Confirmed,
+            transactionType: TransactionType.Send,
+            securityAlertResponse: 'Benign',
+          });
+        },
+      );
+    });
+
     it('carries a swap classification through to the finalized event', async () => {
       await withTrackTransactionCronHandler(
         async ({ cronHandler, mockAccountsService, mockTronHttpClient }) => {
@@ -1087,7 +1525,7 @@ describe('CronHandler', () => {
           mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
             blockNumber: 100,
             receipt: { result: 'SUCCESS' },
-          } as never);
+          });
           mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
 
           await cronHandler.trackTransaction({
@@ -1118,7 +1556,7 @@ describe('CronHandler', () => {
           mockTronHttpClient.getTransactionInfoById.mockResolvedValue({
             blockNumber: 100,
             receipt: { result: 'SUCCESS' },
-          } as never);
+          });
           mockAccountsService.findByIds.mockResolvedValue([mockAccount]);
 
           await cronHandler.trackTransaction({
@@ -1189,6 +1627,34 @@ describe('CronHandler', () => {
               method: BackgroundEventMethod.TrackTransaction,
               params: expect.objectContaining({
                 attempt: TRACK_TX_MAX_ATTEMPTS - 1,
+              }),
+            }),
+          );
+        },
+      );
+    });
+
+    it('keeps the security verdict when retrying after a transient error', async () => {
+      await withTrackTransactionCronHandler(
+        async ({ cronHandler, mockSnapClient, mockTronHttpClient }) => {
+          mockTronHttpClient.getTransactionInfoById.mockRejectedValue(
+            new Error('Network error'),
+          );
+
+          await cronHandler.trackTransaction({
+            txId: TX_ID,
+            scope: Network.Mainnet,
+            accountIds: ACCOUNT_IDS,
+            attempt: 0,
+            securityProperties: { securityAlertResponse: 'Benign' },
+          });
+
+          expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith(
+            expect.objectContaining({
+              method: BackgroundEventMethod.TrackTransaction,
+              params: expect.objectContaining({
+                attempt: 1,
+                securityProperties: { securityAlertResponse: 'Benign' },
               }),
             }),
           );

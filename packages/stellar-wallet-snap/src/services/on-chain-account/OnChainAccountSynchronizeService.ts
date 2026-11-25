@@ -113,7 +113,7 @@ export class OnChainAccountSynchronizeService {
         });
       } catch (error: unknown) {
         await trackError(error);
-        this.#logger.warn(
+        this.#logger.error(
           'SEP-41 token balance step failed; merge will reuse last-saved SEP-41 asset entries where needed',
           { error },
         );
@@ -538,7 +538,7 @@ export class OnChainAccountSynchronizeService {
     } catch (error: unknown) {
       await trackError(error);
 
-      this.#logger.warn('Failed to emit keyring events after synchronize', {
+      this.#logger.error('Failed to emit keyring events after synchronize', {
         error,
       });
     }

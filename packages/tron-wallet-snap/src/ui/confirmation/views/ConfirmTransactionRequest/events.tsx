@@ -1,4 +1,8 @@
+import { requiresMaliciousAcknowledgement } from '@metamask/snap-networks-utils';
+
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
+import { isTransactionConfirmationBlocked } from '../../utils/isTransactionConfirmationBlocked';
+import type { ConfirmTransactionRequestContext } from './types';
 
 /**
  * Handle cancel button click by resolving the interface with a falsy value.
@@ -27,7 +31,25 @@ async function onConfirmButtonClick(
   options: { id: string },
 ): Promise<void> {
   const { id } = options;
-  await snapClient.resolveInterface(id, true);
+  await snapClient.withInterfaceLock(id, async () => {
+    const context =
+      await snapClient.getInterfaceContext<ConfirmTransactionRequestContext>(
+        id,
+      );
+
+    if (
+      !context ||
+      isTransactionConfirmationBlocked(context) ||
+      requiresMaliciousAcknowledgement(
+        context.preferences.useSecurityAlerts,
+        context.scan?.validation?.type,
+      )
+    ) {
+      return;
+    }
+
+    await snapClient.resolveInterface(id, true);
+  });
 }
 
 export const ConfirmSignAndSendTransactionFormNames = {

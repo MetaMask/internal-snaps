@@ -7,9 +7,9 @@ import { SnapClient } from './SnapClient';
 
 // Mock the global snap object
 const mockSnapRequest = vi.fn();
-(globalThis as any).snap = {
+vi.stubGlobal('snap', {
   request: mockSnapRequest,
-};
+});
 
 /**
  * Creates a fresh SnapClient and executes the given test function with it.
@@ -24,13 +24,51 @@ async function withSnapClient(
     mockSnapRequest: Mock;
     mockLogger: Logger;
   }) => void | Promise<void>,
-) {
+): Promise<void> {
   mockSnapRequest.mockReset();
   const snapClient = new SnapClient();
   await testFn({ snapClient, mockSnapRequest, mockLogger });
 }
 
 describe('SnapClient', () => {
+  describe('withInterfaceLock', () => {
+    it('serializes work for one interface while allowing another to proceed', async () => {
+      await withSnapClient(async ({ snapClient }) => {
+        let release!: () => void;
+        const pending = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        const calls: string[] = [];
+        const first = snapClient.withInterfaceLock('one', async () => {
+          calls.push('first');
+          await pending;
+        });
+        const second = snapClient.withInterfaceLock('one', async () => {
+          calls.push('second');
+        });
+        await snapClient.withInterfaceLock('two', async () => {
+          calls.push('other');
+        });
+        expect(calls).toStrictEqual(['first', 'other']);
+        release();
+        await Promise.all([first, second]);
+        expect(calls).toStrictEqual(['first', 'other', 'second']);
+      });
+    });
+
+    it('releases the lock after an error and returns callback values', async () => {
+      await withSnapClient(async ({ snapClient }) => {
+        await expect(
+          snapClient.withInterfaceLock('one', async () => {
+            throw new Error('failed');
+          }),
+        ).rejects.toThrow('failed');
+        expect(await snapClient.withInterfaceLock('one', async () => 42)).toBe(
+          42,
+        );
+      });
+    });
+  });
   describe('getInterfaceContext', () => {
     it('returns context when interface exists', async () => {
       await withSnapClient(

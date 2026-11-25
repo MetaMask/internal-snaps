@@ -14,7 +14,7 @@ import {
   InFlightCoalescer,
   SynchronizationError,
   asStrictKeyringAccount,
-  getSyncFailuresFromSettledResult,
+  getUnreportedSyncFailures,
 } from '@metamask/snap-networks-utils';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { assert } from '@metamask/superstruct';
@@ -638,7 +638,7 @@ export class AccountsService {
     accountIds: string[],
   ): Promise<void> {
     try {
-      const failures = getSyncFailuresFromSettledResult(results, accountIds);
+      const failures = getUnreportedSyncFailures(results, accountIds);
 
       if (failures.length === 0) {
         return;
@@ -648,7 +648,7 @@ export class AccountsService {
 
       await trackError(error);
     } catch (reportingError) {
-      this.#logger.warn('Failed to report synchronization failures', {
+      this.#logger.error('Failed to report synchronization failures', {
         reportingError,
       });
     }

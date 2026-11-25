@@ -1,8 +1,10 @@
 import type { Serializable, ICache } from '@metamask/snap-networks-utils';
+import * as snapNetworksUtils from '@metamask/snap-networks-utils';
 import { InMemoryCache } from '@metamask/snap-networks-utils';
 
 import { mockLogger } from '../../services/__mocks__/logger';
 import type { ConfigProvider } from '../../services/config';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import * as Errors from '../../utils/errors';
 import { trackError } from '../../utils/errors';
 import { MOCK_NFT_METADATA_RESPONSE_MAPPED } from './mocks/mockNftMetadataResponseMapped';
@@ -56,6 +58,22 @@ describe('NftApiClient', () => {
       expect(
         () => new NftApiClient(invalidConfigProvider, mockCache, mockFetch),
       ).toThrow('Invalid URL format');
+    });
+
+    it('reports outages through the fetch policy', () => {
+      const createFetchPolicySpy = vi.spyOn(
+        snapNetworksUtils,
+        'createFetchPolicy',
+      );
+
+      client = new NftApiClient(mockConfigProvider, mockCache, mockFetch);
+
+      expect(createFetchPolicySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          service: 'nft_api',
+          ...fetchPolicyReporting,
+        }),
+      );
     });
   });
 

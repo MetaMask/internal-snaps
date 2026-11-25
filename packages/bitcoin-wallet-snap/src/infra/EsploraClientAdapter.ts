@@ -23,6 +23,8 @@ import type {
   ChainConfig,
   BlockchainClient,
 } from '../entities';
+import { networkToScope } from '../handlers/caip';
+import { analyticsService } from '../utils/analytics';
 
 /**
  * Minimal subset of the Esplora/Blockstream REST `/tx/:txid` response needed to
@@ -141,12 +143,21 @@ export class EsploraClientAdapter implements BlockchainClient {
       regtest: toEsploraRestUrl(config.url.regtest),
     };
 
+    const policy = (network: Network): FetchPolicy =>
+      createFetchPolicy({
+        service: 'esplora',
+        chainIdCaip: networkToScope[network],
+        logger,
+        // No `trackError`: callers already report Esplora failures, and
+        // transaction sender lookups are best effort.
+        analytics: analyticsService,
+      });
     this.#policies = {
-      bitcoin: createFetchPolicy({ service: 'esplora_bitcoin', logger }),
-      testnet: createFetchPolicy({ service: 'esplora_testnet', logger }),
-      testnet4: createFetchPolicy({ service: 'esplora_testnet4', logger }),
-      signet: createFetchPolicy({ service: 'esplora_signet', logger }),
-      regtest: createFetchPolicy({ service: 'esplora_regtest', logger }),
+      bitcoin: policy('bitcoin'),
+      testnet: policy('testnet'),
+      testnet4: policy('testnet4'),
+      signet: policy('signet'),
+      regtest: policy('regtest'),
     };
 
     this.#config = config;

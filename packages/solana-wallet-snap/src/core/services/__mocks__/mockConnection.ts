@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest';
+
 import type { SolanaConnection } from '../connection/SolanaConnection';
 import {
   MOCK_MINT_ACCOUNT,
@@ -8,26 +10,26 @@ import {
   MOCK_SOLANA_RPC_SEND_TRANSACTION_RESPONSE,
 } from './mockSolanaRpcResponses';
 
-const createMockGetBalance = () =>
+const createMockGetBalance = (): Mock =>
   vi.fn().mockReturnValue({
     send: vi.fn().mockReturnValue(MOCK_SOLANA_RPC_GET_BALANCE_AS_SDK_RESPONSE),
   });
 
-const createMockGetLatestBlockhash = () =>
+const createMockGetLatestBlockhash = (): Mock =>
   vi.fn().mockReturnValue({
     send: vi
       .fn()
       .mockReturnValue(MOCK_SOLANA_RPC_GET_LATEST_BLOCKHASH_AS_SDK_RESPONSE),
   });
 
-const createMockSendTransaction = () =>
+const createMockSendTransaction = (): Mock =>
   vi.fn().mockReturnValue({
     send: vi
       .fn()
       .mockReturnValue(MOCK_SOLANA_RPC_SEND_TRANSACTION_RESPONSE.result),
   });
 
-const createMockGetSignaturesForAddress = () =>
+const createMockGetSignaturesForAddress = (): Mock =>
   vi.fn().mockReturnValue({
     send: vi.fn().mockReturnValue([
       {
@@ -73,7 +75,7 @@ const createMockGetSignaturesForAddress = () =>
     ]),
   });
 
-const createMockGetTransaction = () =>
+const createMockGetTransaction = (): Mock =>
   vi.fn().mockReturnValue({
     send: vi.fn().mockImplementation(({ signature }) => {
       if (
@@ -87,7 +89,7 @@ const createMockGetTransaction = () =>
     }),
   });
 
-const createMockGetTokenAccountsByOwner = () =>
+const createMockGetTokenAccountsByOwner = (): Mock =>
   vi.fn().mockReturnValue({
     send: vi
       .fn()
@@ -96,12 +98,12 @@ const createMockGetTokenAccountsByOwner = () =>
       ),
   });
 
-const createMockGetMultipleAccounts = () =>
+const createMockGetMultipleAccounts = (): Mock =>
   vi.fn().mockReturnValue({
     send: vi.fn().mockResolvedValue({ value: [] }),
   });
 
-const createMockSimulateTransaction = () =>
+const createMockSimulateTransaction = (): Mock =>
   vi.fn().mockReturnValue({
     send: vi.fn().mockResolvedValue({
       value: {
@@ -123,7 +125,7 @@ const createMockSimulateTransaction = () =>
     }),
   });
 
-const createMockGetRpc = () =>
+const createMockGetRpc = (): Mock =>
   vi.fn().mockReturnValue({
     getBalance: createMockGetBalance(),
     getTokenAccountsByOwner: createMockGetTokenAccountsByOwner(),
@@ -139,6 +141,7 @@ export const createMockConnection = (): SolanaConnection =>
   ({
     getRpc: createMockGetRpc(),
     fetchMint: vi.fn().mockResolvedValue(MOCK_MINT_ACCOUNT),
+    fetchJsonParsedAccount: vi.fn().mockResolvedValue({ exists: false }),
     getLatestBlockhash: vi
       .fn()
       .mockResolvedValue(

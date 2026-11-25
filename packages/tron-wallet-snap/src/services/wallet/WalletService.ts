@@ -1,8 +1,9 @@
+import { sha256 } from '@metamask/cryptography/sha';
 import type { ResolvedAccountAddress } from '@metamask/keyring-api';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { SnapError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
-import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
+import { bytesToHex, hexToBytes } from '@metamask/utils';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';

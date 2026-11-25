@@ -1,4 +1,7 @@
-import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
+import {
+  DEFAULT_METAMASK_ORIGIN,
+  requiresMaliciousAcknowledgement,
+} from '@metamask/snap-networks-utils';
 
 import { KnownCaip2ChainId } from '../../api';
 import { FieldType } from '../../services/transaction';
@@ -18,7 +21,6 @@ import {
   formatOrigin,
   isLocalTransactionValidationFailed,
   isRemoteTransactionScanLoading,
-  requiresMaliciousAcknowledgement,
   resolveConfirmationBanner,
   shouldDisableConfirmation,
 } from './utils';
@@ -195,28 +197,31 @@ describe('confirmation utils', () => {
   describe('requiresMaliciousAcknowledgement', () => {
     it('requires acknowledgement for a malicious result when security alerts are enabled', () => {
       expect(
-        requiresMaliciousAcknowledgement({ preferences, scan: maliciousScan }),
+        requiresMaliciousAcknowledgement(
+          preferences.useSecurityAlerts,
+          maliciousScan.validation?.type,
+        ),
       ).toBe(true);
     });
 
     it('does not require acknowledgement when security alerts are disabled', () => {
       expect(
-        requiresMaliciousAcknowledgement({
-          preferences: { ...preferences, useSecurityAlerts: false },
-          scan: maliciousScan,
-        }),
+        requiresMaliciousAcknowledgement(false, maliciousScan.validation?.type),
       ).toBe(false);
     });
 
     it('does not require acknowledgement for warning-level results', () => {
       expect(
-        requiresMaliciousAcknowledgement({ preferences, scan: warningScan }),
+        requiresMaliciousAcknowledgement(
+          preferences.useSecurityAlerts,
+          warningScan.validation?.type,
+        ),
       ).toBe(false);
     });
 
     it('does not require acknowledgement when there is no scan result', () => {
       expect(
-        requiresMaliciousAcknowledgement({ preferences, scan: null }),
+        requiresMaliciousAcknowledgement(preferences.useSecurityAlerts, null),
       ).toBe(false);
     });
   });

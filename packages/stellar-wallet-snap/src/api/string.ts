@@ -16,3 +16,15 @@ export const Utf8StringStruct = refine(string(), 'utf8', (value) => {
 });
 
 export type Utf8String = Infer<typeof Utf8StringStruct>;
+
+/**
+ * Loose wire-layer memo value: text and uint64 id values both pass.
+ * Strict type and length checks run in `resolveStellarMemo` at build time.
+ */
+export const StellarMemoValueStruct = refine(
+  string(),
+  'stellar-memo-value',
+  (value) => (value.length <= 64 ? true : 'Memo is too long'),
+);
+
+export type StellarMemoValue = Infer<typeof StellarMemoValueStruct>;

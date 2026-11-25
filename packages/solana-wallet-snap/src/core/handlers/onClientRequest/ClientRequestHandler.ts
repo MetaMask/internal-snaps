@@ -35,6 +35,8 @@ import {
   ApproveCardAmountResponseStruct,
   ComputeFeeRequestStruct,
   ComputeFeeResponseStruct,
+  GetMaxSendableAmountRequestStruct,
+  GetMaxSendableAmountResponseStruct,
   OnAddressInputRequestStruct,
   OnAmountInputRequestStruct,
   OnConfirmSendRequestStruct,
@@ -121,6 +123,8 @@ export class ClientRequestHandler {
         return this.#handleSignAndSendTransaction(request);
       case ClientRequestMethod.ComputeFee:
         return this.#handleComputeFee(request);
+      case ClientRequestMethod.GetMaxSendableAmount:
+        return this.#handleGetMaxSendableAmount(request);
       case ClientRequestMethod.OnAddressInput:
         return this.#handleOnAddressInput(request);
       case ClientRequestMethod.OnAmountInput:
@@ -289,6 +293,29 @@ export class ClientRequestHandler {
     ];
 
     assert(result, ComputeFeeResponseStruct);
+
+    return result;
+  }
+
+  /**
+   * Handles the computation of the maximum amount that can be sent.
+   *
+   * @param request - The JSON-RPC request containing the method and parameters.
+   * @returns The maximum sendable amount, or `0` when no amount can pass.
+   * @throws {InvalidParamsError} If the params are invalid.
+   */
+  async #handleGetMaxSendableAmount(request: JsonRpcRequest): Promise<Json> {
+    try {
+      assert(request, GetMaxSendableAmountRequestStruct);
+    } catch (error) {
+      const errorToThrow = new InvalidParamsError() as Error;
+      errorToThrow.cause = error;
+      throw errorToThrow;
+    }
+
+    const result = await this.#sendService.getMaxSendableAmount(request);
+
+    assert(result, GetMaxSendableAmountResponseStruct);
 
     return result;
   }

@@ -31,6 +31,7 @@ const FULL_ENVIRONMENT = {
   targetBlocksConfirmation: 1,
   fallbackFeeRate: 5.0,
   ratesRefreshInterval: 'PT20S',
+  feeRateCacheTtlMilliseconds: 60_000,
   priceApi: {
     url: 'https://price.example.com',
   },
@@ -63,6 +64,7 @@ describe('ConfigProvider', () => {
       targetBlocksConfirmation: 1,
       fallbackFeeRate: 5.0,
       ratesRefreshInterval: 'PT20S',
+      feeRateCacheTtlMilliseconds: 60_000,
       priceApi: {
         url: 'https://price.example.com',
       },

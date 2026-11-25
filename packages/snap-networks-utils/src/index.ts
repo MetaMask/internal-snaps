@@ -44,8 +44,17 @@ export type {
 export { BaseTransactionScanService } from './services/security-alerts/BaseTransactionScanService';
 export {
   deriveSecurityAlert,
+  getScanOptions,
   getSecurityAlertDescription,
+  getTransactionSecurityProperties,
   requiresMaliciousAcknowledgement,
+  SECURITY_ALERT_LOADING_RESPONSE,
+  SECURITY_ALERT_NOT_APPLICABLE_REASON,
+  TransactionSecurityPropertiesStruct,
+} from './services/security-alerts/utils';
+export type {
+  TransactionSecurityAlertResponse,
+  TransactionSecurityProperties,
 } from './services/security-alerts/utils';
 export { safeMerge } from './utils/safeMerge/safeMerge';
 export {
@@ -134,6 +143,7 @@ export {
   createWithCatchAndThrowSnapError,
   formatAccountSyncFailures,
   getSyncFailuresFromSettledResult,
+  getUnreportedSyncFailures,
   HttpError,
   isSnapRpcError,
   normalizeError,
@@ -191,6 +201,12 @@ export type {
   ConfirmationFooterLabels,
   ConfirmationFooterProps,
 } from './ui/ConfirmationFooter/ConfirmationFooter';
+export { PaymentReferenceScreen } from './ui/PaymentReference/PaymentReferenceScreen';
+export type {
+  PaymentReferenceFormNames,
+  PaymentReferenceLabels,
+  PaymentReferenceScreenProps,
+} from './ui/PaymentReference/PaymentReferenceScreen';
 export { InMemoryCache } from './utils/cache/InMemoryCache';
 export { StateCache } from './utils/cache/StateCache';
 export { useCache } from './utils/cache/useCache';

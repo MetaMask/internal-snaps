@@ -7,6 +7,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { Logger, BitcoinAccount } from '../entities';
+import { ValidationError } from '../entities';
 import type { AccountUseCases, SendFlowUseCases } from '../use-cases';
 import { Caip19Asset } from './caip';
 import * as Mappings from './mappings';
@@ -646,6 +647,7 @@ describe('RpcHandler', () => {
         },
       };
       mockAccountsUseCases.get.mockResolvedValue(mockAmountAccount as any);
+      mockSendFlowUseCases.buildProbePsbt.mockResolvedValue(mockPsbt);
 
       (Amount.from_btc as Mock).mockImplementation((btc) => ({
         to_sat: () => BigInt(Math.round(btc * 100_000_000)),
@@ -656,13 +658,108 @@ describe('RpcHandler', () => {
       const result = await handler.route(origin, validAmountRequest);
 
       expect(mockAccountsUseCases.get).toHaveBeenCalledWith(validAccountId);
+      expect(mockSendFlowUseCases.buildProbePsbt).toHaveBeenCalledWith(
+        expect.objectContaining({ network: 'bitcoin' }),
+        '0.5',
+        undefined,
+      );
       expect(result).toStrictEqual({
         valid: true,
         errors: [],
       });
     });
 
-    it('rejects amount exceeding balance', async () => {
+    it('rejects amounts whose fee cannot be covered by the balance', async () => {
+      mockSendFlowUseCases.buildProbePsbt.mockRejectedValue(
+        new Error(
+          'Insufficient funds: 149990000 sat available of 150000100 sat needed',
+        ),
+      );
+
+      const result = await handler.route(origin, validAmountRequest);
+
+      expect(mockSendFlowUseCases.buildProbePsbt).toHaveBeenCalled();
+      expect(result).toStrictEqual({
+        valid: false,
+        errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
+      });
+    });
+
+    it('rejects the full balance because the fee cannot be covered', async () => {
+      mockSendFlowUseCases.buildProbePsbt.mockRejectedValue(
+        new Error('Insufficient funds: 150000000 sat available'),
+      );
+
+      const drainRequest: JsonRpcRequest = {
+        id: 1,
+        jsonrpc: '2.0',
+        method: RpcMethod.OnAmountInput,
+        params: {
+          value: '1.5',
+          accountId: validAccountId,
+          assetId: 'bip122:000000000019d6689c085ae165831e93/slip44:0',
+        },
+      };
+
+      const result = await handler.route(origin, drainRequest);
+
+      expect(mockSendFlowUseCases.buildProbePsbt).toHaveBeenCalledWith(
+        expect.objectContaining({ network: 'bitcoin' }),
+        '1.5',
+        undefined,
+      );
+      expect(result).toStrictEqual({
+        valid: false,
+        errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
+      });
+    });
+
+    it('passes a provided toAddress to the fee check', async () => {
+      const withAddressRequest: JsonRpcRequest = {
+        id: 1,
+        jsonrpc: '2.0',
+        method: RpcMethod.OnAmountInput,
+        params: {
+          value: '0.5',
+          accountId: validAccountId,
+          assetId: 'bip122:000000000019d6689c085ae165831e93/slip44:0',
+          toAddress: 'bc1qux9xtsj6mr4un7yg9kgd7tv8kndvlhv2gv5yc8',
+        },
+      };
+
+      const result = await handler.route(origin, withAddressRequest);
+
+      expect(mockSendFlowUseCases.buildProbePsbt).toHaveBeenCalledWith(
+        expect.objectContaining({ network: 'bitcoin' }),
+        '0.5',
+        'bc1qux9xtsj6mr4un7yg9kgd7tv8kndvlhv2gv5yc8',
+      );
+      expect(result).toStrictEqual({ valid: true, errors: [] });
+    });
+
+    it('returns an invalid response for an invalid toAddress', async () => {
+      const invalidAddressRequest: JsonRpcRequest = {
+        id: 1,
+        jsonrpc: '2.0',
+        method: RpcMethod.OnAmountInput,
+        params: {
+          value: '0.5',
+          accountId: validAccountId,
+          assetId: 'bip122:000000000019d6689c085ae165831e93/slip44:0',
+          toAddress: 'invalid-address',
+        },
+      };
+
+      const result = await handler.route(origin, invalidAddressRequest);
+
+      expect(mockSendFlowUseCases.buildProbePsbt).not.toHaveBeenCalled();
+      expect(result).toStrictEqual({
+        valid: false,
+        errors: [{ code: SendErrorCodes.Invalid }],
+      });
+    });
+
+    it('rejects amount exceeding balance before checking the fee', async () => {
       const excessiveAmountRequest: JsonRpcRequest = {
         id: 1,
         jsonrpc: '2.0',
@@ -676,6 +773,7 @@ describe('RpcHandler', () => {
 
       const result = await handler.route(origin, excessiveAmountRequest);
 
+      expect(mockSendFlowUseCases.buildProbePsbt).not.toHaveBeenCalled();
       expect(result).toStrictEqual({
         valid: false,
         errors: [{ code: SendErrorCodes.InsufficientBalance }],
@@ -734,6 +832,159 @@ describe('RpcHandler', () => {
         valid: false,
         errors: [{ code: SendErrorCodes.Invalid }],
       });
+    });
+  });
+
+  describe('getMaxSendableAmount', () => {
+    const spendableSats = 150_000_000n;
+    const feeSats = 10_000n;
+    const assetId = 'bip122:000000000019d6689c085ae165831e93/slip44:0';
+
+    const createRequest = (toAddress?: string): JsonRpcRequest => ({
+      id: 1,
+      jsonrpc: '2.0',
+      method: RpcMethod.GetMaxSendableAmount,
+      params: {
+        accountId: validAccountId,
+        assetId,
+        ...(toAddress === undefined ? {} : { toAddress }),
+      },
+    });
+
+    const parseSats = (amount: string): bigint => {
+      const [whole = '0', fraction = ''] = amount.split('.');
+      return BigInt(whole) * 100_000_000n + BigInt(fraction.padEnd(8, '0'));
+    };
+
+    const mockFundableUpTo = (maxFundableSats: bigint): void => {
+      mockSendFlowUseCases.buildProbePsbt.mockImplementation(
+        async (_account, amount) => {
+          if (parseSats(amount) <= maxFundableSats) {
+            return mockPsbt;
+          }
+          throw new Error('Insufficient funds: 149990000 sat available');
+        },
+      );
+    };
+
+    beforeEach(() => {
+      const trustedSpendable = mock<Amount>();
+      trustedSpendable.to_sat.mockReturnValue(spendableSats);
+
+      mockAccountsUseCases.get.mockResolvedValue({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+        balance: { trusted_spendable: trustedSpendable },
+      } as unknown as BitcoinAccount);
+
+      (Amount.from_btc as Mock).mockImplementation(
+        (btc): { to_sat: () => bigint } => ({
+          to_sat: (): bigint => BigInt(Math.round(btc * 100_000_000)),
+        }),
+      );
+    });
+
+    it('binary searches the max amount fundable with the fee for a known toAddress', async () => {
+      mockFundableUpTo(spendableSats - feeSats);
+      const toAddress = 'bc1qux9xtsj6mr4un7yg9kgd7tv8kndvlhv2gv5yc8';
+
+      const result = await handler.route(origin, createRequest(toAddress));
+
+      expect(mockSendFlowUseCases.buildProbePsbt).toHaveBeenCalledWith(
+        expect.objectContaining({ network: 'bitcoin' }),
+        expect.any(String),
+        toAddress,
+      );
+      expect(
+        mockSendFlowUseCases.buildProbePsbt.mock.calls.length,
+      ).toBeGreaterThan(1);
+      expect(result).toStrictEqual({ amount: '1.4999' });
+    });
+
+    it('binary searches the max amount fundable with the fee when toAddress is omitted', async () => {
+      mockFundableUpTo(spendableSats - feeSats);
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(mockSendFlowUseCases.buildProbePsbt).toHaveBeenCalledWith(
+        expect.objectContaining({ network: 'bitcoin' }),
+        expect.any(String),
+        undefined,
+      );
+      expect(result).toStrictEqual({ amount: '1.4999' });
+    });
+
+    it('returns an amount that onAmountInput accepts', async () => {
+      mockFundableUpTo(spendableSats - feeSats);
+      const createAmountRequest = (value: string): JsonRpcRequest => ({
+        id: 2,
+        jsonrpc: '2.0',
+        method: RpcMethod.OnAmountInput,
+        params: { value, accountId: validAccountId, assetId },
+      });
+
+      const { amount } = (await handler.route(origin, createRequest())) as {
+        amount: string;
+      };
+      const accepted = await handler.route(origin, createAmountRequest(amount));
+      const rejected = await handler.route(
+        origin,
+        createAmountRequest('1.49990001'),
+      );
+
+      expect(accepted).toStrictEqual({ valid: true, errors: [] });
+      expect(rejected).toStrictEqual({
+        valid: false,
+        errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
+      });
+    });
+
+    it('returns 0 when no amount covers the fee', async () => {
+      mockFundableUpTo(-1n);
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns 0 when the fundable amount is below the dust limit', async () => {
+      mockFundableUpTo(100n);
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns 0 without probing when the spendable balance is zero', async () => {
+      const trustedSpendable = mock<Amount>();
+      trustedSpendable.to_sat.mockReturnValue(0n);
+      mockAccountsUseCases.get.mockResolvedValue({
+        network: 'bitcoin',
+        addressType: 'p2wpkh',
+        balance: { trusted_spendable: trustedSpendable },
+      } as unknown as BitcoinAccount);
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(mockSendFlowUseCases.buildProbePsbt).not.toHaveBeenCalled();
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('returns 0 when every probe reports a dust limit error', async () => {
+      mockSendFlowUseCases.buildProbePsbt.mockRejectedValue(
+        new Error('Output below the dust limit'),
+      );
+
+      const result = await handler.route(origin, createRequest());
+
+      expect(result).toStrictEqual({ amount: '0' });
+    });
+
+    it('rejects an invalid toAddress', async () => {
+      await expect(
+        handler.route(origin, createRequest('invalid-address')),
+      ).rejects.toThrow(ValidationError);
+      expect(mockSendFlowUseCases.buildProbePsbt).not.toHaveBeenCalled();
     });
   });
 

@@ -26,6 +26,7 @@ import {
   batchesAllSettled,
   getAssetReference,
 } from '../../utils';
+import { analyticsService, fetchPolicyReporting } from '../../utils/analytics';
 import { OnChainAccount } from '../on-chain-account/OnChainAccount';
 import { InvalidInvokeContractStructureException } from '../transaction/exceptions';
 import { Transaction } from '../transaction/Transaction';
@@ -87,6 +88,9 @@ export class NetworkService {
           service: 'stellar_horizon',
           chainIdCaip: scope,
           logger: this.#logger,
+          // No `trackError`: the SDK rethrows Horizon read failures as new
+          // errors without `cause`, so callers would report them again.
+          analytics: analyticsService,
         }),
         this.#getNetworkConfig(scope).horizonUrl,
         this.#getNetworkConfig(scope).timeout,
@@ -104,6 +108,7 @@ export class NetworkService {
           service: 'stellar_rpc',
           chainIdCaip: scope,
           logger: this.#logger,
+          ...fetchPolicyReporting,
         }),
         this.#getNetworkConfig(scope).rpcUrl,
         this.#getNetworkConfig(scope).timeout,

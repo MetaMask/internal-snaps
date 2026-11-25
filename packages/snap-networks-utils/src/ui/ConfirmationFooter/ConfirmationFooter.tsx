@@ -61,7 +61,7 @@ export type ConfirmationFooterProps = {
  *   confirmButtonName={formNames.Confirm}
  *   openAcknowledgementName={MaliciousAcknowledgementFormNames.Review}
  *   confirmDisabled={shouldDisableConfirmButton}
- *   requiresAcknowledgement={requiresMaliciousAcknowledgement({ preferences, scan })}
+ *   requiresAcknowledgement={requiresMaliciousAcknowledgement(preferences.useSecurityAlerts, scan?.validation?.type)}
  * />;
  * ```
  */

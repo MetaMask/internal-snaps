@@ -9,24 +9,33 @@ import { trackError } from '../../../../core/utils/errors';
 import {
   CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME,
   createInterface,
+  getInterfaceContext,
   getPreferences,
   showDialog,
   updateInterface,
+  withInterfaceLock,
 } from '../../../../core/utils/interface';
 import logger from '../../../../core/utils/logger';
+import type { InstructionParseResult } from '../../../../entities';
 import { extractInstructionsFromUnknownBase64String } from '../../../../entities';
 import {
+  accountsService,
+  assetsService,
   connection,
   nameResolutionService,
   priceApiClient,
   state,
   transactionScanService,
 } from '../../../../snapContext';
+import { analyzeFeePayment } from '../../utils/analyzeFeePayment';
+import type { FeePayment } from '../../utils/analyzeFeePayment';
+import { createFeePaymentChainReader } from '../../utils/createFeePaymentChainReader';
 import { extractDestinationAddress } from '../../utils/extractDestinationAddress';
 import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
-import type { ConfirmTransactionRequestContext } from './types';
+import type { ConfirmTransactionRequestContext as Context } from './types';
+import { toUiContext } from './utils';
 
-export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
+export const DEFAULT_CONFIRMATION_CONTEXT: Context = {
   method: SolMethod.SignAndSendTransaction,
   scope: Network.Mainnet,
   networkImage: SOL_IMAGE_SVG,
@@ -37,7 +46,11 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
   transaction: '',
   scan: null,
   scanFetchStatus: 'fetching',
+  transactionExpired: false,
+  acknowledgementScreen: false,
+  acknowledged: false,
   feeEstimatedInSol: '0',
+  feePayment: null,
   tokenPrices: {},
   tokenPricesFetchStatus: 'fetching',
   origin: '',
@@ -60,14 +73,83 @@ export const DEFAULT_CONFIRMATION_CONTEXT: ConfirmTransactionRequestContext = {
 };
 
 /**
+ * Works out who pays the network fee and what the user pays when it is
+ * sponsored. Never throws: on failure the confirmation shows the fee as usual.
+ *
+ * @param context - The confirmation context.
+ * @param instructions - The parsed top-level instructions, or `null` when they
+ * could not be parsed.
+ * @returns The fee payment, or `null` if it could not be determined.
+ */
+async function getFeePayment(
+  context: Context,
+  instructions: InstructionParseResult[] | null,
+): Promise<FeePayment | null> {
+  if (!context.account) {
+    return null;
+  }
+
+  try {
+    const ownAccounts = await accountsService.getAll();
+    return await analyzeFeePayment({
+      transaction: context.transaction,
+      accountAddress: context.account.address,
+      ownAddresses: ownAccounts.map((account) => account.address),
+      instructions,
+      reader: createFeePaymentChainReader(
+        connection.getRpc(context.scope),
+        context.scope,
+        async (assetTypes) => assetsService.getAssetsMetadata(assetTypes),
+      ),
+    });
+  } catch (error) {
+    await trackError(error);
+    return null;
+  }
+}
+
+/**
+ * Merges the fields that a render step fetched into the latest stored context.
+ *
+ * Event handlers can update the interface while a render step is still
+ * fetching, for example when the user expands Advanced. Writing the render's
+ * own copy would revert that change, so the fields are merged into the latest
+ * context under the interface lock.
+ *
+ * @param id - The ID of the interface to update.
+ * @param fetched - The fields that the render step fetched.
+ */
+async function patchContext(
+  id: string,
+  fetched: Partial<Context>,
+): Promise<void> {
+  await withInterfaceLock(id, async () => {
+    const context = await getInterfaceContext<Context>(id);
+
+    if (!context) {
+      return;
+    }
+
+    const nextContext: Context = {
+      ...context,
+      ...fetched,
+    };
+
+    await updateInterface(
+      id,
+      <ConfirmTransactionRequest context={toUiContext(nextContext)} />,
+      nextContext,
+    );
+  });
+}
+
+/**
  * Renders the confirmation dialog for a transaction request.
  *
  * @param incomingContext - The confirmation context.
  * @returns The confirmation dialog.
  */
-export async function render(
-  incomingContext: ConfirmTransactionRequestContext,
-) {
+export async function render(incomingContext: Context) {
   /**
    * First render:
    * - Get preferences
@@ -85,12 +167,14 @@ export async function render(
       context.preferences = DEFAULT_CONFIRMATION_CONTEXT.preferences;
     });
 
+  let parsedInstructions: InstructionParseResult[] | null = null;
   const instructionsPromise = extractInstructionsFromUnknownBase64String(
     connection.getRpc(context.scope),
     context.transaction,
   )
     .then(async (instructions) => {
       context.advanced.instructions = instructions;
+      parsedInstructions = instructions;
 
       try {
         context.destinationAddress = extractDestinationAddress(instructions);
@@ -127,6 +211,10 @@ export async function render(
     useSecurityAlerts,
     simulateOnChainActions,
   } = context.preferences;
+
+  if (!useSecurityAlerts && !simulateOnChainActions) {
+    context.scanFetchStatus = 'fetched';
+  }
 
   const id = await createInterface(
     <ConfirmTransactionRequest context={context} />,
@@ -175,7 +263,12 @@ export async function render(
         updatedContext1.tokenPrices = {};
       });
 
-  await Promise.all([destinationDomainPromise, tokenPricesPromise]);
+  const [, , feePayment] = await Promise.all([
+    destinationDomainPromise,
+    tokenPricesPromise,
+    getFeePayment(context, parsedInstructions),
+  ]);
+  updatedContext1.feePayment = feePayment;
 
   let feeEstimatedInSol: string | null = null;
   try {
@@ -187,11 +280,13 @@ export async function render(
   }
   updatedContext1.feeEstimatedInSol = feeEstimatedInSol;
 
-  await updateInterface(
-    id,
-    <ConfirmTransactionRequest context={updatedContext1} />,
-    updatedContext1,
-  );
+  await patchContext(id, {
+    destinationDomain: updatedContext1.destinationDomain,
+    tokenPrices: updatedContext1.tokenPrices,
+    tokenPricesFetchStatus: updatedContext1.tokenPricesFetchStatus,
+    feePayment: updatedContext1.feePayment,
+    feeEstimatedInSol: updatedContext1.feeEstimatedInSol,
+  });
 
   /**
    * Third render:
@@ -212,7 +307,7 @@ export async function render(
   }
 
   if (simulateOnChainActions || useSecurityAlerts) {
-    const transactionScanPromise = transactionScanService
+    await transactionScanService
       .scanTransaction({
         method: updatedContext2.method,
         accountAddress: updatedContext2.account?.address ?? '',
@@ -224,24 +319,16 @@ export async function render(
       .then(async (scan) => {
         updatedContext2.scan = scan;
         updatedContext2.scanFetchStatus = scan ? 'fetched' : 'error';
-      })
-      .catch(async (error) => {
-        await trackError(error);
-        updatedContext2.scan = null;
-        updatedContext2.scanFetchStatus = 'error';
       });
-
-    await Promise.all([transactionScanPromise]);
   } else {
     updatedContext2.scanFetchStatus = 'fetched';
     updatedContext2.scan = null;
   }
 
-  await updateInterface(
-    id,
-    <ConfirmTransactionRequest context={updatedContext2} />,
-    updatedContext2,
-  );
+  await patchContext(id, {
+    scan: updatedContext2.scan,
+    scanFetchStatus: updatedContext2.scanFetchStatus,
+  });
 
   await state.setKey(
     `mapInterfaceNameToId.${CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME}`,

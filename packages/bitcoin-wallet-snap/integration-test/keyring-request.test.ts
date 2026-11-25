@@ -1,8 +1,9 @@
 import { beforeAll, describe, expect, it } from '@jest/globals';
-import type { KeyringAccount, KeyringRequest } from '@metamask/keyring-api';
+import type { KeyringAccount } from '@metamask/keyring-api';
 import { BtcScope } from '@metamask/keyring-api';
 import type { Snap } from '@metamask/snaps-jest';
 import { assertIsConfirmationDialog, installSnap } from '@metamask/snaps-jest';
+import { assert, hasProperty } from '@metamask/utils';
 
 import { AccountCapability } from '../src/entities';
 import { Caip19Asset } from '../src/handlers/caip';
@@ -46,7 +47,6 @@ describe('KeyringRequestHandler', () => {
       }
 
       // no mocking for other methods
-      return undefined;
     });
 
     const response = await snap.onKeyringRequest({
@@ -59,14 +59,14 @@ describe('KeyringRequestHandler', () => {
       },
     });
 
-    if ('result' in response.response) {
+    if (hasProperty(response.response, 'result')) {
       account = (
         response.response.result as KeyringAccount[]
       )[0] as KeyringAccount;
       createdAccountId = account.id;
     }
 
-    await blockchain.sendToAddress(account.address, 10);
+    await blockchain.sendToAddress(account.address, 10, false);
     await blockchain.mineBlocks(6);
     await snap.onCronjob({ method: 'synchronizeAccounts' });
   });
@@ -83,7 +83,7 @@ describe('KeyringRequestHandler', () => {
         request: {
           method: AccountCapability.SignPsbt,
         },
-      } as KeyringRequest,
+      },
     });
 
     expect(response).toRespondWithError({
@@ -106,7 +106,7 @@ describe('KeyringRequestHandler', () => {
         request: {
           method: 'invalidMethod',
         },
-      } as KeyringRequest,
+      },
     });
 
     expect(response).toRespondWithError({
@@ -130,7 +130,7 @@ describe('KeyringRequestHandler', () => {
           request: {
             method: AccountCapability.ListUtxos,
           },
-        } as KeyringRequest,
+        },
       });
 
       expect(response).toRespondWith([
@@ -145,8 +145,9 @@ describe('KeyringRequestHandler', () => {
         },
       ]);
 
-      const utxos = (response.response as { result: { outpoint: string }[] })
+      const [utxo] = (response.response as { result: { outpoint: string }[] })
         .result;
+      assert(utxo, 'Expected the account to have at least one UTXO');
 
       response = await snap.onKeyringRequest({
         origin: ORIGIN,
@@ -160,13 +161,13 @@ describe('KeyringRequestHandler', () => {
             method: AccountCapability.GetUtxo,
             params: {
               account: { address: account.address },
-              outpoint: utxos[0]?.outpoint,
+              outpoint: utxo.outpoint,
             },
           },
-        } as KeyringRequest,
+        },
       });
 
-      expect(response).toRespondWith(utxos[0]);
+      expect(response).toRespondWith(utxo);
     });
 
     it('publicDescriptor', async () => {
@@ -181,7 +182,7 @@ describe('KeyringRequestHandler', () => {
           request: {
             method: AccountCapability.PublicDescriptor,
           },
-        } as KeyringRequest,
+        },
       });
 
       expect(response).toRespondWith(
@@ -218,7 +219,7 @@ describe('KeyringRequestHandler', () => {
               },
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       const ui = await response.getInterface();
@@ -254,7 +255,7 @@ describe('KeyringRequestHandler', () => {
               },
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       const ui = await response.getInterface();
@@ -290,7 +291,7 @@ describe('KeyringRequestHandler', () => {
               },
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       const ui = await response.getInterface();
@@ -354,7 +355,7 @@ describe('KeyringRequestHandler', () => {
               },
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       expect(response).toRespondWithError({
@@ -384,7 +385,7 @@ describe('KeyringRequestHandler', () => {
               },
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       expect(response).toRespondWithError({
@@ -411,7 +412,7 @@ describe('KeyringRequestHandler', () => {
               psbt: TEMPLATE_PSBT,
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       expect(response).toRespondWithError({
@@ -445,7 +446,7 @@ describe('KeyringRequestHandler', () => {
               feeRate: 3,
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       expect(response).toRespondWith({
@@ -469,7 +470,7 @@ describe('KeyringRequestHandler', () => {
               psbt: 'notAPsbt',
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       expect(response).toRespondWithError({
@@ -502,7 +503,7 @@ describe('KeyringRequestHandler', () => {
               feeRate: 3,
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       expect(response).toRespondWith({
@@ -526,7 +527,7 @@ describe('KeyringRequestHandler', () => {
               psbt: 'notAPsbt',
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       expect(response).toRespondWithError({
@@ -564,7 +565,7 @@ describe('KeyringRequestHandler', () => {
               },
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       const signUi = await signResponse.getInterface();
@@ -590,7 +591,7 @@ describe('KeyringRequestHandler', () => {
               psbt: result.psbt,
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       expect(response).toRespondWith({
@@ -615,7 +616,7 @@ describe('KeyringRequestHandler', () => {
               psbt: 'notAPsbt',
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       expect(response).toRespondWithError({
@@ -649,7 +650,7 @@ describe('KeyringRequestHandler', () => {
               feeRate: 3,
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       const ui = await response.getInterface();
@@ -680,7 +681,7 @@ describe('KeyringRequestHandler', () => {
               recipients: [{ address: 'notAnAddress', amount: '1000' }],
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       expect(response).toRespondWithError({
@@ -708,7 +709,7 @@ describe('KeyringRequestHandler', () => {
               message: 'Hello, world!',
             },
           },
-        } as KeyringRequest,
+        },
       });
 
       const ui = await response.getInterface();

@@ -6,6 +6,7 @@ import type { Network } from '../../../../core/constants/solana';
 import type { TransactionScanResult } from '../../../../core/services/transaction-scan/types';
 import type { FetchStatus, Preferences } from '../../../../core/types/snap';
 import type { InstructionParseResult } from '../../../../entities';
+import type { FeePayment } from '../../utils/analyzeFeePayment';
 
 export type ConfirmTransactionRequestContext = {
   method: SolMethod;
@@ -18,10 +19,18 @@ export type ConfirmTransactionRequestContext = {
   preferences: Preferences;
   transaction: string;
   feeEstimatedInSol: string | null;
+  /** Who pays the network fee, and what the user pays when it is sponsored. */
+  feePayment: FeePayment | null;
   tokenPrices: SpotPrices;
   tokenPricesFetchStatus: FetchStatus;
   scan: TransactionScanResult | null;
   scanFetchStatus: FetchStatus;
+  /** Local expiry is independent of API availability; absent in older contexts. */
+  transactionExpired?: boolean;
+  /** Whether the malicious-acknowledgement screen is currently shown. */
+  acknowledgementScreen: boolean;
+  /** Whether the malicious-risk checkbox is currently checked. */
+  acknowledged: boolean;
   origin: string;
   advanced: {
     shown: boolean;

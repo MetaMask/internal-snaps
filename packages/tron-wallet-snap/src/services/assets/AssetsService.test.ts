@@ -40,7 +40,7 @@ type MockState = {
   setKeyWith: Mock;
 };
 
-(global as any).snap = {};
+vi.stubGlobal('snap', {});
 
 const TRON_FLAG_KEY = SNAPS_ASSETS_MIGRATION_FLAG_KEYS.tron;
 
@@ -64,7 +64,7 @@ function createMessengerCallMock(
       case 'AssetsController:getAssets':
         return getAssets(...args);
       default:
-        return undefined;
+        throw new Error(`Unexpected action: ${String(actionType)}`);
     }
   };
 }

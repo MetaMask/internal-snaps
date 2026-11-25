@@ -23,6 +23,7 @@ jobs:
           is-high-risk-environment: false
           # SonarCloud needs the full history for new-code and blame data
           fetch-depth: 0
+          skip-install: true
 
       - name: Download coverage artifacts
         # This is actions/download-artifact@v8.0.1

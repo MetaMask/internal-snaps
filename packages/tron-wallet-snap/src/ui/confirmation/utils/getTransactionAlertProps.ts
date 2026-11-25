@@ -47,7 +47,11 @@ export function getTransactionAlertProps({
       ),
     },
     isFetching: scanFetchStatus === FetchStatus.Loading,
-    isFetchError: scanFetchStatus === FetchStatus.Error,
+    isFetchError:
+      preferences.useSecurityAlerts &&
+      (scanFetchStatus === FetchStatus.Error ||
+        scan?.validation.type === 'Error'),
+    fetchErrorSeverity: 'info',
     error: scanError
       ? {
           title: translate('confirmation.simulationErrorTitle'),

@@ -11,10 +11,7 @@ import type { PriceApiClient } from '../../clients/price-api/PriceApiClient';
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronHttpClient } from '../../clients/tron-http/TronHttpClient';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
-import type {
-  ContractTransactionInfo,
-  TransactionInfo,
-} from '../../clients/trongrid/types';
+import type { TransactionInfo } from '../../clients/trongrid/types';
 import { KnownCaip19Id, Network, Networks } from '../../constants';
 import { mockLogger } from '../../utils/mockLogger';
 import nativeTransferMock from './mocks/trongrid/account-transactions/native-transfer.json';
@@ -308,7 +305,7 @@ describe('TransactionsService', () => {
             nativeTransferMock,
           ] as TransactionInfo[]);
           mockTrongridApiClient.getContractTransactionInfoByAddress.mockResolvedValue(
-            contractInfoMock.data as ContractTransactionInfo[],
+            contractInfoMock.data,
           );
 
           await transactionsService.fetchNewTransactionsForAccount(
@@ -360,7 +357,7 @@ describe('TransactionsService', () => {
               id: '1005119',
               price: 0.001,
             },
-          } as never);
+          });
 
           const transactions =
             await transactionsService.fetchNewTransactionsForAccount(
@@ -436,7 +433,7 @@ describe('TransactionsService', () => {
               id: '1005119',
               price: 0.001,
             },
-          } as never);
+          });
 
           const transactions =
             await transactionsService.fetchNewTransactionsForAccount(
@@ -478,7 +475,7 @@ describe('TransactionsService', () => {
               id: '1005119',
               price: 0.001,
             },
-          } as never);
+          });
 
           const transactions =
             await transactionsService.fetchNewTransactionsForAccount(
@@ -813,7 +810,7 @@ describe('TransactionsService', () => {
                 id: 'tether',
                 price: 1.0,
               },
-            } as never);
+            });
 
             try {
               const result =
@@ -951,7 +948,7 @@ describe('TransactionsService', () => {
                   mockAccount,
                 );
               expect(result).toHaveLength(1);
-              expect(mockLogger.warn).toHaveBeenCalledWith(
+              expect(mockLogger.error).toHaveBeenCalledWith(
                 '[🧾 TransactionsService]',
                 expect.objectContaining({ error: expect.any(Error) }),
                 'Failed to fetch spot prices for spam filtering, keeping all transactions',
@@ -1341,7 +1338,7 @@ describe('TransactionsService', () => {
             nativeTransferMock,
           ] as TransactionInfo[]);
           mockTrongridApiClient.getContractTransactionInfoByAddress.mockResolvedValue(
-            contractInfoMock.data.slice(0, 1) as ContractTransactionInfo[],
+            contractInfoMock.data.slice(0, 1),
           );
 
           // Fetch transactions

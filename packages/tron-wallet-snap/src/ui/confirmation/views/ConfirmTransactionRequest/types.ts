@@ -1,4 +1,5 @@
-import type { Json } from '@metamask/snaps-sdk';
+import type { TransactionSecurityProperties } from '@metamask/snap-networks-utils';
+import type { DialogResult, Json } from '@metamask/snaps-sdk';
 
 import type { SpotPrices } from '../../../../clients/price-api/types';
 import type { Network } from '../../../../constants';
@@ -23,6 +24,23 @@ export type ConfirmTransactionRequestContext = {
   tokenPricesFetchStatus: FetchStatus;
   scan: TransactionScanResult | null;
   scanFetchStatus: FetchStatus;
+  acknowledgementScreen?: boolean;
+  acknowledged?: boolean;
   transactionRawData: Json;
   accountType: string;
+};
+
+/**
+ * The user's decision in the ConfirmTransactionRequest dialog, with context data.
+ */
+export type ConfirmTransactionRequestResult = {
+  /** The dialog result. `true` when the user confirmed. */
+  result: DialogResult;
+  context: {
+    /**
+     * The security properties of the scan shown in the dialog, ready to report.
+     * `undefined` when the dialog produced no security data.
+     */
+    securityProperties?: TransactionSecurityProperties;
+  };
 };

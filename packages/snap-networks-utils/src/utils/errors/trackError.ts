@@ -2,6 +2,7 @@ import { getJsonError, UserRejectedRequestError } from '@metamask/snaps-sdk';
 import type { TrackErrorParams, TrackErrorResult } from '@metamask/snaps-sdk';
 import { ensureError } from '@metamask/utils';
 
+import { isReportedFetchPolicyError } from '../fetchPolicy/createFetchPolicy';
 import type {
   CreateWithCatchAndThrowSnapErrorOptions,
   LogErrorFn,
@@ -56,7 +57,10 @@ function defaultPrepareError(error: unknown): Error {
 }
 
 function defaultShouldTrack(error: unknown): boolean {
-  return !(error instanceof UserRejectedRequestError);
+  return !(
+    error instanceof UserRejectedRequestError ||
+    isReportedFetchPolicyError(error)
+  );
 }
 
 /**
@@ -69,7 +73,8 @@ function defaultShouldTrack(error: unknown): boolean {
  * @param options.getSnapProvider - Returns the Snap provider used for `snap_trackError`.
  * @param options.logError - Logger method used when the tracking RPC fails.
  * @param options.prepareError - Optional error normalizer before Sentry serialization.
- * @param options.shouldTrack - Optional filter; defaults to skipping `UserRejectedRequestError`.
+ * @param options.shouldTrack - Optional filter; defaults to skipping `UserRejectedRequestError`
+ * and errors a fetch policy already reported (see `isReportedFetchPolicyError`).
  * @returns A function that reports errors to Sentry when {@link ShouldTrackErrorFn} allows it.
  */
 export function createTrackError<TProvider extends TrackErrorCapableProvider>({

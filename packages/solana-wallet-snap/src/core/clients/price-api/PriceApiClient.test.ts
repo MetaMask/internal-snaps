@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { CaipAssetType } from '@metamask/keyring-api';
 import type { Serializable, ICache } from '@metamask/snap-networks-utils';
+import * as snapNetworksUtils from '@metamask/snap-networks-utils';
 import { InMemoryCache } from '@metamask/snap-networks-utils';
 import { cloneDeep } from 'lodash';
 import type { Mock } from 'vitest';
@@ -8,6 +9,7 @@ import type { Mock } from 'vitest';
 import { KnownCaip19Id } from '../../constants/solana';
 import { mockLogger } from '../../services/__mocks__/logger';
 import type { ConfigProvider } from '../../services/config';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import { MOCK_SPOT_PRICES } from './mocks/spot-prices';
 import { PriceApiClient } from './PriceApiClient';
 import type { SpotPrices, VsCurrencyParam } from './types';
@@ -16,11 +18,12 @@ describe('PriceApiClient', () => {
   let mockFetch: Mock;
   let mockCache: ICache<Serializable>;
   let client: PriceApiClient;
+  let mockConfigProvider: ConfigProvider;
 
   beforeEach(() => {
     mockFetch = vi.fn();
 
-    const mockConfigProvider: ConfigProvider = {
+    mockConfigProvider = {
       config: {
         priceApi: {
           baseUrl: 'https://some-mock-url.com',
@@ -40,6 +43,24 @@ describe('PriceApiClient', () => {
       mockFetch,
       mockLogger,
     );
+  });
+
+  describe('constructor', () => {
+    it('reports outages through the fetch policy', () => {
+      const createFetchPolicySpy = vi.spyOn(
+        snapNetworksUtils,
+        'createFetchPolicy',
+      );
+
+      client = new PriceApiClient(mockConfigProvider, mockCache);
+
+      expect(createFetchPolicySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          service: 'price_api',
+          ...fetchPolicyReporting,
+        }),
+      );
+    });
   });
 
   describe('getMultipleSpotPrices', () => {

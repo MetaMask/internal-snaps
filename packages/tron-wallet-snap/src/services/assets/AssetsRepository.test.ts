@@ -65,14 +65,14 @@ describe('AssetsRepository', () => {
 
   const mainnetTrx = (amount: string): AssetEntity =>
     createNativeAsset({
-      assetType: KnownCaip19Id.TrxMainnet as NativeCaipAssetType,
+      assetType: KnownCaip19Id.TrxMainnet,
       rawAmount: String(Number(amount) * 1_000_000),
       uiAmount: amount,
     });
 
   const nileTrx = (amount: string): AssetEntity =>
     createNativeAsset({
-      assetType: KnownCaip19Id.TrxNile as NativeCaipAssetType,
+      assetType: KnownCaip19Id.TrxNile,
       network: Network.Nile,
       rawAmount: String(Number(amount) * 1_000_000),
       uiAmount: amount,
@@ -86,7 +86,12 @@ describe('AssetsRepository', () => {
       uiAmount: amount,
     });
 
-  const createRepository = (initialState: UnencryptedStateValue) => {
+  const createRepository = (
+    initialState: UnencryptedStateValue,
+  ): {
+    repository: AssetsRepository;
+    getState: () => UnencryptedStateValue;
+  } => {
     let stateValue = initialState;
 
     const mockState: IStateManager<UnencryptedStateValue> = {
@@ -96,12 +101,8 @@ describe('AssetsRepository', () => {
           return stateValue.assets as TResponse;
         }
 
-        if (key.startsWith('assets.')) {
-          const accountId = key.replace('assets.', '');
-          return stateValue.assets[accountId] as TResponse;
-        }
-
-        return undefined;
+        const accountId = key.replace('assets.', '');
+        return stateValue.assets[accountId] as TResponse;
       },
       setKey: async () => undefined,
       setKeyWith: async () => undefined,
@@ -115,7 +116,7 @@ describe('AssetsRepository', () => {
 
     return {
       repository: new AssetsRepository(mockState),
-      getState: () => stateValue,
+      getState: (): UnencryptedStateValue => stateValue,
     };
   };
 
@@ -148,7 +149,7 @@ describe('AssetsRepository', () => {
 
     it('creates a new account entry when persisting the first snapshot for that account', async () => {
       const trx = createNativeAsset({
-        assetType: KnownCaip19Id.TrxMainnet as NativeCaipAssetType,
+        assetType: KnownCaip19Id.TrxMainnet,
         keyringAccountId: 'new-account',
         rawAmount: '1000000',
         uiAmount: '1',

@@ -5,6 +5,7 @@ import type { SnapClient } from '../../clients/snap/SnapClient';
 import { createEventHandlers as createSignMessageEvents } from '../../ui/confirmation/views/ConfirmSignMessage/events';
 import { createEventHandlers as createSignTransactionEvents } from '../../ui/confirmation/views/ConfirmSignTransaction/events';
 import { createEventHandlers as createTransactionConfirmationEvents } from '../../ui/confirmation/views/ConfirmTransactionRequest/events';
+import { createEventHandlers as createMaliciousAcknowledgementEvents } from '../../ui/confirmation/views/MaliciousAcknowledgement/events';
 
 export class UserInputHandler {
   readonly #logger: Logger;
@@ -53,6 +54,7 @@ export class UserInputHandler {
       ...createTransactionConfirmationEvents(this.#snapClient),
       ...createSignMessageEvents(this.#snapClient),
       ...createSignTransactionEvents(this.#snapClient),
+      ...createMaliciousAcknowledgementEvents(this.#snapClient),
     };
 
     /**

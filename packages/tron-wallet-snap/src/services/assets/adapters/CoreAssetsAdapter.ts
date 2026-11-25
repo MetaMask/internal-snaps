@@ -3,11 +3,15 @@ import type { KeyringAccount } from '@metamask/keyring-api';
 import type { AssetsProvider } from '@metamask/snap-networks-utils';
 import { Logger } from '@metamask/snap-networks-utils';
 
-import { Network } from '../../../constants';
+import { Network, SNAP_OWNED_ASSETS } from '../../../constants';
 import type { AssetEntity } from '../../../entities/assets';
-import { extractScopesFromAssetIds } from '../../../utils/caip';
+import {
+  extractScopesFromAssetIds,
+  parseTronCaipAssetType,
+} from '../../../utils/caip';
 import logger from '../../../utils/logger';
 import { AssetFetchError } from '../errors';
+import { extractSpecialAssetsFromMetadata } from '../utils/extractSpecialAssetsFromMetadata';
 import { mapControllerAsset } from '../utils/mapControllerAsset';
 import { toInternalAccount } from '../utils/toInternalAccount';
 
@@ -19,9 +23,10 @@ export type CoreAssetsAdapterOptions = {
 };
 
 /**
- * Reads assets through the AssetsController. All Tron assets, including
- * special assets (staking positions and account resources), are fetched and
- * published by the controller once the assets migration is active.
+ * Reads assets through the AssetsController. Assets are fetched and published
+ * by the controller once the assets migration is active. Tron resources and
+ * staking positions are exposed in the TRX asset's balance metadata, so the
+ * adapter derives the special assets from there when callers ask for them.
  */
 export class CoreAssetsAdapter {
   readonly #logger: Logger;
@@ -49,11 +54,37 @@ export class CoreAssetsAdapter {
     this.#getAssets = getAssets;
   }
 
+  /**
+   * Adds the TRX asset for any requested special asset, so its balance
+   * metadata can be used to derive the requested value.
+   *
+   * @param assetIds - Requested CAIP-19 asset IDs.
+   * @returns Additional native asset IDs to fetch.
+   */
+  #getNativeAssetIds(assetIds: Caip19AssetId[]): Caip19AssetId[] {
+    const nativeAssetIds = assetIds
+      .filter((assetId) => SNAP_OWNED_ASSETS.includes(assetId))
+      .map(
+        (assetId) =>
+          `${parseTronCaipAssetType(assetId).chainId}/slip44:195` as Caip19AssetId,
+      );
+
+    return [...new Set(nativeAssetIds)].filter(
+      (nativeAssetId) => !assetIds.includes(nativeAssetId),
+    );
+  }
+
   async getAccountAssetByID(
     accountId: string,
     assetId: Caip19AssetId,
   ): Promise<AssetEntity | null> {
     this.#logger.info('Getting account asset by ID', { accountId, assetId });
+
+    if (SNAP_OWNED_ASSETS.includes(assetId)) {
+      const [asset] = await this.getAccountAssetsByIDs(accountId, [assetId]);
+      return asset ?? null;
+    }
+
     const asset = await this.#getAccountAssetByID(accountId, assetId);
 
     if (!asset) {
@@ -68,12 +99,26 @@ export class CoreAssetsAdapter {
     assetIds: Caip19AssetId[],
   ): Promise<(AssetEntity | null)[]> {
     this.#logger.info('Getting account assets by IDs', { accountId, assetIds });
-    const assets = await this.#getAccountAssetsByIDs(accountId, assetIds);
 
-    return assetIds.map((assetId) => {
-      const asset = assets[assetId];
-      return asset ? mapControllerAsset(accountId, asset) : null;
-    });
+    const assets = await this.#getAccountAssetsByIDs(accountId, [
+      ...assetIds,
+      ...this.#getNativeAssetIds(assetIds),
+    ]);
+    const assetsById = new Map<Caip19AssetId, AssetEntity>(
+      Object.values(assets).map((asset) => [
+        asset.id,
+        mapControllerAsset(accountId, asset),
+      ]),
+    );
+
+    for (const [assetId, asset] of extractSpecialAssetsFromMetadata({
+      accountId,
+      assets: Object.values(assets),
+    })) {
+      assetsById.set(assetId, asset);
+    }
+
+    return assetIds.map((assetId) => assetsById.get(assetId) ?? null);
   }
 
   async getAccountAssetsByScope(
@@ -117,10 +162,9 @@ export class CoreAssetsAdapter {
    * Fetches fresh assets for the requested asset IDs, guaranteeing up-to-date
    * data for flows that act on-chain or display actionable values.
    *
-   * All assets, including special assets (staking positions and account
-   * resources), come from the controller's one-time fetch pipeline
-   * (`AssetsController:getAssets` with `forceUpdate` and `bypassServerCache`),
-   * reading the fresh fetch result directly.
+   * The controller's one-time fetch pipeline (`AssetsController:getAssets`
+   * with `forceUpdate` and `bypassServerCache`) provides the fresh TRX balance
+   * metadata, from which the requested special assets are derived.
    *
    * @param account - The keyring account to fetch assets for.
    * @param assetIds - CAIP-19 asset IDs to resolve fresh values for.
@@ -150,10 +194,19 @@ export class CoreAssetsAdapter {
           );
     });
 
-    return assetIds.map((assetId) => {
-      const asset = controllerAssets[account.id]?.[assetId];
-      return asset ? mapControllerAsset(account.id, asset) : null;
-    });
+    const assets = Object.values(controllerAssets[account.id] ?? {});
+    const assetsById = new Map<Caip19AssetId, AssetEntity>(
+      assets.map((asset) => [asset.id, mapControllerAsset(account.id, asset)]),
+    );
+
+    for (const [assetId, asset] of extractSpecialAssetsFromMetadata({
+      accountId: account.id,
+      assets,
+    })) {
+      assetsById.set(assetId, asset);
+    }
+
+    return assetIds.map((assetId) => assetsById.get(assetId) ?? null);
   }
 
   /**

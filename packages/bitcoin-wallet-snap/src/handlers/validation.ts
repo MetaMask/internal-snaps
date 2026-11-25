@@ -34,6 +34,7 @@ export const RpcMethod = {
   VerifyMessage: 'verifyMessage',
   OnAddressInput: 'onAddressInput',
   OnAmountInput: 'onAmountInput',
+  GetMaxSendableAmount: 'getMaxSendableAmount',
   ConfirmSend: 'confirmSend',
   SignRewardsMessage: 'signRewardsMessage',
   SignProofOfOwnership: 'signProofOfOwnership',
@@ -56,7 +57,7 @@ export const SendErrorCodes = {
 export type SendErrorCodes =
   (typeof SendErrorCodes)[keyof typeof SendErrorCodes];
 
-export const NonEmptyStringStruct = refine(
+const NonEmptyStringStruct = refine(
   nonempty(string()),
   'non-whitespace string',
   (value) => value.trim().length > 0,
@@ -71,6 +72,13 @@ export const OnAmountInputRequestStruct = object({
   value: NonEmptyStringStruct,
   accountId: UuidStruct,
   assetId: CaipAssetTypeStruct,
+  toAddress: optional(NonEmptyStringStruct),
+});
+
+export const GetMaxSendableAmountRequestStruct = object({
+  accountId: UuidStruct,
+  assetId: CaipAssetTypeStruct,
+  toAddress: optional(NonEmptyStringStruct),
 });
 
 export const ConfirmSendRequestStruct = object({
@@ -80,7 +88,7 @@ export const ConfirmSendRequestStruct = object({
   amount: NonEmptyStringStruct,
 });
 
-export const ValidationResponseStruct = object({
+const ValidationResponseStruct = object({
   valid: boolean(),
   errors: array(
     object({
@@ -109,7 +117,7 @@ const WalletAccountStruct = object({
   address: string(),
 });
 
-export const FeeRateStruct = refine(
+const FeeRateStruct = refine(
   number(),
   'fee rate greater than or equal to 1',
   (value) => Number.isFinite(value) && value >= 1,
@@ -170,37 +178,37 @@ export const SignMessageRequest = object({
  *
  * @see https://github.com/MetaMask/accounts/blob/main/packages/keyring-api/docs/btc-methods.md
  */
-export const SignPsbtKeyringRequestStruct = object({
+const SignPsbtKeyringRequestStruct = object({
   method: literal(BtcMethod.SignPsbt),
   params: SignPsbtRequest,
 });
 
-export const FillPsbtKeyringRequestStruct = object({
+const FillPsbtKeyringRequestStruct = object({
   method: literal(BtcMethod.FillPsbt),
   params: FillPsbtRequest,
 });
 
-export const ComputeFeeKeyringRequestStruct = object({
+const ComputeFeeKeyringRequestStruct = object({
   method: literal(BtcMethod.ComputeFee),
   params: ComputeFeeRequest,
 });
 
-export const BroadcastPsbtKeyringRequestStruct = object({
+const BroadcastPsbtKeyringRequestStruct = object({
   method: literal(BtcMethod.BroadcastPsbt),
   params: BroadcastPsbtRequest,
 });
 
-export const SendTransferKeyringRequestStruct = object({
+const SendTransferKeyringRequestStruct = object({
   method: literal(BtcMethod.SendTransfer),
   params: SendTransferRequest,
 });
 
-export const GetUtxoKeyringRequestStruct = object({
+const GetUtxoKeyringRequestStruct = object({
   method: literal(BtcMethod.GetUtxo),
   params: GetUtxoRequest,
 });
 
-export const SignMessageKeyringRequestStruct = object({
+const SignMessageKeyringRequestStruct = object({
   method: literal(BtcMethod.SignMessage),
   params: SignMessageRequest,
 });
@@ -345,10 +353,11 @@ export function validateDustLimit(
   return NO_ERRORS_RESPONSE;
 }
 
-export const PositiveNumberStringStruct = pattern(
-  string(),
-  /^(?!0\d)(\d+(\.\d+)?)$/u,
-);
+const PositiveNumberStringStruct = pattern(string(), /^(?!0\d)(\d+(\.\d+)?)$/u);
+
+export const GetMaxSendableAmountResponseStruct = object({
+  amount: PositiveNumberStringStruct,
+});
 
 /**
  * Parses a base64-encoded rewards message in the format 'rewards,{address},{timestamp}'

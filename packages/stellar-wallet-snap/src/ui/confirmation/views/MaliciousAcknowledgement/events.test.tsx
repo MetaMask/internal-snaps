@@ -1,7 +1,11 @@
 import type { UserInputEvent } from '@metamask/snaps-sdk';
 import { UserInputEventType } from '@metamask/snaps-sdk';
 
-import { resolveInterface, updateInterfaceIfExists } from '../../../../utils';
+import {
+  getInterfaceContextIfExists,
+  resolveInterface,
+  updateInterfaceIfExists,
+} from '../../../../utils';
 import * as SnapUtils from '../../../../utils/snap';
 import { ConfirmationInterfaceKey, FetchStatus } from '../../api';
 import { renderConfirmationView } from '../render';
@@ -31,10 +35,22 @@ const checkboxEvent = (name: string, value: boolean): UserInputEvent =>
   }) as unknown as UserInputEvent;
 
 describe('malicious acknowledgement events', () => {
-  const handlers = createEventHandlers();
+  const liveHandlers = createEventHandlers();
+  const handlers = Object.fromEntries(
+    Object.entries(liveHandlers).map(([name, handler]) => [
+      name,
+      async (options: Parameters<typeof handler>[0]): Promise<void> => {
+        vi.mocked(getInterfaceContextIfExists).mockResolvedValue(
+          options.context,
+        );
+        await handler(options);
+      },
+    ]),
+  );
 
   beforeEach(() => {
     vi.spyOn(SnapUtils, 'resolveInterface').mockResolvedValue(null);
+    vi.spyOn(SnapUtils, 'getInterfaceContextIfExists');
     vi.spyOn(SnapUtils, 'updateInterfaceIfExists').mockResolvedValue(true);
     vi.spyOn(ConfirmationRender, 'renderConfirmationView').mockReturnValue(
       'RENDERED' as unknown as ReturnType<typeof renderConfirmationView>,
@@ -42,6 +58,31 @@ describe('malicious acknowledgement events', () => {
     vi.clearAllMocks();
     vi.mocked(renderConfirmationView).mockReturnValue(
       'RENDERED' as unknown as ReturnType<typeof renderConfirmationView>,
+    );
+  });
+
+  it('uses the latest blocker instead of the event context before proceeding', async () => {
+    vi.mocked(getInterfaceContextIfExists).mockResolvedValue({
+      ...baseContext,
+      acknowledgementScreen: true,
+      acknowledged: true,
+      transactionsFetchStatus: FetchStatus.Error,
+    });
+    const name = MaliciousAcknowledgementFormNames.Proceed;
+    await liveHandlers[name]?.({
+      id: INTERFACE_ID,
+      event: buttonEvent(name),
+      context: {
+        ...baseContext,
+        acknowledgementScreen: true,
+        acknowledged: true,
+      },
+    });
+    expect(resolveInterface).not.toHaveBeenCalled();
+    expect(updateInterfaceIfExists).toHaveBeenCalledWith(
+      INTERFACE_ID,
+      'RENDERED',
+      expect.objectContaining({ transactionsFetchStatus: FetchStatus.Error }),
     );
   });
 
@@ -121,6 +162,22 @@ describe('malicious acknowledgement events', () => {
       confirmed: true,
       memo: 'ack-memo',
     });
+  });
+
+  it('resolves a non-send confirmation with true', async () => {
+    const name = MaliciousAcknowledgementFormNames.Proceed;
+    await handlers[name]?.({
+      id: INTERFACE_ID,
+      event: buttonEvent(name),
+      context: {
+        ...baseContext,
+        interfaceKey: ConfirmationInterfaceKey.SignTransaction,
+        acknowledgementScreen: true,
+        acknowledged: true,
+      },
+    });
+
+    expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, true);
   });
 
   it('does not resolve on "Confirm" when the risk is not acknowledged', async () => {

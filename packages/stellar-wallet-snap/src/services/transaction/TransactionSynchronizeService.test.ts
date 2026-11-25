@@ -534,6 +534,78 @@ describe('TransactionSynchronizeService', () => {
     );
   });
 
+  it('logs at error level and continues when fetching a pending on-chain transaction fails', async () => {
+    const {
+      service,
+      getTransactionsSpy,
+      getTransactionSpy,
+      findStellarTransactionsByAccountIdsSpy,
+      findLastScanTokenSpy,
+      saveManySpy,
+    } = setup();
+    const { keyringAccount, activatedAccountPair } = buildActivatedPair(
+      'account-sync-fetch-error',
+      'GA7UCNSASSOPQYTRGJ2NC7TDBSXHMWK6JHS7AO6X2ZQAIQSTB5ELNFSO',
+    );
+    const [pendingTransaction] = generateMockTransactions(1, {
+      id: 'errored-tx-hash',
+      account: keyringAccount.id,
+      scope,
+      status: TransactionStatus.Unconfirmed,
+    });
+    const fetchError = new Error('horizon unavailable');
+
+    findStellarTransactionsByAccountIdsSpy.mockResolvedValue([
+      pendingTransaction as StellarKeyringTransaction,
+    ]);
+    findLastScanTokenSpy.mockResolvedValue({
+      [keyringAccount.id]: 'existing-token',
+    });
+    getTransactionsSpy.mockResolvedValue([]);
+    getTransactionSpy.mockRejectedValue(fetchError);
+
+    await service.synchronize([activatedAccountPair], scope, []);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining(' TransactionSynchronizeService]'),
+      'Failed to fetch on-chain transaction',
+      { error: fetchError },
+    );
+    // The failed lookup must not drop the pending transaction from state.
+    expect(saveManySpy).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: 'errored-tx-hash' })],
+      {
+        [keyringAccount.id]: {
+          [scope]: 'existing-token',
+        },
+      },
+    );
+  });
+
+  it('logs at error level and continues when scanning an account transactions fails', async () => {
+    const { service, getTransactionsSpy, saveManySpy } = setup();
+    const { keyringAccount, activatedAccountPair } = buildActivatedPair(
+      'account-scan-error',
+      'GA7UCNSASSOPQYTRGJ2NC7TDBSXHMWK6JHS7AO6X2ZQAIQSTB5ELNFSO',
+    );
+    const scanError = new Error('horizon scan unavailable');
+
+    getTransactionsSpy.mockRejectedValue(scanError);
+
+    await service.synchronize([activatedAccountPair], scope, []);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining(' TransactionSynchronizeService]'),
+      'Failed to fetch on-chain transactions',
+      scanError,
+    );
+    // A failed scan persists no transactions and does not advance the scan token,
+    // so the next sync retries the same page instead of skipping it.
+    expect(saveManySpy).toHaveBeenCalledWith([], {
+      [keyringAccount.id]: { [scope]: null },
+    });
+  });
+
   it('increments reconcile attempt to max when one below limit', async () => {
     const {
       service,

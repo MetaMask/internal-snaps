@@ -17,6 +17,7 @@ import { CaipAssetTypeStruct } from '@metamask/utils';
 import { mapKeys } from 'lodash';
 
 import type { ConfigProvider } from '../../services/config';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import logger from '../../utils/logger';
 import type { SpotPrices, VsCurrencyParam } from './types';
 import { SpotPricesStruct, VsCurrencyParamStruct } from './types';
@@ -59,6 +60,7 @@ export class PriceApiClient {
     this.#policy = createFetchPolicy({
       service: 'price_api',
       logger: this.#logger,
+      ...fetchPolicyReporting,
     });
   }
 

@@ -2,7 +2,7 @@ import type { Transaction } from '@metamask/keyring-api';
 import {
   InFlightCoalescer,
   SynchronizationError,
-  getSyncFailuresFromSettledResult,
+  getUnreportedSyncFailures,
 } from '@metamask/snap-networks-utils';
 import type {
   ExtendedKeyringAccount,
@@ -121,7 +121,7 @@ export class AccountsSynchronizer {
     accountIds: string[],
   ): Promise<void> {
     try {
-      const failures = getSyncFailuresFromSettledResult(results, accountIds);
+      const failures = getUnreportedSyncFailures(results, accountIds);
 
       if (failures.length === 0) {
         return;
@@ -131,7 +131,7 @@ export class AccountsSynchronizer {
 
       await trackError(error);
     } catch (reportingError) {
-      this.#logger.warn('Failed to report synchronization failures', {
+      this.#logger.error('Failed to report synchronization failures', {
         reportingError,
       });
     }

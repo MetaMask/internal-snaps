@@ -3,7 +3,7 @@ import {
   DEFAULT_METAMASK_ORIGIN,
   InFlightCoalescer,
   SynchronizationError,
-  getSyncFailuresFromSettledResult,
+  getUnreportedSyncFailures,
 } from '@metamask/snap-networks-utils';
 import type { IStateManager } from '@metamask/snap-networks-utils';
 import type { JsonRpcRequest, SnapsProvider } from '@metamask/snaps-sdk';
@@ -33,15 +33,15 @@ export const CronMethod = {
 
 export type CronMethod = (typeof CronMethod)[keyof typeof CronMethod];
 
-export const SendFormRefreshRatesRequest = object({
+const SendFormRefreshRatesRequest = object({
   interfaceId: string(),
 });
 
-export const SyncSelectedAccountsRequest = object({
+const SyncSelectedAccountsRequest = object({
   accountIds: array(string()),
 });
 
-export const FullScanAccountRequest = object({
+const FullScanAccountRequest = object({
   accountId: string(),
 });
 
@@ -99,7 +99,7 @@ export class CronHandler {
     accountIds: string[],
   ): Promise<void> {
     try {
-      const failures = getSyncFailuresFromSettledResult(results, accountIds);
+      const failures = getUnreportedSyncFailures(results, accountIds);
 
       if (failures.length === 0) {
         return;
@@ -109,7 +109,7 @@ export class CronHandler {
         new SynchronizationError(message, failures),
       );
     } catch (reportingError) {
-      this.#logger.warn('Failed to report error', { reportingError });
+      this.#logger.error('Failed to report error', { reportingError });
     }
   }
 

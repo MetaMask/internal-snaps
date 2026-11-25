@@ -634,6 +634,59 @@ describe('TransactionScanService', () => {
   });
 
   describe('scan validation', () => {
+    it.each([
+      { response: {}, options: ['simulation', 'validation'] as const },
+      {
+        response: { simulation: { status: 'Success' as const } },
+        options: ['validation'] as const,
+      },
+    ])(
+      'treats missing requested results as an unavailable scan',
+      async ({ response, options }) => {
+        const trackError = createMockTrackError();
+        const service = new TransactionScanService({
+          securityAlertsApiClient: createMockSecurityAlertsApiClient(response),
+          analyticsService: mockAnalyticsService,
+          logger: mockLogger,
+          trackError,
+        });
+
+        expect(
+          await service.scanTransaction({
+            accountAddress: mockAccount.address,
+            transactionRawData: createWellFormedTransactionRawData(),
+            origin: 'https://example.com',
+            scope: Network.Mainnet,
+            options: [...options],
+          }),
+        ).toBeNull();
+        expect(trackError).toHaveBeenCalledWith(
+          new Error(
+            `No validation scan results returned for scope ${Network.Mainnet} and origin https://example.com`,
+          ),
+        );
+      },
+    );
+
+    it('accepts a missing simulation result when only simulation was requested', async () => {
+      const service = new TransactionScanService({
+        securityAlertsApiClient: createMockSecurityAlertsApiClient({}),
+        analyticsService: mockAnalyticsService,
+        logger: mockLogger,
+        trackError: createMockTrackError(),
+      });
+
+      expect(
+        await service.scanTransaction({
+          accountAddress: mockAccount.address,
+          transactionRawData: createWellFormedTransactionRawData(),
+          origin: 'https://example.com',
+          scope: Network.Mainnet,
+          options: ['simulation'],
+        }),
+      ).toMatchObject({ status: SecurityAlertsScanStatus.SUCCESS });
+    });
+
     it('returns an error for malformed transactions', async () => {
       const mockTrackError = createMockTrackError();
 
@@ -775,7 +828,7 @@ describe('TransactionScanService', () => {
       expect(result?.estimatedChanges.assets).toStrictEqual([]);
     });
 
-    it('accepts a response without a validation section', async () => {
+    it('accepts a response without a validation section when only simulation is requested', async () => {
       const mockTrackError = createMockTrackError();
 
       const service = new TransactionScanService({
@@ -792,6 +845,7 @@ describe('TransactionScanService', () => {
         transactionRawData: createWellFormedTransactionRawData(),
         origin: 'https://example.com',
         scope: Network.Mainnet,
+        options: ['simulation'],
       });
 
       expect(result).toMatchObject({
@@ -1003,6 +1057,50 @@ describe('TransactionScanService', () => {
       vi.mocked(mockAnalyticsService.trackSecurityScanCompleted).mockClear();
       vi.mocked(mockAnalyticsService.trackSecurityAlertDetected).mockClear();
     });
+
+    it.each([
+      {
+        options: ['validation'] as const,
+        failure: 'missing',
+        request: (): Promise<SecurityAlertSimulationValidationResponse> =>
+          Promise.resolve({}),
+      },
+      {
+        options: ['simulation'] as const,
+        failure: 'request',
+        request: (): Promise<SecurityAlertSimulationValidationResponse> =>
+          Promise.reject(new Error('Request failed')),
+      },
+      {
+        options: ['validation'] as const,
+        failure: 'request',
+        request: (): Promise<SecurityAlertSimulationValidationResponse> =>
+          Promise.reject(new Error('Request failed')),
+      },
+    ])(
+      'tracks a failed scan for $failure with $options',
+      async ({ options, request }) => {
+        const { service, mockSecurityAlertsApiClient } = createService({});
+        vi.mocked(
+          // eslint-disable-next-line jest/unbound-method
+          mockSecurityAlertsApiClient.scanTransaction,
+        ).mockImplementation(request);
+
+        expect(
+          await service.scanTransaction({
+            accountAddress: mockAccount.address,
+            transactionRawData: createWellFormedTransactionRawData(),
+            origin: 'https://example.com',
+            scope: Network.Mainnet,
+            account: mockAccount,
+            options: [...options],
+          }),
+        ).toBeNull();
+        expect(
+          vi.mocked(mockAnalyticsService.trackSecurityScanCompleted).mock.calls,
+        ).toHaveLength(1);
+      },
+    );
 
     it('tracks a successful scan without alerts', async () => {
       const { service } = createService({

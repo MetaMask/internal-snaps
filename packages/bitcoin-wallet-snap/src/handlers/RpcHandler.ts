@@ -28,19 +28,22 @@ import {
   InexistentMethodError,
   ValidationError,
 } from '../entities';
-import type { CodifiedError, Logger } from '../entities';
+import type { BitcoinAccount, CodifiedError, Logger } from '../entities';
 import type {
   AccountUseCases,
   SendFlowUseCases,
   SignProofOfOwnershipMessageBatchRequest,
   SignProofOfOwnershipMessageBatchResult,
 } from '../use-cases';
+import { formatBtcAmount } from '../utils/format-btc';
 import { scopeToNetwork } from './caip';
 import type { TransactionFee } from './mappings';
 import { mapPsbtToTransaction, mapToTransactionFees } from './mappings';
 import { parsePsbt } from './parsers';
 import type {
   ConfirmSendRequest,
+  GetMaxSendableAmountRequest,
+  GetMaxSendableAmountResponse,
   OnAddressInputRequest,
   OnAmountInputRequest,
 } from './types';
@@ -49,6 +52,7 @@ import {
   NO_ERRORS_RESPONSE,
   INVALID_RESPONSE,
   ConfirmSendRequestStruct,
+  GetMaxSendableAmountRequestStruct,
   OnAddressInputRequestStruct,
   OnAmountInputRequestStruct,
   RpcMethod,
@@ -62,13 +66,13 @@ import {
   canonicalizeBitcoinAddress,
 } from './validation';
 
-export const CreateSendFormRequest = object({
+const CreateSendFormRequest = object({
   account: string(),
   scope: optional(enums(Object.values(BtcScope))), // We don't use the scope but need to define it for validation
   assetId: optional(string()), // We don't use the Caip19 but need to define it for validation
 });
 
-export const SendPsbtRequest = object({
+const SendPsbtRequest = object({
   accountId: string(),
   transaction: string(),
   scope: optional(enums(Object.values(BtcScope))), // We don't use the scope but need to define it for validation
@@ -81,25 +85,25 @@ export const ComputeFeeRequest = object({
   scope: enums(Object.values(BtcScope)),
 });
 
-export type SendTransactionResponse = {
+type SendTransactionResponse = {
   transactionId: string;
   // True if the source account's address type allows third-party txid
   // malleation before confirmation (currently only legacy P2PKH).
   canBeMalleable: boolean;
 };
 
-export const VerifyMessageRequest = object({
+const VerifyMessageRequest = object({
   address: string(),
   message: string(),
   signature: string(),
 });
 
-export const SignRewardsMessageRequest = object({
+const SignRewardsMessageRequest = object({
   accountId: string(),
   message: string(),
 });
 
-export const SignProofOfOwnershipRequest = object({
+const SignProofOfOwnershipRequest = object({
   accountId: string(),
   message: string(),
 });
@@ -110,7 +114,7 @@ export const SignProofOfOwnershipRequest = object({
  * Batch items intentionally validate messages as plain strings so invalid
  * proof messages can be reported per item instead of failing the whole batch.
  */
-export const SignProofOfOwnershipBatchRequestItem = object({
+const SignProofOfOwnershipBatchRequestItem = object({
   accountId: string(),
   message: string(),
 });
@@ -118,11 +122,11 @@ export const SignProofOfOwnershipBatchRequestItem = object({
 /**
  * Validates `signProofOfOwnershipBatch` request params.
  */
-export const SignProofOfOwnershipBatchRequest = object({
+const SignProofOfOwnershipBatchRequest = object({
   items: array(SignProofOfOwnershipBatchRequestItem),
 });
 
-export type SignProofOfOwnershipBatchResponse = ProofOfOwnershipBatchResponse;
+type SignProofOfOwnershipBatchResponse = ProofOfOwnershipBatchResponse;
 
 /**
  * Checks whether a batch proof-signing result is an item-level error.
@@ -191,6 +195,10 @@ export class RpcHandler {
       case RpcMethod.OnAmountInput: {
         assert(params, OnAmountInputRequestStruct);
         return this.#onAmountInput(params);
+      }
+      case RpcMethod.GetMaxSendableAmount: {
+        assert(params, GetMaxSendableAmountRequestStruct);
+        return this.#getMaxSendableAmount(params);
       }
       case RpcMethod.ConfirmSend: {
         assert(params, ConfirmSendRequestStruct);
@@ -336,7 +344,7 @@ export class RpcHandler {
   async #onAmountInput(
     request: OnAmountInputRequest,
   ): Promise<ValidationResponse> {
-    const { value, accountId } = request;
+    const { value, accountId, toAddress } = request;
 
     const amountValidation = validateAmount(value);
     if (!amountValidation.valid) {
@@ -350,8 +358,28 @@ export class RpcHandler {
         return dustValidation;
       }
       const balanceValidation = validateAccountBalance(value, bitcoinAccount);
+      if (!balanceValidation.valid) {
+        return balanceValidation;
+      }
 
-      return balanceValidation.valid ? NO_ERRORS_RESPONSE : balanceValidation;
+      if (
+        toAddress !== undefined &&
+        !validateAddress(toAddress, bitcoinAccount.network).valid
+      ) {
+        return INVALID_RESPONSE;
+      }
+
+      const probe = await this.#probeAmount(bitcoinAccount, value, toAddress);
+
+      // The balance alone is sufficient, so a funding failure is a fee shortfall.
+      if (probe === 'insufficient') {
+        return {
+          valid: false,
+          errors: [{ code: SendErrorCodes.InsufficientBalanceToCoverFee }],
+        };
+      }
+
+      return probe === 'dust' ? INVALID_RESPONSE : NO_ERRORS_RESPONSE;
     } catch (error) {
       // We do not track this error as it is a user input.
 
@@ -361,6 +389,97 @@ export class RpcHandler {
       );
       return INVALID_RESPONSE;
     }
+  }
+
+  /**
+   * Probes whether an exact amount can be funded and classifies the failure.
+   *
+   * @param account - The account sending the funds.
+   * @param amount - The amount to send, in BTC units.
+   * @param toAddress - The destination, when it is already known.
+   * @returns `fundable`, `insufficient` when the amount and fee exceed the
+   * balance, or `dust` when the amount is below the dust limit.
+   */
+  async #probeAmount(
+    account: BitcoinAccount,
+    amount: string,
+    toAddress?: string,
+  ): Promise<'fundable' | 'insufficient' | 'dust'> {
+    try {
+      await this.#sendFlowUseCases.buildProbePsbt(account, amount, toAddress);
+      return 'fundable';
+    } catch (error) {
+      const { message } = error as CodifiedError;
+      if (message.includes('Insufficient funds')) {
+        return 'insufficient';
+      }
+      if (/dust/iu.test(message)) {
+        return 'dust';
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Returns the maximum amount that would pass `onAmountInput`.
+   *
+   * Binary searches the largest amount whose probe PSBT can be funded, pricing
+   * the fee with the same config as `onAmountInput`. The probe PSBT is never
+   * signed.
+   *
+   * @param request - The request params.
+   * @returns The maximum sendable amount, or `0` when none can pass.
+   * @throws {ValidationError} When `toAddress` is not a valid destination.
+   */
+  async #getMaxSendableAmount(
+    request: GetMaxSendableAmountRequest,
+  ): Promise<GetMaxSendableAmountResponse> {
+    const { accountId, toAddress } = request;
+    const account = await this.#accountUseCases.get(accountId);
+
+    if (
+      toAddress !== undefined &&
+      !validateAddress(toAddress, account.network, this.#logger).valid
+    ) {
+      throw new ValidationError('Invalid Bitcoin address', {
+        toAddress,
+        network: account.network,
+      });
+    }
+
+    const spendableSats = account.balance.trusted_spendable.to_sat();
+    if (spendableSats <= 0n) {
+      return { amount: '0' };
+    }
+
+    let low = 0n;
+    let high = spendableSats;
+    let maxSats = 0n;
+
+    while (low <= high) {
+      const mid = (low + high) / 2n;
+      const probe = await this.#probeAmount(
+        account,
+        formatBtcAmount(mid),
+        toAddress,
+      );
+
+      if (probe === 'fundable') {
+        maxSats = mid;
+        low = mid + 1n;
+      } else if (probe === 'insufficient') {
+        high = mid - 1n;
+      } else {
+        low = mid + 1n;
+      }
+    }
+
+    const amount = formatBtcAmount(maxSats);
+    if (maxSats <= 0n || !validateDustLimit(amount, account).valid) {
+      return { amount: '0' };
+    }
+
+    return { amount };
   }
 
   #verifyMessage(

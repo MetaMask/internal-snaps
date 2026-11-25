@@ -1,9 +1,6 @@
 {
   "locale": "ja",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "進める前にトランザクションを確認してください"
-    },
     "from": {
       "message": "送金元"
     },
@@ -58,9 +55,6 @@
     "asset": {
       "message": "資産"
     },
-    "sending": {
-      "message": "送信中"
-    },
     "max": {
       "message": "最大"
     },
@@ -100,7 +94,7 @@
     "unknownUtxo": {
       "message": "トランザクションの構築に失敗: 不明な UTXO"
     },
-    "MmssingNonWitnessUtxo": {
+    "missingNonWitnessUtxo": {
       "message": "トランザクションの構築に失敗: non-witness UTXO が不足しています"
     },
     "base58": {

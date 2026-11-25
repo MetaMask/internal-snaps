@@ -233,7 +233,7 @@ export class TransactionMapper {
       };
     } catch (error) {
       await trackError(error);
-      this.#logger.warn(error, 'Error mapping transaction');
+      this.#logger.error(error, 'Error mapping transaction');
       return null;
     }
   }

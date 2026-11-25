@@ -3,7 +3,6 @@ import type {
   Address,
   Base58EncodedBytes,
   Lamports,
-  Slot,
   StringifiedBigInt,
   StringifiedNumber,
 } from '@solana/kit';

@@ -9,9 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add the `PaymentReferenceScreen` UI component for network-agnostic memo / destination-tag input flows ([#666](https://github.com/MetaMask/internal-snaps/pull/666))
+- Extend the "Transaction Added", "Transaction Rejected", "Transaction Approved", "Transaction Submitted", and "Transaction Finalized" lifecycle events with security fields ([#650](https://github.com/MetaMask/internal-snaps/pull/650), [#659](https://github.com/MetaMask/internal-snaps/pull/659))
+  - Add `getTransactionSecurityProperties`, which builds the security fields of a transaction event
+- Add `getScanOptions`, which returns the Security Alerts scan options (`simulation` and/or `validation`) that the user's preferences enable ([#660](https://github.com/MetaMask/internal-snaps/pull/660))
+
+### Changed
+
+- `createFetchPolicy` now logs terminal failures at the error level instead of the warning level, and its `logger` option is typed as `Pick<Logger, 'warn' | 'error'>` ([#652](https://github.com/MetaMask/internal-snaps/pull/652))
+  - Retries exhausted, the circuit opening, and failures to report either are now error logs
+  - `AnalyticsService.trackEvent` likewise logs failed tracks at the error level
+
+### Deprecated
+
+- Deprecate `AnalyticsService.trackSecurityAlertDetected` and `AnalyticsService.trackSecurityScanCompleted`, which send the "Security Alert Detected" and "Security Scan Completed" events ([#650](https://github.com/MetaMask/internal-snaps/pull/650))
+
+## [3.3.0]
+
+### Added
+
 - Add optional `analytics` and `trackError` options to `createFetchPolicy`, to send the "Snap Service Degraded" and "Snap Service Unavailable" events and report calls that use up their retries ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
 - Add `isReportedFetchPolicyError`, so callers can skip errors a policy already reported ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
 - Add `trackServiceDegraded` and `trackServiceUnavailable` to `AnalyticsService` ([#566](https://github.com/MetaMask/internal-snaps/pull/566))
+- Add `getUnreportedSyncFailures`, which works like `getSyncFailuresFromSettledResult` but skips rejections a fetch policy already reported ([#607](https://github.com/MetaMask/internal-snaps/pull/607))
+
+### Changed
+
+- Change the default `shouldTrack` of `createTrackError` and `createSnapErrorHandling` to also skip errors a fetch policy already reported (`isReportedFetchPolicyError`) ([#642](https://github.com/MetaMask/internal-snaps/pull/642))
+- Change `requiresMaliciousAcknowledgement` to accept the security-alerts preference and verdict, treating a missing preference as disabled, and allow `TransactionAlert` callers to select the unavailable-scan banner severity ([#578](https://github.com/MetaMask/internal-snaps/pull/578))
+
+### Fixed
+
+- `SecurityAlertsApiClient.scanTransaction` now keeps the fetch policy's network error as the `cause` of the `HttpError` it throws, so `isReportedFetchPolicyError` recognises network failures the policy already reported ([#583](https://github.com/MetaMask/internal-snaps/pull/583))
 
 ## [3.2.0]
 
@@ -119,7 +148,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement `AssetsProvider` ([#82](https://github.com/MetaMask/internal-snaps/pull/82))
 - Initial package release ([#79](https://github.com/MetaMask/internal-snaps/pull/79))
 
-[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.2.0...HEAD
+[Unreleased]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.3.0...HEAD
+[3.3.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.2.0...@metamask/snap-networks-utils@3.3.0
 [3.2.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.1.0...@metamask/snap-networks-utils@3.2.0
 [3.1.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@3.0.0...@metamask/snap-networks-utils@3.1.0
 [3.0.0]: https://github.com/MetaMask/internal-snaps/compare/@metamask/snap-networks-utils@2.0.0...@metamask/snap-networks-utils@3.0.0

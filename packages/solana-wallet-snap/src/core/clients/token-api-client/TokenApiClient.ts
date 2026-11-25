@@ -14,6 +14,7 @@ import { CaipAssetTypeStruct, parseCaipAssetType } from '@metamask/utils';
 import type { TokenCaipAssetType } from '../../constants/solana';
 import { Network, TokenCaipAssetTypeStruct } from '../../constants/solana';
 import type { ConfigProvider } from '../../services/config';
+import { fetchPolicyReporting } from '../../utils/analytics';
 import logger from '../../utils/logger';
 import type { TokenMetadataStruct } from './structs';
 import { TokenMetadataResponseStruct } from './structs';
@@ -62,6 +63,7 @@ export class TokenApiClient {
     this.#policy = createFetchPolicy({
       service: 'token_api',
       logger: this.#logger,
+      ...fetchPolicyReporting,
     });
   }
 

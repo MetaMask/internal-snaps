@@ -1,10 +1,9 @@
-import type {
-  ExtendedKeyringAccount,
-  SecurityAlertsScanOption,
-} from '@metamask/snap-networks-utils';
+import { sha256 } from '@metamask/cryptography/sha';
+import { getScanOptions } from '@metamask/snap-networks-utils';
+import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import type { DialogResult } from '@metamask/snaps-sdk';
 import { assert } from '@metamask/superstruct';
-import { bytesToHex, hexToBytes, sha256 } from '@metamask/utils';
+import { bytesToHex, hexToBytes } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
 
@@ -19,7 +18,7 @@ import logger from '../../../../utils/logger';
 import { SignTransactionRequestStruct } from '../../../../validation/structs';
 import type { TronWalletKeyringRequest } from '../../../../validation/structs';
 import { getTransactionTrxValue } from '../../../../validation/transaction';
-import { getIconUrlForKnownAsset } from '../../utils/getIconUrlForKnownAsset';
+import { withFeeIcons } from '../../utils/withFeeIcons';
 import { ConfirmSignTransaction } from './ConfirmSignTransaction';
 import { CONFIRM_SIGN_TRANSACTION_INTERFACE_NAME } from './types';
 import type { ConfirmSignTransactionContext } from './types';
@@ -132,25 +131,20 @@ export async function render(
       raw_data_hex: transaction.rawDataHex,
     };
 
-    const fees = await feeCalculatorService.computeFee({
+    const feeWithoutIcons = await feeCalculatorService.computeFee({
       scope,
       transaction: transactionObj,
       availableEnergy,
       availableBandwidth,
     });
 
-    // Resolve icon URLs for fee assets
-    fees.forEach((fee) => {
-      fee.asset.iconUrl = getIconUrlForKnownAsset(fee.asset.type);
-    });
+    const fees = withFeeIcons(feeWithoutIcons);
 
     // Fetch prices if enabled
     const tokenPrices = useExternalPricingData
       ? await priceApiClient
           .getMultipleSpotPrices(
-            // TODO: Replace `any` with type
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            [`${scope}/slip44:195`] as any,
+            [`${scope}/slip44:195`],
             context.preferences.currency,
           )
           .catch(() => ({}))
@@ -223,15 +217,10 @@ export async function render(
     let { scan } = context;
 
     if (securityScanEnabled) {
-      const options: SecurityAlertsScanOption[] = [];
-
-      if (simulateOnChainActions) {
-        options.push('simulation');
-      }
-
-      if (useSecurityAlerts) {
-        options.push('validation');
-      }
+      const options = getScanOptions({
+        simulateOnChainActions,
+        useSecurityAlerts,
+      });
 
       try {
         scan = await transactionScanService.scanTransaction({
@@ -246,9 +235,12 @@ export async function render(
       }
     }
 
-    // A local TAPOS expiry takes precedence over any remote scan result.
+    // Preserve the security verdict while replacing the simulation result.
     if (securityScanEnabled && (await checkTransactionExpiration())) {
-      scan = EXPIRED_TRANSACTION_SCAN;
+      scan = {
+        ...EXPIRED_TRANSACTION_SCAN,
+        validation: scan?.validation ?? { type: 'Error', reason: null },
+      };
     }
 
     context.scan = scan;

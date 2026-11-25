@@ -49,30 +49,36 @@ describe('SendService', () => {
     let mockTronWebFactory: any;
     let mockFeeCalculatorService: any;
     let mockSnapClient: any;
+    let mockScheduleBackgroundEvent: Mock;
     let mockTronWeb: any;
     let mockTransactionExpirationRefresherService: any;
 
-    const createMockTransaction = (ownerAddress = TEST_OWNER_HEX) => ({
-      visible: false,
-      txID: 'mock-tx-id',
-      raw_data: {
-        contract: [
-          {
-            type: 'TransferContract',
-            parameter: {
-              value: {
-                owner_address: ownerAddress,
-                to_address: TronWeb.address.toHex(TEST_TO_ADDRESS),
-                amount: 1000000,
+    const createMockTransaction = (
+      ownerAddress = TEST_OWNER_HEX,
+    ): MockTransferTransaction =>
+      ({
+        visible: false,
+        txID: 'mock-tx-id',
+        raw_data: {
+          contract: [
+            {
+              type: 'TransferContract',
+              parameter: {
+                value: {
+                  owner_address: ownerAddress,
+                  to_address: TronWeb.address.toHex(TEST_TO_ADDRESS),
+                  amount: 1000000,
+                },
               },
             },
-          },
-        ],
-      },
-      raw_data_hex: 'mock-hex',
-    });
+          ],
+        },
+        raw_data_hex: 'mock-hex',
+      }) as unknown as MockTransferTransaction;
 
-    const createMockTrc20Transaction = (ownerAddress = TEST_OWNER_HEX) =>
+    const createMockTrc20Transaction = (
+      ownerAddress = TEST_OWNER_HEX,
+    ): TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract> =>
       ({
         visible: false,
         txID: 'mock-trc20-tx-id',
@@ -144,8 +150,9 @@ describe('SendService', () => {
         computeFee: vi.fn(),
       };
 
+      mockScheduleBackgroundEvent = vi.fn();
       mockSnapClient = {
-        scheduleBackgroundEvent: vi.fn(),
+        scheduleBackgroundEvent: mockScheduleBackgroundEvent,
       };
 
       mockTransactionExpirationRefresherService = {
@@ -218,6 +225,57 @@ describe('SendService', () => {
       });
     });
 
+    it('tracks the security properties with the submitted event', async () => {
+      await sendService.signAndSendTransaction({
+        scope: Network.Mainnet,
+        fromAccountId: TEST_ACCOUNT_ID,
+        transaction: createMockTransaction(),
+        context: {
+          securityProperties: {
+            securityAlertResponse: 'Benign',
+          },
+        },
+      });
+
+      expect(
+        mockAnalyticsService.trackTransactionSubmitted,
+      ).toHaveBeenCalledWith({
+        origin: DEFAULT_METAMASK_ORIGIN,
+        accountType: 'tron:eoa',
+        chainIdCaip: Network.Mainnet,
+        transactionType: TransactionType.Send,
+        securityAlertResponse: 'Benign',
+      });
+    });
+
+    it('schedules tracking with the security properties nested under securityProperties', async () => {
+      await sendService.signAndSendTransaction({
+        scope: Network.Mainnet,
+        fromAccountId: TEST_ACCOUNT_ID,
+        transaction: createMockTransaction(),
+        context: {
+          securityProperties: {
+            securityAlertResponse: 'Benign',
+          },
+        },
+      });
+
+      expect(mockScheduleBackgroundEvent).toHaveBeenCalledWith({
+        method: BackgroundEventMethod.TrackTransaction,
+        params: {
+          txId: 'broadcast-tx-id',
+          scope: Network.Mainnet,
+          accountIds: [TEST_ACCOUNT_ID],
+          attempt: 0,
+          transactionType: TransactionType.Send,
+          securityProperties: {
+            securityAlertResponse: 'Benign',
+          },
+        },
+        duration: TRACK_TX_INTERVAL,
+      });
+    });
+
     it('classifies a unified TRC20 send as send rather than unknown', async () => {
       const transaction = createMockTrc20Transaction();
 
@@ -271,6 +329,7 @@ describe('SendService', () => {
     let mockTronWebFactory: any;
     let mockFeeCalculatorService: any;
     let mockSnapClient: any;
+    let mockScheduleBackgroundEvent: Mock;
     let mockTronWeb: any;
     let mockTransactionExpirationRefresherService: {
       ensureFreshMetadata: Mock;
@@ -342,7 +401,10 @@ describe('SendService', () => {
       number: number;
       timestamp: number;
       hashSegment?: string;
-    }) => ({
+    }): {
+      blockID: string;
+      block_header: { raw_data: { number: number; timestamp: number } };
+    } => ({
       blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
       block_header: {
         raw_data: {
@@ -352,7 +414,7 @@ describe('SendService', () => {
       },
     });
 
-    const getRefBlockBytes = (number: number) =>
+    const getRefBlockBytes = (number: number): string =>
       number.toString(16).slice(-4).padStart(4, '0');
 
     beforeEach(() => {
@@ -407,8 +469,9 @@ describe('SendService', () => {
         computeFee: vi.fn(),
       };
 
+      mockScheduleBackgroundEvent = vi.fn();
       mockSnapClient = {
-        scheduleBackgroundEvent: vi.fn(),
+        scheduleBackgroundEvent: mockScheduleBackgroundEvent,
       };
 
       mockTransactionExpirationRefresherService = {

@@ -1,9 +1,6 @@
 {
   "locale": "el",
   "messages": {
-    "reviewTransactionWarning": {
-      "message": "Ελέγξτε τη συναλλαγή πριν προχωρήσετε"
-    },
     "from": {
       "message": "Από"
     },
@@ -58,9 +55,6 @@
     "asset": {
       "message": "Περιουσιακό στοιχείο"
     },
-    "sending": {
-      "message": "Αποστολή"
-    },
     "max": {
       "message": "Μέγ"
     },
@@ -100,7 +94,7 @@
     "unknownUtxo": {
       "message": "Αποτυχία κατασκευής συναλλαγής: άγνωστο UTXO"
     },
-    "MmssingNonWitnessUtxo": {
+    "missingNonWitnessUtxo": {
       "message": "Αποτυχία κατασκευής συναλλαγής: λείπει non-witness UTXO"
     },
     "base58": {

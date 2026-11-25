@@ -138,6 +138,7 @@ export const OnAmountInputRequestParamsStruct = object({
   value: PositiveNumberStringStruct,
   accountId: UuidStruct,
   assetId: CaipAssetTypeStruct,
+  toAddress: optional(SolanaAddressStruct),
 });
 
 export const OnAmountInputRequestStruct = object({
@@ -145,6 +146,26 @@ export const OnAmountInputRequestStruct = object({
   id: JsonRpcIdStruct,
   method: literal(ClientRequestMethod.OnAmountInput),
   params: OnAmountInputRequestParamsStruct,
+});
+
+/**
+ * getMaxSendableAmount request/response validation.
+ */
+export const GetMaxSendableAmountRequestParamsStruct = object({
+  accountId: UuidStruct,
+  assetId: CaipAssetTypeStruct,
+  toAddress: optional(SolanaAddressStruct),
+});
+
+export const GetMaxSendableAmountRequestStruct = object({
+  jsonrpc: JsonRpcVersionStruct,
+  id: JsonRpcIdStruct,
+  method: literal(ClientRequestMethod.GetMaxSendableAmount),
+  params: GetMaxSendableAmountRequestParamsStruct,
+});
+
+export const GetMaxSendableAmountResponseStruct = object({
+  amount: PositiveNumberStringStruct,
 });
 
 /**

@@ -33,7 +33,10 @@ function createBlock({
   number: number;
   timestamp: number;
   hashSegment?: string;
-}) {
+}): {
+  blockID: string;
+  block_header: { raw_data: { number: number; timestamp: number } };
+} {
   return {
     blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
 
@@ -46,7 +49,7 @@ function createBlock({
   };
 }
 
-const getRefBlockBytes = (number: number) =>
+const getRefBlockBytes = (number: number): string =>
   number.toString(16).slice(-4).padStart(4, '0');
 
 /**
@@ -393,6 +396,10 @@ describe('WalletService', () => {
       // The payload signed is exactly the one submitted by the dApp.
       expect(signedTransaction.raw_data).toStrictEqual(deserializedRawData);
       expect(signedTransaction.raw_data_hex).toBe(rawDataHex);
+      // Native SHA-256 must hash the serialized raw data byte-for-byte.
+      expect(signedTransaction.txID).toBe(
+        '0fbaa39ed260d6545e0061c4d5199e24e436978b6d60b732753c0ccffc49ef9b',
+      );
       // No refresh helpers are invoked on the dApp sign path.
       expect(mockTronWeb.trx.getCurrentBlock).not.toHaveBeenCalled();
       expect(

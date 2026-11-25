@@ -206,7 +206,7 @@ describe('SnapAssetsAdapter', () => {
           `${MOCK_SOLANA_KEYRING_ACCOUNT_0.id}: Error: 502 Bad Gateway; ` +
           `${MOCK_SOLANA_KEYRING_ACCOUNT_0.id}: Error: 502 Bad Gateway`,
       );
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect(mockLogger.error).toHaveBeenCalledWith(
         'Failed to fetch token accounts',
         expect.anything(),
       );
@@ -252,7 +252,7 @@ describe('SnapAssetsAdapter', () => {
 
       await snapAssetsAdapter.fetchAccountAssets(MOCK_SOLANA_KEYRING_ACCOUNT_0);
 
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect(mockLogger.error).toHaveBeenCalledWith(
         'Failed to track error',
         expect.anything(),
       );

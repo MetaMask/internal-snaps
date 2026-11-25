@@ -8,7 +8,7 @@ import type {
 import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import {
   SynchronizationError,
-  getSyncFailuresFromSettledResult,
+  getUnreportedSyncFailures,
 } from '@metamask/snap-networks-utils';
 import type {
   ExtendedKeyringAccount,
@@ -257,17 +257,17 @@ export class SnapAssetsAdapter {
     accountIds: string[],
   ): Promise<void> {
     try {
-      const failures = getSyncFailuresFromSettledResult(results, accountIds);
+      const failures = getUnreportedSyncFailures(results, accountIds);
 
       if (failures.length === 0) {
         return;
       }
 
-      this.#logger.warn(message, { failures });
+      this.#logger.error(message, { failures });
 
       await trackError(new SynchronizationError(message, failures));
     } catch (trackingError) {
-      this.#logger.warn('Failed to track error', { trackingError });
+      this.#logger.error('Failed to track error', { trackingError });
     }
   }
 

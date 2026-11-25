@@ -1,5 +1,62 @@
+import type { Infer } from '@metamask/superstruct';
+import { enums, is, object, optional, string } from '@metamask/superstruct';
+
 import { SecurityAlertResponse } from './types';
-import type { SecurityScanOutcome } from './types';
+import type { SecurityAlertsScanOption, SecurityScanOutcome } from './types';
+
+/**
+ * The security response reported while a security scan is in progress.
+ */
+export const SECURITY_ALERT_LOADING_RESPONSE = 'Loading' as const;
+
+/**
+ * The security reason reported while a security scan is in progress.
+ */
+const SECURITY_ALERT_IN_PROGRESS_REASON = 'validation_in_progress' as const;
+
+/**
+ * The security reason reported when a response has no reason of its own.
+ */
+export const SECURITY_ALERT_NOT_APPLICABLE_REASON = 'NotApplicable' as const;
+
+/**
+ * The security reason reported when a security scan failed.
+ */
+const SECURITY_ALERT_ERROR_REASON = 'Error' as const;
+
+/**
+ * The verdicts a security scan can return. Any other value is not a verdict.
+ */
+const SecurityScanVerdictStruct = enums(Object.values(SecurityAlertResponse));
+
+/**
+ * Security verdict values reported on transaction events. `Loading` is set
+ * while the scan is in progress, and `NotApplicable` stands in for a missing
+ * reason.
+ */
+const TransactionSecurityAlertResponseStruct = enums([
+  ...Object.values(SecurityAlertResponse),
+  SECURITY_ALERT_LOADING_RESPONSE,
+  SECURITY_ALERT_NOT_APPLICABLE_REASON,
+]);
+
+export type TransactionSecurityAlertResponse = Infer<
+  typeof TransactionSecurityAlertResponseStruct
+>;
+
+/**
+ * Security verdict fields on transaction lifecycle events, aligned with the
+ * MetaMask extension. A field is omitted when there is nothing to report.
+ */
+export const TransactionSecurityPropertiesStruct = object({
+  securityAlertResponse: optional(TransactionSecurityAlertResponseStruct),
+  securityAlertReason: optional(string()),
+  securityAlertDescription: optional(string()),
+});
+
+export type TransactionSecurityProperties = Infer<
+  typeof TransactionSecurityPropertiesStruct
+>;
 
 /**
  * Human-readable description suffixes for Blockaid validation reasons, shared
@@ -64,26 +121,105 @@ export function deriveSecurityAlert(type?: string | null): string | null {
 }
 
 /**
- * Determines whether a malicious scan result requires explicit user
- * acknowledgement before the transaction can be confirmed.
+ * Builds the security fields for a transaction lifecycle event, aligned with
+ * the MetaMask extension.
  *
- * When true, the confirmation footer swaps its primary button to "Review
- * alerts" and routes the user through the acknowledgement screen instead of
- * confirming directly. Warning-level results intentionally do not require this
- * (reduced friction): they show the banner only. With security alerts disabled
- * no acknowledgement is ever required (the scan is not surfaced at all).
+ * - `'Loading'` while the scan is in progress, with reason `validation_in_progress`.
+ * - `null` when the scan request failed, which is reported as `Error` with reason `Error`.
+ * - A scan without a known verdict, including a successful one with an
+ *   unrecognized verdict, is reported as `Error` with reason `Error`, and its
+ *   error message as the description when it has one.
+ * - Otherwise, the scan's verdict, with its reason and description.
  *
- * @param params - Scan and preference state.
- * @param params.useSecurityAlerts - Whether the user enabled security alerts.
- * @param params.scan - Latest transaction scan result, if any.
- * @returns True when the user must acknowledge a malicious result to proceed.
+ * `reason` is omitted for `Benign`. Other verdicts report `NotApplicable` when
+ * they have no reason. `description` is included only when the scan has one.
+ *
+ * The same rule applies to every snap: a scan without a known verdict is an
+ * error. A caller with a skipped scan should report no security fields instead
+ * of passing the scan here.
+ *
+ * @param scan - The security state to report: the scan outcome, `'Loading'` while the scan is in progress, or `null` when the scan request failed.
+ * @returns The security properties to add to a transaction event.
  */
-export function requiresMaliciousAcknowledgement(params: {
-  useSecurityAlerts: boolean;
-  scan?: SecurityScanOutcome | null;
-}): boolean {
+export function getTransactionSecurityProperties(
+  scan: SecurityScanOutcome | typeof SECURITY_ALERT_LOADING_RESPONSE | null,
+): TransactionSecurityProperties {
+  if (scan === SECURITY_ALERT_LOADING_RESPONSE) {
+    return {
+      securityAlertResponse: SECURITY_ALERT_LOADING_RESPONSE,
+      securityAlertReason: SECURITY_ALERT_IN_PROGRESS_REASON,
+    };
+  }
+
+  const verdict = scan?.validation?.type;
+
+  if (!is(verdict, SecurityScanVerdictStruct)) {
+    const description = scan?.error?.message;
+
+    return {
+      securityAlertResponse: SecurityAlertResponse.Error,
+      securityAlertReason: SECURITY_ALERT_ERROR_REASON,
+      ...(description ? { securityAlertDescription: description } : {}),
+    };
+  }
+
+  const reason =
+    scan?.validation?.reason ?? SECURITY_ALERT_NOT_APPLICABLE_REASON;
+  const description = scan?.validation?.description;
+  const isBenign = verdict === SecurityAlertResponse.Benign;
+
+  return {
+    securityAlertResponse: verdict,
+    ...(isBenign ? {} : { securityAlertReason: reason }),
+    ...(description ? { securityAlertDescription: description } : {}),
+  };
+}
+
+/**
+ * Returns the Security Alerts scan options that the user's preferences enable.
+ * Missing preferences are treated as disabled.
+ *
+ * @param preferences - The preferences that control which scans run.
+ * @param preferences.simulateOnChainActions - Whether on-chain simulation is enabled.
+ * @param preferences.useSecurityAlerts - Whether security validation is enabled.
+ * @returns `simulation` and/or `validation`, in that order.
+ */
+export function getScanOptions({
+  simulateOnChainActions,
+  useSecurityAlerts,
+}: {
+  simulateOnChainActions?: boolean | null;
+  useSecurityAlerts?: boolean | null;
+}): SecurityAlertsScanOption[] {
+  const options: SecurityAlertsScanOption[] = [];
+
+  if (simulateOnChainActions) {
+    options.push('simulation');
+  }
+
+  if (useSecurityAlerts) {
+    options.push('validation');
+  }
+
+  return options;
+}
+
+/**
+ * Determines whether a security alert verdict requires explicit risk
+ * acknowledgement before confirming a transaction.
+ *
+ * Only `SecurityAlertResponse.Malicious` requires acknowledgement when
+ * security alerts are enabled. Missing preferences are treated as disabled.
+ *
+ * @param useSecurityAlerts - Whether security alerts are enabled.
+ * @param alert - The security alert verdict, or null/undefined when unavailable.
+ * @returns Whether the user must acknowledge the risk before confirming.
+ */
+export function requiresMaliciousAcknowledgement(
+  useSecurityAlerts?: boolean | null,
+  alert?: SecurityAlertResponse | null,
+): boolean {
   return (
-    params.useSecurityAlerts &&
-    params.scan?.validation?.type === SecurityAlertResponse.Malicious
+    useSecurityAlerts === true && alert === SecurityAlertResponse.Malicious
   );
 }

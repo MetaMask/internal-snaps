@@ -6,7 +6,10 @@ import {
   SecurityEventType,
   TransactionEventType,
 } from './AnalyticsService';
-import type { TrackEventCapableProvider } from './AnalyticsService';
+import type {
+  SnapTrackEventRequest,
+  TrackEventCapableProvider,
+} from './AnalyticsService';
 
 describe('AnalyticsService', () => {
   const request = vi.fn();
@@ -152,6 +155,102 @@ describe('AnalyticsService', () => {
     const event = request.mock.calls[0]?.[0].params.event;
     expect(event.properties).not.toHaveProperty('transaction_status');
     expect(event.properties).not.toHaveProperty('transaction_type');
+  });
+
+  it.each([
+    [
+      'trackTransactionAdded',
+      TransactionEventType.TransactionAdded,
+      'Snap transaction added',
+    ],
+    [
+      'trackTransactionRejected',
+      TransactionEventType.TransactionRejected,
+      'Snap transaction rejected',
+    ],
+    [
+      'trackTransactionApproved',
+      TransactionEventType.TransactionApproved,
+      'Snap transaction approved',
+    ],
+    [
+      'trackTransactionSubmitted',
+      TransactionEventType.TransactionSubmitted,
+      'Snap transaction submitted',
+    ],
+  ] as const)(
+    'tracks %s with security fields',
+    async (method, event, message) => {
+      await analytics[method]({
+        origin: 'https://example.com',
+        accountType: 'eip155:eoa',
+        chainIdCaip: 'eip155:1',
+        securityAlertResponse: 'Malicious',
+        securityAlertReason: 'honeypot',
+        securityAlertDescription: 'Security alert: honeypot',
+      });
+
+      expect(request).toHaveBeenCalledWith({
+        method: 'snap_trackEvent',
+        params: {
+          event: {
+            event,
+            properties: {
+              message,
+              origin: 'https://example.com',
+              account_type: 'eip155:eoa',
+              chain_id_caip: 'eip155:1',
+              security_alert_response: 'Malicious',
+              security_alert_reason: 'honeypot',
+              security_alert_description: 'Security alert: honeypot',
+            },
+          },
+        },
+      });
+    },
+  );
+
+  it('tracks finalized transactions with security fields', async () => {
+    await analytics.trackTransactionFinalized({
+      origin: 'https://example.com',
+      accountType: 'eip155:eoa',
+      chainIdCaip: 'eip155:1',
+      transactionStatus: 'confirmed',
+      securityAlertResponse: 'Loading',
+      securityAlertReason: 'NotApplicable',
+    });
+
+    expect(request).toHaveBeenCalledWith({
+      method: 'snap_trackEvent',
+      params: {
+        event: {
+          event: TransactionEventType.TransactionFinalized,
+          properties: {
+            message: 'Snap transaction finalized',
+            origin: 'https://example.com',
+            account_type: 'eip155:eoa',
+            chain_id_caip: 'eip155:1',
+            transaction_status: 'confirmed',
+            security_alert_response: 'Loading',
+            security_alert_reason: 'NotApplicable',
+          },
+        },
+      },
+    });
+  });
+
+  it('omits security fields from transaction events when none are provided', async () => {
+    await analytics.trackTransactionApproved({
+      origin: 'https://example.com',
+      accountType: 'eip155:eoa',
+      chainIdCaip: 'eip155:1',
+    });
+
+    const call = request.mock.calls[0]?.[0] as SnapTrackEventRequest;
+    const { properties } = call.params.event;
+    expect(properties).not.toHaveProperty('security_alert_response');
+    expect(properties).not.toHaveProperty('security_alert_reason');
+    expect(properties).not.toHaveProperty('security_alert_description');
   });
 
   it('tracks detected security alerts', async () => {
@@ -364,7 +463,7 @@ describe('AnalyticsService', () => {
     ).toBeUndefined();
 
     expect(trackError).toHaveBeenCalledWith(error);
-    expect(mockLogger.warn).toHaveBeenCalledWith(
+    expect(mockLogger.error).toHaveBeenCalledWith(
       '[AnalyticsService]',
       'Failed to track event',
       {
@@ -383,7 +482,7 @@ describe('AnalyticsService', () => {
       await analytics.trackEvent('Custom Event', { value: 42 }),
     ).toBeUndefined();
 
-    expect(mockLogger.warn).toHaveBeenCalledWith(
+    expect(mockLogger.error).toHaveBeenCalledWith(
       '[AnalyticsService]',
       'Failed to report analytics error',
       expect.objectContaining({ error: expect.any(Error) }),

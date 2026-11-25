@@ -162,6 +162,8 @@ export type ConfirmationBaseProps = Partial<ContextWithPrices> & {
   memoError?: LocalizedMessage | null;
   // When false, hide Add/Update memo controls.
   supportsMemo?: boolean;
+  // When false, show the memo without Add/Update (client-supplied memo).
+  memoEditable?: boolean;
   /**
    * Pending `snap_scheduleBackgroundEvent` id for confirmation context refresh.
    * Stored so callers can cancel-and-replace (bitcoin send-flow pattern) instead

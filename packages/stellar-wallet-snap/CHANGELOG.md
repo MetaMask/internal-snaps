@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add the `getMaxSendableAmount` client request method, returning the maximum amount that would pass `onAmountInput` for XLM and classic assets. XLM leaves the minimum reserve and the inclusion fee, token balances require XLM to cover the fee, and the result is `0` when no amount can pass ([#594](https://github.com/MetaMask/internal-snaps/pull/594))
+- Accept an optional client-supplied `memo` in `confirmSend`; the memo type is inferred from the value, the dialog memo is kept as fallback, and a client memo that cannot satisfy a memo-required destination is rejected ([#597](https://github.com/MetaMask/internal-snaps/pull/597))
+
+### Changed
+
+- Report Horizon, Stellar RPC, Price API, Token API and Security Alerts API outages through the shared fetch policy ([#642](https://github.com/MetaMask/internal-snaps/pull/642))
+  - Outages send the "Snap Service Degraded" and "Snap Service Unavailable" Segment events.
+  - Stellar RPC, Price API, Token API and Security Alerts API calls that use up their retries are reported to Sentry once, sanitised, and callers no longer report them again.
+  - Horizon keeps its current Sentry reporting, because the Stellar SDK rethrows Horizon read failures as new errors that callers can't recognise as already reported.
+- Show security alerts alongside simulation warnings when both apply and local validation does not block confirmation ([#608](https://github.com/MetaMask/internal-snaps/pull/608))
+- Align security warning copy and the malicious-request acknowledgement screen ([#604](https://github.com/MetaMask/internal-snaps/pull/604))
+
 ## [2.1.0]
 
 ### Changed

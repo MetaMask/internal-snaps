@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add the `getMaxSendableAmount` client request method, returning the maximum amount that can be sent for BTC: the spendable balance minus the network fee, or `0` when no amount can pass ([#587](https://github.com/MetaMask/internal-snaps/pull/587))
+
+### Changed
+
+- Report Esplora and Price API outages through the shared fetch policy ([#643](https://github.com/MetaMask/internal-snaps/pull/643))
+  - Slow or failing requests now emit `Snap Service Degraded` and `Snap Service Unavailable` Segment events. Esplora events are tagged with the network's CAIP-2 chain ID.
+  - Price API give-ups are sent to Sentry without URLs, request params or response data. Esplora give-ups are still reported by their callers, as before.
+  - Errors the policy already reported, including open-circuit rejections during account synchronization, are no longer sent to Sentry a second time.
+- `onAmountInput` now rejects the full spendable balance unless the amount covers the fee, matching `getMaxSendableAmount`; amount probes no longer drain the wallet ([#645](https://github.com/MetaMask/internal-snaps/pull/645))
+- `onAmountInput` now estimates the send fee and rejects amounts that cannot cover it, including when `toAddress` is omitted ([#586](https://github.com/MetaMask/internal-snaps/pull/586))
+
+### Removed
+
+- Removed the exported types `Config` and `SnapConfig`, and the `export` keyword from 38 declarations that were only used within their own module: the `CronHandler`, `RpcHandler`, and `KeyringRequestHandler` request/response types (except `SignPsbtResponse`, which remains exported), the keyring request structs composed into `BtcWalletRequestStruct`, `caipToAddressType`, the `mappings.ts` types, the JSX component prop types, `Purpose`, `Slip44`, and `BroadcastResult`. ([#610](https://github.com/MetaMask/internal-snaps/pull/610))
+
+### Fixed
+
+- BDK wallet errors now display their English message instead of a raw placeholder: renamed the mistyped `MmssingNonWitnessUtxo` locale key to `missingNonWitnessUtxo` and added the missing English messages for the `descriptor`, `policy`, `spendingPolicyRequired`, `version0`, `version1Csv`, `lockTime`, `rbfSequenceCsv`, `missingKeyOrigin`, `miniscriptPsbt`, and `unknownHrp` BDK error codes ([#610](https://github.com/MetaMask/internal-snaps/pull/610))
+
 ## [3.3.0]
 
 ### Changed

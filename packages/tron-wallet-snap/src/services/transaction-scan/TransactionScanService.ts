@@ -114,6 +114,12 @@ export class TransactionScanService extends BaseTransactionScanService {
 
       assert(result, SecurityAlertResponseStruct, 'Tron scan response body');
 
+      if (options.includes('validation') && !result.validation) {
+        throw new Error(
+          `No validation scan results returned for scope ${scope} and origin ${origin}`,
+        );
+      }
+
       const scan = this.#mapScan(result);
 
       await this.trackScanCompleted(
@@ -123,10 +129,12 @@ export class TransactionScanService extends BaseTransactionScanService {
 
       return scan;
     } catch (error) {
-      await this.trackError(error);
       this.logger.error(error);
 
-      await this.trackScanFailed({ origin, scope, accountType: account?.type });
+      await Promise.all([
+        this.trackError(error),
+        this.trackScanFailed({ origin, scope, accountType: account?.type }),
+      ]);
 
       return null;
     }

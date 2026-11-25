@@ -21,8 +21,8 @@ const setup = (
   options: Partial<
     Omit<Parameters<typeof createFetchPolicy>[0], 'service' | 'analytics'>
   > = {},
-): { policy: ServicePolicy; logger: { warn: Mock } } => {
-  const logger = { warn: vi.fn() };
+): { policy: ServicePolicy; logger: { warn: Mock; error: Mock } } => {
+  const logger = { warn: vi.fn(), error: vi.fn() };
   const policy = createFetchPolicy({
     service: 'test_api',
     chainIdCaip: 'tron:728126428',
@@ -176,7 +176,7 @@ describe('createFetchPolicy', () => {
       '[test_api tron:728126428] Retrying (attempt 1, delay 0 ms):',
       error,
     );
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       '[test_api tron:728126428] Giving up:',
       error,
     );
@@ -190,7 +190,7 @@ describe('createFetchPolicy', () => {
       error,
     );
 
-    expect(logger.warn).toHaveBeenCalledWith('[test_api] Giving up:', error);
+    expect(logger.error).toHaveBeenCalledWith('[test_api] Giving up:', error);
   });
 
   describe('Retry-After', () => {
@@ -245,7 +245,7 @@ describe('createFetchPolicy', () => {
     it('waits with exponential backoff by default', async () => {
       const policy = createFetchPolicy({
         service: 'test_api',
-        logger: { warn: vi.fn() },
+        logger: { warn: vi.fn(), error: vi.fn() },
       });
       const service = failingThen(httpError(503));
 
@@ -295,7 +295,7 @@ describe('createFetchPolicy', () => {
 
       expect(service).toHaveBeenCalledTimes(2);
       expect(policy.getCircuitState()).toBe(CircuitState.Open);
-      expect(logger.warn).toHaveBeenCalledWith(
+      expect(logger.error).toHaveBeenCalledWith(
         '[test_api tron:728126428] Circuit opened for 30000 ms:',
         error,
       );
@@ -306,7 +306,7 @@ describe('createFetchPolicy', () => {
 
       policy.circuitBreakerPolicy.isolate();
 
-      expect(logger.warn).toHaveBeenCalledWith(
+      expect(logger.error).toHaveBeenCalledWith(
         '[test_api tron:728126428] Circuit opened for 30000 ms',
       );
     });
@@ -336,14 +336,14 @@ describe('createFetchPolicy observability', () => {
     options: Partial<Parameters<typeof createFetchPolicy>[0]> = {},
   ): {
     policy: ServicePolicy;
-    logger: { warn: Mock };
+    logger: { warn: Mock; error: Mock };
     analytics: {
       trackServiceDegraded: Mock;
       trackServiceUnavailable: Mock;
     };
     trackError: Mock;
   } => {
-    const logger = { warn: vi.fn() };
+    const logger = { warn: vi.fn(), error: vi.fn() };
     const analytics = {
       trackServiceDegraded: vi.fn().mockResolvedValue(undefined),
       trackServiceUnavailable: vi.fn().mockResolvedValue(undefined),
@@ -396,7 +396,7 @@ describe('createFetchPolicy observability', () => {
       // @ts-expect-error `esplora_bitcoin` is not a Segment schema service.
       createFetchPolicy({
         service: 'esplora_bitcoin',
-        logger: { warn: vi.fn() },
+        logger: { warn: vi.fn(), error: vi.fn() },
         analytics,
       }),
     ).not.toThrow();
@@ -408,7 +408,7 @@ describe('createFetchPolicy observability', () => {
     expect(() =>
       createFetchPolicy({
         service: 'price_api',
-        logger: { warn: vi.fn() },
+        logger: { warn: vi.fn(), error: vi.fn() },
         analytics,
       }),
     ).not.toThrow();
@@ -548,7 +548,7 @@ describe('createFetchPolicy observability', () => {
     );
     await new Promise(setImmediate);
 
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       '[stellar_horizon stellar:pubnet] Failed to report give-up:',
       trackingError,
     );
@@ -571,7 +571,7 @@ describe('createFetchPolicy observability', () => {
     await vi.advanceTimersByTimeAsync(6000);
 
     expect(await result).toBe('ok');
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       '[stellar_horizon stellar:pubnet] Failed to track service event:',
       trackingError,
     );
@@ -588,7 +588,7 @@ describe('createFetchPolicy observability', () => {
     ).rejects.toThrow('HTTP 503');
     await new Promise(setImmediate);
 
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       '[stellar_horizon stellar:pubnet] Failed to report give-up:',
       trackingError,
     );
@@ -607,7 +607,7 @@ describe('createFetchPolicy observability', () => {
     ).rejects.toThrow('HTTP 503');
     await new Promise(setImmediate);
 
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       '[stellar_horizon stellar:pubnet] Failed to track service event:',
       trackingError,
     );

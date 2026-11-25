@@ -1,5 +1,4 @@
 import {
-  AnalyticsService,
   createFetchPolicy,
   SecurityAlertsApiClient,
   State,
@@ -26,6 +25,7 @@ import {
 } from './handlers/clientRequest';
 import { ComputeFeeHandler } from './handlers/clientRequest/computeFee';
 import { ConfirmSendHandler } from './handlers/clientRequest/confirmSend';
+import { GetMaxSendableAmountHandler } from './handlers/clientRequest/getMaxSendableAmount';
 import { OnAddressInputHandler } from './handlers/clientRequest/onAddressInput';
 import { OnAmountInputHandler } from './handlers/clientRequest/onAmountInput';
 import { SignAndSendTransactionHandler } from './handlers/clientRequest/signAndSendTransaction';
@@ -71,7 +71,8 @@ import {
 import { TransactionScanService } from './services/transaction-scan';
 import { WalletService } from './services/wallet';
 import { ConfirmationUXController } from './ui/confirmation/controller';
-import { getSnapProvider, logger, noOpLogger, trackError } from './utils';
+import { logger, noOpLogger, trackError } from './utils';
+import { analyticsService, fetchPolicyReporting } from './utils/analytics';
 
 assert(AppConfig, object());
 
@@ -85,12 +86,6 @@ const transactionRepository = new TransactionRepository(state);
 const assetMetadataRepository = new AssetMetadataRepository(state);
 
 /** ------------------------------ Services  ------------------------------ */
-const analyticsService = new AnalyticsService({
-  getSnapProvider,
-  logger,
-  trackError,
-});
-
 const appCache = new InMemoryCache(noOpLogger);
 const networkService = new NetworkService({ logger, cache: appCache });
 
@@ -157,6 +152,7 @@ const securityAlertsApiClient = new SecurityAlertsApiClient({
   policy: createFetchPolicy({
     service: 'security_alerts_api',
     logger: logger.withPrefix('[🛡️ SecurityAlertsApiClient]'),
+    ...fetchPolicyReporting,
   }),
 });
 
@@ -308,6 +304,13 @@ const onAmountInputHandler = new OnAmountInputHandler({
   transactionService,
 });
 
+const getMaxSendableAmountHandler = new GetMaxSendableAmountHandler({
+  logger,
+  accountResolver,
+  assetMetadataService,
+  transactionService,
+});
+
 const signAndSendTransactionHandler = new SignAndSendTransactionHandler({
   logger,
   accountResolver,
@@ -349,6 +352,7 @@ const clientRequestMethodHandlers: Record<
   [ClientRequestMethod.ChangeTrustOpt]: changeTrustOptHandler,
   [ClientRequestMethod.OnAddressInput]: onAddressInputHandler,
   [ClientRequestMethod.OnAmountInput]: onAmountInputHandler,
+  [ClientRequestMethod.GetMaxSendableAmount]: getMaxSendableAmountHandler,
   [ClientRequestMethod.ConfirmSend]: confirmSendHandler,
   [ClientRequestMethod.SignAndSendTransaction]: signAndSendTransactionHandler,
   [ClientRequestMethod.ComputeFee]: computeFeeHandler,

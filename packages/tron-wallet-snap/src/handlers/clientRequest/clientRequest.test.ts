@@ -5,6 +5,10 @@ import {
 } from '@metamask/keyring-api';
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
+import {
+  InvalidParamsError,
+  UserRejectedRequestError,
+} from '@metamask/snaps-sdk';
 import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
@@ -48,17 +52,24 @@ import type { OnAmountInputRequestStruct } from './validation';
 
 const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
-const createPassThroughTransactionExpirationRefresherService = () =>
-  ({
-    ensureFreshMetadata: vi.fn(
-      async <TransactionType>({
-        transaction,
-      }: {
-        transaction: TransactionType;
-      }) => transaction,
-    ),
-    ensureFreshRawData: vi.fn(async ({ rawData }) => rawData),
-  }) as unknown as TransactionExpirationRefresherService;
+const createPassThroughTransactionExpirationRefresherService =
+  (): TransactionExpirationRefresherService =>
+    ({
+      ensureFreshMetadata: vi.fn(
+        async <TransactionType>({
+          transaction,
+        }: {
+          transaction: TransactionType;
+        }) => transaction,
+      ),
+      ensureFreshRawData: vi.fn(
+        async <RawDataType extends TransactionRawData>({
+          rawData,
+        }: {
+          rawData: RawDataType;
+        }) => rawData,
+      ),
+    }) as unknown as TransactionExpirationRefresherService;
 
 /**
  * Creates a minimal TronKeyringAccount fixture for tests that only need
@@ -119,21 +130,20 @@ const createMockTronWeb = (): MockTronWeb => ({
   utils: {
     deserializeTx: { deserializeTransaction: vi.fn() },
     transaction: {
-      txJsonToPb: vi.fn((transaction) => transaction),
+      txJsonToPb: vi.fn((transaction: TronwebTypes.Transaction) => transaction),
       txPbToRawDataHex: vi.fn().mockReturnValue('1234567890abcdef'),
       txPbToTxID: vi.fn().mockReturnValue('mock-tx-id'),
     },
   },
   transactionBuilder: {
-    freezeBalanceV2:
-      vi.fn() as MockTronWeb['transactionBuilder']['freezeBalanceV2'],
+    freezeBalanceV2: vi.fn<TronWeb['transactionBuilder']['freezeBalanceV2']>(),
   },
 });
 
 const createMockTronWebFactory = (
   mockTronWeb: MockTronWeb,
 ): MockTronWebFactory => ({
-  createClient: vi.fn().mockReturnValue(mockTronWeb as unknown as TronWeb),
+  createClient: vi.fn().mockReturnValue(mockTronWeb),
   executeBroadcast: vi.fn(
     async (_scope: Network, broadcast: () => Promise<unknown>) => broadcast(),
   ),
@@ -322,7 +332,10 @@ describe('ClientRequestHandler', () => {
       number: number;
       timestamp: number;
       hashSegment?: string;
-    }) => ({
+    }): {
+      blockID: string;
+      block_header: { raw_data: { number: number; timestamp: number } };
+    } => ({
       blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
 
       block_header: {
@@ -333,7 +346,7 @@ describe('ClientRequestHandler', () => {
       },
     });
 
-    const getRefBlockBytes = (number: number) =>
+    const getRefBlockBytes = (number: number): string =>
       number.toString(16).slice(-4).padStart(4, '0');
 
     async function withComputeFeeHandler<ReturnValue>(
@@ -412,7 +425,7 @@ describe('ClientRequestHandler', () => {
             txid: 'test-tx-id',
           });
 
-          const result = await handler.handle(request as JsonRpcRequest);
+          const result = await handler.handle(request);
 
           expect(result).toStrictEqual({
             transactionId: 'test-tx-id',
@@ -506,10 +519,12 @@ describe('ClientRequestHandler', () => {
             mockRawData,
           );
           mockTronWeb.trx.getCurrentBlock.mockResolvedValue(currentBlock);
-          mockTronWeb.trx.sign.mockImplementation(async (transaction: any) => ({
-            ...transaction,
-            signature: ['test-signature'],
-          }));
+          mockTronWeb.trx.sign.mockImplementation(
+            async (transaction: TronwebTypes.Transaction) => ({
+              ...transaction,
+              signature: ['test-signature'],
+            }),
+          );
           mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
             result: true,
             txid: 'broadcast-tx-id',
@@ -522,9 +537,11 @@ describe('ClientRequestHandler', () => {
               }),
           });
 
-          await refreshedHandler.handle(request as JsonRpcRequest);
+          await refreshedHandler.handle(request);
 
-          const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0];
+          const [signedTransaction] = mockTronWeb.trx.sign.mock.calls[0] as [
+            TronwebTypes.SignedTransaction,
+          ];
           expect(signedTransaction.raw_data).not.toBe(mockRawData);
           expect(signedTransaction.raw_data.ref_block_bytes).toBe(
             getRefBlockBytes(200_000),
@@ -609,16 +626,18 @@ describe('ClientRequestHandler', () => {
           mockTransactionExpirationRefresherService.ensureFreshMetadata.mockResolvedValue(
             freshTransaction,
           );
-          mockTronWeb.trx.sign.mockImplementation(async (transaction: any) => ({
-            ...transaction,
-            signature: ['test-signature'],
-          }));
+          mockTronWeb.trx.sign.mockImplementation(
+            async (transaction: TronwebTypes.Transaction) => ({
+              ...transaction,
+              signature: ['test-signature'],
+            }),
+          );
           mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
             result: true,
             txid: 'broadcast-tx-id',
           });
 
-          await handler.handle(request as JsonRpcRequest);
+          await handler.handle(request);
 
           expect(
             mockTransactionExpirationRefresherService.ensureFreshMetadata,
@@ -754,7 +773,7 @@ describe('ClientRequestHandler', () => {
           mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
 
           // Execute
-          const result = await handler.handle(request as JsonRpcRequest);
+          const result = await handler.handle(request);
 
           // Verify - no signing needed for fee computation
           expect(mockAccountsService.findByIdOrThrow).toHaveBeenCalledWith(
@@ -890,7 +909,7 @@ describe('ClientRequestHandler', () => {
           ];
           mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
 
-          const result = await handler.handle(request as JsonRpcRequest);
+          const result = await handler.handle(request);
 
           expect(result).toStrictEqual(feeResult);
           // computeFee receives unsigned transaction (no signature field)
@@ -994,7 +1013,7 @@ describe('ClientRequestHandler', () => {
           ];
           mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
 
-          const result = await handler.handle(request as JsonRpcRequest);
+          const result = await handler.handle(request);
 
           expect(result).toStrictEqual(feeResult);
           expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith({
@@ -1127,12 +1146,12 @@ describe('ClientRequestHandler', () => {
               address: TEST_ADDRESS,
               entropySource: 'test-entropy',
               derivationPath: [],
-            } as any);
+            });
 
             // Mock keypair derivation
             mockAccountsService.deriveTronKeypair.mockResolvedValue({
               privateKeyHex: TEST_PRIVATE_KEY,
-            } as any);
+            });
 
             // Mock message signing
             mockTronWeb.trx.signMessageV2.mockReturnValue(mockSignature);
@@ -1412,7 +1431,7 @@ describe('ClientRequestHandler', () => {
             address: TEST_ADDRESS,
             entropySource: 'test-entropy',
             derivationPath: [],
-          } as any);
+          });
 
           await expect(
             handler.handle(buildRequest(buildProofMessage(otherAddress))),
@@ -1802,7 +1821,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
           ],
         });
 
-        const result = await handler.handle(request as JsonRpcRequest);
+        const result = await handler.handle(request);
 
         expect(result).toStrictEqual({ transactionId });
       },
@@ -1843,7 +1862,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
         mockAccountsService.deriveTronKeypair.mockResolvedValue({
           privateKeyHex: 'test-private-key',
           address: CORRECT_OWNER_ADDRESS_BASE58,
-        } as Awaited<ReturnType<AccountsService['deriveTronKeypair']>>);
+        });
         mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
           contract: [
             {
@@ -1872,7 +1891,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
           )
           .mockResolvedValue({ result: true, txid: transactionId });
 
-        await handler.handle(request as JsonRpcRequest);
+        await handler.handle(request);
 
         expect(mockTronWeb.trx.sign).toHaveBeenCalledTimes(1);
         expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledTimes(2);
@@ -1922,7 +1941,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
         mockAccountsService.deriveTronKeypair.mockResolvedValue({
           privateKeyHex: 'test-private-key',
           address: CORRECT_OWNER_ADDRESS_BASE58,
-        } as Awaited<ReturnType<AccountsService['deriveTronKeypair']>>);
+        });
         mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
           contract: [
             {
@@ -1939,10 +1958,11 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
           result: false,
         });
 
-        const result = await handler.handle(request as JsonRpcRequest);
-        const signedTransactionId = (
-          mockTronWeb.trx.sign.mock.calls[0]?.[0] as { txID: string }
-        ).txID;
+        const result = await handler.handle(request);
+        const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0] as {
+          txID: string;
+        };
+        const signedTransactionId = signedTransaction.txID;
 
         expect(result).toStrictEqual({ transactionId: signedTransactionId });
         expect(mockTransactionsService.save).toHaveBeenCalledWith(
@@ -2009,7 +2029,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
           ],
         });
 
-        await handler.handle(request as JsonRpcRequest);
+        await handler.handle(request);
 
         expect(
           mockAnalyticsService.trackTransactionSubmitted,
@@ -2114,7 +2134,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
             },
           );
 
-          await handler.handle(request as JsonRpcRequest);
+          await handler.handle(request);
 
           expect(
             mockAnalyticsService.trackTransactionSubmitted,
@@ -2193,7 +2213,7 @@ describe('ClientRequestHandler - signAndSendTransaction', () => {
           ],
         });
 
-        await handler.handle(request as JsonRpcRequest);
+        await handler.handle(request);
 
         expect(
           mockAnalyticsService.trackTransactionSubmitted,
@@ -2869,8 +2889,9 @@ describe('ClientRequestHandler - onAmountInput', () => {
 
         await handler.handle(request);
 
-        const calledAmount = mockSendService.buildTransaction.mock.calls[0]?.[0]
-          ?.amount as BigNumber;
+        const [buildTransactionParams] = mockSendService.buildTransaction.mock
+          .calls[0] as [Parameters<SendService['buildTransaction']>[0]];
+        const calledAmount = buildTransactionParams.amount;
 
         // Must be a BigNumber, not a number — prevents IEEE 754 precision loss
         expect(calledAmount).toBeInstanceOf(BigNumber);
@@ -3045,7 +3066,7 @@ describe('ClientRequestHandler - computeStakeFee', () => {
           address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
           entropySource: 'test-entropy',
           derivationPath: [],
-        } as any);
+        });
 
         const builtTransaction = {
           txID: 'stake-tx-id',
@@ -3067,11 +3088,11 @@ describe('ClientRequestHandler - computeStakeFee', () => {
         // Mock native balance and resources (local state reads)
         mockAssetsService.getAccountAssetByID.mockResolvedValue({
           uiAmount: '100',
-        } as unknown as AssetEntity);
+        });
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
           { rawAmount: '5000' }, // Bandwidth
           { rawAmount: '100000' }, // Energy
-        ] as unknown as AssetEntity[]);
+        ]);
 
         const feeResult = [
           {
@@ -3086,7 +3107,7 @@ describe('ClientRequestHandler - computeStakeFee', () => {
         ];
         mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
 
-        const result = await handler.handle(request as JsonRpcRequest);
+        const result = await handler.handle(request);
 
         expect(mockAccountsService.findByIdOrThrow).toHaveBeenCalledWith(
           TEST_ACCOUNT_ID,
@@ -3147,14 +3168,14 @@ describe('ClientRequestHandler - computeStakeFee', () => {
           address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
           entropySource: 'test-entropy',
           derivationPath: [],
-        } as any);
+        });
 
         // Account has only 5 TRX
         mockAssetsService.getAccountAssetByID.mockResolvedValue({
           uiAmount: '5',
-        } as unknown as AssetEntity);
+        });
 
-        const result = await handler.handle(request as JsonRpcRequest);
+        const result = await handler.handle(request);
 
         expect(result).toStrictEqual({
           valid: false,
@@ -3163,6 +3184,716 @@ describe('ClientRequestHandler - computeStakeFee', () => {
         expect(mockFeeCalculatorService.computeFee).not.toHaveBeenCalled();
       },
     );
+  });
+});
+
+describe('ClientRequestHandler - getMaxSendableAmount', () => {
+  const TEST_TO_ADDRESS = 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb';
+  const TEST_ACCOUNT_ADDRESS = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
+  const scope = Network.Mainnet;
+
+  const createNativeAsset = (uiAmount: string): AssetEntity => ({
+    assetType: Networks[scope].nativeToken.id,
+    keyringAccountId: TEST_ACCOUNT_ID,
+    network: Network.Mainnet,
+    symbol: 'TRX',
+    decimals: 6,
+    rawAmount: trxToSun(uiAmount),
+    uiAmount,
+    iconUrl: '',
+  });
+
+  const createUsdtAsset = (uiAmount: string): AssetEntity =>
+    ({
+      assetType: 'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+      keyringAccountId: TEST_ACCOUNT_ID,
+      network: Network.Mainnet,
+      symbol: 'USDT',
+      decimals: 6,
+      rawAmount: trxToSun(uiAmount),
+      uiAmount,
+      iconUrl: '',
+    }) as unknown as AssetEntity;
+
+  const createTrc10Asset = (uiAmount: string): AssetEntity =>
+    ({
+      assetType: 'tron:728126428/trc10:1002000',
+      keyringAccountId: TEST_ACCOUNT_ID,
+      network: Network.Mainnet,
+      symbol: 'TRC10',
+      decimals: 6,
+      rawAmount: trxToSun(uiAmount),
+      uiAmount,
+      iconUrl: '',
+    }) as unknown as AssetEntity;
+
+  const createSendTransaction = ():
+    | TronwebTypes.Transaction<TronwebTypes.TransferContract>
+    | TronwebTypes.Transaction<TronwebTypes.TransferAssetContract>
+    | TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract> =>
+    ({
+      txID: 'send-tx-id',
+      raw_data: { contract: [] },
+      raw_data_hex: 'send-hex',
+    }) as unknown as
+      | TronwebTypes.Transaction<TronwebTypes.TransferContract>
+      | TronwebTypes.Transaction<TronwebTypes.TransferAssetContract>
+      | TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract>;
+
+  const createSendFees = (trxFee: string): ComputeFeeResult => [
+    {
+      type: FeeType.Base,
+      asset: {
+        unit: 'TRX',
+        type: Networks[scope].nativeToken.id,
+        amount: trxFee,
+        fungible: true as const,
+      },
+    },
+    {
+      type: FeeType.Base,
+      asset: {
+        unit: 'BANDWIDTH',
+        type: Networks[scope].bandwidth.id,
+        amount: '266',
+        fungible: true as const,
+      },
+    },
+  ];
+
+  const mockAccount = (mockAccountsService: {
+    findByIdOrThrow: Mock;
+  }): void => {
+    mockAccountsService.findByIdOrThrow.mockResolvedValue({
+      id: TEST_ACCOUNT_ID,
+      address: TEST_ACCOUNT_ADDRESS,
+      entropySource: 'test-entropy',
+      derivationPath: [],
+    });
+  };
+
+  const mockAssets = (
+    mockAssetsService: { getAccountAssetsByIDs: Mock },
+    asset: AssetEntity | null,
+    nativeToken: AssetEntity | null,
+  ): void => {
+    mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
+      asset,
+      nativeToken,
+      { rawAmount: '5000' }, // Bandwidth
+      { rawAmount: '100000' }, // Energy
+    ]);
+  };
+
+  it('returns the maximum TRX sendable for a known destination', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '1',
+          method: ClientRequestMethod.GetMaxSendableAmount,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: Networks[scope].nativeToken.id,
+            toAddress: TEST_TO_ADDRESS,
+          },
+        };
+
+        const sentAsset = createNativeAsset('100');
+        mockAccount(mockAccountsService);
+        mockAssets(mockAssetsService, sentAsset, createNativeAsset('100'));
+
+        const builtTransaction = createSendTransaction();
+        mockSendService.buildTransaction.mockResolvedValue(builtTransaction);
+
+        const feeResult = createSendFees('0.3');
+        mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
+
+        const result = await handler.handle(request);
+
+        // The balances come from the same source as onAmountInput.
+        expect(mockAssetsService.getAccountAssetsByIDs).toHaveBeenCalledWith(
+          TEST_ACCOUNT_ID,
+          [
+            Networks[scope].nativeToken.id,
+            Networks[scope].nativeToken.id,
+            Networks[scope].bandwidth.id,
+            Networks[scope].energy.id,
+          ],
+        );
+        // The probe transaction is built with the full balance as the amount.
+        expect(mockSendService.buildTransaction).toHaveBeenCalledWith({
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset: sentAsset,
+          amount: BigNumber('100'),
+          feeLimit: FEE_LIMIT,
+        });
+        expect(
+          mockFeeCalculatorService.getAccountActivationFee,
+        ).not.toHaveBeenCalled();
+        expect(result).toStrictEqual({ amount: '99.7' });
+      },
+    );
+  });
+
+  it('re-quotes the fee when a shorter encoded amount fits the available bandwidth', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '2',
+          method: ClientRequestMethod.GetMaxSendableAmount,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: Networks[scope].nativeToken.id,
+            toAddress: TEST_TO_ADDRESS,
+          },
+        };
+
+        // 0.016384 TRX encodes to 3 varint bytes; 0.016383 TRX to 2.
+        mockAccount(mockAccountsService);
+        mockAssets(
+          mockAssetsService,
+          createNativeAsset('0.016384'),
+          createNativeAsset('0.016384'),
+        );
+
+        mockSendService.buildTransaction.mockImplementation(
+          async ({ amount }) => ({
+            ...createSendTransaction(),
+            amount,
+          }),
+        );
+        mockFeeCalculatorService.computeFee
+          .mockResolvedValueOnce(createSendFees('0.345'))
+          .mockResolvedValueOnce(createSendFees('0'));
+
+        const result = await handler.handle(request);
+
+        expect(result).toStrictEqual({ amount: '0.016383' });
+      },
+    );
+  });
+
+  it('reserves account activation when the destination is omitted', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '2',
+          method: ClientRequestMethod.GetMaxSendableAmount,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: Networks[scope].nativeToken.id,
+          },
+        };
+
+        mockAccount(mockAccountsService);
+        mockAssets(
+          mockAssetsService,
+          createNativeAsset('100'),
+          createNativeAsset('100'),
+        );
+
+        mockSendService.buildTransaction.mockResolvedValue(
+          createSendTransaction(),
+        );
+        mockFeeCalculatorService.computeFee.mockResolvedValue(
+          createSendFees('0.3'),
+        );
+        mockFeeCalculatorService.getAccountActivationFee.mockResolvedValue({
+          trxFee: BigNumber('1.1'),
+          bandwidthNeeded: ZERO,
+        });
+
+        const result = await handler.handle(request);
+
+        // The probe transaction is built to the zero address.
+        expect(mockSendService.buildTransaction).toHaveBeenCalledWith({
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: NULL_ADDRESS,
+          asset: expect.objectContaining({
+            assetType: Networks[scope].nativeToken.id,
+          }),
+          amount: BigNumber('100'),
+          feeLimit: FEE_LIMIT,
+        });
+        expect(
+          mockFeeCalculatorService.getAccountActivationFee,
+        ).toHaveBeenCalledWith({
+          scope,
+          toAddress: undefined,
+          senderAddress: TEST_ACCOUNT_ADDRESS,
+        });
+        // amount = 100 - (0.3 + 1.1)
+        expect(result).toStrictEqual({ amount: '98.6' });
+      },
+    );
+  });
+
+  it('returns 0 when the TRX balance cannot cover the fees', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '3',
+          method: ClientRequestMethod.GetMaxSendableAmount,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: Networks[scope].nativeToken.id,
+            toAddress: TEST_TO_ADDRESS,
+          },
+        };
+
+        mockAccount(mockAccountsService);
+        mockAssets(
+          mockAssetsService,
+          createNativeAsset('0.1'),
+          createNativeAsset('0.1'),
+        );
+
+        mockSendService.buildTransaction.mockResolvedValue(
+          createSendTransaction(),
+        );
+        mockFeeCalculatorService.computeFee.mockResolvedValue(
+          createSendFees('0.3'),
+        );
+
+        const result = await handler.handle(request);
+
+        expect(result).toStrictEqual({ amount: '0' });
+      },
+    );
+  });
+
+  it('returns 0 when the TRX balance is zero', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '4',
+          method: ClientRequestMethod.GetMaxSendableAmount,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: Networks[scope].nativeToken.id,
+            toAddress: TEST_TO_ADDRESS,
+          },
+        };
+
+        mockAccount(mockAccountsService);
+        mockAssets(
+          mockAssetsService,
+          createNativeAsset('0'),
+          createNativeAsset('0'),
+        );
+
+        mockSendService.buildTransaction.mockResolvedValue(
+          createSendTransaction(),
+        );
+        mockFeeCalculatorService.computeFee.mockResolvedValue(
+          createSendFees('0.3'),
+        );
+
+        const result = await handler.handle(request);
+
+        expect(result).toStrictEqual({ amount: '0' });
+        expect(mockSendService.buildTransaction).not.toHaveBeenCalled();
+        expect(mockFeeCalculatorService.computeFee).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it('returns the full USDT balance when the account can cover the transfer fee', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '5',
+          method: ClientRequestMethod.GetMaxSendableAmount,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: 'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+            toAddress: TEST_TO_ADDRESS,
+          },
+        };
+
+        const sentAsset = createUsdtAsset('50');
+        mockAccount(mockAccountsService);
+        mockAssets(mockAssetsService, sentAsset, createNativeAsset('10'));
+
+        mockSendService.buildTransaction.mockResolvedValue(
+          createSendTransaction(),
+        );
+        const feeResult = createSendFees('0.3');
+        mockFeeCalculatorService.computeFee.mockResolvedValue(feeResult);
+
+        const result = await handler.handle(request);
+
+        expect(mockSendService.buildTransaction).toHaveBeenCalledWith({
+          fromAccountId: TEST_ACCOUNT_ID,
+          toAddress: TEST_TO_ADDRESS,
+          asset: sentAsset,
+          amount: BigNumber('50'),
+          feeLimit: FEE_LIMIT,
+        });
+        expect(
+          mockFeeCalculatorService.getAccountActivationFee,
+        ).not.toHaveBeenCalled();
+        expect(result).toStrictEqual({ amount: '50' });
+      },
+    );
+  });
+
+  it('normalizes a small TRC-20 balance to plain decimal notation', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '6',
+          method: ClientRequestMethod.GetMaxSendableAmount,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: 'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+            toAddress: TEST_TO_ADDRESS,
+          },
+        };
+
+        mockAccount(mockAccountsService);
+        mockAssets(
+          mockAssetsService,
+          createUsdtAsset('1e-8'),
+          createNativeAsset('10'),
+        );
+
+        mockSendService.buildTransaction.mockResolvedValue(
+          createSendTransaction(),
+        );
+        mockFeeCalculatorService.computeFee.mockResolvedValue(
+          createSendFees('0.3'),
+        );
+
+        const result = await handler.handle(request);
+
+        expect(result).toStrictEqual({ amount: '0.00000001' });
+      },
+    );
+  });
+
+  it('returns the full TRC-20 balance when the destination is omitted', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '7',
+          method: ClientRequestMethod.GetMaxSendableAmount,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: 'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+          },
+        };
+
+        mockAccount(mockAccountsService);
+        mockAssets(
+          mockAssetsService,
+          createUsdtAsset('50'),
+          createNativeAsset('10'),
+        );
+
+        mockSendService.buildTransaction.mockResolvedValue(
+          createSendTransaction(),
+        );
+        mockFeeCalculatorService.computeFee.mockResolvedValue(
+          createSendFees('0.3'),
+        );
+
+        const result = await handler.handle(request);
+
+        expect(
+          mockFeeCalculatorService.getAccountActivationFee,
+        ).not.toHaveBeenCalled();
+        expect(mockFeeCalculatorService.computeFee).toHaveBeenCalledWith(
+          expect.objectContaining({ skipAccountActivation: true }),
+        );
+        expect(result).toStrictEqual({ amount: '50' });
+      },
+    );
+  });
+
+  it('reserves account activation for TRC-10 when the destination is omitted', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '7',
+          method: ClientRequestMethod.GetMaxSendableAmount,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: 'tron:728126428/trc10:1002000',
+          },
+        };
+
+        mockAccount(mockAccountsService);
+        mockAssets(
+          mockAssetsService,
+          createTrc10Asset('50'),
+          createNativeAsset('10'),
+        );
+
+        mockSendService.buildTransaction.mockResolvedValue(
+          createSendTransaction(),
+        );
+        mockFeeCalculatorService.computeFee.mockResolvedValue(
+          createSendFees('0.5'),
+        );
+        mockFeeCalculatorService.getAccountActivationFee.mockResolvedValue({
+          trxFee: BigNumber('1.1'),
+          bandwidthNeeded: ZERO,
+        });
+
+        const result = await handler.handle(request);
+
+        expect(
+          mockFeeCalculatorService.getAccountActivationFee,
+        ).toHaveBeenCalledWith({
+          scope,
+          toAddress: undefined,
+          senderAddress: TEST_ACCOUNT_ADDRESS,
+        });
+        expect(result).toStrictEqual({ amount: '50' });
+      },
+    );
+  });
+
+  it('returns 0 for TRC-10 when the omitted destination activation reserve cannot be covered', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '8',
+          method: ClientRequestMethod.GetMaxSendableAmount,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: 'tron:728126428/trc10:1002000',
+          },
+        };
+
+        mockAccount(mockAccountsService);
+        mockAssets(
+          mockAssetsService,
+          createTrc10Asset('50'),
+          createNativeAsset('1'),
+        );
+
+        mockSendService.buildTransaction.mockResolvedValue(
+          createSendTransaction(),
+        );
+        mockFeeCalculatorService.computeFee.mockResolvedValue(
+          createSendFees('0.5'),
+        );
+        mockFeeCalculatorService.getAccountActivationFee.mockResolvedValue({
+          trxFee: BigNumber('1.1'),
+          bandwidthNeeded: ZERO,
+        });
+
+        const result = await handler.handle(request);
+
+        expect(
+          mockFeeCalculatorService.getAccountActivationFee,
+        ).toHaveBeenCalledWith({
+          scope,
+          toAddress: undefined,
+          senderAddress: TEST_ACCOUNT_ADDRESS,
+        });
+        expect(result).toStrictEqual({ amount: '0' });
+      },
+    );
+  });
+
+  it('returns 0 when TRX cannot cover the USDT transfer fee', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '6',
+          method: ClientRequestMethod.GetMaxSendableAmount,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: 'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+            toAddress: TEST_TO_ADDRESS,
+          },
+        };
+
+        mockAccount(mockAccountsService);
+        mockAssets(
+          mockAssetsService,
+          createUsdtAsset('50'),
+          createNativeAsset('0.1'),
+        );
+
+        mockSendService.buildTransaction.mockResolvedValue(
+          createSendTransaction(),
+        );
+        mockFeeCalculatorService.computeFee.mockResolvedValue(
+          createSendFees('0.3'),
+        );
+
+        const result = await handler.handle(request);
+
+        expect(result).toStrictEqual({ amount: '0' });
+      },
+    );
+  });
+
+  it('returns 0 when the USDT balance is zero', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '7',
+          method: ClientRequestMethod.GetMaxSendableAmount,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: 'tron:728126428/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+            toAddress: TEST_TO_ADDRESS,
+          },
+        };
+
+        mockAccount(mockAccountsService);
+        mockAssets(
+          mockAssetsService,
+          createUsdtAsset('0'),
+          createNativeAsset('10'),
+        );
+
+        const result = await handler.handle(request);
+
+        expect(result).toStrictEqual({ amount: '0' });
+        expect(mockSendService.buildTransaction).not.toHaveBeenCalled();
+        expect(mockFeeCalculatorService.computeFee).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it('returns 0 when the account does not hold the asset', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '8',
+          method: ClientRequestMethod.GetMaxSendableAmount,
+          params: {
+            accountId: TEST_ACCOUNT_ID,
+            assetId: Networks[scope].nativeToken.id,
+            toAddress: TEST_TO_ADDRESS,
+          },
+        };
+
+        mockAccount(mockAccountsService);
+        mockAssets(mockAssetsService, null, null);
+
+        const result = await handler.handle(request);
+
+        expect(result).toStrictEqual({ amount: '0' });
+        expect(mockSendService.buildTransaction).not.toHaveBeenCalled();
+        expect(mockFeeCalculatorService.computeFee).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it('throws on an invalid destination address', async () => {
+    await withClientRequestHandler(async ({ handler }) => {
+      const request = {
+        jsonrpc: '2.0' as const,
+        id: '9',
+        method: ClientRequestMethod.GetMaxSendableAmount,
+        params: {
+          accountId: TEST_ACCOUNT_ID,
+          assetId: Networks[scope].nativeToken.id,
+          toAddress: 'not-a-tron-address',
+        },
+      };
+
+      await expect(handler.handle(request)).rejects.toThrow(InvalidParamsError);
+    });
   });
 });
 
@@ -3198,7 +3929,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           entropySource: 'test-entropy',
           derivationPath: [],
           type: 'tron:basic',
-        } as any);
+        });
 
         // Mock asset found
         const mockAsset = {
@@ -3215,7 +3946,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         // validateSend returns insufficient balance
         mockSendService.validateSend.mockResolvedValue({
           valid: false,
-          errorCode: 'InsufficientBalance' as any,
+          errorCode: 'InsufficientBalance',
         });
 
         const result = await handler.handle(request);
@@ -3270,7 +4001,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           entropySource: 'test-entropy',
           derivationPath: [],
           type: 'tron:basic',
-        } as any);
+        });
 
         const mockAsset = {
           assetType: Networks[scope].nativeToken.id,
@@ -3286,7 +4017,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         // validateSend returns insufficient balance to cover fee
         mockSendService.validateSend.mockResolvedValue({
           valid: false,
-          errorCode: 'InsufficientBalanceToCoverFee' as any,
+          errorCode: 'InsufficientBalanceToCoverFee',
         });
 
         const result = await handler.handle(request);
@@ -3300,6 +4031,68 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         expect(
           mockConfirmationHandler.confirmTransactionRequest,
         ).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it('does not sign or send the transaction when the user rejects the send', async () => {
+    await withClientRequestHandler(
+      async ({
+        handler,
+        mockAccountsService,
+        mockAssetsService,
+        mockSendService,
+        mockFeeCalculatorService,
+        mockConfirmationHandler,
+        mockTransactionExpirationRefresherService,
+      }) => {
+        const request = {
+          jsonrpc: '2.0' as const,
+          id: '1',
+          method: ClientRequestMethod.ConfirmSend,
+          params: {
+            fromAccountId: TEST_ACCOUNT_ID,
+            toAddress: TEST_TO_ADDRESS,
+            amount: '10',
+            assetId: Networks[scope].nativeToken.id,
+          },
+        };
+
+        mockAccountsService.findById.mockResolvedValue({
+          id: TEST_ACCOUNT_ID,
+          address: 'TExvJsxzPyAZ2NtkrWgNKnbLkpqnFJ73DT',
+          entropySource: 'test-entropy',
+          derivationPath: [],
+          type: 'tron:basic',
+        });
+        mockAssetsService.fetchAccountAssetsByIDs.mockResolvedValue([
+          {
+            assetType: Networks[scope].nativeToken.id,
+            symbol: 'TRX',
+            decimals: 6,
+            uiAmount: '100',
+            rawAmount: '100000000',
+          },
+          { rawAmount: '1000' },
+          { rawAmount: '50000' },
+        ]);
+        mockSendService.validateSend.mockResolvedValue({ valid: true });
+        mockSendService.buildTransaction.mockResolvedValue({});
+        mockFeeCalculatorService.computeFee.mockResolvedValue([]);
+        mockTransactionExpirationRefresherService.ensureFreshRawData.mockResolvedValue(
+          { expiration: 1_700_000_060_000 },
+        );
+
+        // User rejects.
+        mockConfirmationHandler.confirmTransactionRequest.mockResolvedValue({
+          confirmed: false,
+          context: {},
+        });
+
+        await expect(handler.handle(request)).rejects.toThrow(
+          UserRejectedRequestError,
+        );
+        expect(mockSendService.signAndSendTransaction).not.toHaveBeenCalled();
       },
     );
   });
@@ -3334,7 +4127,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           derivationPath: [],
           type: 'tron:basic',
         };
-        mockAccountsService.findById.mockResolvedValue(mockAccount as any);
+        mockAccountsService.findById.mockResolvedValue(mockAccount);
 
         const mockAsset = {
           assetType: Networks[scope].nativeToken.id,
@@ -3351,7 +4144,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           mockAsset,
           { rawAmount: '1000' }, // Bandwidth
           { rawAmount: '50000' }, // Energy
-        ] as any);
+        ]);
 
         const mockTransaction = {
           txID: 'test-tx-id',
@@ -3363,7 +4156,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         mockSendService.buildTransaction.mockResolvedValue(mockTransaction);
         const freshTransactionRawData = { expiration: 1_700_000_060_000 };
         mockTransactionExpirationRefresherService.ensureFreshRawData.mockResolvedValue(
-          freshTransactionRawData as unknown as TransactionRawData,
+          freshTransactionRawData,
         );
 
         const mockFees = [
@@ -3379,16 +4172,19 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         ] as ComputeFeeResult;
         mockFeeCalculatorService.computeFee.mockResolvedValue(mockFees);
 
-        // User confirms.
-        mockConfirmationHandler.confirmTransactionRequest.mockResolvedValue(
-          true,
-        );
+        // User confirms, and the confirmation context is carried along.
+        mockConfirmationHandler.confirmTransactionRequest.mockResolvedValue({
+          confirmed: true,
+          context: {
+            securityProperties: { securityAlertResponse: 'Benign' },
+          },
+        });
 
         // Transaction sent successfully.
         mockSendService.signAndSendTransaction.mockResolvedValue({
           result: true,
           txid: 'broadcast-tx-id',
-        } as TronwebTypes.BroadcastReturn<any>);
+        });
 
         const result = await handler.handle(request);
 
@@ -3428,7 +4224,13 @@ describe('ClientRequestHandler - confirmSend validation', () => {
             transactionRawData: freshTransactionRawData,
           }),
         );
-        expect(mockSendService.signAndSendTransaction).toHaveBeenCalled();
+        expect(mockSendService.signAndSendTransaction).toHaveBeenCalledWith(
+          expect.objectContaining({
+            context: {
+              securityProperties: { securityAlertResponse: 'Benign' },
+            },
+          }),
+        );
 
         // Verify the handler returns the submitted transaction.
         expect(result).toMatchObject({
@@ -3437,8 +4239,9 @@ describe('ClientRequestHandler - confirmSend validation', () => {
         });
 
         // buildTransaction must receive a BigNumber to preserve decimal precision
-        const calledAmount = mockSendService.buildTransaction.mock.calls[0]?.[0]
-          ?.amount as BigNumber;
+        const [buildTransactionParams] = mockSendService.buildTransaction.mock
+          .calls[0] as [Parameters<SendService['buildTransaction']>[0]];
+        const calledAmount = buildTransactionParams.amount;
         expect(calledAmount).toBeInstanceOf(BigNumber);
         expect(calledAmount.toString()).toBe('10');
       },
@@ -3501,7 +4304,7 @@ describe('ClientRequestHandler - confirmSend validation', () => {
           entropySource: 'test-entropy',
           derivationPath: [],
           type: 'tron:basic',
-        } as any);
+        });
 
         // Asset not found
         mockAssetsService.fetchAccountAssetsByIDs.mockResolvedValue([

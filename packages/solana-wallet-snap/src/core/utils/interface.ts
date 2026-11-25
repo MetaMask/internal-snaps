@@ -10,6 +10,7 @@ import type {
   ResolveInterfaceResult,
   UpdateInterfaceResult,
 } from '@metamask/snaps-sdk';
+import { Mutex } from 'async-mutex';
 
 import type { ScheduleBackgroundEventMethod } from '../handlers/onCronjob/backgroundEvents/ScheduleBackgroundEventMethod';
 import type { Preferences } from '../types/snap';
@@ -18,6 +19,37 @@ export const CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME =
   'confirm-sign-and-send-transaction';
 export const CONFIRM_SIGN_MESSAGE_INTERFACE_NAME = 'confirm-sign-message';
 export const CONFIRM_SIGN_IN_INTERFACE_NAME = 'confirm-sign-in';
+
+/**
+ * Mutexes keyed by interface ID. An entry exists only while work for that
+ * interface is pending.
+ */
+const interfaceLocks = new Map<string, Mutex>();
+
+/**
+ * Runs work exclusively for an interface. Reads and updates of an interface's
+ * context must run inside the lock, so they cannot interleave with another
+ * update to the same interface. Other interfaces are not blocked.
+ *
+ * @param interfaceId - The ID of the interface to lock.
+ * @param callback - The work to run while holding the lock.
+ * @returns The callback result.
+ */
+export async function withInterfaceLock<TResult>(
+  interfaceId: string,
+  callback: () => Promise<TResult>,
+): Promise<TResult> {
+  const mutex = interfaceLocks.get(interfaceId) ?? new Mutex();
+  interfaceLocks.set(interfaceId, mutex);
+
+  try {
+    return await mutex.runExclusive(callback);
+  } finally {
+    if (!mutex.isLocked() && interfaceLocks.get(interfaceId) === mutex) {
+      interfaceLocks.delete(interfaceId);
+    }
+  }
+}
 
 /**
  * Creates an interface using the provided UI component and context.

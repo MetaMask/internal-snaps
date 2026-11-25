@@ -1,4 +1,7 @@
-import { ActionHeader } from '@metamask/snap-networks-utils';
+import {
+  ActionHeader,
+  requiresMaliciousAcknowledgement,
+} from '@metamask/snap-networks-utils';
 import type { ComponentOrElement } from '@metamask/snaps-sdk';
 import {
   Address,
@@ -32,7 +35,6 @@ import {
   getAccountExplorerUrl,
   getAccountName,
   isFetchInProgress,
-  requiresMaliciousAcknowledgement,
   shouldDisableConfirmation,
 } from '../../utils';
 import { MemoEditFormNames } from '../MemoEdit/constants';
@@ -61,6 +63,7 @@ export const ConfirmSendTransaction = ({
   transactionsFetchStatus = FetchStatus.Initial,
   errorMessage,
   memo: contextMemo,
+  memoEditable = true,
   supportsMemo = true,
 }: ConfirmSendTransactionProps): ComponentOrElement => {
   const t = i18n(locale);
@@ -171,14 +174,16 @@ export const ConfirmSendTransaction = ({
               </SnapText>
               <Box direction="horizontal" alignment="end">
                 <SnapText>{memo ?? t('confirmation.memo.none')}</SnapText>
-                <Button
-                  name={MemoEditFormNames.Open}
-                  disabled={shouldDisableMemoEdit}
-                >
-                  {memo
-                    ? t('confirmation.memo.update')
-                    : t('confirmation.memo.add')}
-                </Button>
+                {memoEditable ? (
+                  <Button
+                    name={MemoEditFormNames.Open}
+                    disabled={shouldDisableMemoEdit}
+                  >
+                    {memo
+                      ? t('confirmation.memo.update')
+                      : t('confirmation.memo.add')}
+                  </Button>
+                ) : null}
               </Box>
             </Box>
           </Section>
@@ -189,10 +194,10 @@ export const ConfirmSendTransaction = ({
         cancelButtonName={ConfirmSendTransactionFormNames.Cancel}
         confirmButtonName={ConfirmSendTransactionFormNames.Confirm}
         confirmDisabled={shouldDisableConfirmButton}
-        requiresAcknowledgement={requiresMaliciousAcknowledgement({
-          preferences,
-          scan,
-        })}
+        requiresAcknowledgement={requiresMaliciousAcknowledgement(
+          preferences.useSecurityAlerts,
+          scan?.validation?.type,
+        )}
       />
     </Container>
   );

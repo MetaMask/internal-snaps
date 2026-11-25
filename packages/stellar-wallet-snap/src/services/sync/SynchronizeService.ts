@@ -137,7 +137,7 @@ export class SynchronizeService {
               await trackError(result.reason);
 
               const taskName = tasks[index]?.name ?? 'synchronize';
-              this.#logger.warn(`Failed to ${taskName}`, {
+              this.#logger.error(`Failed to ${taskName}`, {
                 error: result.reason,
               });
             }
@@ -208,7 +208,7 @@ export class SynchronizeService {
     } catch (error: unknown) {
       await trackError(error);
 
-      this.#logger.warn('Failed to synchronize assets', {
+      this.#logger.error('Failed to synchronize assets', {
         error,
       });
     }
@@ -232,7 +232,7 @@ export class SynchronizeService {
     } catch (error: unknown) {
       await trackError(error);
 
-      this.#logger.warn('Failed to load SEP-41 assets', {
+      this.#logger.error('Failed to load SEP-41 assets', {
         error,
       });
 
@@ -272,7 +272,7 @@ export class SynchronizeService {
           if (!(error instanceof AccountNotActivatedException)) {
             await trackError(error);
 
-            this.#logger.warn('Failed to load account for sync', {
+            this.#logger.error('Failed to load account for sync', {
               error,
               accountAddress: account.address,
               scope,
