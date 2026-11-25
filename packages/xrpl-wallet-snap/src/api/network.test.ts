@@ -4,7 +4,7 @@ import { KnownCaip2ChainId, KnownCaip2ChainIdStruct } from './network';
 
 describe('KnownCaip2ChainId', () => {
   it('identifies mainnet as xrpl:0', () => {
-    expect(KnownCaip2ChainId.Mainnet).toStrictEqual('xrpl:0');
+    expect(KnownCaip2ChainId.Mainnet).toBe('xrpl:0');
   });
 });
 

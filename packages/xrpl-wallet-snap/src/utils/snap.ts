@@ -11,6 +11,7 @@ import type {
   SnapsProvider,
   UpdateInterfaceResult,
 } from '@metamask/snaps-sdk';
+import { ensureError } from '@metamask/utils';
 
 import { XrplSnapException } from './errors';
 
@@ -185,18 +186,7 @@ export async function cancelBackgroundEventIfExists(
  * @returns True if the error indicates the interface was not found.
  */
 function isInterfaceNotFoundError(error: unknown): boolean {
-  let message = '';
-  if (error instanceof Error) {
-    message = error.message.toLowerCase();
-  } else if (
-    typeof error === 'object' &&
-    error !== null &&
-    'message' in error
-  ) {
-    message = (error.message as string).toLowerCase();
-  } else {
-    message = String(error).toLowerCase();
-  }
+  const message = ensureError(error).message.toLowerCase();
   return message.includes('interface') && message.includes('not found');
 }
 

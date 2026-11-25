@@ -107,9 +107,9 @@ describe('errors', () => {
 
   describe('InvalidHttpRequestParamsException', () => {
     it('can be constructed with a message', () => {
-      expect(
-        new InvalidHttpRequestParamsException('bad params').message,
-      ).toStrictEqual('bad params');
+      expect(new InvalidHttpRequestParamsException('bad params').message).toBe(
+        'bad params',
+      );
     });
   });
 
@@ -149,7 +149,7 @@ describe('errors', () => {
     ])('wraps transport code %s in HttpException', (code) => {
       const error = Object.assign(new Error('transport'), { code });
 
-      expect(isHttpException(error)).toBe(true);
+      expect(isHttpException(error)).toStrictEqual(true);
       expect(normalizeHttpException(error)).toBeInstanceOf(HttpException);
     });
 
