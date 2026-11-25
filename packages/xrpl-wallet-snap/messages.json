@@ -1,0 +1,692 @@
+{
+  "confirmation.transaction.title": {
+    "message": "Transaction request"
+  },
+  "confirmation.estimatedChanges.title": {
+    "message": "Estimated changes"
+  },
+  "confirmation.estimatedChanges.tooltip": {
+    "message": "Estimated changes are what might happen if you go through with this transaction. This is just a prediction, not a guarantee."
+  },
+  "confirmation.estimatedChanges.send": {
+    "message": "You send"
+  },
+  "confirmation.estimatedChanges.receive": {
+    "message": "You receive"
+  },
+  "confirmation.origin": {
+    "message": "Request from"
+  },
+  "confirmation.origin.tooltip": {
+    "message": "This is the site asking for your confirmation."
+  },
+  "confirmation.to": {
+    "message": "To"
+  },
+  "confirmation.network": {
+    "message": "Network"
+  },
+  "confirmation.transactionFee": {
+    "message": "Network fee"
+  },
+  "confirmation.confirmButton": {
+    "message": "Confirm"
+  },
+  "confirmation.cancelButton": {
+    "message": "Cancel"
+  },
+  "confirmation.reviewAlertsButton": {
+    "message": "Review alert"
+  },
+  "confirmation.maliciousAck.title": {
+    "message": "Malicious request"
+  },
+  "confirmation.maliciousAck.description": {
+    "message": "If you confirm this request, you will probably lose your assets to a scammer."
+  },
+  "confirmation.maliciousAck.checkbox": {
+    "message": "I have acknowledged the risk and still want to proceed"
+  },
+  "confirmation.maliciousAck.proceed": {
+    "message": "Confirm"
+  },
+  "confirmation.maliciousAck.back": {
+    "message": "Go back"
+  },
+  "confirmation.signMessage.title": {
+    "message": "Sign message"
+  },
+  "confirmation.signMessage.message": {
+    "message": "Message"
+  },
+  "confirmation.invocation.argument": {
+    "message": "Argument {index}"
+  },
+  "confirmation.account": {
+    "message": "Account"
+  },
+  "confirmation.destinationTag": {
+    "message": "Destination tag"
+  },
+  "confirmation.destinationTag.none": {
+    "message": "None"
+  },
+  "confirmation.destinationTag.add": {
+    "message": "Add"
+  },
+  "confirmation.destinationTag.update": {
+    "message": "Update"
+  },
+  "confirmation.destinationTag.title": {
+    "message": "Destination tag"
+  },
+  "confirmation.destinationTag.description": {
+    "message": "Some accounts require a destination tag. Without it, your transfer may be delayed or lost."
+  },
+  "confirmation.destinationTag.placeholder": {
+    "message": "Enter destination tag"
+  },
+  "confirmation.destinationTag.save": {
+    "message": "Save"
+  },
+  "confirmation.destinationTag.back": {
+    "message": "Back"
+  },
+  "confirmation.destinationTag.error.invalid": {
+    "message": "Destination tag must be a whole number from 0 to 4294967295"
+  },
+  "confirmation.destinationTag.error.saveFailed": {
+    "message": "Could not save destination tag. Please try again."
+  },
+  "confirmation.asset": {
+    "message": "Asset"
+  },
+  "confirmation.signTransaction.title": {
+    "message": "Sign transaction"
+  },
+  "confirmation.estimatedChanges.notAvailable": {
+    "message": "Estimated changes are not available"
+  },
+  "confirmation.estimatedChanges.noChanges": {
+    "message": "No estimated changes"
+  },
+  "confirmation.securityScanInProgressTitle": {
+    "message": "Checking for security issues"
+  },
+  "confirmation.securityScanInProgressMessage": {
+    "message": "This usually takes a few seconds."
+  },
+  "confirmation.securityScanAPIErrorTitle": {
+    "message": "Security scan failed"
+  },
+  "confirmation.securityScanAPIErrorMessage": {
+    "message": "Only continue if you trust every address involved."
+  },
+  "confirmation.securityScanErrorTitle": {
+    "message": "Security scan failed"
+  },
+  "confirmation.securityScanErrorSubtitle": {
+    "message": "{reason}"
+  },
+  "confirmation.securityScanIncompleteTitle": {
+    "message": "Security scan incomplete"
+  },
+  "confirmation.securityScanIncompleteSubtitle": {
+    "message": "{reason}. Only continue if you trust every address involved."
+  },
+  "confirmation.simulationErrorTitle": {
+    "message": "This transaction is expected to fail."
+  },
+  "confirmation.simulationErrorSubtitle": {
+    "message": "{reason}"
+  },
+  "confirmation.txnError.requireDestTag": {
+    "message": "This account requires a destination tag. Add a destination tag to continue."
+  },
+  "confirmation.txnError.depositNotAuthorized": {
+    "message": "This account is not authorized to receive deposits from you."
+  },
+  "confirmation.txnError.invalidCreateAccountAmount": {
+    "message": "Update Send Amount. A new account requires 1 XRP minimum."
+  },
+  "confirmation.txnError.invalidCreateAccountAsset": {
+    "message": "The recipient's account must hold 1 XRP before it can receive this asset."
+  },
+  "confirmation.txnError.trustlineNotAuthorized": {
+    "message": "The destination is not authorized to receive this asset."
+  },
+  "confirmation.txnError.trustlineNotFound": {
+    "message": "The destination has not activated a trustline for this asset."
+  },
+  "confirmation.txnError.trustlineNotFoundOnAccount": {
+    "message": "This account has not activated a trustline for this asset."
+  },
+  "confirmation.txnError.trustlineExceedLimit": {
+    "message": "This payment would exceed the destination's trustline limit."
+  },
+  "confirmation.txnError.insufficientBalance": {
+    "message": "Insufficient balance for this transaction."
+  },
+  "confirmation.txnError.insufficientBalanceToCoverFee": {
+    "message": "Insufficient balance to cover the network fee."
+  },
+  "confirmation.txnError.generic": {
+    "message": "This transaction cannot be completed. Close this request and try again."
+  },
+  "confirmation.txnError.trustlineNonZeroBalance": {
+    "message": "Send or swap the remaining balance before removing this trustline."
+  },
+  "confirmation.txnError.mptHoldingNotFound": {
+    "message": "The destination has not authorized this asset."
+  },
+  "confirmation.txnError.mptHoldingNotFoundOnAccount": {
+    "message": "This account has not authorized this asset."
+  },
+  "confirmation.txnError.mptNonZeroBalance": {
+    "message": "Send or swap the remaining balance before removing this authorization."
+  },
+  "confirmation.txnError.insufficientBalanceToCoverBaseReserve": {
+    "message": "Insufficient balance to cover the account reserve."
+  },
+  "confirmation.txnError.expired": {
+    "message": "This transaction has expired. Close this request and try again."
+  },
+  "confirmation.validationScanErrorTitle": {
+    "message": "Security check unavailable"
+  },
+  "confirmation.validationScanErrorSubtitle": {
+    "message": "{reason}"
+  },
+  "confirmation.validationErrorTitle": {
+    "message": "This is a deceptive request"
+  },
+  "confirmation.validationErrorSubtitle": {
+    "message": "If you approve this request, a third party known for scams will take all your assets."
+  },
+  "confirmation.validationWarningTitle": {
+    "message": "This request may be risky"
+  },
+  "confirmation.validationWarningSubtitle": {
+    "message": "Security Alerts found potential risk. Only continue if you trust this site and every address involved."
+  },
+  "confirmation.validationErrorLearnMore": {
+    "message": "See details"
+  },
+  "confirmation.validationErrorSecurityAdviced": {
+    "message": "Powered by"
+  },
+  "confirmation.transaction.clawback": {
+    "message": "Clawback"
+  },
+  "confirmation.transaction.payment": {
+    "message": "Payment"
+  },
+  "confirmation.transaction.param.account": {
+    "message": "Account"
+  },
+  "confirmation.transaction.param.amount": {
+    "message": "Amount"
+  },
+  "confirmation.transaction.param.asset": {
+    "message": "Asset"
+  },
+  "confirmation.transaction.param.authorize": {
+    "message": "Authorize"
+  },
+  "confirmation.transaction.param.destination": {
+    "message": "Destination"
+  },
+  "confirmation.transaction.param.flags": {
+    "message": "Flags"
+  },
+  "confirmation.transaction.param.sendMax": {
+    "message": "Send max"
+  },
+  "confirmation.signChangeTrustOptIn.title": {
+    "message": "Add {asset} trustline"
+  },
+  "confirmation.signChangeTrustOptOut.title": {
+    "message": "Remove {asset} trustline"
+  },
+  "confirmation.signChangeMptOptIn.title": {
+    "message": "Authorize {asset}"
+  },
+  "confirmation.signChangeMptOptOut.title": {
+    "message": "Remove {asset} authorization"
+  },
+  "transactionScan.errors.unknownError": {
+    "message": "An unknown error occurred"
+  },
+  "transactionScan.errors.insufficientBalance": {
+    "message": "Insufficient balance"
+  },
+  "transactionScan.errors.invalidTransaction": {
+    "message": "Invalid transaction"
+  },
+  "transactionScan.errors.insufficientFunds": {
+    "message": "Insufficient funds"
+  },
+  "transactionScan.errors.noTrustline": {
+    "message": "Trustline not found"
+  },
+  "transactionScan.errors.transactionExpired": {
+    "message": "Transaction expired"
+  },
+  "transactionScan.errors.invalidAddress": {
+    "message": "Invalid address"
+  },
+  "transactionScan.errors.unsupportedEIP712Message": {
+    "message": "Unsupported method"
+  },
+  "confirmation.accountActivation.title": {
+    "message": "Activate Xrpl Wallet"
+  },
+  "confirmation.accountActivation.description": {
+    "message": "On Xrpl, your wallet must hold a minimum of 1 XRP before you can hold other assets."
+  },
+  "confirmation.accountActivation.callToAction": {
+    "message": "Add XRP to your wallet to get started."
+  },
+  "confirmation.accountActivation.address": {
+    "message": "Xrpl address"
+  },
+  "confirmation.transaction.batch": {
+    "message": "Batch"
+  },
+  "confirmation.transaction.accountset": {
+    "message": "Account set"
+  },
+  "confirmation.transaction.accountdelete": {
+    "message": "Account delete"
+  },
+  "confirmation.transaction.ammbid": {
+    "message": "AMM bid"
+  },
+  "confirmation.transaction.ammcreate": {
+    "message": "AMM create"
+  },
+  "confirmation.transaction.ammdelete": {
+    "message": "AMM delete"
+  },
+  "confirmation.transaction.ammdeposit": {
+    "message": "AMM deposit"
+  },
+  "confirmation.transaction.ammvote": {
+    "message": "AMM vote"
+  },
+  "confirmation.transaction.ammwithdraw": {
+    "message": "AMM withdraw"
+  },
+  "confirmation.transaction.checkcancel": {
+    "message": "Cancel check"
+  },
+  "confirmation.transaction.checkcash": {
+    "message": "Cash check"
+  },
+  "confirmation.transaction.checkcreate": {
+    "message": "Create check"
+  },
+  "confirmation.transaction.diddelete": {
+    "message": "Delete DID"
+  },
+  "confirmation.transaction.didset": {
+    "message": "Set DID"
+  },
+  "confirmation.transaction.depositpreauth": {
+    "message": "Deposit preauthorization"
+  },
+  "confirmation.transaction.escrowcancel": {
+    "message": "Cancel escrow"
+  },
+  "confirmation.transaction.escrowfinish": {
+    "message": "Finish escrow"
+  },
+  "confirmation.transaction.escrowcreate": {
+    "message": "Create escrow"
+  },
+  "confirmation.transaction.nftokenacceptoffer": {
+    "message": "Accept NFT offer"
+  },
+  "confirmation.transaction.nftokenburn": {
+    "message": "Burn NFT"
+  },
+  "confirmation.transaction.nftokencanceloffer": {
+    "message": "Cancel NFT offer"
+  },
+  "confirmation.transaction.nftokencreateoffer": {
+    "message": "Create NFT offer"
+  },
+  "confirmation.transaction.nftokenmint": {
+    "message": "Mint NFT"
+  },
+  "confirmation.transaction.offercancel": {
+    "message": "Cancel offer"
+  },
+  "confirmation.transaction.offercreate": {
+    "message": "Create offer"
+  },
+  "confirmation.transaction.mptokenauthorize": {
+    "message": "Authorize MPT"
+  },
+  "confirmation.transaction.mptokenissuancecreate": {
+    "message": "Create MPT issuance"
+  },
+  "confirmation.transaction.mptokenissuancedestroy": {
+    "message": "Destroy MPT issuance"
+  },
+  "confirmation.transaction.mptokenissuanceset": {
+    "message": "Set MPT issuance"
+  },
+  "confirmation.transaction.oracledelete": {
+    "message": "Delete oracle"
+  },
+  "confirmation.transaction.oracleset": {
+    "message": "Set oracle"
+  },
+  "confirmation.transaction.paymentchannelclaim": {
+    "message": "Claim payment channel"
+  },
+  "confirmation.transaction.paymentchannelcreate": {
+    "message": "Create payment channel"
+  },
+  "confirmation.transaction.paymentchannelfund": {
+    "message": "Fund payment channel"
+  },
+  "confirmation.transaction.setregularkey": {
+    "message": "Set regular key"
+  },
+  "confirmation.transaction.signerlistset": {
+    "message": "Set signer list"
+  },
+  "confirmation.transaction.ticketcreate": {
+    "message": "Create ticket"
+  },
+  "confirmation.transaction.trustset": {
+    "message": "Set trust line"
+  },
+  "confirmation.transaction.xchainaccountcreatecommit": {
+    "message": "XChain account create commit"
+  },
+  "confirmation.transaction.xchainaddaccountcreateattestation": {
+    "message": "XChain add account create attestation"
+  },
+  "confirmation.transaction.xchainaddclaimattestation": {
+    "message": "XChain add claim attestation"
+  },
+  "confirmation.transaction.xchainclaim": {
+    "message": "XChain claim"
+  },
+  "confirmation.transaction.xchaincommit": {
+    "message": "XChain commit"
+  },
+  "confirmation.transaction.xchaincreatebridge": {
+    "message": "XChain create bridge"
+  },
+  "confirmation.transaction.xchaincreateclaimid": {
+    "message": "XChain create claim ID"
+  },
+  "confirmation.transaction.xchainmodifybridge": {
+    "message": "XChain modify bridge"
+  },
+  "confirmation.transaction.param.limitAmount": {
+    "message": "Trust limit"
+  },
+  "confirmation.transaction.param.deliverMax": {
+    "message": "Deliver max"
+  },
+  "confirmation.transaction.param.deliverMin": {
+    "message": "Deliver min"
+  },
+  "confirmation.transaction.param.takerGets": {
+    "message": "Taker gets"
+  },
+  "confirmation.transaction.param.takerPays": {
+    "message": "Taker pays"
+  },
+  "confirmation.transaction.param.offerSequence": {
+    "message": "Offer sequence"
+  },
+  "confirmation.transaction.param.sourceTag": {
+    "message": "Source tag"
+  },
+  "confirmation.transaction.param.paths": {
+    "message": "Paths"
+  },
+  "confirmation.transaction.param.invoiceID": {
+    "message": "Invoice ID"
+  },
+  "confirmation.transaction.param.qualityIn": {
+    "message": "Quality in"
+  },
+  "confirmation.transaction.param.qualityOut": {
+    "message": "Quality out"
+  },
+  "confirmation.transaction.param.expiration": {
+    "message": "Expiration"
+  },
+  "confirmation.transaction.param.domain": {
+    "message": "Domain"
+  },
+  "confirmation.transaction.param.emailHash": {
+    "message": "Email hash"
+  },
+  "confirmation.transaction.param.messageKey": {
+    "message": "Message key"
+  },
+  "confirmation.transaction.param.transferRate": {
+    "message": "Transfer rate"
+  },
+  "confirmation.transaction.param.tickSize": {
+    "message": "Tick size"
+  },
+  "confirmation.transaction.param.nFTokenMinter": {
+    "message": "NFT minter"
+  },
+  "confirmation.transaction.param.clearFlag": {
+    "message": "Clear flag"
+  },
+  "confirmation.transaction.param.setFlag": {
+    "message": "Set flag"
+  },
+  "confirmation.transaction.param.regularKey": {
+    "message": "Regular key"
+  },
+  "confirmation.transaction.param.signerQuorum": {
+    "message": "Signer quorum"
+  },
+  "confirmation.transaction.param.signerEntries": {
+    "message": "Signer entries"
+  },
+  "confirmation.transaction.param.ticketCount": {
+    "message": "Ticket count"
+  },
+  "confirmation.transaction.param.unauthorize": {
+    "message": "Unauthorize"
+  },
+  "confirmation.transaction.param.checkID": {
+    "message": "Check ID"
+  },
+  "confirmation.transaction.param.condition": {
+    "message": "Condition"
+  },
+  "confirmation.transaction.param.cancelAfter": {
+    "message": "Cancel after"
+  },
+  "confirmation.transaction.param.finishAfter": {
+    "message": "Finish after"
+  },
+  "confirmation.transaction.param.fulfillment": {
+    "message": "Fulfillment"
+  },
+  "confirmation.transaction.param.owner": {
+    "message": "Owner"
+  },
+  "confirmation.transaction.param.settleDelay": {
+    "message": "Settle delay"
+  },
+  "confirmation.transaction.param.publicKey": {
+    "message": "Public key"
+  },
+  "confirmation.transaction.param.channel": {
+    "message": "Channel"
+  },
+  "confirmation.transaction.param.balance": {
+    "message": "Balance"
+  },
+  "confirmation.transaction.param.signature": {
+    "message": "Signature"
+  },
+  "confirmation.transaction.param.nFTokenTaxon": {
+    "message": "NFT taxon"
+  },
+  "confirmation.transaction.param.issuer": {
+    "message": "Issuer"
+  },
+  "confirmation.transaction.param.transferFee": {
+    "message": "Transfer fee"
+  },
+  "confirmation.transaction.param.uRI": {
+    "message": "URI"
+  },
+  "confirmation.transaction.param.nFTokenID": {
+    "message": "NFT ID"
+  },
+  "confirmation.transaction.param.nFTokenOffers": {
+    "message": "NFT offers"
+  },
+  "confirmation.transaction.param.nFTokenSellOffer": {
+    "message": "NFT sell offer"
+  },
+  "confirmation.transaction.param.nFTokenBuyOffer": {
+    "message": "NFT buy offer"
+  },
+  "confirmation.transaction.param.nFTokenBrokerFee": {
+    "message": "NFT broker fee"
+  },
+  "confirmation.transaction.param.amount2": {
+    "message": "Amount 2"
+  },
+  "confirmation.transaction.param.tradingFee": {
+    "message": "Trading fee"
+  },
+  "confirmation.transaction.param.asset2": {
+    "message": "Asset 2"
+  },
+  "confirmation.transaction.param.ePrice": {
+    "message": "Effective price"
+  },
+  "confirmation.transaction.param.lPTokenOut": {
+    "message": "LP token out"
+  },
+  "confirmation.transaction.param.lPTokenIn": {
+    "message": "LP token in"
+  },
+  "confirmation.transaction.param.bidMin": {
+    "message": "Bid min"
+  },
+  "confirmation.transaction.param.bidMax": {
+    "message": "Bid max"
+  },
+  "confirmation.transaction.param.authAccounts": {
+    "message": "Auth accounts"
+  },
+  "confirmation.transaction.param.mPTokenIssuanceID": {
+    "message": "MPT issuance ID"
+  },
+  "confirmation.transaction.param.holder": {
+    "message": "Holder"
+  },
+  "confirmation.transaction.param.assetScale": {
+    "message": "Asset scale"
+  },
+  "confirmation.transaction.param.maximumAmount": {
+    "message": "Maximum amount"
+  },
+  "confirmation.transaction.param.mPTokenMetadata": {
+    "message": "MPT metadata"
+  },
+  "confirmation.transaction.param.dIDDocument": {
+    "message": "DID document"
+  },
+  "confirmation.transaction.param.data": {
+    "message": "Data"
+  },
+  "confirmation.transaction.param.oracleDocumentID": {
+    "message": "Oracle document ID"
+  },
+  "confirmation.transaction.param.provider": {
+    "message": "Provider"
+  },
+  "confirmation.transaction.param.assetClass": {
+    "message": "Asset class"
+  },
+  "confirmation.transaction.param.lastUpdateTime": {
+    "message": "Last update time"
+  },
+  "confirmation.transaction.param.priceDataSeries": {
+    "message": "Price data"
+  },
+  "confirmation.transaction.param.xChainBridge": {
+    "message": "XChain bridge"
+  },
+  "confirmation.transaction.param.signatureReward": {
+    "message": "Signature reward"
+  },
+  "confirmation.transaction.param.minAccountCreateAmount": {
+    "message": "Min account create amount"
+  },
+  "confirmation.transaction.param.otherChainSource": {
+    "message": "Other-chain source"
+  },
+  "confirmation.transaction.param.otherChainDestination": {
+    "message": "Other-chain destination"
+  },
+  "confirmation.transaction.param.attestationRewardAccount": {
+    "message": "Attestation reward account"
+  },
+  "confirmation.transaction.param.attestationSignerAccount": {
+    "message": "Attestation signer account"
+  },
+  "confirmation.transaction.param.wasLockingChainSend": {
+    "message": "Was locking-chain send"
+  },
+  "confirmation.transaction.param.xChainAccountCreateCount": {
+    "message": "XChain account create count"
+  },
+  "confirmation.transaction.param.xChainClaimID": {
+    "message": "XChain claim ID"
+  },
+  "confirmation.transaction.param.xChainClaimCount": {
+    "message": "XChain claim count"
+  },
+  "confirmation.transaction.param.memos": {
+    "message": "Memos"
+  },
+  "confirmation.transaction.param.amountAsset": {
+    "message": "Amount asset"
+  },
+  "confirmation.transaction.param.amountCredentialIDs": {
+    "message": "Amount credential IDs"
+  },
+  "confirmation.transaction.param.credentialIDs": {
+    "message": "Credential IDs"
+  },
+  "confirmation.transaction.param.domainID": {
+    "message": "Domain ID"
+  },
+  "confirmation.transaction.param.otherChainAccount": {
+    "message": "Other-chain account"
+  },
+  "confirmation.transaction.param.ownerCount": {
+    "message": "Owner count"
+  },
+  "confirmation.transaction.param.ownerNode": {
+    "message": "Owner node"
+  },
+  "confirmation.transaction.param.touchCount": {
+    "message": "Touch count"
+  },
+  "confirmation.transaction.param.voteWeight": {
+    "message": "Vote weight"
+  }
+}
