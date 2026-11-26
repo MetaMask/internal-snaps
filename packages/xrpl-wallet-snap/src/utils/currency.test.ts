@@ -11,18 +11,18 @@ describe('toLedgerSendAmount', () => {
   it('converts XRP display units to drops', () => {
     expect(
       toLedgerSendAmount(nativeId, new BigNumber('1.5'), 6).toFixed(0),
-    ).toStrictEqual('1500000');
+    ).toBe('1500000');
   });
 
   it('keeps an IOU amount in currency units', () => {
     const amount = toLedgerSendAmount(iouId, new BigNumber('1.5'), 6);
 
-    expect(amount.toFixed()).toStrictEqual('1.5');
+    expect(amount.toFixed()).toBe('1.5');
   });
 
   it('keeps a small IOU amount out of scientific notation', () => {
     const amount = toLedgerSendAmount(iouId, new BigNumber('0.00000001'), 15);
 
-    expect(amount.toFixed()).toStrictEqual('0.00000001');
+    expect(amount.toFixed()).toBe('0.00000001');
   });
 });

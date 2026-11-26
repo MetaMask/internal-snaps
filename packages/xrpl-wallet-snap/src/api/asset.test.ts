@@ -29,7 +29,7 @@ describe('AssetType', () => {
 
 describe('KnownCaip19Slip44IdStruct', () => {
   it('accepts the mapped mainnet id', () => {
-    expect(KnownCaip19Slip44IdMap[KnownCaip2ChainId.Mainnet]).toStrictEqual(
+    expect(KnownCaip19Slip44IdMap[KnownCaip2ChainId.Mainnet]).toBe(
       'xrpl:0/slip44:144',
     );
     expect(() =>

@@ -29,13 +29,13 @@ describe('parseIouAssetCodeIssuer', () => {
 
 describe('normalizeCurrencyCode', () => {
   it('keeps a 3-character code, including symbols', () => {
-    expect(normalizeCurrencyCode('USD')).toStrictEqual('USD');
-    expect(normalizeCurrencyCode('eur')).toStrictEqual('eur');
-    expect(normalizeCurrencyCode('A@1')).toStrictEqual('A@1');
+    expect(normalizeCurrencyCode('USD')).toBe('USD');
+    expect(normalizeCurrencyCode('eur')).toBe('eur');
+    expect(normalizeCurrencyCode('A@1')).toBe('A@1');
   });
 
   it('encodes a custom identifier as a 160-bit hex string', () => {
-    expect(normalizeCurrencyCode('RLUSD')).toStrictEqual(
+    expect(normalizeCurrencyCode('RLUSD')).toBe(
       '524C555344000000000000000000000000000000',
     );
   });
@@ -43,7 +43,7 @@ describe('normalizeCurrencyCode', () => {
   it('uppercases a code that is already 40 hex characters', () => {
     expect(
       normalizeCurrencyCode('524c555344000000000000000000000000000000'),
-    ).toStrictEqual('524C555344000000000000000000000000000000');
+    ).toBe('524C555344000000000000000000000000000000');
   });
 
   it('rejects a code that is not a 3-character, custom, or 160-bit value', () => {
@@ -66,18 +66,18 @@ describe('normalizeCurrencyCode', () => {
 
 describe('denormalizeCurrencyCode', () => {
   it('keeps a 3-character code unchanged', () => {
-    expect(denormalizeCurrencyCode('USD')).toStrictEqual('USD');
-    expect(denormalizeCurrencyCode('eur')).toStrictEqual('eur');
-    expect(denormalizeCurrencyCode('A@1')).toStrictEqual('A@1');
+    expect(denormalizeCurrencyCode('USD')).toBe('USD');
+    expect(denormalizeCurrencyCode('eur')).toBe('eur');
+    expect(denormalizeCurrencyCode('A@1')).toBe('A@1');
   });
 
   it('decodes a 160-bit hex currency to its ASCII identifier', () => {
     expect(
       denormalizeCurrencyCode('524C555344000000000000000000000000000000'),
-    ).toStrictEqual('RLUSD');
+    ).toBe('RLUSD');
     expect(
       denormalizeCurrencyCode('524c555344000000000000000000000000000000'),
-    ).toStrictEqual('RLUSD');
+    ).toBe('RLUSD');
   });
 
   it('rejects invalid codes, including native XRP and empty hex padding', () => {

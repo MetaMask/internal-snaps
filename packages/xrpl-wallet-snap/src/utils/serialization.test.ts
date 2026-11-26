@@ -9,7 +9,7 @@ describe('serializeToString', () => {
         value: { amount: new BigNumber('1.5'), missing: undefined },
         indent: 0,
       }),
-    ).toStrictEqual(
+    ).toBe(
       '{"amount":{"__type":"BigNumber","value":"1.5"},"missing":{"__type":"undefined"}}',
     );
   });

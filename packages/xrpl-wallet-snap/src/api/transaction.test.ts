@@ -11,17 +11,15 @@ const address = 'rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh';
 
 describe('ValidDestinationTagStruct', () => {
   it('accepts UInt32 numbers including 0 and max', () => {
-    expect(ValidDestinationTagStruct.create(0)).toStrictEqual(0);
-    expect(ValidDestinationTagStruct.create(1234)).toStrictEqual(1234);
-    expect(ValidDestinationTagStruct.create(4_294_967_295)).toStrictEqual(
-      4_294_967_295,
-    );
+    expect(ValidDestinationTagStruct.create(0)).toBe(0);
+    expect(ValidDestinationTagStruct.create(1234)).toBe(1234);
+    expect(ValidDestinationTagStruct.create(4_294_967_295)).toBe(4_294_967_295);
   });
 
   it('coerces decimal digit strings to numbers', () => {
-    expect(ValidDestinationTagStruct.create('42')).toStrictEqual(42);
-    expect(ValidDestinationTagStruct.create(' 7 ')).toStrictEqual(7);
-    expect(ValidDestinationTagStruct.create('0')).toStrictEqual(0);
+    expect(ValidDestinationTagStruct.create('42')).toBe(42);
+    expect(ValidDestinationTagStruct.create(' 7 ')).toBe(7);
+    expect(ValidDestinationTagStruct.create('0')).toBe(0);
   });
 
   it('rejects negatives, fractions, non-digits, and values above UInt32', () => {

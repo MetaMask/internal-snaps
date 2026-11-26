@@ -50,7 +50,7 @@ import { MAX_IOU_ASSET_CODE_LENGTH } from '../constants';
 export function normalizeCurrencyCode(assetCode: string): string {
   // Native XRP is never an IOU currency code (CAIP uses slip44 instead).
   if (assetCode === 'XRP') {
-    throw new Error(`Invalid IOU asset code: ${assetCode}`);
+    throw new Error(`Invalid IOU asset code: ${String(assetCode)}`);
   }
 
   if (/^[0-9A-Fa-f]{40}$/u.test(assetCode)) {
@@ -66,7 +66,7 @@ export function normalizeCurrencyCode(assetCode: string): string {
   // the XRPL symbol set are handled by {@link CurrencyCodeStruct} above.
   const isCustomIdentifier = /^[a-zA-Z0-9]{1,20}$/u.test(assetCode);
   if (!isCustomIdentifier) {
-    throw new Error(`Invalid IOU asset code: ${assetCode}`);
+    throw new Error(`Invalid IOU asset code: ${String(assetCode)}`);
   }
 
   const encodedCode = Array.from(assetCode, (character: string) =>
@@ -97,7 +97,9 @@ export function normalizeCurrencyCode(assetCode: string): string {
  */
 export function denormalizeCurrencyCode(assetCode: string): string {
   if (!CurrencyCodeStruct.is(assetCode)) {
-    throw new Error(`Invalid currency code to denormalize: ${assetCode}`);
+    throw new Error(
+      `Invalid currency code to denormalize: ${String(assetCode)}`,
+    );
   }
 
   // After {@link CurrencyCodeStruct}, only a 3-character code or 40-hex remains.
@@ -117,7 +119,9 @@ export function denormalizeCurrencyCode(assetCode: string): string {
   }
 
   if (decoded.length === 0) {
-    throw new Error(`Invalid currency code to denormalize: ${assetCode}`);
+    throw new Error(
+      `Invalid currency code to denormalize: ${String(assetCode)}`,
+    );
   }
 
   return decoded;
@@ -310,7 +314,7 @@ export function parseIouAssetCodeIssuer(assetReference: string): {
 } {
   const [assetCode, assetIssuer, ...rest] = assetReference.split('.');
   if (!assetCode || !assetIssuer || rest.length > 0) {
-    throw new Error(`Invalid asset reference: ${assetReference}`);
+    throw new Error(`Invalid asset reference: ${String(assetReference)}`);
   }
   return { assetCode, assetIssuer };
 }
@@ -320,7 +324,7 @@ export function parseMptIssuanceId(
 ): MptIssuanceId {
   const { assetReference } = parseCaipAssetType(assetId);
   if (!MptIssuanceIdStruct.is(assetReference)) {
-    throw new Error(`Invalid MPT issuance id: ${assetReference}`);
+    throw new Error(`Invalid MPT issuance id: ${String(assetReference)}`);
   }
   return assetReference;
 }

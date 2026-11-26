@@ -226,9 +226,7 @@ describe('snap utils', () => {
     it('swallows cancel failures', async () => {
       request.mockRejectedValueOnce(new Error('already executed'));
 
-      expect(
-        await cancelBackgroundEventIfExists('event-id'),
-      ).toBeUndefined();
+      expect(await cancelBackgroundEventIfExists('event-id')).toBeUndefined();
     });
   });
 
@@ -400,7 +398,8 @@ describe('snap utils', () => {
       };
       request.mockResolvedValueOnce(preferences);
 
-      expect(await getPreferences()).toStrictEqual(preferences);      expect(request).toHaveBeenCalledWith({
+      expect(await getPreferences()).toStrictEqual(preferences);
+      expect(request).toHaveBeenCalledWith({
         method: 'snap_getPreferences',
       });
     });
