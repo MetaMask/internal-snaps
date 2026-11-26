@@ -1,6 +1,6 @@
 import { BigNumber } from 'bignumber.js';
 
-import type { KnownCaip19IouAssetId } from '../api';
+import type { KnownCaip19IouAssetId } from '../api/asset';
 import { toLedgerSendAmount } from './currency';
 
 const nativeId = 'xrpl:0/slip44:144';

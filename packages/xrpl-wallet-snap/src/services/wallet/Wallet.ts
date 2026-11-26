@@ -1,7 +1,9 @@
+import { sign as xrplSignFn } from 'ripple-keypairs';
 import { Wallet as XrplWallet } from 'xrpl';
 import type { Transaction as XrplTransaction } from 'xrpl';
 
-import { SignTransactionException } from './exceptions';
+import { bufferToUint8Array } from '../../utils/buffer';
+import { SignMessageException, SignTransactionException } from './exceptions';
 
 /**
  * Handle over an xrpl.js wallet: transaction signing and private-key export.
@@ -23,9 +25,9 @@ export class Wallet {
   }
 
   /**
-   * The XRPL secp256k1 private key hex (`00` + 32 bytes).
+   * The XRPL private key hex.
    *
-   * Used by keyring `exportAccount`. This is not a family seed (`s…`).
+   * Used by keyring `exportAccount`.
    *
    * @returns Prefixed private-key hex.
    */
@@ -57,14 +59,21 @@ export class Wallet {
   }
 
   /**
-   * Signs the given message with this wallet's signer.
+   * Signs the given UTF-8 message with the wallet private key.
    *
-   * @param message - The message to sign.
-   * @param encoding - The encoding of the message.
-   * @returns Signed message.
+   * @param message - The UTF-8 message to sign.
+   * @param encode - Encoding for the returned signature. Defaults to `'hex'`.
+   * @returns The signature as hex or base64.
+   * @throws {SignMessageException} If signing fails (details are not exposed).
    */
-  signMessage(message: string, encoding: 'hex' | 'base64' = 'hex'): string {
-    // TODO: Implement the actual signing of the message.
-    return message;
+  signMessage(message: string, encode: 'hex' | 'base64' = 'hex'): string {
+    try {
+      const messageHex = bufferToUint8Array(message, 'utf8').toString('hex');
+      const signatureHex = xrplSignFn(messageHex, this.#signer.privateKey);
+
+      return bufferToUint8Array(signatureHex, 'hex').toString(encode);
+    } catch {
+      throw new SignMessageException();
+    }
   }
 }
