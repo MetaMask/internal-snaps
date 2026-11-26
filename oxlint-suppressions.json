@@ -1860,11 +1860,6 @@
       "count": 2
     }
   },
-  "packages/tron-wallet-snap/src/services/accounts/AccountsService.ts": {
-    "typescript/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/services/assets/AssetsService.test.ts": {
     "typescript/no-unsafe-return": {
       "count": 4
