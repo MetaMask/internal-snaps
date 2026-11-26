@@ -1,0 +1,324 @@
+import type { EntropySourceId } from '@metamask/keyring-api';
+import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
+import type { Logger } from '@metamask/snap-networks-utils';
+import { InvalidParamsError } from '@metamask/snaps-sdk';
+
+import type { XrplAddress, KnownCaip2ChainId } from '../../api';
+import { KEYRING_ACCOUNT_TYPE } from '../../constants';
+import { MultichainMethod } from '../../handlers/keyring/api';
+import { batchesAll, getSnapProvider } from '../../utils';
+import { getSupportedScopes } from '../../utils/scopes';
+import type { Wallet, WalletService } from '../wallet';
+import { getDerivationPath } from '../wallet';
+import type { AccountsRepository } from './AccountsRepository';
+import type { XrplKeyringAccount, XrplSecpDerivationPath } from './api';
+import { AccountNotFoundException } from './exceptions';
+import { assertSameAddress } from './utils';
+
+type WalletResolver = (index: number) => Promise<Wallet>;
+
+/**
+ * Manages Xrpl keyring accounts: creation, resolution from state, derivation checks, and persistence.
+ */
+export class AccountService {
+  readonly #logger: Logger;
+
+  readonly #walletService: WalletService;
+
+  readonly #accountsRepository: AccountsRepository;
+
+  constructor({
+    logger,
+    accountsRepository,
+    walletService,
+  }: {
+    logger: Logger;
+    accountsRepository: AccountsRepository;
+    walletService: WalletService;
+  }) {
+    this.#logger = logger.withPrefix('[🔑 AccountService]');
+    this.#walletService = walletService;
+    this.#accountsRepository = accountsRepository;
+  }
+
+  /**
+   * Resolves a keyring account from state by ID or address and verifies the stored address matches derivation.
+   *
+   * @param params - The parameters for the account resolution.
+   * @param params.scope - Required when resolving by address.
+   * @param params.accountId - The ID of the account to resolve.
+   * @param params.accountAddress - The address of the account to resolve.
+   * @returns A promise that resolves to the keyring account from state.
+   * @throws {AccountNotFoundException} When no account matches the given id or address/scope.
+   * @throws {InvalidParamsError} When `accountAddress` is set without `scope`, or neither id nor address is set.
+   * @throws {DerivedAccountAddressMismatchException} When the stored address does not match re-derivation.
+   */
+  async resolveAccount({
+    scope,
+    accountId,
+    accountAddress,
+  }: {
+    scope?: KnownCaip2ChainId;
+    accountId?: string;
+    accountAddress?: XrplAddress;
+  }): Promise<{ account: XrplKeyringAccount }> {
+    let account: XrplKeyringAccount;
+
+    if (accountId) {
+      account = await this.#resolveKeyringAccountById(accountId);
+    } else if (accountAddress) {
+      if (!scope) {
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- InvalidParamsError is the JSON-RPC snap error surface
+        throw new InvalidParamsError(
+          'Scope is required when resolving by address',
+        );
+      }
+      account = await this.#resolveKeyringAccountByAddress({
+        scope,
+        address: accountAddress,
+      });
+    } else {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- InvalidParamsError is the JSON-RPC snap error surface
+      throw new InvalidParamsError(
+        'Either accountId or accountAddress is required',
+      );
+    }
+
+    const { entropySource, index, address } = account;
+
+    const derivedAddress = await this.#walletService.deriveAddress({
+      entropySource,
+      index,
+    });
+
+    assertSameAddress(address, derivedAddress);
+
+    return { account };
+  }
+
+  /**
+   * Batch creates Xrpl accounts with the given options.
+   *
+   * @param options - The parameters for batch account creation.
+   * @param options.entropySource - [Required] The entropy source to use for derivation.
+   * @param options.fromIndex - [Required] The starting derivation index (inclusive).
+   * @param options.toIndex - [Required] The ending derivation index (inclusive).
+   * @param options.walletResolver - [Required] A function, or promise for a function, to resolve the wallet address for a given index.
+   * @returns A Promise that resolves to accounts in index order for the full requested range.
+   * Existing accounts are reused and only missing accounts are created and persisted.
+   */
+  async batchCreate(options: {
+    entropySource: EntropySourceId;
+    fromIndex: number;
+    toIndex: number;
+    walletResolver: WalletResolver | Promise<WalletResolver>;
+  }): Promise<XrplKeyringAccount[]> {
+    const { fromIndex, toIndex, entropySource } = options;
+
+    const [accounts, walletResolver] = await Promise.all([
+      this.#accountsRepository.getAll(),
+      Promise.resolve(options.walletResolver),
+    ]);
+
+    // 1. Index existing accounts in range by derivation index
+    const existingAccountsByIndex = new Map<number, XrplKeyringAccount>();
+    for (const account of accounts) {
+      if (
+        account.entropySource === entropySource &&
+        account.index >= fromIndex &&
+        account.index <= toIndex
+      ) {
+        existingAccountsByIndex.set(account.index, account);
+      }
+    }
+
+    // 2. Fill each index in range in derivation order; batchesAll preserves item order in its result.
+    const rangeLength = Math.max(0, toIndex - fromIndex + 1);
+    const rangeIndices = Array.from(
+      { length: rangeLength },
+      (_ignored, offset) => fromIndex + offset,
+    );
+    const BATCH_DERIVATION_SIZE = 15;
+
+    const returnAccounts = await batchesAll(
+      rangeIndices,
+      BATCH_DERIVATION_SIZE,
+      async (index: number) => {
+        let account = existingAccountsByIndex.get(index);
+        if (account === undefined) {
+          const wallet = await walletResolver(index);
+          account = this.#toXrplKeyringAccount({
+            entropySource,
+            derivationPath: getDerivationPath(index),
+            index,
+            address: wallet.address,
+          });
+        }
+        return account;
+      },
+    );
+
+    const createdAccounts = returnAccounts.filter(
+      (account: XrplKeyringAccount) =>
+        !existingAccountsByIndex.has(account.index),
+    );
+
+    // 4. Save all new accounts
+    await this.#accountsRepository.saveMany(createdAccounts);
+
+    return returnAccounts;
+  }
+
+  /**
+   * Deletes an XRPL account by ID.
+   *
+   * @param id - The ID of the account to delete.
+   * @returns A Promise that resolves when the account has been deleted.
+   */
+  async delete(id: string): Promise<void> {
+    await this.#accountsRepository.delete(id);
+  }
+
+  /**
+   * Lists all Xrpl accounts in the keyring.
+   *
+   * @returns A Promise that resolves to the list of all accounts.
+   */
+  async listAccounts(): Promise<XrplKeyringAccount[]> {
+    return await this.#accountsRepository.getAll();
+  }
+
+  /**
+   * Lists all Xrpl accounts in the keyring by scope.
+   *
+   * @param scope - The scope of the accounts to list.
+   * @returns A Promise that resolves to the list of accounts.
+   */
+  async listAccountsByScope(
+    scope: KnownCaip2ChainId,
+  ): Promise<XrplKeyringAccount[]> {
+    const accounts = await this.#accountsRepository.getAll();
+    return accounts.filter((account) => account.scopes.includes(scope));
+  }
+
+  /**
+   * Lists all Xrpl accounts in the keyring by their IDs.
+   *
+   * @param ids - The IDs of the accounts to find.
+   * @returns A Promise that resolves to the list of accounts that match the given IDs.
+   */
+  async findByIds(ids: string[]): Promise<XrplKeyringAccount[]> {
+    return await this.#accountsRepository.findByIds(ids);
+  }
+
+  /**
+   * Finds an XRPL account by address and scope.
+   *
+   * @param address - The address of the account to find.
+   * @param scope - The scope of the account to find.
+   * @returns A Promise that resolves to the account if found, otherwise `null`.
+   */
+  async findByAddressAndScope(
+    address: XrplAddress,
+    scope: KnownCaip2ChainId,
+  ): Promise<XrplKeyringAccount | null> {
+    return await this.#accountsRepository.findByAddressAndScope(address, scope);
+  }
+
+  /**
+   * Finds an XRPL account by ID.
+   *
+   * @param id - The ID of the account to find.
+   * @returns A Promise that resolves to the account if found, otherwise `undefined`.
+   */
+  async findById(id: string): Promise<XrplKeyringAccount | undefined> {
+    return (await this.#accountsRepository.findById(id)) ?? undefined;
+  }
+
+  /**
+   * Retrieves all selected Xrpl accounts.
+   * Selected accounts are accounts that are selected by the user in the MetaMask Client.
+   *
+   * @returns A Promise that resolves to the list of all selected accounts.
+   */
+  async getAllSelected(): Promise<XrplKeyringAccount[]> {
+    const [allAccounts, selectedAccountIds] = await Promise.all([
+      this.#accountsRepository.getAll(),
+      getSelectedAccounts(getSnapProvider()),
+    ]);
+
+    this.#logger.debug(
+      'getAllSelected:',
+      'selectedAccountIds',
+      selectedAccountIds,
+    );
+
+    const selectedAccountIdsSet = new Set(selectedAccountIds);
+
+    return allAccounts.filter((account) =>
+      selectedAccountIdsSet.has(account.id),
+    );
+  }
+
+  async #resolveKeyringAccountByAddress({
+    scope,
+    address,
+  }: {
+    scope: KnownCaip2ChainId;
+    address: XrplAddress;
+  }): Promise<XrplKeyringAccount> {
+    const account = await this.#accountsRepository.findByAddressAndScope(
+      address,
+      scope,
+    );
+    if (!account) {
+      throw new AccountNotFoundException(address);
+    }
+    return account;
+  }
+
+  async #resolveKeyringAccountById(
+    accountId: string,
+  ): Promise<XrplKeyringAccount> {
+    const account = await this.#accountsRepository.findById(accountId);
+    if (!account) {
+      throw new AccountNotFoundException(accountId);
+    }
+    return account;
+  }
+
+  #toXrplKeyringAccount({
+    entropySource,
+    derivationPath,
+    index,
+    address,
+    id = globalThis.crypto.randomUUID(),
+  }: {
+    entropySource: EntropySourceId;
+    derivationPath: XrplSecpDerivationPath;
+    index: number;
+    address: string;
+    id?: string;
+  }): XrplKeyringAccount {
+    return {
+      id,
+      entropySource,
+      derivationPath,
+      index,
+      type: KEYRING_ACCOUNT_TYPE,
+      address,
+      // The snap manifest's keyring capabilities are the source of truth.
+      scopes: getSupportedScopes(),
+      options: {
+        entropy: {
+          type: 'mnemonic',
+          id: entropySource,
+          derivationPath,
+          groupIndex: index,
+        },
+        exportable: true,
+      },
+      methods: [MultichainMethod.SignTransaction],
+    };
+  }
+}
