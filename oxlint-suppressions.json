@@ -1845,11 +1845,6 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/clients/tron-http/TronHttpClient.ts": {
-    "typescript/no-unsafe-assignment": {
-      "count": 8
-    }
-  },
   "packages/tron-wallet-snap/src/clients/trongrid/TrongridApiClient.ts": {
     "typescript/no-unsafe-assignment": {
       "count": 4
