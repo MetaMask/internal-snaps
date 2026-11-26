@@ -4,6 +4,7 @@ import {
   XRPL_SECP_CURVE,
   XRPL_SECP_DERIVATION_PATH_PREFIX,
 } from '../../constants';
+import { XrplCurve } from './api';
 import { getDerivationPath } from './utils';
 
 describe('getDerivationPath', () => {
@@ -51,7 +52,9 @@ describe('getDerivationPath', () => {
   ])(
     'returns $expected for index $index and curve $curve',
     ({ index, curve, expected }) => {
-      expect(getDerivationPath(index, curve)).toStrictEqual(expected);
+      expect(
+        getDerivationPath(index, curve as unknown as XrplCurve),
+      ).toStrictEqual(expected);
     },
   );
 });
