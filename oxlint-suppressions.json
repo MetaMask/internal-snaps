@@ -2063,17 +2063,6 @@
       "count": 2
     }
   },
-  "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmSignTransaction/render.test.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 14
-    },
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 2
-    },
-    "typescript/no-unsafe-argument": {
-      "count": 12
-    }
-  },
   "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest.tsx": {
     "typescript/no-unsafe-assignment": {
       "count": 2
