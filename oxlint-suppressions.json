@@ -1855,11 +1855,6 @@
       "count": 4
     }
   },
-  "packages/tron-wallet-snap/src/handlers/clientRequest/clientRequest.ts": {
-    "typescript/no-unsafe-assignment": {
-      "count": 2
-    }
-  },
   "packages/tron-wallet-snap/src/services/accounts/AccountsService.ts": {
     "typescript/no-unsafe-assignment": {
       "count": 1
