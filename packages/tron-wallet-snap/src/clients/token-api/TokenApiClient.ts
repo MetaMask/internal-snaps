@@ -91,7 +91,7 @@ export class TokenApiClient {
       undefined,
       this.#fetch,
     );
-    const data = JSON.parse(body);
+    const data: unknown = JSON.parse(body);
 
     assert(data, TokenMetadataResponseStruct);
 
