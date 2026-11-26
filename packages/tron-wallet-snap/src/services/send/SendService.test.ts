@@ -1,12 +1,18 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { FeeType, TransactionType } from '@metamask/keyring-api';
+import {
+  FeeType,
+  TransactionType,
+  TrxAccountType,
+} from '@metamask/keyring-api';
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 import type { AnalyticsService } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
-import { TronWeb } from 'tronweb';
-import type { Types as TronwebTypes } from 'tronweb';
-import type { Mock } from 'vitest';
+import { TronWeb, Types as TronwebTypes } from 'tronweb';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 
+import type { SnapClient } from '../../clients/snap/SnapClient';
+import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import {
   FEE_LIMIT,
   Network,
@@ -14,13 +20,59 @@ import {
   TRACK_TX_INTERVAL,
 } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
+import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import { SendErrorCodes } from '../../handlers/clientRequest/types';
 import { BackgroundEventMethod } from '../../handlers/cronjob/cronjob';
 import { mockLogger } from '../../utils/mockLogger';
+import type { AccountsService } from '../accounts/AccountsService';
+import type { AssetsService } from '../assets/AssetsService';
 import { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
+import type { FeeCalculatorService } from './FeeCalculatorService';
 import { SendService } from './SendService';
 
 type Transaction = TronwebTypes.Transaction<TronwebTypes.TransferContract>;
+
+type BroadcastResult =
+  TronwebTypes.BroadcastReturn<TronwebTypes.SignedTransaction>;
+
+const TEST_DERIVATION_PATH = "m/44'/195'/0'/0/0";
+
+const createAccount = (
+  overrides: Partial<TronKeyringAccount> = {},
+): TronKeyringAccount => ({
+  id: '550e8400-e29b-41d4-a716-446655440000',
+  address: '',
+  type: TrxAccountType.Eoa,
+  options: {},
+  methods: [],
+  scopes: [Network.Mainnet],
+  entropySource: 'test-entropy',
+  derivationPath: TEST_DERIVATION_PATH,
+  index: 0,
+  ...overrides,
+});
+
+const createKeypair = (
+  privateKeyHex: string,
+  address: string,
+): Awaited<ReturnType<AccountsService['deriveTronKeypair']>> => ({
+  privateKeyBytes: new Uint8Array(),
+  publicKeyBytes: new Uint8Array(),
+  privateKeyHex,
+  address,
+});
+
+const createBroadcastResult = (
+  transaction: TronwebTypes.SignedTransaction,
+  overrides: Partial<BroadcastResult> = {},
+): BroadcastResult => ({
+  result: true,
+  txid: 'broadcast-tx-id',
+  code: '',
+  message: '',
+  transaction,
+  ...overrides,
+});
 
 const mockAnalyticsService = {
   trackTransactionSubmitted: vi.fn().mockResolvedValue(undefined),
@@ -44,14 +96,14 @@ describe('SendService', () => {
     const ALT_ADDRESS = TronWeb.address.fromHex(ALT_OWNER_HEX);
 
     let sendService: SendService;
-    let mockAccountsService: any;
-    let mockAssetsService: any;
-    let mockTronWebFactory: any;
-    let mockFeeCalculatorService: any;
-    let mockSnapClient: any;
-    let mockScheduleBackgroundEvent: Mock;
-    let mockTronWeb: any;
-    let mockTransactionExpirationRefresherService: any;
+    let mockAccountsService: MockProxy<AccountsService>;
+    let mockAssetsService: MockProxy<AssetsService>;
+    let mockTronWebFactory: MockProxy<TronWebFactory>;
+    let mockFeeCalculatorService: MockProxy<FeeCalculatorService>;
+    let mockSnapClient: MockProxy<SnapClient>;
+    let mockTronWeb: DeepMockProxy<TronWeb>;
+    let mockTransactionExpirationRefresherService: MockProxy<TransactionExpirationRefresherService>;
+    let broadcastResult: BroadcastResult;
 
     const createMockTransaction = (
       ownerAddress = TEST_OWNER_HEX,
@@ -107,59 +159,40 @@ describe('SendService', () => {
     beforeEach(() => {
       vi.clearAllMocks();
 
-      mockAccountsService = {
-        findByIdOrThrow: vi.fn().mockResolvedValue({
-          id: TEST_ACCOUNT_ID,
-          address: TEST_FROM_ADDRESS,
-          type: 'tron:eoa',
-          entropySource: 'test-entropy',
-          derivationPath: [],
-        }),
-        deriveTronKeypair: vi.fn().mockResolvedValue({
-          privateKeyHex: 'test-private-key',
-          address: TEST_FROM_ADDRESS,
-        }),
-      };
+      mockAccountsService = mock<AccountsService>();
+      mockAccountsService.findByIdOrThrow.mockResolvedValue(
+        createAccount({ id: TEST_ACCOUNT_ID, address: TEST_FROM_ADDRESS }),
+      );
+      mockAccountsService.deriveTronKeypair.mockResolvedValue(
+        createKeypair('test-private-key', TEST_FROM_ADDRESS),
+      );
 
-      mockAssetsService = {
-        getAccountAssetsByIDs: vi.fn(),
-      };
+      mockAssetsService = mock<AssetsService>();
 
-      mockTronWeb = {
-        trx: {
-          sign: vi.fn().mockResolvedValue({
-            ...createMockTransaction(),
-            signature: ['test-signature'],
-          }),
-          sendRawTransaction: vi.fn().mockResolvedValue({
-            result: true,
-            txid: 'broadcast-tx-id',
-          }),
-        },
+      const signedTransaction = {
+        ...createMockTransaction(),
+        signature: ['test-signature'],
       };
+      broadcastResult = createBroadcastResult(signedTransaction);
+      mockTronWeb = mockDeep<TronWeb>();
+      mockTronWeb.trx.sign.mockResolvedValue(signedTransaction);
+      mockTronWeb.trx.sendRawTransaction.mockResolvedValue(broadcastResult);
 
-      mockTronWebFactory = {
-        createClient: vi.fn().mockReturnValue(mockTronWeb),
-        executeBroadcast: vi.fn(
-          async (_network: Network, operation: () => Promise<unknown>) =>
-            operation(),
-        ),
-      };
+      mockTronWebFactory = mock<TronWebFactory>();
+      mockTronWebFactory.createClient.mockReturnValue(mockTronWeb);
+      mockTronWebFactory.executeBroadcast.mockImplementation(
+        async (_network, operation) => operation(),
+      );
 
-      mockFeeCalculatorService = {
-        computeFee: vi.fn(),
-      };
+      mockFeeCalculatorService = mock<FeeCalculatorService>();
 
-      mockScheduleBackgroundEvent = vi.fn();
-      mockSnapClient = {
-        scheduleBackgroundEvent: mockScheduleBackgroundEvent,
-      };
+      mockSnapClient = mock<SnapClient>();
 
-      mockTransactionExpirationRefresherService = {
-        ensureFreshMetadata: vi.fn(
-          async ({ transaction }: { transaction: unknown }) => transaction,
-        ),
-      };
+      mockTransactionExpirationRefresherService =
+        mock<TransactionExpirationRefresherService>();
+      mockTransactionExpirationRefresherService.ensureFreshMetadata.mockImplementation(
+        async ({ transaction }) => transaction,
+      );
 
       sendService = new SendService({
         accountsService: mockAccountsService,
@@ -170,12 +203,12 @@ describe('SendService', () => {
         snapClient: mockSnapClient,
         analyticsService: mockAnalyticsService,
         transactionExpirationRefresherService:
-          mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
+          mockTransactionExpirationRefresherService,
       });
     });
 
     it('signs, broadcasts, and tracks a transaction when signer matches owner_address', async () => {
-      const transaction = createMockTransaction() as any;
+      const transaction = createMockTransaction();
 
       const result = await sendService.signAndSendTransaction({
         scope: Network.Mainnet,
@@ -188,7 +221,7 @@ describe('SendService', () => {
       );
       expect(mockAccountsService.deriveTronKeypair).toHaveBeenCalledWith({
         entropySource: 'test-entropy',
-        derivationPath: [],
+        derivationPath: TEST_DERIVATION_PATH,
       });
       expect(mockTronWebFactory.createClient).toHaveBeenCalledWith(
         Network.Mainnet,
@@ -219,10 +252,7 @@ describe('SendService', () => {
         },
         duration: TRACK_TX_INTERVAL,
       });
-      expect(result).toStrictEqual({
-        result: true,
-        txid: 'broadcast-tx-id',
-      });
+      expect(result).toStrictEqual(broadcastResult);
     });
 
     it('tracks the security properties with the submitted event', async () => {
@@ -260,7 +290,7 @@ describe('SendService', () => {
         },
       });
 
-      expect(mockScheduleBackgroundEvent).toHaveBeenCalledWith({
+      expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalledWith({
         method: BackgroundEventMethod.TrackTransaction,
         params: {
           txId: 'broadcast-tx-id',
@@ -311,7 +341,7 @@ describe('SendService', () => {
         sendService.signAndSendTransaction({
           scope: Network.Mainnet,
           fromAccountId: TEST_ACCOUNT_ID,
-          transaction: createMockTransaction(ALT_OWNER_HEX) as any,
+          transaction: createMockTransaction(ALT_OWNER_HEX),
         }),
       ).rejects.toThrow(
         `Transaction owner_address (${ALT_ADDRESS}) does not match derived signer address (${TEST_FROM_ADDRESS})`,
@@ -324,16 +354,13 @@ describe('SendService', () => {
 
   describe('validateSend', () => {
     let sendService: SendService;
-    let mockAccountsService: any;
-    let mockAssetsService: any;
-    let mockTronWebFactory: any;
-    let mockFeeCalculatorService: any;
-    let mockSnapClient: any;
-    let mockScheduleBackgroundEvent: Mock;
-    let mockTronWeb: any;
-    let mockTransactionExpirationRefresherService: {
-      ensureFreshMetadata: Mock;
-    };
+    let mockAccountsService: MockProxy<AccountsService>;
+    let mockAssetsService: MockProxy<AssetsService>;
+    let mockTronWebFactory: MockProxy<TronWebFactory>;
+    let mockFeeCalculatorService: MockProxy<FeeCalculatorService>;
+    let mockSnapClient: MockProxy<SnapClient>;
+    let mockTronWeb: DeepMockProxy<TronWeb>;
+    let mockTransactionExpirationRefresherService: MockProxy<TransactionExpirationRefresherService>;
 
     const TEST_ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
     const TEST_TO_ADDRESS = 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx';
@@ -344,29 +371,32 @@ describe('SendService', () => {
     const bandwidthId = Networks[scope].bandwidth.id;
     const energyId = Networks[scope].energy.id;
 
-    const createNativeAsset = (): AssetEntity =>
-      ({
-        assetType: nativeTokenId,
-        keyringAccountId: TEST_ACCOUNT_ID,
-        network: scope,
-        symbol: 'TRX',
-        decimals: 6,
-        rawAmount: '0',
-        uiAmount: '0',
-        iconUrl: '',
-      }) as AssetEntity;
+    const createNativeAsset = (): AssetEntity => ({
+      assetType: nativeTokenId,
+      keyringAccountId: TEST_ACCOUNT_ID,
+      network: scope,
+      symbol: 'TRX',
+      decimals: 6,
+      rawAmount: '0',
+      uiAmount: '0',
+      iconUrl: '',
+    });
 
-    const createTrc20Asset = (): AssetEntity =>
-      ({
-        assetType: `${scope}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`,
-        keyringAccountId: TEST_ACCOUNT_ID,
-        network: scope,
-        symbol: 'USDT',
-        decimals: 6,
-        rawAmount: '0',
-        uiAmount: '0',
-        iconUrl: '',
-      }) as AssetEntity;
+    const createAssetBalance = (
+      balance: Pick<AssetEntity, 'rawAmount'> &
+        Partial<Pick<AssetEntity, 'uiAmount'>>,
+    ): AssetEntity => ({ ...createNativeAsset(), ...balance });
+
+    const createTrc20Asset = (): AssetEntity => ({
+      assetType: `${scope}/trc20:TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`,
+      keyringAccountId: TEST_ACCOUNT_ID,
+      network: scope,
+      symbol: 'USDT',
+      decimals: 6,
+      rawAmount: '0',
+      uiAmount: '0',
+      iconUrl: '',
+    });
 
     const createMockTransaction = (): MockTransferTransaction => ({
       visible: false,
@@ -393,6 +423,31 @@ describe('SendService', () => {
       raw_data_hex: 'mock-hex',
     });
 
+    const createMockTrc20Transaction =
+      (): TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract> => ({
+        visible: false,
+        txID: 'mock-tx-id',
+        raw_data: {
+          contract: [
+            {
+              type: TronwebTypes.ContractType.TriggerSmartContract,
+              parameter: {
+                type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
+                value: {
+                  owner_address: `41${'a'.repeat(40)}`,
+                  contract_address: `41${'b'.repeat(40)}`,
+                },
+              },
+            },
+          ],
+          ref_block_bytes: '0000',
+          ref_block_hash: '0000000000000000',
+          expiration: 0,
+          timestamp: 0,
+        },
+        raw_data_hex: 'mock-hex',
+      });
+
     const createBlock = ({
       number,
       timestamp,
@@ -401,16 +456,18 @@ describe('SendService', () => {
       number: number;
       timestamp: number;
       hashSegment?: string;
-    }): {
-      blockID: string;
-      block_header: { raw_data: { number: number; timestamp: number } };
-    } => ({
+    }): TronwebTypes.Block => ({
       blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
       block_header: {
         raw_data: {
           number,
           timestamp,
+          txTrieRoot: '',
+          witness_address: '',
+          parentHash: '',
+          version: 0,
         },
+        witness_signature: '',
       },
     });
 
@@ -420,65 +477,44 @@ describe('SendService', () => {
     beforeEach(() => {
       vi.clearAllMocks();
 
-      mockAccountsService = {
-        deriveTronKeypair: vi.fn(),
-        findByIdOrThrow: vi.fn().mockResolvedValue({
-          id: TEST_ACCOUNT_ID,
-          address: TEST_FROM_ADDRESS,
-          entropySource: 'test-entropy',
-          derivationPath: [],
-        }),
-      };
+      mockAccountsService = mock<AccountsService>();
+      mockAccountsService.findByIdOrThrow.mockResolvedValue(
+        createAccount({ id: TEST_ACCOUNT_ID, address: TEST_FROM_ADDRESS }),
+      );
 
-      mockAssetsService = {
-        getAccountAssetsByIDs: vi.fn(),
-      };
+      mockAssetsService = mock<AssetsService>();
 
-      mockTronWeb = {
-        transactionBuilder: {
-          sendTrx: vi.fn().mockResolvedValue(createMockTransaction()),
-          sendToken: vi.fn().mockResolvedValue(createMockTransaction()),
-          triggerSmartContract: vi.fn().mockResolvedValue({
-            transaction: createMockTransaction(),
-          }),
-        },
-        utils: {
-          transaction: {
-            txJsonToPb: vi.fn().mockImplementation((tx) => tx),
-            txPbToRawDataHex: vi.fn().mockReturnValue('1234567890abcdef'),
-            txPbToTxID: vi.fn().mockReturnValue('mock-tx-id'),
-          },
-        },
-        trx: {
-          getCurrentBlock: vi.fn(),
-          getBlockByNumber: vi.fn(),
-          sign: vi.fn(),
-          sendRawTransaction: vi.fn(),
-        },
-      };
+      mockTronWeb = mockDeep<TronWeb>();
+      mockTronWeb.transactionBuilder.sendTrx.mockResolvedValue(
+        createMockTransaction(),
+      );
+      mockTronWeb.transactionBuilder.triggerSmartContract.mockResolvedValue({
+        result: { result: true },
+        transaction: createMockTrc20Transaction(),
+      });
+      mockTronWeb.utils.transaction.txJsonToPb.mockImplementation(
+        (transaction: TronwebTypes.Transaction) => transaction,
+      );
+      mockTronWeb.utils.transaction.txPbToRawDataHex.mockReturnValue(
+        '1234567890abcdef',
+      );
+      mockTronWeb.utils.transaction.txPbToTxID.mockReturnValue('mock-tx-id');
 
-      mockTronWebFactory = {
-        createClient: vi.fn().mockReturnValue(mockTronWeb),
-        executeBroadcast: vi.fn(
-          async (_network: Network, operation: () => Promise<unknown>) =>
-            operation(),
-        ),
-      };
+      mockTronWebFactory = mock<TronWebFactory>();
+      mockTronWebFactory.createClient.mockReturnValue(mockTronWeb);
+      mockTronWebFactory.executeBroadcast.mockImplementation(
+        async (_network, operation) => operation(),
+      );
 
-      mockFeeCalculatorService = {
-        computeFee: vi.fn(),
-      };
+      mockFeeCalculatorService = mock<FeeCalculatorService>();
 
-      mockScheduleBackgroundEvent = vi.fn();
-      mockSnapClient = {
-        scheduleBackgroundEvent: mockScheduleBackgroundEvent,
-      };
+      mockSnapClient = mock<SnapClient>();
 
-      mockTransactionExpirationRefresherService = {
-        ensureFreshMetadata: vi.fn(
-          async ({ transaction }: { transaction: unknown }) => transaction,
-        ),
-      };
+      mockTransactionExpirationRefresherService =
+        mock<TransactionExpirationRefresherService>();
+      mockTransactionExpirationRefresherService.ensureFreshMetadata.mockImplementation(
+        async ({ transaction }) => transaction,
+      );
 
       sendService = new SendService({
         accountsService: mockAccountsService,
@@ -489,7 +525,7 @@ describe('SendService', () => {
         snapClient: mockSnapClient,
         analyticsService: mockAnalyticsService,
         transactionExpirationRefresherService:
-          mockTransactionExpirationRefresherService as unknown as TransactionExpirationRefresherService,
+          mockTransactionExpirationRefresherService,
       });
     });
 
@@ -500,10 +536,10 @@ describe('SendService', () => {
 
         // User has 100 TRX, 1000 bandwidth, 0 energy
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '100', rawAmount: '100000000' }, // TRX balance (asset being sent)
-          { uiAmount: '100', rawAmount: '100000000' }, // TRX balance (native token)
-          { rawAmount: '1000' }, // Bandwidth
-          { rawAmount: '0' }, // Energy
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }), // TRX balance (asset being sent)
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }), // TRX balance (native token)
+          createAssetBalance({ rawAmount: '1000' }), // Bandwidth
+          createAssetBalance({ rawAmount: '0' }), // Energy
         ]);
 
         // Fee is 0 TRX (user has enough bandwidth)
@@ -549,10 +585,10 @@ describe('SendService', () => {
 
         // User only has 50 TRX
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '50', rawAmount: '50000000' }, // TRX balance (asset being sent)
-          { uiAmount: '50', rawAmount: '50000000' }, // TRX balance (native token)
-          { rawAmount: '1000' }, // Bandwidth
-          { rawAmount: '0' }, // Energy
+          createAssetBalance({ uiAmount: '50', rawAmount: '50000000' }), // TRX balance (asset being sent)
+          createAssetBalance({ uiAmount: '50', rawAmount: '50000000' }), // TRX balance (native token)
+          createAssetBalance({ rawAmount: '1000' }), // Bandwidth
+          createAssetBalance({ rawAmount: '0' }), // Energy
         ]);
 
         const result = await sendService.validateSend({
@@ -577,10 +613,10 @@ describe('SendService', () => {
 
         // User has 100 TRX but no bandwidth (fees will be charged in TRX)
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '100', rawAmount: '100000000' }, // TRX balance (asset being sent)
-          { uiAmount: '100', rawAmount: '100000000' }, // TRX balance (native token)
-          { rawAmount: '0' }, // No bandwidth
-          { rawAmount: '0' }, // No energy
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }), // TRX balance (asset being sent)
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }), // TRX balance (native token)
+          createAssetBalance({ rawAmount: '0' }), // No bandwidth
+          createAssetBalance({ rawAmount: '0' }), // No energy
         ]);
 
         // Fee is 2 TRX (user has no bandwidth, must pay in TRX)
@@ -617,10 +653,10 @@ describe('SendService', () => {
 
         // User has 100 TRX, no bandwidth
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '100', rawAmount: '100000000' }, // TRX balance
-          { uiAmount: '100', rawAmount: '100000000' }, // TRX balance (native token)
-          { rawAmount: '0' }, // No bandwidth
-          { rawAmount: '0' }, // No energy
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }), // TRX balance
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }), // TRX balance (native token)
+          createAssetBalance({ rawAmount: '0' }), // No bandwidth
+          createAssetBalance({ rawAmount: '0' }), // No energy
         ]);
 
         // Fee is 2 TRX
@@ -656,10 +692,10 @@ describe('SendService', () => {
 
         // User has 100 USDT, 10 TRX for fees, some energy
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '100', rawAmount: '100000000' }, // USDT balance (asset being sent)
-          { uiAmount: '10', rawAmount: '10000000' }, // TRX balance (native token for fees)
-          { rawAmount: '500' }, // Bandwidth
-          { rawAmount: '50000' }, // Energy
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }), // USDT balance (asset being sent)
+          createAssetBalance({ uiAmount: '10', rawAmount: '10000000' }), // TRX balance (native token for fees)
+          createAssetBalance({ rawAmount: '500' }), // Bandwidth
+          createAssetBalance({ rawAmount: '50000' }), // Energy
         ]);
 
         // Fee is 3 TRX (energy overage)
@@ -710,10 +746,10 @@ describe('SendService', () => {
 
         // User only has 50 USDT
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '50', rawAmount: '50000000' }, // USDT balance (not enough)
-          { uiAmount: '100', rawAmount: '100000000' }, // TRX balance (plenty for fees)
-          { rawAmount: '1000' }, // Bandwidth
-          { rawAmount: '100000' }, // Energy
+          createAssetBalance({ uiAmount: '50', rawAmount: '50000000' }), // USDT balance (not enough)
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }), // TRX balance (plenty for fees)
+          createAssetBalance({ rawAmount: '1000' }), // Bandwidth
+          createAssetBalance({ rawAmount: '100000' }), // Energy
         ]);
 
         const result = await sendService.validateSend({
@@ -737,10 +773,10 @@ describe('SendService', () => {
 
         // User has 100 USDT but only 1 TRX (not enough for fees)
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '100', rawAmount: '100000000' }, // USDT balance (plenty)
-          { uiAmount: '1', rawAmount: '1000000' }, // TRX balance (not enough for fees)
-          { rawAmount: '0' }, // No bandwidth
-          { rawAmount: '0' }, // No energy
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }), // USDT balance (plenty)
+          createAssetBalance({ uiAmount: '1', rawAmount: '1000000' }), // TRX balance (not enough for fees)
+          createAssetBalance({ rawAmount: '0' }), // No bandwidth
+          createAssetBalance({ rawAmount: '0' }), // No energy
         ]);
 
         // Fee is 10 TRX (no energy/bandwidth, everything paid in TRX)
@@ -776,10 +812,10 @@ describe('SendService', () => {
 
         // User has 100 USDT and exactly 5 TRX for fees
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '100', rawAmount: '100000000' }, // USDT balance
-          { uiAmount: '5', rawAmount: '5000000' }, // TRX balance (exact for fees)
-          { rawAmount: '0' }, // No bandwidth
-          { rawAmount: '0' }, // No energy
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }), // USDT balance
+          createAssetBalance({ uiAmount: '5', rawAmount: '5000000' }), // TRX balance (exact for fees)
+          createAssetBalance({ rawAmount: '0' }), // No bandwidth
+          createAssetBalance({ rawAmount: '0' }), // No energy
         ]);
 
         // Fee is exactly 5 TRX
@@ -814,10 +850,10 @@ describe('SendService', () => {
 
         // All balances are undefined
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          undefined, // No asset balance
-          undefined, // No native token balance
-          undefined, // No bandwidth
-          undefined, // No energy
+          null, // No asset balance
+          null, // No native token balance
+          null, // No bandwidth
+          null, // No energy
         ]);
 
         const result = await sendService.validateSend({
@@ -840,10 +876,10 @@ describe('SendService', () => {
         const amount = new BigNumber(0); // Sending 0 TRX
 
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '1', rawAmount: '1000000' }, // 1 TRX balance
-          { uiAmount: '1', rawAmount: '1000000' }, // 1 TRX native
-          { rawAmount: '0' }, // No bandwidth
-          { rawAmount: '0' }, // No energy
+          createAssetBalance({ uiAmount: '1', rawAmount: '1000000' }), // 1 TRX balance
+          createAssetBalance({ uiAmount: '1', rawAmount: '1000000' }), // 1 TRX native
+          createAssetBalance({ rawAmount: '0' }), // No bandwidth
+          createAssetBalance({ rawAmount: '0' }), // No energy
         ]);
 
         // Fee is 0.5 TRX
@@ -876,10 +912,10 @@ describe('SendService', () => {
         const amount = new BigNumber(10);
 
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '100', rawAmount: '100000000' }, // USDT balance
-          { uiAmount: '0', rawAmount: '0' }, // 0 TRX balance
-          { rawAmount: '10000' }, // Plenty of bandwidth
-          { rawAmount: '200000' }, // Plenty of energy
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }), // USDT balance
+          createAssetBalance({ uiAmount: '0', rawAmount: '0' }), // 0 TRX balance
+          createAssetBalance({ rawAmount: '10000' }), // Plenty of bandwidth
+          createAssetBalance({ rawAmount: '200000' }), // Plenty of energy
         ]);
 
         // Fee is 0 TRX (user has enough bandwidth and energy)
@@ -930,10 +966,10 @@ describe('SendService', () => {
         const amount = new BigNumber(1); // Sending 1 TRX to new account
 
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '2', rawAmount: '2000000' }, // 2 TRX balance
-          { uiAmount: '2', rawAmount: '2000000' }, // 2 TRX native
-          { rawAmount: '1000' }, // Bandwidth (enough)
-          { rawAmount: '0' }, // No energy needed for native transfer
+          createAssetBalance({ uiAmount: '2', rawAmount: '2000000' }), // 2 TRX balance
+          createAssetBalance({ uiAmount: '2', rawAmount: '2000000' }), // 2 TRX native
+          createAssetBalance({ rawAmount: '1000' }), // Bandwidth (enough)
+          createAssetBalance({ rawAmount: '0' }), // No energy needed for native transfer
         ]);
 
         // Fee includes 1 TRX activation fee
@@ -975,10 +1011,10 @@ describe('SendService', () => {
         const amount = new BigNumber(1.5); // Sending 1.5 TRX to new account
 
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '2', rawAmount: '2000000' }, // 2 TRX balance
-          { uiAmount: '2', rawAmount: '2000000' }, // 2 TRX native
-          { rawAmount: '1000' }, // Bandwidth (enough)
-          { rawAmount: '0' }, // No energy
+          createAssetBalance({ uiAmount: '2', rawAmount: '2000000' }), // 2 TRX balance
+          createAssetBalance({ uiAmount: '2', rawAmount: '2000000' }), // 2 TRX native
+          createAssetBalance({ rawAmount: '1000' }), // Bandwidth (enough)
+          createAssetBalance({ rawAmount: '0' }), // No energy
         ]);
 
         // Fee includes 1 TRX activation fee
@@ -1025,10 +1061,10 @@ describe('SendService', () => {
         const amount = new BigNumber(10);
 
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '100', rawAmount: '100000000' },
-          { uiAmount: '100', rawAmount: '100000000' },
-          { rawAmount: '1000' },
-          { rawAmount: '0' },
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }),
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }),
+          createAssetBalance({ rawAmount: '1000' }),
+          createAssetBalance({ rawAmount: '0' }),
         ]);
 
         mockFeeCalculatorService.computeFee.mockResolvedValue([
@@ -1072,10 +1108,10 @@ describe('SendService', () => {
         const amount = new BigNumber('0.99');
 
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '100', rawAmount: '100000000' },
-          { uiAmount: '100', rawAmount: '100000000' },
-          { rawAmount: '1000' },
-          { rawAmount: '0' },
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }),
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }),
+          createAssetBalance({ rawAmount: '1000' }),
+          createAssetBalance({ rawAmount: '0' }),
         ]);
 
         mockFeeCalculatorService.computeFee.mockResolvedValue([
@@ -1111,10 +1147,10 @@ describe('SendService', () => {
         const amount = new BigNumber('0.99');
 
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '100', rawAmount: '100000000' },
-          { uiAmount: '100', rawAmount: '100000000' },
-          { rawAmount: '1000' },
-          { rawAmount: '100000' },
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }),
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }),
+          createAssetBalance({ rawAmount: '1000' }),
+          createAssetBalance({ rawAmount: '100000' }),
         ]);
 
         mockFeeCalculatorService.computeFee.mockResolvedValue([
@@ -1157,10 +1193,10 @@ describe('SendService', () => {
         const amount = new BigNumber(10);
 
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '100', rawAmount: '100000000' },
-          { uiAmount: '100', rawAmount: '100000000' },
-          { rawAmount: '1000' },
-          { rawAmount: '0' },
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }),
+          createAssetBalance({ uiAmount: '100', rawAmount: '100000000' }),
+          createAssetBalance({ rawAmount: '1000' }),
+          createAssetBalance({ rawAmount: '0' }),
         ]);
         mockFeeCalculatorService.computeFee.mockResolvedValue([
           {
@@ -1273,10 +1309,10 @@ describe('SendService', () => {
         const amount = new BigNumber(1);
 
         mockAssetsService.getAccountAssetsByIDs.mockResolvedValue([
-          { uiAmount: '24.10979', rawAmount: '24109790' },
-          { uiAmount: '24.10979', rawAmount: '24109790' },
-          { rawAmount: '1000' },
-          { rawAmount: '0' },
+          createAssetBalance({ uiAmount: '24.10979', rawAmount: '24109790' }),
+          createAssetBalance({ uiAmount: '24.10979', rawAmount: '24109790' }),
+          createAssetBalance({ rawAmount: '1000' }),
+          createAssetBalance({ rawAmount: '0' }),
         ]);
         mockFeeCalculatorService.computeFee.mockResolvedValue([
           {
@@ -1317,28 +1353,29 @@ describe('SendService', () => {
       const ownerAddressHex = `41${'a'.repeat(40)}`;
       const ownerAddress = 'TRXcKoEvHr6Y38VMcDYGBEYKznvH3XUX4g';
 
+      const getSignedInput = (): TronwebTypes.Transaction => {
+        const input = mockTronWeb.trx.sign.mock.calls[0]?.[0];
+        if (input === undefined || typeof input === 'string') {
+          throw new Error('Expected trx.sign to receive a transaction');
+        }
+        return input;
+      };
+
       beforeEach(() => {
-        mockAccountsService.findByIdOrThrow.mockResolvedValue({
-          id: TEST_ACCOUNT_ID,
-          address: ownerAddress,
-          entropySource: 'test-entropy',
-          derivationPath: [],
-          type: 'tron:basic',
-        });
-        vi.spyOn(mockAccountsService, 'deriveTronKeypair').mockResolvedValue({
-          privateKeyHex: 'test-private-key',
-          address: ownerAddress,
-        });
-        mockTronWeb.trx.sign.mockImplementation(
-          async (transaction: unknown) => ({
-            transaction,
-            signature: ['test-signature'],
-          }),
+        mockAccountsService.findByIdOrThrow.mockResolvedValue(
+          createAccount({ id: TEST_ACCOUNT_ID, address: ownerAddress }),
         );
-        mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
-          result: true,
-          txid: 'broadcast-tx-id',
-        });
+        mockAccountsService.deriveTronKeypair.mockResolvedValue(
+          createKeypair('test-private-key', ownerAddress),
+        );
+        mockTronWeb.trx.sign.mockImplementation(async (transaction) =>
+          typeof transaction === 'string'
+            ? transaction
+            : { ...transaction, signature: ['test-signature'] },
+        );
+        mockTronWeb.trx.sendRawTransaction.mockImplementation(
+          async (signedTransaction) => createBroadcastResult(signedTransaction),
+        );
       });
 
       it('refreshes stale transaction metadata before signing and broadcasting', async () => {
@@ -1374,10 +1411,10 @@ describe('SendService', () => {
         await sendService.signAndSendTransaction({
           scope,
           fromAccountId: TEST_ACCOUNT_ID,
-          transaction: transaction as never,
+          transaction,
         });
 
-        const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0];
+        const signedTransaction = getSignedInput();
         expect(signedTransaction).not.toBe(transaction);
         expect(signedTransaction.raw_data.ref_block_bytes).toBe(
           getRefBlockBytes(200_000),
@@ -1406,7 +1443,7 @@ describe('SendService', () => {
         expect(transaction.raw_data_hex).toBe(originalTransaction.raw_data_hex);
         expect(transaction.txID).toBe(originalTransaction.txID);
         expect(mockTronWeb.trx.sendRawTransaction).toHaveBeenCalledWith({
-          transaction: signedTransaction,
+          ...signedTransaction,
           signature: ['test-signature'],
         });
       });
@@ -1428,7 +1465,7 @@ describe('SendService', () => {
         await sendService.signAndSendTransaction({
           scope,
           fromAccountId: TEST_ACCOUNT_ID,
-          transaction: transaction as never,
+          transaction,
         });
 
         expect(
@@ -1474,7 +1511,7 @@ describe('SendService', () => {
         await sendService.signAndSendTransaction({
           scope,
           fromAccountId: TEST_ACCOUNT_ID,
-          transaction: transaction as never,
+          transaction,
         });
 
         expect(transaction.raw_data.ref_block_bytes).toBe(
@@ -1503,16 +1540,20 @@ describe('SendService', () => {
         transaction.raw_data.expiration = currentTimestamp + 45_000;
         transaction.raw_data.timestamp = currentTimestamp;
         mockTronWeb.trx.getCurrentBlock.mockResolvedValue(currentBlock);
-        mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
-          result: false,
-          message: 'expired',
-        });
+        mockTronWeb.trx.sendRawTransaction.mockImplementation(
+          async (signedTransaction) =>
+            createBroadcastResult(signedTransaction, {
+              result: false,
+              txid: '',
+              message: 'expired',
+            }),
+        );
 
         await expect(
           sendService.signAndSendTransaction({
             scope,
             fromAccountId: TEST_ACCOUNT_ID,
-            transaction: transaction as never,
+            transaction,
           }),
         ).rejects.toThrow('Failed to send transaction: expired');
       });
@@ -1521,16 +1562,20 @@ describe('SendService', () => {
         const transaction = createMockTransaction();
         transaction.raw_data.contract[0].parameter.value.owner_address =
           ownerAddressHex;
-        mockTronWeb.trx.sendRawTransaction.mockResolvedValue({
-          code: 5,
-          message: 'Transaction already exists',
-          result: false,
-        });
+        mockTronWeb.trx.sendRawTransaction.mockImplementation(
+          async (signedTransaction) =>
+            createBroadcastResult(signedTransaction, {
+              code: 'DUP_TRANSACTION_ERROR',
+              txid: transaction.txID,
+              message: 'Transaction already exists',
+              result: false,
+            }),
+        );
 
         const result = await sendService.signAndSendTransaction({
           scope,
           fromAccountId: TEST_ACCOUNT_ID,
-          transaction: transaction as never,
+          transaction,
         });
 
         expect(result).toStrictEqual(
@@ -1549,7 +1594,7 @@ describe('SendService', () => {
         transaction.raw_data.contract[0].parameter.value.owner_address =
           ownerAddressHex;
         const signedTransaction = {
-          transaction,
+          ...transaction,
           signature: ['test-signature'],
         };
         mockTronWeb.trx.sign.mockResolvedValue(signedTransaction);
@@ -1568,15 +1613,12 @@ describe('SendService', () => {
               response: { status: 503 },
             }),
           )
-          .mockResolvedValue({
-            result: true,
-            txid: 'broadcast-tx-id',
-          });
+          .mockResolvedValue(createBroadcastResult(signedTransaction));
 
         await sendService.signAndSendTransaction({
           scope,
           fromAccountId: TEST_ACCOUNT_ID,
-          transaction: transaction as never,
+          transaction,
         });
 
         expect(mockTronWeb.trx.sign).toHaveBeenCalledTimes(1);
@@ -1599,7 +1641,7 @@ describe('SendService', () => {
         transaction.raw_data.contract[0].parameter.value.owner_address =
           ownerAddressHex;
         const signedTransaction = {
-          transaction,
+          ...transaction,
           signature: ['test-signature'],
         };
         mockTronWeb.trx.sign.mockResolvedValue(signedTransaction);
@@ -1613,20 +1655,20 @@ describe('SendService', () => {
           },
         );
         mockTronWeb.trx.sendRawTransaction
-          .mockResolvedValueOnce({
-            code: 'SERVER_BUSY',
-            message: 'Server busy',
-            result: false,
-          })
-          .mockResolvedValue({
-            result: true,
-            txid: 'broadcast-tx-id',
-          });
+          .mockResolvedValueOnce(
+            createBroadcastResult(signedTransaction, {
+              code: 'SERVER_BUSY',
+              txid: '',
+              message: 'Server busy',
+              result: false,
+            }),
+          )
+          .mockResolvedValue(createBroadcastResult(signedTransaction));
 
         await sendService.signAndSendTransaction({
           scope,
           fromAccountId: TEST_ACCOUNT_ID,
-          transaction: transaction as never,
+          transaction,
         });
 
         expect(mockTronWeb.trx.sign).toHaveBeenCalledTimes(1);
