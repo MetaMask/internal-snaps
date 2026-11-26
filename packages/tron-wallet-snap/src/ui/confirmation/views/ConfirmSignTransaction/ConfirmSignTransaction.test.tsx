@@ -1,4 +1,6 @@
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
+import { isObject } from '@metamask/utils';
+import type { RuntimeObject } from '@metamask/utils';
 
 import { Network } from '../../../../constants';
 import { TronMultichainMethod } from '../../../../handlers/keyring/keyring-types';
@@ -21,10 +23,7 @@ import type { ConfirmSignTransactionContext } from './types';
  * @param name - The element `name` prop to look for.
  * @returns The matching element, or undefined.
  */
-function findByName(node: any, name: string): any {
-  if (!node || typeof node !== 'object') {
-    return undefined;
-  }
+function findByName(node: unknown, name: string): RuntimeObject | undefined {
   if (Array.isArray(node)) {
     for (const child of node) {
       const found = findByName(child, name);
@@ -34,10 +33,17 @@ function findByName(node: any, name: string): any {
     }
     return undefined;
   }
-  if (node.props?.name === name) {
+  if (!isObject(node)) {
+    return undefined;
+  }
+  const { props } = node;
+  if (!isObject(props)) {
+    return undefined;
+  }
+  if (props.name === name) {
     return node;
   }
-  return findByName(node.props?.children, name);
+  return findByName(props.children, name);
 }
 
 /**
@@ -46,7 +52,7 @@ function findByName(node: any, name: string): any {
  * @param node - The current JSX node (element, array, or primitive).
  * @returns All string children found in the tree.
  */
-function collectTexts(node: any): string[] {
+function collectTexts(node: unknown): string[] {
   if (node === null || node === undefined) {
     return [];
   }
@@ -56,10 +62,13 @@ function collectTexts(node: any): string[] {
   if (Array.isArray(node)) {
     return node.flatMap((child) => collectTexts(child));
   }
-  if (typeof node === 'object') {
-    const title =
-      typeof node.props?.title === 'string' ? [node.props.title] : [];
-    return [...title, ...collectTexts(node.props?.children)];
+  if (isObject(node)) {
+    const { props } = node;
+    if (!isObject(props)) {
+      return [];
+    }
+    const title = typeof props.title === 'string' ? [props.title] : [];
+    return [...title, ...collectTexts(props.children)];
   }
   return [];
 }
@@ -75,7 +84,7 @@ describe('ConfirmSignTransaction', () => {
     ],
     type: 'tron:eoa',
     scopes: [Network.Mainnet],
-    entropySource: 'entropy-source-1' as any,
+    entropySource: 'entropy-source-1',
     derivationPath: "m/44'/195'/0'/0/0",
     index: 0,
   };
@@ -107,23 +116,22 @@ describe('ConfirmSignTransaction', () => {
 
   const buildContext = (
     overrides: Partial<ConfirmSignTransactionContext> = {},
-  ): ConfirmSignTransactionContext =>
-    ({
-      scope: Network.Mainnet,
-      account: mockAccount,
-      transaction: { rawDataHex: '0a02beef', type: 'TransferContract' },
-      origin: 'https://example.com',
-      preferences: mockPreferences,
-      networkImage: '',
-      scan: buildScanResult(),
-      scanFetchStatus: FetchStatus.Fetched,
-      tokenPrices: {} as any,
-      tokenPricesFetchStatus: FetchStatus.Fetched,
-      fees: [] as any,
-      feesFetchStatus: FetchStatus.Fetched,
-      isInsufficientBalance: false,
-      ...overrides,
-    }) as ConfirmSignTransactionContext;
+  ): ConfirmSignTransactionContext => ({
+    scope: Network.Mainnet,
+    account: mockAccount,
+    transaction: { rawDataHex: '0a02beef', type: 'TransferContract' },
+    origin: 'https://example.com',
+    preferences: mockPreferences,
+    networkImage: '',
+    scan: buildScanResult(),
+    scanFetchStatus: FetchStatus.Fetched,
+    tokenPrices: {},
+    tokenPricesFetchStatus: FetchStatus.Fetched,
+    fees: [],
+    feesFetchStatus: FetchStatus.Fetched,
+    isInsufficientBalance: false,
+    ...overrides,
+  });
 
   const isConfirmDisabled = (
     context: ConfirmSignTransactionContext,
@@ -133,7 +141,8 @@ describe('ConfirmSignTransaction', () => {
       tree,
       ConfirmSignTransactionFormNames.Confirm,
     );
-    return Boolean(confirmButton?.props?.disabled);
+    const props = confirmButton?.props;
+    return isObject(props) && Boolean(props.disabled);
   };
 
   const deadlineError: TransactionScanError = {
