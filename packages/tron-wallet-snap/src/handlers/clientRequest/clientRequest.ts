@@ -1514,9 +1514,9 @@ export class ClientRequestHandler {
       getUniqueAccountIds(items),
     );
     const accountsById = getAccountsByNormalizedId(accounts);
-    const results: SignProofOfOwnershipBatchResponse['results'] = new Array(
-      items.length,
-    );
+    const results = new Array<
+      SignProofOfOwnershipBatchResponse['results'][number]
+    >(items.length);
     const signingRequests: SigningRequest[] = [];
     const accountsToDerive: TronKeyringAccount[] = [];
 
@@ -1606,7 +1606,7 @@ export class ClientRequestHandler {
   ): string {
     rawData.fee_limit = feeLimit;
     // Re-serialize rawData to get the updated rawDataHex
-    const transactionPb = tronWeb.utils.transaction.txJsonToPb({
+    const transactionPb: unknown = tronWeb.utils.transaction.txJsonToPb({
       raw_data: rawData,
     });
     return tronWeb.utils.transaction.txPbToRawDataHex(transactionPb);
