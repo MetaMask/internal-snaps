@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add shared Snap RPC helpers (`getSnapProvider`, `getBip32Entropy`, `listEntropySources`, `getDefaultEntropySource`, `getClientStatus`, `scheduleBackgroundEvent`, `cancelBackgroundEvent`, `cancelBackgroundEventIfExists`, `createInterface`, `updateInterfaceIfExists`, `updateInterfaceWithContext`, `getInterfaceContextIfExists`, `showDialog`, `resolveInterface`, `getPreferences`) and the `Duration` constants ([#681](https://github.com/MetaMask/internal-snaps/pull/681))
+
 ### Changed
 
 - **BREAKING:** `getTransactionSecurityProperties` no longer reports a scan's error message as `securityAlertDescription`, and `SecurityScanOutcome` no longer has an `error` field ([#673](https://github.com/MetaMask/internal-snaps/pull/673))
