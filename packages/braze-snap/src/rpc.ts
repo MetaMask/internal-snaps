@@ -77,10 +77,16 @@ async function syncUser({
   await withBraze(
     config,
     (sdk) => {
-      if (sdk.getUser()?.getUserId() !== profileId) {
+      const currentUserId = sdk.getUser()?.getUserId() ?? null;
+      if (currentUserId === null && language !== undefined) {
+        // Queue before changeUser so initial identification promotes the
+        // anonymous attribute and sends session start + language together.
+        setLanguage(sdk, profileId, language);
+      }
+      if (currentUserId !== profileId) {
         sdk.changeUser(profileId);
       }
-      if (language !== undefined) {
+      if (currentUserId !== null && language !== undefined) {
         setLanguage(sdk, profileId, language);
       }
     },

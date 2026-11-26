@@ -13,7 +13,10 @@ export type FakeBrazeSdk = {
   >;
   getUser: Mock<
     () =>
-      | { getUserId: () => string; setLanguage: (language: string) => boolean }
+      | {
+          getUserId: () => string | null;
+          setLanguage: (language: string) => boolean;
+        }
       | undefined
   >;
   changeUser: Mock<(userId: string) => void>;
@@ -47,12 +50,12 @@ export function mockBrazeSdk(userId?: string): FakeBrazeSdk {
     }),
     requestImmediateDataFlush: vi.fn((onFlushed) => onFlushed?.(true)),
     getUser: vi.fn(() =>
-      currentUserId === undefined
-        ? undefined
-        : {
-            getUserId: () => currentUserId as string,
+      initialized
+        ? {
+            getUserId: () => currentUserId ?? null,
             setLanguage: sdk.setLanguage,
-          },
+          }
+        : undefined,
     ),
     changeUser: vi.fn((id) => {
       currentUserId = id;

@@ -159,11 +159,13 @@ describe('Braze Web SDK in the snap globals', () => {
     );
   });
 
-  it('sends the language once per user', async () => {
+  it('sends the language with session start in one request and only once per user', async () => {
     stubSnap();
 
     await syncUser('profile-a', 'fr');
 
+    expect(requests).toHaveLength(1);
+    expect(getEventNames(requests)).toContain('ss');
     expect(requests.flatMap(({ attributes = [] }) => attributes)).toStrictEqual(
       [{ user_id: 'profile-a', language: 'fr' }],
     );

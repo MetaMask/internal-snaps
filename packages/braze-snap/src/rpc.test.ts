@@ -187,12 +187,26 @@ describe('onRpcRequest', () => {
     });
 
     describe('language', () => {
-      it('sets the language of the user', async () => {
-        const { setLanguage } = mockBrazeSdk();
+      it('sets the language before changeUser when there is no current user', async () => {
+        const { setLanguage, changeUser } = mockBrazeSdk();
 
         await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
 
         expect(setLanguage).toHaveBeenCalledWith('fr');
+        expect(setLanguage.mock.invocationCallOrder[0]).toBeLessThan(
+          changeUser.mock.invocationCallOrder[0] as number,
+        );
+      });
+
+      it('sets the language after changeUser when switching users', async () => {
+        const { setLanguage, changeUser } = mockBrazeSdk('other-profile-id');
+
+        await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
+
+        expect(setLanguage).toHaveBeenCalledWith('fr');
+        expect(changeUser.mock.invocationCallOrder[0]).toBeLessThan(
+          setLanguage.mock.invocationCallOrder[0] as number,
+        );
       });
 
       it('does not set the same language again for the same user', async () => {
