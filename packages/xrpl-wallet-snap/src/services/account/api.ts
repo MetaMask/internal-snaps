@@ -2,8 +2,6 @@ import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 
 import type { XrplSecpDerivationPath } from '../wallet';
 
-export type { XrplSecpDerivationPath } from '../wallet';
-
 export type KeyringAccountId = string;
 
 export type KeyringAccountState = {
@@ -16,3 +14,10 @@ export type KeyringAccountState = {
 export type XrplKeyringAccount = ExtendedKeyringAccount & {
   derivationPath: XrplSecpDerivationPath;
 };
+
+export const MultiChainMethod = {
+  SignTransaction: 'signTransaction',
+} as const;
+
+export type MultiChainMethod =
+  (typeof MultiChainMethod)[keyof typeof MultiChainMethod];

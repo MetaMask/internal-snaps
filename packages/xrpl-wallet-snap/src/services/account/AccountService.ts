@@ -5,13 +5,14 @@ import { InvalidParamsError } from '@metamask/snaps-sdk';
 
 import type { XrplAddress, KnownCaip2ChainId } from '../../api';
 import { KEYRING_ACCOUNT_TYPE } from '../../constants';
-import { MultichainMethod } from '../../handlers/keyring/api';
 import { batchesAll, getSnapProvider } from '../../utils';
 import { getSupportedScopes } from '../../utils/scopes';
 import type { Wallet, WalletService } from '../wallet';
 import { getDerivationPath } from '../wallet';
+import { XrplSecpDerivationPath } from '../wallet';
 import type { AccountsRepository } from './AccountsRepository';
-import type { XrplKeyringAccount, XrplSecpDerivationPath } from './api';
+import { MultiChainMethod } from './api';
+import type { XrplKeyringAccount } from './api';
 import { AccountNotFoundException } from './exceptions';
 import { assertSameAddress } from './utils';
 
@@ -318,7 +319,7 @@ export class AccountService {
         },
         exportable: true,
       },
-      methods: [MultichainMethod.SignTransaction],
+      methods: [MultiChainMethod.SignTransaction],
     };
   }
 }
