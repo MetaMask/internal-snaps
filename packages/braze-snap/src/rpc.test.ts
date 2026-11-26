@@ -54,8 +54,21 @@ describe('onClientRequest', () => {
     it('changes the user when it differs from the current one', async () => {
       const { changeUser } = mockBrazeSdk('other-profile-id');
 
-      expect(await call(BrazeMethod.SyncUser, PARAMS)).toBeNull();
+      expect(await call(BrazeMethod.SyncUser, PARAMS)).toStrictEqual({
+        flushed: true,
+      });
       expect(changeUser).toHaveBeenCalledWith('profile-id');
+    });
+
+    it('returns flushed: false when the flush does not succeed', async () => {
+      const { requestImmediateDataFlush } = mockBrazeSdk('profile-id');
+      requestImmediateDataFlush.mockImplementation((onFlushed) =>
+        onFlushed?.(false),
+      );
+
+      expect(await call(BrazeMethod.SyncUser, PARAMS)).toStrictEqual({
+        flushed: false,
+      });
     });
 
     it('changes the user when there is none', async () => {

@@ -10,12 +10,12 @@ The snap exposes a client-only `onClientRequest` handler, so only MetaMask can i
 
 ### `syncUser`
 
-Identify the device as the given Braze user. The SDK changes the user only when it differs from the current one, and then flushes, which starts a new session if the previous one expired.
+Identify the device as the given Braze user. The SDK changes the user only when it differs from the current one, and then flushes, which starts a new session if the previous one expired. Returns `{ flushed: boolean }` so the client knows whether queued events and attributes were delivered.
 
 When `language` is given, it becomes the user's language in Braze. The snap only sets it when it differs from the last language it set for that user, because the SDK sends every attribute it is given.
 
 ```ts
-await snapController.handleRequest({
+const { flushed } = await snapController.handleRequest({
   snapId: 'npm:@metamask/braze-snap',
   origin: 'metamask',
   handler: 'onClientRequest',
@@ -52,12 +52,12 @@ To sign a user out, the client stops the snap and clears its state. The snap doe
 
 Each request runs in the same steps:
 
-1. The first request after the snap starts reads the SDK storage from unencrypted snap state.
-2. The SDK is loaded and initialized, or initialized again if the config changed.
+1. The snap reads the SDK storage and `appliedLanguage` metadata from unencrypted snap state.
+2. The SDK is loaded and initialized.
 3. The SDK is allowed to send requests to the endpoint, and the handler runs.
-4. The SDK flushes what it queued. The snap waits up to 25 seconds for the flush and the requests it started.
+4. The SDK flushes what it queued (up to 25 seconds total for the request and flush).
 5. Requests still running are aborted, and network access is removed.
-6. The SDK storage is written to snap state, once, if it changed.
+6. The SDK storage and `appliedLanguage` are written to snap state once, if changed, and the in-memory SDK instance is destroyed before the snap runtime clears timers.
 
 Requests never interleave. Because the snap runtime clears timers and cancels requests once a request ends, nothing the SDK schedules in the background runs between requests.
 
@@ -73,7 +73,7 @@ The snap treats the SDK and the responses from Braze as untrusted.
 | The SDK writes to the DOM               | There is no DOM. `document` only resolves URLs, has no cookies, and returns inert element stubs for non-anchor tags. The SDK is initialized without Font Awesome and without user-supplied JavaScript.                                                |
 | The SDK sends data elsewhere            | `fetch` is only reachable through a guarded `XMLHttpRequest`. It only sends `POST` requests to `https://<endpoint>/api/v3/data/`, with bodies up to 1 MB, up to 4 at a time, with a 20 second timeout, without credentials, redirects, or a referrer. |
 | A Braze response is large or malformed  | Responses above 1 MB are rejected. Responses are only parsed by the SDK, inside the sandbox.                                                                                                                                                          |
-| The SDK writes storage often or a lot   | The SDK writes to memory. The snap persists the `ab.storage.*` keys, except the in-app message triggers MetaMask does not show, with its own `metamask.*` items, once per request, only when they changed.                                            |
+| The SDK writes storage often or a lot   | The SDK writes to memory. The snap persists the `ab.storage.*` keys, except the in-app message triggers MetaMask does not show, alongside `appliedLanguage`, once per request, only when they changed.                                                |
 | The SDK keeps running in the background | Network access only exists during a request, and requests still running when it ends are aborted. The client stops idle snaps.                                                                                                                        |
 | Another dapp or snap calls the snap     | The snap only exports `onClientRequest` and has no `endowment:rpc` permission, so MetaMask blocks all non-client origins.                                                                                                                             |
 | The client sends unexpected params      | Params are validated against structs. The endpoint must be a bare host, so the config cannot inject a path or credentials.                                                                                                                            |
@@ -83,7 +83,7 @@ The SDK storage holds the Braze device ID, user ID (the canonical profile ID), s
 
 ## Testing
 
-Run `yarn test` in this directory. [`src/sdk.test.ts`](./src/sdk.test.ts) runs the real SDK against the shims and checks that a restart keeps the device and the session.
+Run `yarn test` in this directory. [`src/sdk.test.ts`](./src/sdk.test.ts) runs the real SDK against the shims and checks that a restart keeps the device and the session, and [`src/ses.test.ts`](./src/ses.test.ts) verifies the compiled bundle inside a locked-down SES `Compartment`.
 
 ## Contributing
 

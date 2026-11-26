@@ -6,6 +6,25 @@ const controllers = new Set<AbortController>();
 
 const pendingRequests = new Set<Promise<void>>();
 
+let allowedRequestFailed = false;
+
+/**
+ * Reset the per-request allowed-network failure tracker.
+ */
+export function resetRequestFailures(): void {
+  allowedRequestFailed = false;
+}
+
+/**
+ * Whether any allowlisted network request failed or returned an HTTP error
+ * status (>= 400) since the last {@link resetRequestFailures}.
+ *
+ * @returns True when an allowed request failed.
+ */
+export function hasRequestFailure(): boolean {
+  return allowedRequestFailed;
+}
+
 /**
  * Only allow the SDK to send requests to the allowed paths on this endpoint.
  * Pass `null` to block all requests.
@@ -163,12 +182,21 @@ export class GuardedXMLHttpRequest {
 
       const contentLength = Number(response.headers.get('content-length'));
       if (contentLength > NETWORK_LIMITS.maxResponseBodyBytes) {
+        if (response.body && typeof response.body.cancel === 'function') {
+          await response.body.cancel();
+        }
+        allowedRequestFailed = true;
         return { type: 'error' };
       }
 
       const responseBody = await response.text();
       if (getByteLength(responseBody) > NETWORK_LIMITS.maxResponseBodyBytes) {
+        allowedRequestFailed = true;
         return { type: 'error' };
+      }
+
+      if (response.status >= 400) {
+        allowedRequestFailed = true;
       }
 
       let headers = '';
@@ -183,6 +211,7 @@ export class GuardedXMLHttpRequest {
         headers,
       };
     } catch {
+      allowedRequestFailed = true;
       return timedOut ? { type: 'timeout' } : { type: 'error' };
     } finally {
       clearTimeout(timeout);

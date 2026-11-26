@@ -5,6 +5,8 @@ import {
   GuardedXMLHttpRequest,
   abortRequests,
   drainRequests,
+  hasRequestFailure,
+  resetRequestFailures,
   setAllowedEndpoint,
 } from './network';
 
@@ -67,6 +69,7 @@ function mockHangingFetch(): ReturnType<typeof vi.spyOn> {
 
 describe('GuardedXMLHttpRequest', () => {
   beforeEach(() => {
+    resetRequestFailures();
     setAllowedEndpoint(ENDPOINT);
   });
 
@@ -217,7 +220,22 @@ describe('GuardedXMLHttpRequest', () => {
     expect(await send().result).toBe('error');
   });
 
-  it('rejects responses whose declared size is above the limit', async () => {
+  it('rejects responses whose declared size is above the limit and cancels web bodies', async () => {
+    const cancel = vi.fn().mockResolvedValue(undefined);
+    const response = {
+      headers: new Headers({
+        'Content-Length': String(NETWORK_LIMITS.maxResponseBodyBytes + 1),
+      }),
+      body: { cancel },
+    } as unknown as Response;
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response);
+
+    expect(await send().result).toBe('error');
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(hasRequestFailure()).toBe(true);
+  });
+
+  it('rejects oversized stream responses without a Web Streams cancel method', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('{}', {
         headers: {
@@ -227,6 +245,20 @@ describe('GuardedXMLHttpRequest', () => {
     );
 
     expect(await send().result).toBe('error');
+    expect(hasRequestFailure()).toBe(true);
+  });
+
+  it('rejects oversized empty-body responses without failing on null body', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, {
+        headers: {
+          'Content-Length': String(NETWORK_LIMITS.maxResponseBodyBytes + 1),
+        },
+      }),
+    );
+
+    expect(await send().result).toBe('error');
+    expect(hasRequestFailure()).toBe(true);
   });
 
   it('rejects response bodies above the limit', async () => {
@@ -235,9 +267,10 @@ describe('GuardedXMLHttpRequest', () => {
     );
 
     expect(await send().result).toBe('error');
+    expect(hasRequestFailure()).toBe(true);
   });
 
-  it('reports non-2xx responses through onload with their status', async () => {
+  it('reports non-2xx responses through onload with their status and records failure for >= 400', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('{}', { status: 500 }),
     );
@@ -246,6 +279,16 @@ describe('GuardedXMLHttpRequest', () => {
 
     expect(await result).toBe('load');
     expect(xhr.status).toBe(500);
+    expect(hasRequestFailure()).toBe(true);
+  });
+
+  it('does not record failure when a blocked URL or 2xx response occurs', async () => {
+    await send({ url: `https://${ENDPOINT}/api/v3/dust/config` }).result;
+    expect(hasRequestFailure()).toBe(false);
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}'));
+    expect(await send().result).toBe('load');
+    expect(hasRequestFailure()).toBe(false);
   });
 
   it('ignores errors thrown by SDK callbacks', async () => {

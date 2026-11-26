@@ -28,9 +28,13 @@ type DataRequest = {
  *
  * @param profileId - The profile ID.
  * @param language - The language, if any.
+ * @returns The handler result.
  */
-async function syncUser(profileId: string, language?: string): Promise<void> {
-  await onClientRequest({
+async function syncUser(
+  profileId: string,
+  language?: string,
+): Promise<{ flushed: boolean }> {
+  return (await onClientRequest({
     request: {
       jsonrpc: '2.0',
       id: 1,
@@ -41,7 +45,7 @@ async function syncUser(profileId: string, language?: string): Promise<void> {
         config: { apiKey: API_KEY, endpoint: ENDPOINT, appVersion: '13.0.0' },
       },
     },
-  });
+  })) as { flushed: boolean };
 }
 
 /**
@@ -139,21 +143,27 @@ describe('Braze Web SDK in the snap globals', () => {
     for (const { device_id: requestDeviceId } of requests) {
       expect(requestDeviceId).toBe(deviceId);
     }
-    expect((await brazeSdkLoader.load()).getUser()?.getUserId()).toBe(
-      'profile-a',
-    );
+    const persistedAfterRestart = state.get(STORAGE_STATE_KEY) as {
+      items: Record<string, string>;
+    };
+    expect(
+      persistedAfterRestart.items[`ab.storage.userId.${API_KEY}`],
+    ).toContain('g:profile-a|');
   });
 
   it('switches to another user', async () => {
-    stubSnap();
+    const { state } = stubSnap();
     await syncUser('profile-a');
     requests = [];
 
     await syncUser('profile-b');
 
     expect(getEventUserIds(requests)).toContain('profile-b');
-    expect((await brazeSdkLoader.load()).getUser()?.getUserId()).toBe(
-      'profile-b',
+    const persisted = state.get(STORAGE_STATE_KEY) as {
+      items: Record<string, string>;
+    };
+    expect(persisted.items[`ab.storage.userId.${API_KEY}`]).toContain(
+      'g:profile-b|',
     );
   });
 
@@ -183,9 +193,92 @@ describe('Braze Web SDK in the snap globals', () => {
     request.mockClear();
     requests = [];
 
-    await syncUser('profile-a');
+    expect(await syncUser('profile-a')).toStrictEqual({ flushed: true });
 
     expect(requests).toStrictEqual([]);
-    expect(request.mock.calls.length).toBeLessThanOrEqual(1);
+    expect(
+      request.mock.calls.filter(([{ method }]) => method === 'snap_setState')
+        .length,
+    ).toBeLessThanOrEqual(1);
+  });
+
+  it('preserves queued session and language across 500 errors and flushes on retry', async () => {
+    nock.cleanAll();
+    nock(`https://${ENDPOINT}`).post('/api/v3/data/').reply(500, {});
+    stubSnap();
+
+    expect(await syncUser('profile-a', 'fr')).toStrictEqual({ flushed: false });
+    expect(requests).toStrictEqual([]);
+
+    nock(`https://${ENDPOINT}`)
+      .persist()
+      .post('/api/v3/data/')
+      .reply(200, (_uri, body) => {
+        requests.push(body as DataRequest);
+        return {};
+      });
+    expect(await syncUser('profile-a', 'fr')).toStrictEqual({ flushed: true });
+    expect(getEventNames(requests)).toContain('ss');
+    expect(requests.flatMap(({ attributes = [] }) => attributes)).toStrictEqual(
+      [{ user_id: 'profile-a', language: 'fr' }],
+    );
+  });
+
+  it('does not wedge rate-limit timers across RPCs after idle teardown', async () => {
+    vi.useFakeTimers();
+    nock.cleanAll();
+    const serverTime = Date.now();
+    nock(`https://${ENDPOINT}`)
+      .post('/api/v3/data/')
+      .reply(200, (_uri, body) => {
+        requests.push(body as DataRequest);
+        return {
+          config: {
+            time: serverTime,
+            global_request_rate_limit: {
+              enabled: true,
+              capacity: 10,
+              refill_rate: 10,
+              endpoint_overrides: {
+                data: { capacity: 10, refill_rate: 10 },
+              },
+            },
+          },
+        };
+      });
+    const { state } = stubSnap();
+
+    expect(await syncUser('profile-a')).toStrictEqual({ flushed: true });
+
+    // Exhaust the persisted token bucket so the SDK schedules NetworkManager's
+    // rate-limit retry timer (`NetworkManager.hd`), then time out flush so the
+    // RPC exits without that timer firing.
+    const persisted = state.get(STORAGE_STATE_KEY) as {
+      version: 1;
+      items: Record<string, string>;
+    };
+    persisted.items[`ab.storage.globalRateLimitCurrentTokenCount.${API_KEY}`] =
+      JSON.stringify({ v: 0 });
+    persisted.items[`ab.storage.lastSdkReq.${API_KEY}`] = JSON.stringify({
+      v: Date.now(),
+    });
+
+    const rateLimitedSync = syncUser('profile-b');
+    await vi.advanceTimersByTimeAsync(25_000);
+    expect(await rateLimitedSync).toStrictEqual({ flushed: false });
+
+    // Advance time enough for tokens to refill, and ensure the next RPC sends
+    // cleanly rather than getting stuck on stale `NetworkManager.hd` timers.
+    await vi.advanceTimersByTimeAsync(20_000);
+    nock(`https://${ENDPOINT}`)
+      .persist()
+      .post('/api/v3/data/')
+      .reply(200, (_uri, body) => {
+        requests.push(body as DataRequest);
+        return {};
+      });
+    expect(await syncUser('profile-c')).toStrictEqual({ flushed: true });
+    expect(getEventUserIds(requests)).toContain('profile-c');
+    vi.useRealTimers();
   });
 });

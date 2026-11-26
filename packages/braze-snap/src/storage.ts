@@ -3,18 +3,23 @@ import { hasProperty, isObject } from '@metamask/utils';
 import {
   IN_MEMORY_KEY_PREFIX,
   PERSISTED_KEY_PREFIX,
-  SNAP_KEY_PREFIX,
   STORAGE_STATE_KEY,
 } from './constants';
+
+export type AppliedLanguage = {
+  profileId: string;
+  language: string;
+};
 
 type PersistedStorage = {
   version: 1;
   items: Record<string, string>;
+  appliedLanguage?: AppliedLanguage;
 };
 
 const items = new Map<string, string>();
 
-const snapItems = new Map<string, string>();
+let appliedLanguage: AppliedLanguage | undefined;
 
 let hydrated = false;
 
@@ -51,17 +56,22 @@ export const storageShim = {
 };
 
 /**
- * The snap's own items, persisted with the SDK storage.
+ * Get the last language applied by the snap, if any.
+ *
+ * @returns The applied language entry, or `undefined`.
  */
-export const snapStorage = {
-  getItem(key: string): string | null {
-    return snapItems.get(key) ?? null;
-  },
+export function getAppliedLanguage(): AppliedLanguage | undefined {
+  return appliedLanguage;
+}
 
-  setItem(key: string, value: string): void {
-    snapItems.set(key, value);
-  },
-};
+/**
+ * Record the last language applied for a profile.
+ *
+ * @param entry - The profile ID and ISO 639-1 language code.
+ */
+export function setAppliedLanguage(entry: AppliedLanguage): void {
+  appliedLanguage = entry;
+}
 
 /**
  * Check whether an SDK storage key is persisted.
@@ -81,25 +91,48 @@ function isPersistedKey(key: string): boolean {
  */
 function clearItems(): void {
   items.clear();
-  snapItems.clear();
+  appliedLanguage = undefined;
 }
 
 /**
- * Get the items that should be persisted, sorted by key so that the
+ * Build the persisted storage payload with items sorted by key so that the
  * serialization only changes when the content does.
  *
- * @returns The persistable items.
+ * @returns The persisted storage payload.
  */
-function getPersistableItems(): Record<string, string> {
-  return Object.fromEntries(
-    [
-      ...[...items.entries()].filter(([key]) => isPersistedKey(key)),
-      ...[...snapItems.entries()].map(([key, value]): [string, string] => [
-        `${SNAP_KEY_PREFIX}${key}`,
-        value,
-      ]),
-    ].sort(([a], [b]) => (a < b ? -1 : 1)),
+function getPersistedValue(): PersistedStorage {
+  const sortedItems = Object.fromEntries(
+    [...items.entries()]
+      .filter(([key]) => isPersistedKey(key))
+      .sort(([a], [b]) => (a < b ? -1 : 1)),
   );
+
+  return {
+    version: 1,
+    items: sortedItems,
+    ...(appliedLanguage ? { appliedLanguage } : {}),
+  };
+}
+
+/**
+ * Parse a persisted applied language entry if valid.
+ *
+ * @param value - The raw candidate value.
+ * @returns The validated entry, or `undefined`.
+ */
+function parseAppliedLanguage(value: unknown): AppliedLanguage | undefined {
+  if (
+    isObject(value) &&
+    hasProperty(value, 'profileId') &&
+    hasProperty(value, 'language') &&
+    typeof value.profileId === 'string' &&
+    value.profileId.length > 0 &&
+    typeof value.language === 'string' &&
+    value.language.length > 0
+  ) {
+    return { profileId: value.profileId, language: value.language };
+  }
+  return undefined;
 }
 
 /**
@@ -107,36 +140,46 @@ function getPersistableItems(): Record<string, string> {
  * have the expected shape.
  *
  * @param state - The value stored under {@link STORAGE_STATE_KEY}.
- * @returns The persisted items.
+ * @returns The persisted storage items and applied language.
  */
-function parsePersistedStorage(state: unknown): Record<string, string> {
+function parsePersistedStorage(state: unknown): {
+  items: Record<string, string>;
+  appliedLanguage?: AppliedLanguage;
+} {
   if (
     !isObject(state) ||
     state.version !== 1 ||
     !hasProperty(state, 'items') ||
     !isObject(state.items)
   ) {
-    return {};
+    return { items: {} };
   }
 
-  return Object.fromEntries(
-    Object.entries(state.items).filter(
-      (entry): entry is [string, string] =>
-        (isPersistedKey(entry[0]) || entry[0].startsWith(SNAP_KEY_PREFIX)) &&
-        typeof entry[1] === 'string',
-    ),
+  const persistedItems = Object.fromEntries(
+    Object.entries(state.items)
+      .filter(
+        (entry): entry is [string, string] =>
+          isPersistedKey(entry[0]) && typeof entry[1] === 'string',
+      )
+      .sort(([a], [b]) => (a < b ? -1 : 1)),
   );
+
+  const parsedLanguage = hasProperty(state, 'appliedLanguage')
+    ? parseAppliedLanguage(state.appliedLanguage)
+    : undefined;
+
+  return {
+    items: persistedItems,
+    ...(parsedLanguage ? { appliedLanguage: parsedLanguage } : {}),
+  };
 }
 
 /**
- * Write the persisted items to snap state.
+ * Write the persisted storage payload to snap state.
  *
- * @param persistedItems - The items to persist.
+ * @param value - The payload to persist.
  */
-async function writeStorage(
-  persistedItems: Record<string, string>,
-): Promise<void> {
-  const value: PersistedStorage = { version: 1, items: persistedItems };
+async function writeStorage(value: PersistedStorage): Promise<void> {
   await snap.request({
     method: 'snap_setState',
     params: { key: STORAGE_STATE_KEY, value, encrypted: false },
@@ -145,7 +188,7 @@ async function writeStorage(
 
 /**
  * Load the persisted items into memory. Only reads snap state the first time
- * it is called while the snap is running.
+ * it is called while hydrated.
  */
 export async function hydrateStorage(): Promise<void> {
   if (hydrated) {
@@ -157,34 +200,35 @@ export async function hydrateStorage(): Promise<void> {
     params: { key: STORAGE_STATE_KEY, encrypted: false },
   });
 
-  const persistedItems = parsePersistedStorage(state);
+  const persisted = parsePersistedStorage(state);
 
   clearItems();
-  for (const [key, value] of Object.entries(persistedItems)) {
-    if (key.startsWith(SNAP_KEY_PREFIX)) {
-      snapItems.set(key.slice(SNAP_KEY_PREFIX.length), value);
-    } else {
-      items.set(key, value);
-    }
+  for (const [key, value] of Object.entries(persisted.items)) {
+    items.set(key, value);
   }
+  appliedLanguage = persisted.appliedLanguage;
 
-  lastCommitted = JSON.stringify(persistedItems);
+  lastCommitted = JSON.stringify({
+    version: 1,
+    items: persisted.items,
+    ...(appliedLanguage ? { appliedLanguage } : {}),
+  });
   hydrated = true;
 }
 
 /**
- * Persist the items the SDK changed during the request. Does nothing when
- * nothing changed.
+ * Persist the items changed during the request. Does nothing when nothing
+ * changed.
  */
 export async function commitStorage(): Promise<void> {
-  const persistedItems = getPersistableItems();
-  const serialized = JSON.stringify(persistedItems);
+  const value = getPersistedValue();
+  const serialized = JSON.stringify(value);
 
   if (serialized === lastCommitted) {
     return;
   }
 
-  await writeStorage(persistedItems);
+  await writeStorage(value);
   lastCommitted = serialized;
 }
 

@@ -2,9 +2,10 @@ import { stubSnap } from '../tests/snap';
 import { STORAGE_STATE_KEY } from './constants';
 import {
   commitStorage,
+  getAppliedLanguage,
   hydrateStorage,
   resetStorage,
-  snapStorage,
+  setAppliedLanguage,
   storageShim,
 } from './storage';
 
@@ -96,22 +97,39 @@ describe('storage', () => {
 
       expect(storageShim).toHaveLength(1);
       expect(storageShim.getItem(KEY)).toBe('device');
-      expect(snapStorage.getItem('y')).toBeNull();
+      expect(getAppliedLanguage()).toBeUndefined();
     });
 
-    it('loads the snap items out of the SDK storage', async () => {
+    it('drops invalid appliedLanguage entries', async () => {
       stubSnap({
         [STORAGE_STATE_KEY]: {
           version: 1,
-          items: { [KEY]: 'device', 'metamask.language': 'fr' },
+          items: { [KEY]: 'device' },
+          appliedLanguage: { profileId: '', language: 'fr' },
         },
       });
 
       await hydrateStorage();
 
-      expect(snapStorage.getItem('language')).toBe('fr');
+      expect(getAppliedLanguage()).toBeUndefined();
+    });
+
+    it('loads the applied language separately from the SDK storage', async () => {
+      stubSnap({
+        [STORAGE_STATE_KEY]: {
+          version: 1,
+          items: { [KEY]: 'device' },
+          appliedLanguage: { profileId: 'profile-a', language: 'fr' },
+        },
+      });
+
+      await hydrateStorage();
+
+      expect(getAppliedLanguage()).toStrictEqual({
+        profileId: 'profile-a',
+        language: 'fr',
+      });
       expect(storageShim).toHaveLength(1);
-      expect(storageShim.getItem('metamask.language')).toBeNull();
     });
   });
 
@@ -143,17 +161,18 @@ describe('storage', () => {
       ).toStrictEqual(['ab.storage.a', 'ab.storage.b']);
     });
 
-    it('persists the snap items with the SDK storage keys', async () => {
+    it('persists the applied language alongside the SDK storage keys', async () => {
       const { state } = stubSnap();
       await hydrateStorage();
 
       storageShim.setItem(KEY, 'device');
-      snapStorage.setItem('language', 'fr');
+      setAppliedLanguage({ profileId: 'profile-a', language: 'fr' });
       await commitStorage();
 
       expect(state.get(STORAGE_STATE_KEY)).toStrictEqual({
         version: 1,
-        items: { [KEY]: 'device', 'metamask.language': 'fr' },
+        items: { [KEY]: 'device' },
+        appliedLanguage: { profileId: 'profile-a', language: 'fr' },
       });
     });
 
@@ -206,11 +225,11 @@ describe('storage', () => {
       });
       await hydrateStorage();
       storageShim.setItem('ab.storage.other', 'value');
-      snapStorage.setItem('language', 'fr');
+      setAppliedLanguage({ profileId: 'profile-a', language: 'fr' });
 
       resetStorage();
       expect(storageShim).toHaveLength(0);
-      expect(snapStorage.getItem('language')).toBeNull();
+      expect(getAppliedLanguage()).toBeUndefined();
 
       await hydrateStorage();
       expect(request).toHaveBeenCalledTimes(2);

@@ -61,36 +61,27 @@ describe('withBraze', () => {
     });
   });
 
-  it('loads the SDK once', async () => {
+  it('loads the SDK once and initializes/destroys cleanly per request', async () => {
     stubSnap();
-    mockBrazeSdk();
+    const { initialize, destroy } = mockBrazeSdk();
 
     await withBraze(CONFIG, () => undefined);
     await withBraze(CONFIG, () => undefined);
 
     expect(brazeSdkLoader.load).toHaveBeenCalledTimes(1);
-  });
-
-  it('initializes the SDK once for the same config', async () => {
-    stubSnap();
-    const { initialize, destroy } = mockBrazeSdk();
-
-    await withBraze(CONFIG, () => undefined);
-    await withBraze(CONFIG, () => undefined);
-
-    expect(initialize).toHaveBeenCalledTimes(1);
-    expect(destroy).not.toHaveBeenCalled();
-  });
-
-  it('initializes the SDK again when the config changes', async () => {
-    stubSnap();
-    const { initialize, destroy } = mockBrazeSdk();
-
-    await withBraze(CONFIG, () => undefined);
-    await withBraze({ ...CONFIG, appVersion: '13.1.0' }, () => undefined);
-
-    expect(destroy).toHaveBeenCalledTimes(1);
     expect(initialize).toHaveBeenCalledTimes(2);
+    expect(destroy).toHaveBeenCalledTimes(2);
+  });
+
+  it('skips initialize if SDK is already initialized', async () => {
+    stubSnap();
+    const sdk = mockBrazeSdk();
+    sdk.isInitialized.mockReturnValue(true);
+
+    await withBraze(CONFIG, () => undefined);
+
+    expect(sdk.initialize).not.toHaveBeenCalled();
+    expect(sdk.destroy).toHaveBeenCalledTimes(1);
   });
 
   it('throws when the SDK fails to initialize, and tries again next time', async () => {
@@ -107,7 +98,7 @@ describe('withBraze', () => {
 
     await withBraze(CONFIG, callback);
     expect(initialize).toHaveBeenCalledTimes(2);
-    expect(callback).toHaveBeenCalledWith(sdk);
+    expect(callback).toHaveBeenCalledWith(sdk, expect.any(Function));
   });
 
   it('returns the callback result', async () => {
@@ -126,9 +117,9 @@ describe('withBraze', () => {
     expect(requestImmediateDataFlush).not.toHaveBeenCalled();
   });
 
-  it('hydrates, runs, flushes, then persists once', async () => {
+  it('hydrates, runs, flushes, persists once, then destroys SDK and resets storage', async () => {
     const { request } = stubSnap();
-    const { requestImmediateDataFlush } = mockBrazeSdk();
+    const { requestImmediateDataFlush, destroy } = mockBrazeSdk();
     const calls: string[] = [];
     request.mockImplementation(async ({ method }) => {
       calls.push(method);
@@ -139,22 +130,25 @@ describe('withBraze', () => {
       storageShim.setItem('ab.storage.events', '[]');
       onFlushed?.(true);
     });
+    destroy.mockImplementation(() => {
+      calls.push('destroy');
+    });
 
-    await withBraze(
-      CONFIG,
-      () => {
-        calls.push('callback');
-        storageShim.setItem('ab.storage.userId', 'profile');
-      },
-      { flush: true },
-    );
+    const flushed = await withBraze(CONFIG, async (_sdk, flush) => {
+      calls.push('callback');
+      storageShim.setItem('ab.storage.userId', 'profile');
+      return flush();
+    });
 
+    expect(flushed).toBe(true);
     expect(calls).toStrictEqual([
       'snap_getState',
       'callback',
       'flush',
       'snap_setState',
+      'destroy',
     ]);
+    expect(storageShim).toHaveLength(0);
   });
 
   it('only allows network access while the request runs', async () => {
@@ -174,7 +168,7 @@ describe('withBraze', () => {
     expect(await sendDataRequest()).toBe(false);
   });
 
-  it('waits for the requests the flush started', async () => {
+  it('waits for the requests the flush started and returns true on success', async () => {
     stubSnap();
     const { requestImmediateDataFlush } = mockBrazeSdk();
     vi.spyOn(globalThis, 'fetch').mockImplementation(
@@ -191,12 +185,43 @@ describe('withBraze', () => {
       onFlushed?.(true);
     });
 
-    await withBraze(CONFIG, () => undefined, { flush: true });
+    const flushed = await withBraze(CONFIG, async (_sdk, flush) => flush());
 
     expect(loaded).toBe(true);
+    expect(flushed).toBe(true);
   });
 
-  it('stops waiting for the flush after a timeout and aborts requests', async () => {
+  it('returns false from flush when an allowed request fails', async () => {
+    stubSnap();
+    const { requestImmediateDataFlush } = mockBrazeSdk();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('{}', { status: 500 }),
+    );
+    requestImmediateDataFlush.mockImplementation((onFlushed) => {
+      const xhr = new GuardedXMLHttpRequest();
+      xhr.open('POST', DATA_URL);
+      xhr.send('{}');
+      onFlushed?.(true);
+    });
+
+    const flushed = await withBraze(CONFIG, async (_sdk, flush) => flush());
+
+    expect(flushed).toBe(false);
+  });
+
+  it('returns false from flush when the SDK callback reports failure', async () => {
+    stubSnap();
+    const { requestImmediateDataFlush } = mockBrazeSdk();
+    requestImmediateDataFlush.mockImplementation((onFlushed) => {
+      onFlushed?.(false);
+    });
+
+    const flushed = await withBraze(CONFIG, async (_sdk, flush) => flush());
+
+    expect(flushed).toBe(false);
+  });
+
+  it('stops waiting for the flush after a timeout, returns false, and aborts requests', async () => {
     vi.useFakeTimers();
     stubSnap();
     const { requestImmediateDataFlush } = mockBrazeSdk();
@@ -211,21 +236,18 @@ describe('withBraze', () => {
     );
     let requestLoaded: Promise<boolean> | undefined;
 
-    const result = withBraze(
-      CONFIG,
-      () => {
-        setTimeout(() => {
-          requestLoaded = sendDataRequest();
-        }, FLUSH_TIMEOUT_MS / 2);
-      },
-      { flush: true },
-    );
+    const result = withBraze(CONFIG, async (_sdk, flush) => {
+      setTimeout(() => {
+        requestLoaded = sendDataRequest();
+      }, FLUSH_TIMEOUT_MS / 2);
+      return flush();
+    });
     while (requestImmediateDataFlush.mock.calls.length === 0) {
       await Promise.resolve();
     }
     await vi.advanceTimersByTimeAsync(FLUSH_TIMEOUT_MS);
 
-    expect(await result).toBeUndefined();
+    expect(await result).toBe(false);
     expect(await requestLoaded).toBe(false);
   });
 
@@ -246,7 +268,7 @@ describe('withBraze', () => {
     });
   });
 
-  it('keeps the SDK when persisting the storage fails', async () => {
+  it('still destroys the SDK and resets storage when persisting the storage fails', async () => {
     const { request } = stubSnap();
     const { destroy } = mockBrazeSdk();
     request
@@ -258,7 +280,8 @@ describe('withBraze', () => {
         storageShim.setItem('ab.storage.userId', 'profile');
       }),
     ).rejects.toThrow('State failure');
-    expect(destroy).not.toHaveBeenCalled();
+    expect(destroy).toHaveBeenCalledTimes(1);
+    expect(storageShim).toHaveLength(0);
   });
 
   it('does not interleave requests', async () => {

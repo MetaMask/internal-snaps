@@ -5,7 +5,7 @@ import { validate } from '@metamask/superstruct';
 
 import type { BrazeSdk } from './braze-sdk';
 import { withBraze } from './runtime';
-import { snapStorage } from './storage';
+import { getAppliedLanguage, setAppliedLanguage } from './storage';
 import type { SyncUserParams } from './structs';
 import { SyncUserParamsStruct } from './structs';
 
@@ -13,7 +13,9 @@ export const BrazeMethod = {
   SyncUser: 'syncUser',
 } as const;
 
-const APPLIED_LANGUAGE_KEY = 'appliedLanguage';
+export type SyncUserResult = {
+  flushed: boolean;
+};
 
 /**
  * Validate request params against a struct.
@@ -43,12 +45,13 @@ function validateParams<Params>(
  * @param language - The ISO 639-1 language code.
  */
 function setLanguage(sdk: BrazeSdk, profileId: string, language: string): void {
-  const applied = JSON.stringify({ profileId, language });
-  if (snapStorage.getItem(APPLIED_LANGUAGE_KEY) === applied) {
+  const applied = getAppliedLanguage();
+  if (applied?.profileId === profileId && applied.language === language) {
     return;
   }
+
   if (sdk.getUser()?.setLanguage(language)) {
-    snapStorage.setItem(APPLIED_LANGUAGE_KEY, applied);
+    setAppliedLanguage({ profileId, language });
   }
 }
 
@@ -63,37 +66,34 @@ function setLanguage(sdk: BrazeSdk, profileId: string, language: string): void {
  * @param params.language - The language the user chose in MetaMask, as an ISO
  * 639-1 code. Left unchanged in Braze when omitted.
  * @param params.config - The Braze config.
+ * @returns Whether the flush completed without network/backend failure.
  */
 async function syncUser({
   profileId,
   language,
   config,
-}: SyncUserParams): Promise<void> {
-  await withBraze(
-    config,
-    (sdk) => {
-      const currentUserId = sdk.getUser()?.getUserId() ?? null;
-      if (currentUserId === null && language !== undefined) {
-        // Queue before changeUser so initial identification promotes the
-        // anonymous attribute and sends session start + language together.
-        setLanguage(sdk, profileId, language);
-      }
-      if (currentUserId !== profileId) {
-        sdk.changeUser(profileId);
-      }
-      if (currentUserId !== null && language !== undefined) {
-        setLanguage(sdk, profileId, language);
-      }
-    },
-    { flush: true },
-  );
+}: SyncUserParams): Promise<SyncUserResult> {
+  return withBraze(config, async (sdk, flush) => {
+    const currentUserId = sdk.getUser()?.getUserId() ?? null;
+    if (currentUserId === null && language !== undefined) {
+      // Queue before changeUser so initial identification promotes the
+      // anonymous attribute and sends session start + language together.
+      setLanguage(sdk, profileId, language);
+    }
+    if (currentUserId !== profileId) {
+      sdk.changeUser(profileId);
+    }
+    if (currentUserId !== null && language !== undefined) {
+      setLanguage(sdk, profileId, language);
+    }
+    return { flushed: await flush() };
+  });
 }
 
 export const onClientRequest: OnClientRequestHandler = async ({ request }) => {
   switch (request.method) {
     case BrazeMethod.SyncUser:
-      await syncUser(validateParams(request.params, SyncUserParamsStruct));
-      return null;
+      return syncUser(validateParams(request.params, SyncUserParamsStruct));
 
     default:
       throw new MethodNotFoundError() as Error;

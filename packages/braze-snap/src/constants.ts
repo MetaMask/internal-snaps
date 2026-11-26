@@ -28,12 +28,6 @@ export const PERSISTED_KEY_PREFIX = 'ab.storage.';
 export const IN_MEMORY_KEY_PREFIX = 'ab.storage.triggers';
 
 /**
- * The prefix of the snap's own items, persisted with the SDK storage so that
- * they are wiped with it, but not visible to the SDK.
- */
-export const SNAP_KEY_PREFIX = 'metamask.';
-
-/**
  * Limits applied to requests made by the SDK.
  */
 export const NETWORK_LIMITS = {

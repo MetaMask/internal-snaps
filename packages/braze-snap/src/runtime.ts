@@ -1,8 +1,14 @@
 import type { BrazeSdk } from './braze-sdk';
 import { brazeSdkLoader } from './braze-sdk';
 import { FLUSH_TIMEOUT_MS } from './constants';
-import { abortRequests, drainRequests, setAllowedEndpoint } from './network';
-import { commitStorage, hydrateStorage } from './storage';
+import {
+  abortRequests,
+  drainRequests,
+  hasRequestFailure,
+  resetRequestFailures,
+  setAllowedEndpoint,
+} from './network';
+import { commitStorage, hydrateStorage, resetStorage } from './storage';
 
 export type BrazeConfig = {
   apiKey: string;
@@ -11,34 +17,23 @@ export type BrazeConfig = {
   enableLogging?: boolean;
 };
 
-let sdk: BrazeSdk | null = null;
+export type FlushBraze = () => Promise<boolean>;
 
-let initializedConfig: string | null = null;
+let sdk: BrazeSdk | null = null;
 
 let queue: Promise<unknown> = Promise.resolve();
 
 /**
- * Initialize the SDK, or initialize it again if the config changed.
+ * Initialize the SDK if it is not initialized yet.
  *
  * @param brazeSdk - The SDK.
  * @param config - The Braze config.
  */
 function initializeSdk(brazeSdk: BrazeSdk, config: BrazeConfig): void {
-  const configKey = JSON.stringify([
-    config.apiKey,
-    config.endpoint,
-    config.appVersion,
-    config.enableLogging ?? false,
-  ]);
-
   if (brazeSdk.isInitialized()) {
-    if (initializedConfig === configKey) {
-      return;
-    }
-    brazeSdk.destroy();
+    return;
   }
 
-  initializedConfig = null;
   const { DeviceProperties } = brazeSdk;
   const initialized = brazeSdk.initialize(config.apiKey, {
     baseUrl: config.endpoint,
@@ -55,7 +50,6 @@ function initializeSdk(brazeSdk: BrazeSdk, config: BrazeConfig): void {
   if (!initialized) {
     throw new Error('Failed to initialize Braze.');
   }
-  initializedConfig = configKey;
 }
 
 /**
@@ -63,102 +57,120 @@ function initializeSdk(brazeSdk: BrazeSdk, config: BrazeConfig): void {
  *
  * @param promise - The promise to wait for.
  * @param timeoutMs - The timeout, in milliseconds.
+ * @returns `true` if the promise settled before the timeout, `false` otherwise.
  */
 async function waitAtMost(
   promise: Promise<unknown>,
   timeoutMs: number,
-): Promise<void> {
+): Promise<boolean> {
+  if (timeoutMs <= 0) {
+    return false;
+  }
   let timeout: ReturnType<typeof setTimeout> | undefined;
-  await Promise.race([
-    promise,
-    new Promise<void>((resolve) => {
-      timeout = setTimeout(resolve, timeoutMs);
+  const completed = await Promise.race([
+    promise.then(() => true),
+    new Promise<boolean>((resolve) => {
+      timeout = setTimeout(() => resolve(false), timeoutMs);
     }),
   ]);
   clearTimeout(timeout);
+  return completed;
 }
 
 /**
  * Ask the SDK to send everything it has queued, and wait for the requests.
  *
  * @param brazeSdk - The SDK.
+ * @param timeoutMs - The remaining timeout budget, in milliseconds.
+ * @returns Whether the flush and all allowed requests succeeded before timeout.
  */
-async function flush(brazeSdk: BrazeSdk): Promise<void> {
+async function flush(brazeSdk: BrazeSdk, timeoutMs: number): Promise<boolean> {
+  let sdkSucceeded = false;
   const flushed = new Promise<void>((resolve) => {
-    brazeSdk.requestImmediateDataFlush(() => resolve());
+    brazeSdk.requestImmediateDataFlush((success) => {
+      sdkSucceeded = success;
+      resolve();
+    });
   });
-  await waitAtMost(
+  const completed = await waitAtMost(
     flushed.then(async () => drainRequests()),
-    FLUSH_TIMEOUT_MS,
+    timeoutMs,
   );
+  return completed && sdkSucceeded && !hasRequestFailure();
 }
 
 /**
- * Stop network access, wait for the SDK to settle, and persist its storage.
+ * Stop network access, wait for the SDK to settle, persist storage, and destroy
+ * the in-memory SDK instance so no timer handles leak across RPCs.
+ *
+ * @param brazeSdk - The loaded SDK instance, if any.
  */
-async function settle(): Promise<void> {
+async function settle(brazeSdk: BrazeSdk | null): Promise<void> {
   abortRequests();
   await drainRequests();
   setAllowedEndpoint(null);
-  await commitStorage();
+  try {
+    await commitStorage();
+  } finally {
+    brazeSdk?.destroy();
+    await drainRequests();
+    resetStorage();
+  }
 }
-
-export type WithBrazeOptions = {
-  flush?: boolean;
-};
 
 async function run<Result>(
   config: BrazeConfig,
-  callback: (brazeSdk: BrazeSdk) => Result | Promise<Result>,
-  { flush: shouldFlush = false }: WithBrazeOptions = {},
+  callback: (
+    brazeSdk: BrazeSdk,
+    flushSdk: FlushBraze,
+  ) => Result | Promise<Result>,
 ): Promise<Result> {
+  resetRequestFailures();
   await hydrateStorage();
   setAllowedEndpoint(config.endpoint);
 
   try {
     sdk ??= await brazeSdkLoader.load();
     initializeSdk(sdk, config);
-    const result = await callback(sdk);
-    if (shouldFlush) {
-      await flush(sdk);
-    } else {
-      await waitAtMost(drainRequests(), FLUSH_TIMEOUT_MS);
-    }
+    const deadline = Date.now() + FLUSH_TIMEOUT_MS;
+    const result = await callback(sdk, async () =>
+      flush(sdk as BrazeSdk, Math.max(0, deadline - Date.now())),
+    );
+    await waitAtMost(drainRequests(), Math.max(0, deadline - Date.now()));
     return result;
   } finally {
-    await settle();
+    await settle(sdk);
   }
 }
 
 /**
  * Run a callback against the SDK for the length of one snap request.
  *
- * The SDK only has network access while the callback (and any optional flush
- * that follows) runs. Its storage is persisted once, after every request
- * settled. Calls are serialized, so requests never interleave.
+ * The SDK only has network access while the callback runs. Storage is persisted
+ * once after pending requests settle, and the SDK instance is destroyed before
+ * the snap runtime tears down timers so no stale retry/rate-limit handles can
+ * wedge subsequent requests. Calls are serialized so requests never interleave.
  *
  * @param config - The Braze config.
- * @param callback - The callback, called with the initialized SDK.
- * @param options - Options for the request.
- * @param options.flush - Whether to call `requestImmediateDataFlush` after the
- * callback resolves before tearing down network access.
+ * @param callback - The callback, called with the initialized SDK and a flush helper.
  * @returns The value returned by the callback.
  */
 export async function withBraze<Result>(
   config: BrazeConfig,
-  callback: (brazeSdk: BrazeSdk) => Result | Promise<Result>,
-  options?: WithBrazeOptions,
+  callback: (
+    brazeSdk: BrazeSdk,
+    flushSdk: FlushBraze,
+  ) => Result | Promise<Result>,
 ): Promise<Result> {
-  const result = queue.then(async () => run(config, callback, options));
+  const result = queue.then(async () => run(config, callback));
   queue = result.catch(() => undefined);
   return result;
 }
 
 /**
- * Forget the loaded SDK and its config. Only meant for tests.
+ * Forget the loaded SDK. Only meant for tests.
  */
 export function resetRuntime(): void {
   sdk = null;
-  initializedConfig = null;
   queue = Promise.resolve();
 }
