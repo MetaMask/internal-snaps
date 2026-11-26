@@ -1840,11 +1840,6 @@
       "count": 2
     }
   },
-  "packages/tron-wallet-snap/src/clients/token-api/TokenApiClient.ts": {
-    "typescript/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/clients/tron-http/TronHttpClient.ts": {
     "typescript/no-unsafe-assignment": {
       "count": 8
