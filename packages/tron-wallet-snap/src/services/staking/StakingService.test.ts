@@ -1,6 +1,9 @@
 import type { ExtendedKeyringAccount } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
-import type { Mocked } from 'vitest';
+import { Types as TronwebTypes } from 'tronweb';
+import type { TronWeb } from 'tronweb';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 
 import type { SnapClient } from '../../clients/snap/SnapClient';
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
@@ -14,16 +17,15 @@ import { trxToSun } from '../../utils/conversion';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AccountsService } from '../accounts/AccountsService';
 import type { TransactionExpirationRefresherService } from '../transaction-expiration-refresher/TransactionExpirationRefresherService';
-import type { TransactionWithMetadata } from '../transaction-expiration-refresher/types';
 import { StakingService } from './StakingService';
 
 describe('StakingService', () => {
   let stakingService: StakingService;
-  let mockAccountsService: Mocked<AccountsService>;
-  let mockTronWebFactory: Mocked<TronWebFactory>;
-  let mockSnapClient: Mocked<SnapClient>;
-  let mockTransactionExpirationRefresherService: Mocked<TransactionExpirationRefresherService>;
-  let mockTronWeb: any;
+  let mockAccountsService: MockProxy<AccountsService>;
+  let mockTronWebFactory: MockProxy<TronWebFactory>;
+  let mockSnapClient: MockProxy<SnapClient>;
+  let mockTransactionExpirationRefresherService: MockProxy<TransactionExpirationRefresherService>;
+  let mockTronWeb: DeepMockProxy<TronWeb>;
 
   const mockAccount: ExtendedKeyringAccount = {
     id: 'test-account-id',
@@ -37,94 +39,92 @@ describe('StakingService', () => {
     index: 0,
   };
 
-  const mockKeypair = {
-    privateKeyHex:
-      '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+  const mockKeypair: Awaited<ReturnType<AccountsService['deriveTronKeypair']>> =
+    {
+      privateKeyHex:
+        '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
 
-    privateKeyBytes: Buffer.from(
-      '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-      'hex',
-    ),
+      privateKeyBytes: Buffer.from(
+        '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+        'hex',
+      ),
 
-    publicKeyBytes: Buffer.from(
-      'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
-      'hex',
-    ),
-    address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-  };
+      publicKeyBytes: Buffer.from(
+        'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+        'hex',
+      ),
+      address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
+    };
 
-  const mockTransaction = {
+  // No contracts, so one fixture fits every builder's `Transaction<Contract>` return type.
+  const mockTransaction: TronwebTypes.Transaction<never> = {
+    visible: false,
     txID: 'mock-transaction-id',
     raw_data_hex: 'mock-raw-data-hex',
-
     raw_data: {
       expiration: 1_700_000_060_000,
       ref_block_bytes: '0001',
       ref_block_hash: '0011223344556677',
       timestamp: 1_700_000_000_000,
-      contract: [
-        {
-          type: 'FreezeBalanceV2Contract',
-          parameter: {
-            value: {
-              owner_address: 'TGJn1wnUYHJbvN88cynZbsAz2EMeZq73yx',
-
-              frozen_balance: 1000000,
-              resource: 'BANDWIDTH',
-            },
-          },
-        },
-      ],
+      contract: [],
     },
-  } as unknown as TransactionWithMetadata;
+  };
 
-  const mockSignedTransaction = {
+  const mockSignedTransaction: TronwebTypes.SignedTransaction<never> = {
     ...mockTransaction,
     signature: ['mock-signature'],
   };
 
+  const createBroadcastResult = (
+    overrides: Partial<
+      TronwebTypes.BroadcastReturn<TronwebTypes.SignedTransaction>
+    > = {},
+  ): TronwebTypes.BroadcastReturn<TronwebTypes.SignedTransaction> => ({
+    result: true,
+    txid: 'mock-tx-id',
+    code: '',
+    message: '',
+    transaction: mockSignedTransaction,
+    ...overrides,
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockTronWeb = {
-      transactionBuilder: {
-        freezeBalanceV2: vi.fn().mockResolvedValue(mockTransaction),
-        unfreezeBalanceV2: vi.fn().mockResolvedValue(mockTransaction),
-        vote: vi.fn().mockResolvedValue(mockTransaction),
-        withdrawExpireUnfreeze: vi.fn().mockResolvedValue(mockTransaction),
-        withdrawBlockRewards: vi.fn().mockResolvedValue(mockTransaction),
-      },
-      trx: {
-        sign: vi.fn().mockResolvedValue(mockSignedTransaction),
-        sendRawTransaction: vi
-          .fn()
-          .mockResolvedValue({ result: true, txid: 'mock-tx-id' }),
-      },
-    };
+    mockTronWeb = mockDeep<TronWeb>();
+    mockTronWeb.transactionBuilder.freezeBalanceV2.mockResolvedValue(
+      mockTransaction,
+    );
+    mockTronWeb.transactionBuilder.unfreezeBalanceV2.mockResolvedValue(
+      mockTransaction,
+    );
+    mockTronWeb.transactionBuilder.vote.mockResolvedValue(mockTransaction);
+    mockTronWeb.transactionBuilder.withdrawExpireUnfreeze.mockResolvedValue(
+      mockTransaction,
+    );
+    mockTronWeb.transactionBuilder.withdrawBlockRewards.mockResolvedValue(
+      mockTransaction,
+    );
+    mockTronWeb.trx.sign.mockResolvedValue(mockSignedTransaction);
+    mockTronWeb.trx.sendRawTransaction.mockResolvedValue(
+      createBroadcastResult(),
+    );
 
-    mockAccountsService = {
-      deriveTronKeypair: vi.fn().mockResolvedValue(mockKeypair),
-      findByIdOrThrow: vi.fn().mockResolvedValue(mockAccount),
-    } as unknown as Mocked<AccountsService>;
+    mockAccountsService = mock<AccountsService>();
+    mockAccountsService.deriveTronKeypair.mockResolvedValue(mockKeypair);
 
-    mockTronWebFactory = {
-      createClient: vi.fn().mockReturnValue(mockTronWeb),
-      executeBroadcast: vi
-        .fn()
-        .mockImplementation(
-          async (_scope: Network, operation: () => Promise<unknown>) =>
-            operation(),
-        ),
-    } as unknown as Mocked<TronWebFactory>;
+    mockTronWebFactory = mock<TronWebFactory>();
+    mockTronWebFactory.createClient.mockReturnValue(mockTronWeb);
+    mockTronWebFactory.executeBroadcast.mockImplementation(
+      async (_scope, operation) => operation(),
+    );
 
-    mockSnapClient = {
-      scheduleBackgroundEvent: vi.fn().mockResolvedValue(undefined),
-    } as unknown as Mocked<SnapClient>;
-    mockTransactionExpirationRefresherService = {
-      ensureFreshMetadata: vi
-        .fn()
-        .mockImplementation(async ({ transaction }) => transaction),
-    } as unknown as Mocked<TransactionExpirationRefresherService>;
+    mockSnapClient = mock<SnapClient>();
+    mockTransactionExpirationRefresherService =
+      mock<TransactionExpirationRefresherService>();
+    mockTransactionExpirationRefresherService.ensureFreshMetadata.mockImplementation(
+      async ({ transaction }) => transaction,
+    );
 
     stakingService = new StakingService({
       logger: mockLogger,
@@ -195,7 +195,7 @@ describe('StakingService', () => {
             response: { status: 503 },
           }),
         )
-        .mockResolvedValue({ result: true, txid: 'mock-tx-id' });
+        .mockResolvedValue(createBroadcastResult());
 
       await stakingService.stake({
         account: mockAccount,
@@ -300,8 +300,10 @@ describe('StakingService', () => {
 
     it('synchronizes after a vote rejection following a successful freeze', async () => {
       mockTronWeb.trx.sendRawTransaction
-        .mockResolvedValueOnce({ result: true, txid: 'freeze-tx-id' })
-        .mockResolvedValueOnce({ result: false, message: 'Vote rejected' });
+        .mockResolvedValueOnce(createBroadcastResult({ txid: 'freeze-tx-id' }))
+        .mockResolvedValueOnce(
+          createBroadcastResult({ result: false, message: 'Vote rejected' }),
+        );
 
       await expect(
         stakingService.stake({
@@ -321,8 +323,10 @@ describe('StakingService', () => {
 
     it('preserves the vote rejection if synchronization scheduling fails', async () => {
       mockTronWeb.trx.sendRawTransaction
-        .mockResolvedValueOnce({ result: true, txid: 'freeze-tx-id' })
-        .mockResolvedValueOnce({ result: false, message: 'Vote rejected' });
+        .mockResolvedValueOnce(createBroadcastResult({ txid: 'freeze-tx-id' }))
+        .mockResolvedValueOnce(
+          createBroadcastResult({ result: false, message: 'Vote rejected' }),
+        );
       mockSnapClient.scheduleBackgroundEvent.mockRejectedValueOnce(
         new Error('Scheduling failed'),
       );
@@ -375,7 +379,7 @@ describe('StakingService', () => {
 
         await stakingService.stake({
           account: mockAccount,
-          assetId: testCase.assetId as any,
+          assetId: testCase.assetId,
           amount: BigNumber(1000000),
           purpose: 'BANDWIDTH',
         });
@@ -423,7 +427,7 @@ describe('StakingService', () => {
 
       await stakingService.stake({
         account: customAccount,
-        assetId: KnownCaip19Id.TrxMainnet as any,
+        assetId: KnownCaip19Id.TrxMainnet,
         amount: BigNumber(1000000),
         purpose: 'BANDWIDTH',
       });
@@ -563,7 +567,7 @@ describe('StakingService', () => {
 
         await stakingService.unstake({
           account: mockAccount,
-          assetId: testCase.assetId as any,
+          assetId: testCase.assetId,
           amount: BigNumber(1000000),
         });
 
@@ -603,7 +607,7 @@ describe('StakingService', () => {
 
         await stakingService.unstake({
           account: mockAccount,
-          assetId: testCase.assetId as any,
+          assetId: testCase.assetId,
           amount: BigNumber(2000000),
         });
 
@@ -644,7 +648,7 @@ describe('StakingService', () => {
 
       await stakingService.unstake({
         account: customAccount,
-        assetId: KnownCaip19Id.TrxStakedForBandwidthMainnet as any,
+        assetId: KnownCaip19Id.TrxStakedForBandwidthMainnet,
         amount: BigNumber(1000000),
       });
 
