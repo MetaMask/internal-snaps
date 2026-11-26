@@ -6,6 +6,13 @@ import {
 import type { KeyringAccount } from '@metamask/keyring-api';
 import { KeyringEvent } from '@metamask/keyring-api';
 import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
+import { Messenger, MOCK_ANY_NAMESPACE } from '@metamask/messenger';
+import type {
+  ExtractActionParameters,
+  ExtractActionResponse,
+  MockAnyNamespace,
+} from '@metamask/messenger';
+import type { RemoteFeatureFlagControllerState } from '@metamask/remote-feature-flag-controller';
 import {
   AssetsProvider,
   RemoteFeatureFlagsProvider,
@@ -22,7 +29,10 @@ import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient
 import type { TronAccount } from '../../clients/trongrid/types';
 import { KnownCaip19Id, Network } from '../../constants';
 import type { AssetEntity } from '../../entities/assets';
-import type { CoreMessengerCaller } from '../../types/core-messenger';
+import type {
+  CoreMessengerActions,
+  CoreMessengerCaller,
+} from '../../types/core-messenger';
 import { mockLogger } from '../../utils/mockLogger';
 import { CoreAssetsAdapter } from './adapters/CoreAssetsAdapter';
 import { SnapAssetsAdapter } from './adapters/SnapAssetsAdapter';
@@ -45,28 +55,39 @@ vi.stubGlobal('snap', {});
 const TRON_FLAG_KEY = SNAPS_ASSETS_MIGRATION_FLAG_KEYS.tron;
 
 function createMessengerCallMock(
-  getState: () => unknown,
+  getState: () => Pick<RemoteFeatureFlagControllerState, 'remoteFeatureFlags'>,
   getAccountAssetByID: Mock,
   getAccountAssetsByIDs: Mock = vi.fn().mockResolvedValue({}),
   getAccountAssetsByScope: Mock = vi.fn().mockResolvedValue({}),
   getAssets: Mock = vi.fn().mockResolvedValue({}),
 ): CoreMessengerCaller['call'] {
-  return async (actionType, ...args) => {
-    switch (actionType) {
-      case 'RemoteFeatureFlagController:getState':
-        return getState() as Awaited<ReturnType<CoreMessengerCaller['call']>>;
-      case 'AssetsController:getAccountAssetByID':
-        return getAccountAssetByID(...args);
-      case 'AssetsController:getAccountAssetsByIDs':
-        return getAccountAssetsByIDs(...args);
-      case 'AssetsController:getAccountAssetsByScope':
-        return getAccountAssetsByScope(...args);
-      case 'AssetsController:getAssets':
-        return getAssets(...args);
-      default:
-        throw new Error(`Unexpected action: ${String(actionType)}`);
-    }
-  };
+  const messenger = new Messenger<MockAnyNamespace, CoreMessengerActions>({
+    namespace: MOCK_ANY_NAMESPACE,
+  });
+  messenger.registerActionHandler(
+    'RemoteFeatureFlagController:getState',
+    () => ({ cacheTimestamp: 0, ...getState() }),
+  );
+  messenger.registerActionHandler(
+    'AssetsController:getAccountAssetByID',
+    getAccountAssetByID,
+  );
+  messenger.registerActionHandler(
+    'AssetsController:getAccountAssetsByIDs',
+    getAccountAssetsByIDs,
+  );
+  messenger.registerActionHandler(
+    'AssetsController:getAccountAssetsByScope',
+    getAccountAssetsByScope,
+  );
+  messenger.registerActionHandler('AssetsController:getAssets', getAssets);
+
+  return async <ActionType extends CoreMessengerActions['type']>(
+    actionType: ActionType,
+    ...params: ExtractActionParameters<CoreMessengerActions, ActionType>
+  ): Promise<
+    Awaited<ExtractActionResponse<CoreMessengerActions, ActionType>>
+  > => await messenger.call(actionType, ...params);
 }
 
 function buildControllerAsset(

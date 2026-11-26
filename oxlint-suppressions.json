@@ -1865,11 +1865,6 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/services/assets/AssetsService.test.ts": {
-    "typescript/no-unsafe-return": {
-      "count": 4
-    }
-  },
   "packages/tron-wallet-snap/src/services/assets/adapters/SnapAssetsAdapter.ts": {
     "typescript/no-unsafe-assignment": {
       "count": 2
