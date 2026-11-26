@@ -1,6 +1,6 @@
-import type { FeeType } from '@metamask/keyring-api';
+import { FeeType } from '@metamask/keyring-api';
 import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
-import type { Types as TronwebTypes } from 'tronweb';
+import { Types as TronwebTypes } from 'tronweb';
 import type { Mocked, Mock } from 'vitest';
 
 import type { SnapClient } from '../../../../clients/snap/SnapClient';
@@ -12,10 +12,7 @@ import type { TronKeyringAccount } from '../../../../entities/tronKeyringAccount
 import { TronMultichainMethod } from '../../../../handlers/keyring/keyring-types';
 import type { AssetsService } from '../../../../services/assets/AssetsService';
 import type { FeeCalculatorService } from '../../../../services/send/FeeCalculatorService';
-import type {
-  ComputeFeeResult,
-  FeeAsset,
-} from '../../../../services/send/types';
+import type { ComputeFeeResult } from '../../../../services/send/types';
 import type {
   TransactionScanResult,
   TransactionScanService,
@@ -44,6 +41,24 @@ function toBase64(str: string): string {
  */
 function toHex(str: string): string {
   return bytesToHex(stringToBytes(str));
+}
+
+/**
+ * Builds transaction raw data with the given contracts.
+ *
+ * @param contract - The transaction contracts.
+ * @returns The transaction raw data.
+ */
+function buildRawData(
+  contract: TronwebTypes.Transaction['raw_data']['contract'] = [],
+): TronwebTypes.Transaction['raw_data'] {
+  return {
+    contract,
+    ref_block_bytes: '0000',
+    ref_block_hash: '0000000000000000',
+    expiration: 60000,
+    timestamp: 0,
+  };
 }
 
 const mockPreferences: Preferences = {
@@ -91,13 +106,13 @@ const mockAssets: AssetEntity[] = [
 
 const mockComputeFeeResult: ComputeFeeResult = [
   {
-    type: 'base' as FeeType,
+    type: FeeType.Base,
     asset: {
       unit: 'TRX',
       type: 'tron:728126428/slip44:195',
       amount: '0.02',
       fungible: true,
-    } as FeeAsset,
+    },
   },
 ];
 
@@ -111,10 +126,10 @@ const mockAccount: TronKeyringAccount = {
   ],
   type: 'tron:eoa',
   scopes: [Network.Mainnet, Network.Shasta],
-  entropySource: 'entropy-source-1' as any,
+  entropySource: 'entropy-source-1',
   derivationPath: "m/44'/195'/0'/0/0",
   index: 0,
-} as TronKeyringAccount;
+};
 
 type WithSnapContextCallback<ReturnValue> = (payload: {
   snapContext: SnapExecutionContext;
@@ -396,24 +411,23 @@ describe('ConfirmSignTransaction render', () => {
         };
 
         // Mock raw data with contract information
-        const mockRawData = {
-          contract: [
-            {
-              type: 'TriggerSmartContract',
-              parameter: {
-                value: {
-                  owner_address: '41A2155E688B2BAEBDFDACD073BA79F5B22946AACF',
+        const mockRawData = buildRawData([
+          {
+            type: TronwebTypes.ContractType.TriggerSmartContract,
+            parameter: {
+              type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
+              value: {
+                owner_address: '41A2155E688B2BAEBDFDACD073BA79F5B22946AACF',
 
-                  to_address: '4132F9C0C487F21716B7A8F12906B752889902655',
+                to_address: '4132F9C0C487F21716B7A8F12906B752889902655',
 
-                  call_value: 100000,
-                },
+                call_value: 100000,
               },
             },
-          ],
-        };
+          },
+        ]);
 
-        await render(request, mockAccount, mockRawData as any);
+        await render(request, mockAccount, mockRawData);
 
         // Verify createInterface was called
         expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
@@ -474,9 +488,7 @@ describe('ConfirmSignTransaction render', () => {
           },
         };
 
-        const mockRawData = {
-          contract: [],
-        };
+        const mockRawData = buildRawData();
 
         // // Set transactionScanService to null for this test
         // // eslint-disable-next-line no-restricted-globals, @typescript-eslint/no-require-imports
@@ -484,7 +496,7 @@ describe('ConfirmSignTransaction render', () => {
         snapContext.transactionScanService =
           null as unknown as TransactionScanService;
 
-        await render(request, mockAccount, mockRawData as any);
+        await render(request, mockAccount, mockRawData);
 
         // Should still create interface
         expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
@@ -519,11 +531,9 @@ describe('ConfirmSignTransaction render', () => {
           },
         };
 
-        const mockRawData = {
-          contract: [],
-        };
+        const mockRawData = buildRawData();
 
-        await render(request, mockAccount, mockRawData as any);
+        await render(request, mockAccount, mockRawData);
 
         // Should still render with error state
         expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
@@ -558,11 +568,9 @@ describe('ConfirmSignTransaction render', () => {
           },
         };
 
-        const mockRawData = {
-          contract: [],
-        };
+        const mockRawData = buildRawData();
 
-        await render(request, mockAccount, mockRawData as any);
+        await render(request, mockAccount, mockRawData);
 
         // Security scan should not be called
         expect(
@@ -595,14 +603,12 @@ describe('ConfirmSignTransaction render', () => {
         },
       };
 
-      const mockRawData = {
-        contract: [],
-      };
+      const mockRawData = buildRawData();
 
       // Should not throw, even with failed preferences
-      expect(
-        (await render(request, mockAccount, mockRawData as any)).result,
-      ).toBe(true);
+      expect((await render(request, mockAccount, mockRawData)).result).toBe(
+        true,
+      );
     });
   });
 
@@ -610,7 +616,8 @@ describe('ConfirmSignTransaction render', () => {
     await withSnapContext(async ({ mockSnapClient }) => {
       const request: TronWalletKeyringRequest = {
         id: '00000000-0000-4000-8000-000000000006',
-        origin: undefined as any,
+        // @ts-expect-error - a missing origin exercises the fallback
+        origin: undefined,
         account: mockAccount.id,
         scope: Network.Mainnet,
         request: {
@@ -625,11 +632,9 @@ describe('ConfirmSignTransaction render', () => {
         },
       };
 
-      const mockRawData = {
-        contract: [],
-      };
+      const mockRawData = buildRawData();
 
-      await render(request, mockAccount, mockRawData as any);
+      await render(request, mockAccount, mockRawData);
 
       // Should still work
       expect(mockSnapClient.createInterface).toHaveBeenCalledTimes(1);
@@ -655,11 +660,9 @@ describe('ConfirmSignTransaction render', () => {
         },
       };
 
-      const mockRawData = {
-        contract: [],
-      };
+      const mockRawData = buildRawData();
 
-      const outcome = await render(request, mockAccount, mockRawData as any);
+      const outcome = await render(request, mockAccount, mockRawData);
 
       expect(outcome.result).toBe(true);
     });
@@ -824,11 +827,9 @@ describe('ConfirmSignTransaction render', () => {
           },
         };
 
-        const mockRawData = {
-          contract: [],
-        };
+        const mockRawData = buildRawData();
 
-        await render(request, mockAccount, mockRawData as any);
+        await render(request, mockAccount, mockRawData);
 
         // The expiry replaces the simulation result, preserving the verdict.
         const finalUpdateCall =
@@ -869,15 +870,13 @@ describe('ConfirmSignTransaction render', () => {
         },
       };
 
-      const mockRawData = {
-        contract: [],
-      };
+      const mockRawData = buildRawData();
 
       // Scheduling is best-effort and isolated from the scan result, so render
       // still completes and the successful scan stays on screen.
-      expect(
-        (await render(request, mockAccount, mockRawData as any)).result,
-      ).toBe(true);
+      expect((await render(request, mockAccount, mockRawData)).result).toBe(
+        true,
+      );
       expect(mockSnapClient.scheduleBackgroundEvent).toHaveBeenCalled();
 
       const finalUpdateCall = mockSnapClient.updateInterface.mock.calls.at(-1);
@@ -917,16 +916,10 @@ describe('ConfirmSignTransaction render', () => {
         },
       };
 
-      const mockRawData = {
-        contract: [],
-      };
+      const mockRawData = buildRawData();
 
       // A failed price fetch falls back to empty prices, so render still completes.
-      const outcome = await render(
-        request,
-        mockAccount,
-        mockRawData as unknown as TronwebTypes.Transaction['raw_data'],
-      );
+      const outcome = await render(request, mockAccount, mockRawData);
       expect(outcome.result).toBe(true);
       expect(mockPriceApiClient.getMultipleSpotPrices).toHaveBeenCalled();
 
@@ -965,14 +958,12 @@ describe('ConfirmSignTransaction render', () => {
         },
       };
 
-      const mockRawData = {
-        contract: [],
-      };
+      const mockRawData = buildRawData();
 
       // The first updateInterface throws; the catch re-renders an error state.
-      expect(
-        (await render(request, mockAccount, mockRawData as any)).result,
-      ).toBe(true);
+      expect((await render(request, mockAccount, mockRawData)).result).toBe(
+        true,
+      );
 
       const finalUpdateCall = mockSnapClient.updateInterface.mock.calls.at(-1);
       const finalContext = finalUpdateCall?.[2] as {
@@ -1009,15 +1000,13 @@ describe('ConfirmSignTransaction render', () => {
           },
         };
 
-        const mockRawData = {
-          contract: [],
-        };
+        const mockRawData = buildRawData();
 
         // The TAPOS check fails safe: it must not wipe the benign security scan or
         // synthesize a false expired result.
-        expect(
-          (await render(request, mockAccount, mockRawData as any)).result,
-        ).toBe(true);
+        expect((await render(request, mockAccount, mockRawData)).result).toBe(
+          true,
+        );
 
         const finalUpdateCall =
           mockSnapClient.updateInterface.mock.calls.at(-1);
@@ -1062,24 +1051,23 @@ describe('ConfirmSignTransaction render', () => {
         },
       };
 
-      const mockRawData = {
-        contract: [
-          {
-            type: 'TriggerSmartContract',
-            parameter: {
-              value: {
-                owner_address: '41A2155E688B2BAEBDFDACD073BA79F5B22946AACF',
+      const mockRawData = buildRawData([
+        {
+          type: TronwebTypes.ContractType.TriggerSmartContract,
+          parameter: {
+            type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
+            value: {
+              owner_address: '41A2155E688B2BAEBDFDACD073BA79F5B22946AACF',
 
-                contract_address: '4132F9C0C487F21716B7A8F12906B752889902655',
+              contract_address: '4132F9C0C487F21716B7A8F12906B752889902655',
 
-                call_value: 100000,
-              },
+              call_value: 100000,
             },
           },
-        ],
-      };
+        },
+      ]);
 
-      await render(request, mockAccount, mockRawData as any);
+      await render(request, mockAccount, mockRawData);
 
       expect(mockSnapClient.createInterface).toHaveBeenCalledWith(
         expect.anything(),
