@@ -249,3 +249,17 @@ export type {
   TrackErrorCapableProvider,
   TrackErrorFn,
 } from './utils/errors';
+export {
+  Duration,
+  getSnapProvider,
+  getBip32Entropy,
+  listEntropySources,
+  getDefaultEntropySource,
+  getClientStatus,
+  scheduleBackgroundEvent,
+  cancelBackgroundEvent,
+  cancelBackgroundEventIfExists,
+  createInterface,
+  updateInterfaceIfExists,
+  updateInterfaceWithContext,
+} from './utils/snap/snapHelpers';
