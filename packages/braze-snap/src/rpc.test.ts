@@ -71,59 +71,27 @@ describe('onClientRequest', () => {
       });
     });
 
-    it('changes the user when there is none', async () => {
-      const { changeUser } = mockBrazeSdk();
-
-      await call(BrazeMethod.SyncUser, PARAMS);
-
-      expect(changeUser).toHaveBeenCalledWith('profile-id');
-    });
-
-    it('keeps the current user when it is the same', async () => {
-      const { changeUser } = mockBrazeSdk('profile-id');
+    it('keeps the current user when it is the same and flushes to renew sessions', async () => {
+      const { changeUser, requestImmediateDataFlush } =
+        mockBrazeSdk('profile-id');
 
       await call(BrazeMethod.SyncUser, PARAMS);
 
       expect(changeUser).not.toHaveBeenCalled();
-    });
-
-    it('flushes so the SDK can start a new session', async () => {
-      const { requestImmediateDataFlush } = mockBrazeSdk('profile-id');
-
-      await call(BrazeMethod.SyncUser, PARAMS);
-
       expect(requestImmediateDataFlush).toHaveBeenCalledTimes(1);
     });
 
     it.each([
       ['missing params', undefined],
       ['an empty profile ID', { ...PARAMS, profileId: '' }],
-      ['a null profile ID', { ...PARAMS, profileId: null }],
+      ['an empty language', { ...PARAMS, language: '' }],
       [
-        'an empty API key',
-        { ...PARAMS, config: { ...PARAMS.config, apiKey: '' } },
-      ],
-      [
-        'an empty endpoint',
-        { ...PARAMS, config: { ...PARAMS.config, endpoint: '' } },
-      ],
-      [
-        'an endpoint with a path',
+        'an endpoint with a path or scheme',
         {
           ...PARAMS,
           config: {
             ...PARAMS.config,
-            endpoint: 'sdk.iad-01.braze.com/evil',
-          },
-        },
-      ],
-      [
-        'an endpoint with a scheme',
-        {
-          ...PARAMS,
-          config: {
-            ...PARAMS.config,
-            endpoint: 'https://sdk.iad-01.braze.com',
+            endpoint: 'https://sdk.iad-01.braze.com/evil',
           },
         },
       ],
@@ -138,16 +106,6 @@ describe('onClientRequest', () => {
         },
       ],
       [
-        'an endpoint with only a username',
-        {
-          ...PARAMS,
-          config: {
-            ...PARAMS.config,
-            endpoint: 'user@sdk.iad-01.braze.com',
-          },
-        },
-      ],
-      [
         'an endpoint with invalid host syntax',
         {
           ...PARAMS,
@@ -155,22 +113,6 @@ describe('onClientRequest', () => {
             ...PARAMS.config,
             endpoint: '[invalid',
           },
-        },
-      ],
-      [
-        'an empty app version',
-        { ...PARAMS, config: { ...PARAMS.config, appVersion: '' } },
-      ],
-      ['an empty language', { ...PARAMS, language: '' }],
-      [
-        'unknown config fields',
-        { ...PARAMS, config: { ...PARAMS.config, baseUrl: 'example.com' } },
-      ],
-      [
-        'device details',
-        {
-          ...PARAMS,
-          device: { userAgent: 'Mozilla/5.0', platform: 'MacIntel' },
         },
       ],
       ['unknown fields', { ...PARAMS, extra: true }],

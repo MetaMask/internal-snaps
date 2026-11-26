@@ -17,8 +17,7 @@ import {
  */
 function isBareHost(value: string): boolean {
   try {
-    const url = new URL(`https://${value}`);
-    return url.host === value && !url.username && !url.password;
+    return new URL(`https://${value}`).host === value;
   } catch {
     return false;
   }

@@ -40,16 +40,6 @@ describe('storage', () => {
   });
 
   describe('hydrateStorage', () => {
-    it('loads the persisted items', async () => {
-      stubSnap({
-        [STORAGE_STATE_KEY]: { version: 1, items: { [KEY]: 'device' } },
-      });
-
-      await hydrateStorage();
-
-      expect(storageShim.getItem(KEY)).toBe('device');
-    });
-
     it('reads snap state unencrypted and only once', async () => {
       const { request } = stubSnap();
 

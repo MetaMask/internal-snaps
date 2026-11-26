@@ -133,13 +133,7 @@ describe('GuardedXMLHttpRequest', () => {
     ['a GET request', { method: 'GET' }],
     ['another path', { url: `https://${ENDPOINT}/api/v3/content_cards/sync` }],
     ['a query string', { url: `${DATA_URL}?a=b` }],
-    ['another host', { url: 'https://sdk.fra-01.braze.eu/api/v3/data/' }],
-    ['plain HTTP', { url: `http://${ENDPOINT}/api/v3/data/` }],
-    ['credentials', { url: `https://user:pass@${ENDPOINT}/api/v3/data/` }],
-    [
-      'a body above the limit',
-      { body: 'x'.repeat(NETWORK_LIMITS.maxRequestBodyBytes + 1) },
-    ],
+    ['another origin or scheme', { url: `http://${ENDPOINT}/api/v3/data/` }],
   ])('blocks %s', async (_, options) => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
 

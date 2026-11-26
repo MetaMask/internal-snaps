@@ -112,9 +112,12 @@ async function settle(brazeSdk: BrazeSdk | null): Promise<void> {
   try {
     await commitStorage();
   } finally {
-    brazeSdk?.destroy();
-    await drainRequests();
-    resetStorage();
+    try {
+      brazeSdk?.destroy();
+      await drainRequests();
+    } finally {
+      resetStorage();
+    }
   }
 }
 

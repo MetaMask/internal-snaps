@@ -208,11 +208,7 @@ export async function hydrateStorage(): Promise<void> {
   }
   appliedLanguage = persisted.appliedLanguage;
 
-  lastCommitted = JSON.stringify({
-    version: 1,
-    items: persisted.items,
-    ...(appliedLanguage ? { appliedLanguage } : {}),
-  });
+  lastCommitted = JSON.stringify(getPersistedValue());
   hydrated = true;
 }
 
