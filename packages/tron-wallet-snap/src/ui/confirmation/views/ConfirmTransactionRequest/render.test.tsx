@@ -4,6 +4,7 @@ import {
 } from '@metamask/snap-networks-utils';
 import type { IStateManager } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
+import { assert } from '@metamask/utils';
 import { Types as TronwebTypes } from 'tronweb';
 import type { Mocked, Mock } from 'vitest';
 
@@ -375,7 +376,7 @@ describe('ConfirmTransactionRequest render', () => {
         expect(mockSnapClient.updateInterface).toHaveBeenCalled();
 
         const updateCall = mockSnapClient.updateInterface.mock.calls[0];
-        const contextArg = updateCall?.[2] as any;
+        const contextArg = updateCall?.[2];
         expect(contextArg?.scanFetchStatus).toBe(FetchStatus.Error);
         expect(contextArg?.scan).toBeNull();
       },
@@ -463,11 +464,12 @@ describe('ConfirmTransactionRequest render', () => {
 
       await callRender({ transactionRawData: trc20RawData });
 
-      const callArgs = mockTransactionScanService.scanTransaction.mock
-        .calls[0]?.[0] as any;
-      const rawData = callArgs?.transactionRawData;
+      const callArgs =
+        mockTransactionScanService.scanTransaction.mock.calls[0]?.[0];
+      assert(callArgs);
+      const rawData = callArgs.transactionRawData;
 
-      expect(rawData?.contract[0]?.type).toBe('TriggerSmartContract');
+      expect(rawData.contract[0]?.type).toBe('TriggerSmartContract');
 
       const scanParams = extractScanParametersFromTransactionData(rawData);
       expect(scanParams?.data).toBeDefined();
