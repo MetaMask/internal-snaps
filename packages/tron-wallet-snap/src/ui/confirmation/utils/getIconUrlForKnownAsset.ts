@@ -1,5 +1,8 @@
 import { TokenMetadata } from '../../../constants';
 
+const knownAssetsMetadata: Partial<Record<string, { iconUrl: string }>> =
+  TokenMetadata;
+
 /**
  * Resolves iconUrl for a given asset type.
  * This should only be called with the asset types that are in TokenMetadata constants.
@@ -9,9 +12,4 @@ import { TokenMetadata } from '../../../constants';
  */
 export const getIconUrlForKnownAsset = (
   assetType: string,
-): string | undefined => {
-  if (assetType in TokenMetadata) {
-    return TokenMetadata[assetType as keyof typeof TokenMetadata].iconUrl;
-  }
-  return undefined;
-};
+): string | undefined => knownAssetsMetadata[assetType]?.iconUrl;
