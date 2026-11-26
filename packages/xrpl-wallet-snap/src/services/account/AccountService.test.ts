@@ -31,9 +31,7 @@ describe('AccountService', () => {
     getAllSpy: Mock<AccountsRepository['getAll']>;
     findByIdSpy: Mock<AccountsRepository['findById']>;
     findByIdsSpy: Mock<AccountsRepository['findByIds']>;
-    findByAddressAndScopeSpy: Mock<
-      AccountsRepository['findByAddressAndScope']
-    >;
+    findByAddressAndScopeSpy: Mock<AccountsRepository['findByAddressAndScope']>;
   };
 
   const getAccountsRepositorySpies = (): AccountsRepositorySpies => {

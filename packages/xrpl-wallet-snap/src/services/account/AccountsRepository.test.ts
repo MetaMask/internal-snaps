@@ -33,16 +33,19 @@ describe('AccountsRepository', () => {
     });
 
     it('returns all persisted accounts', async () => {
-      const accounts = generateMockXrplKeyringAccounts(2, 'entropy-source-1');
+      const [account1, account2] = generateMockXrplKeyringAccounts(
+        2,
+        'entropy-source-1',
+      ) as [XrplKeyringAccount, XrplKeyringAccount];
       const repository = new AccountsRepository(
         createState({
-          [accounts[0]!.id]: accounts[0]!,
-          [accounts[1]!.id]: accounts[1]!,
+          [account1.id]: account1,
+          [account2.id]: account2,
         }),
       );
 
       expect(await repository.getAll()).toStrictEqual(
-        expect.arrayContaining(accounts),
+        expect.arrayContaining([account1, account2]),
       );
       expect(await repository.getAll()).toHaveLength(2);
     });
@@ -70,22 +73,25 @@ describe('AccountsRepository', () => {
 
   describe('findByIds', () => {
     it('returns only accounts that match the given IDs', async () => {
-      const accounts = generateMockXrplKeyringAccounts(3, 'entropy-source-1');
+      const [account1, account2, account3] = generateMockXrplKeyringAccounts(
+        3,
+        'entropy-source-1',
+      ) as [XrplKeyringAccount, XrplKeyringAccount, XrplKeyringAccount];
       const repository = new AccountsRepository(
         createState({
-          [accounts[0]!.id]: accounts[0]!,
-          [accounts[1]!.id]: accounts[1]!,
-          [accounts[2]!.id]: accounts[2]!,
+          [account1.id]: account1,
+          [account2.id]: account2,
+          [account3.id]: account3,
         }),
       );
 
       const result = await repository.findByIds([
-        accounts[0]!.id,
-        accounts[2]!.id,
+        account1.id,
+        account3.id,
         'missing-id',
       ]);
 
-      expect(result).toStrictEqual([accounts[0], accounts[2]]);
+      expect(result).toStrictEqual([account1, account3]);
     });
   });
 
