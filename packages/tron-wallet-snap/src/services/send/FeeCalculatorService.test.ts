@@ -1688,19 +1688,17 @@ describe('FeeCalculatorService', () => {
         );
       });
 
-      it('uses feeLimit fallback when simulation returns no energy_used', async () => {
+      it('uses feeLimit fallback when the simulation response has no energy_used', async () => {
         await withFeeCalculatorService(
           async ({ feeCalculatorService, tronHttpClient }) => {
             const transaction = getTransactionExample('trc20');
             const availableEnergy = BigNumber(20000);
             const availableBandwidth = BigNumber(2000000);
 
-            // Simulation returns empty/no energy_used
-            tronHttpClient.triggerConstantContract.mockResolvedValue({
-              result: { result: true },
-              constant_result: [],
-              transaction: { ...transaction, ret: [{ ret: 'SUCCESS' }] },
-            } as unknown as TriggerConstantContractResponse);
+            // The client's response struct rejects a payload without energy_used
+            tronHttpClient.triggerConstantContract.mockRejectedValue(
+              new Error('Expected a number, but received: undefined'),
+            );
 
             // feeLimit of 5,000,000 SUN with energy price 100 SUN = 50,000 max energy
             const feeLimit = 5_000_000;

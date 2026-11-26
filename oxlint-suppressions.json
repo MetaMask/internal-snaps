@@ -1885,23 +1885,6 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/services/send/FeeCalculatorService.ts": {
-    "internal-snaps/no-in-operator": {
-      "count": 1
-    },
-    "typescript/no-unsafe-argument": {
-      "count": 1
-    },
-    "typescript/no-unsafe-assignment": {
-      "count": 15
-    },
-    "typescript/no-unsafe-call": {
-      "count": 2
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 3
-    }
-  },
   "packages/tron-wallet-snap/src/services/send/SendService.test.ts": {
     "typescript/no-explicit-any": {
       "count": 15
