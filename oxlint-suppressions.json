@@ -1830,11 +1830,6 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/clients/security-alerts-api/utils.ts": {
-    "internal-snaps/no-in-operator": {
-      "count": 5
-    }
-  },
   "packages/tron-wallet-snap/src/clients/snap/SnapClient.ts": {
     "typescript/no-unsafe-assignment": {
       "count": 2
