@@ -319,7 +319,7 @@ export class TransactionExpirationRefresherService {
       ...transaction,
       raw_data: rawData,
     };
-    const transactionPb =
+    const transactionPb: unknown =
       tronWeb.utils.transaction.txJsonToPb(refreshedTransaction);
 
     return {
