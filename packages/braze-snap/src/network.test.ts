@@ -1,6 +1,6 @@
 import nock from 'nock';
 
-import { NETWORK_LIMITS } from './constants';
+import { REQUEST_TIMEOUT_MS } from './constants';
 import {
   GuardedXMLHttpRequest,
   abortRequests,
@@ -144,30 +144,11 @@ describe('GuardedXMLHttpRequest', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('sends a body up to the request size limit', async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response('{}'));
-
-    const body = 'x'.repeat(NETWORK_LIMITS.maxRequestBodyBytes);
-
-    expect(await send({ body }).result).toBe('load');
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-  });
-
   it('blocks every request when no endpoint is allowed', async () => {
     setAllowedEndpoint(null);
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
     expect(await send().result).toBe('error');
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it('counts the body size in UTF-8 bytes', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const body = 'é'.repeat(NETWORK_LIMITS.maxRequestBodyBytes / 2 + 1);
-
-    expect(await send({ body }).result).toBe('error');
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -184,26 +165,12 @@ describe('GuardedXMLHttpRequest', () => {
     expect(fetchSpy.mock.calls[0]?.[1]?.body).toBe('');
   });
 
-  it('limits the number of concurrent requests', async () => {
-    const fetchSpy = mockHangingFetch();
-
-    const results = Array.from(
-      { length: NETWORK_LIMITS.maxConcurrentRequests + 1 },
-      () => send().result,
-    );
-
-    expect(await results[NETWORK_LIMITS.maxConcurrentRequests]).toBe('error');
-    expect(fetchSpy).toHaveBeenCalledTimes(
-      NETWORK_LIMITS.maxConcurrentRequests,
-    );
-  });
-
   it('times out requests that take too long', async () => {
     vi.useFakeTimers();
     mockHangingFetch();
 
     const { result } = send();
-    await vi.advanceTimersByTimeAsync(NETWORK_LIMITS.requestTimeoutMs);
+    await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
 
     expect(await result).toBe('timeout');
   });
@@ -212,56 +179,6 @@ describe('GuardedXMLHttpRequest', () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Offline'));
 
     expect(await send().result).toBe('error');
-  });
-
-  it('rejects responses whose declared size is above the limit and cancels web bodies', async () => {
-    const cancel = vi.fn().mockResolvedValue(undefined);
-    const response = {
-      headers: new Headers({
-        'Content-Length': String(NETWORK_LIMITS.maxResponseBodyBytes + 1),
-      }),
-      body: { cancel },
-    } as unknown as Response;
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response);
-
-    expect(await send().result).toBe('error');
-    expect(cancel).toHaveBeenCalledTimes(1);
-    expect(hasRequestFailure()).toBe(true);
-  });
-
-  it('rejects oversized stream responses without a Web Streams cancel method', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response('{}', {
-        headers: {
-          'Content-Length': String(NETWORK_LIMITS.maxResponseBodyBytes + 1),
-        },
-      }),
-    );
-
-    expect(await send().result).toBe('error');
-    expect(hasRequestFailure()).toBe(true);
-  });
-
-  it('rejects oversized empty-body responses without failing on null body', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(null, {
-        headers: {
-          'Content-Length': String(NETWORK_LIMITS.maxResponseBodyBytes + 1),
-        },
-      }),
-    );
-
-    expect(await send().result).toBe('error');
-    expect(hasRequestFailure()).toBe(true);
-  });
-
-  it('rejects response bodies above the limit', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response('x'.repeat(NETWORK_LIMITS.maxResponseBodyBytes + 1)),
-    );
-
-    expect(await send().result).toBe('error');
-    expect(hasRequestFailure()).toBe(true);
   });
 
   it('reports non-2xx responses through onload with their status and records failure for >= 400', async () => {

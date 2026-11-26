@@ -10,6 +10,11 @@ export const ALLOWED_REQUEST_PATHS = ['/api/v3/data/'] as const;
 export const FLUSH_TIMEOUT_MS = 25_000;
 
 /**
+ * Timeout applied to individual SDK requests.
+ */
+export const REQUEST_TIMEOUT_MS = 20_000;
+
+/**
  * The key under which the SDK storage is persisted in snap state.
  */
 export const STORAGE_STATE_KEY = 'braze';
@@ -26,13 +31,3 @@ export const PERSISTED_KEY_PREFIX = 'ab.storage.';
  * persisted storage budget.
  */
 export const IN_MEMORY_KEY_PREFIX = 'ab.storage.triggers';
-
-/**
- * Limits applied to requests made by the SDK.
- */
-export const NETWORK_LIMITS = {
-  maxRequestBodyBytes: 1024 * 1024,
-  maxResponseBodyBytes: 1024 * 1024,
-  maxConcurrentRequests: 4,
-  requestTimeoutMs: 20_000,
-};

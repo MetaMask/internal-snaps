@@ -40,17 +40,17 @@ describe('storage', () => {
   });
 
   describe('hydrateStorage', () => {
-    it('reads snap state unencrypted and only once', async () => {
+    it('reads snap state unencrypted and replaces stale in-memory items', async () => {
       const { request } = stubSnap();
+      storageShim.setItem(KEY, 'stale');
 
       await hydrateStorage();
-      await hydrateStorage();
 
-      expect(request).toHaveBeenCalledTimes(1);
       expect(request).toHaveBeenCalledWith({
         method: 'snap_getState',
         params: { key: STORAGE_STATE_KEY, encrypted: false },
       });
+      expect(storageShim).toHaveLength(0);
     });
 
     it.each([

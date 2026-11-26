@@ -1,4 +1,4 @@
-import { ALLOWED_REQUEST_PATHS, NETWORK_LIMITS } from './constants';
+import { ALLOWED_REQUEST_PATHS, REQUEST_TIMEOUT_MS } from './constants';
 
 let allowedUrls: ReadonlySet<string> = new Set();
 
@@ -61,16 +61,6 @@ export async function drainRequests(): Promise<void> {
 }
 
 /**
- * Get the length of a string in bytes once UTF-8 encoded.
- *
- * @param value - The string.
- * @returns The length in bytes.
- */
-function getByteLength(value: string): number {
-  return new TextEncoder().encode(value).byteLength;
-}
-
-/**
  * Call an SDK callback, ignoring its errors. An error escaping a request
  * would otherwise terminate the snap.
  *
@@ -91,8 +81,8 @@ type RequestOutcome =
 
 /**
  * The `XMLHttpRequest` the SDK sees. It implements the subset the SDK uses
- * on top of `fetch`, and only lets requests through when they target an
- * allowed URL and stay within {@link NETWORK_LIMITS}.
+ * on top of `fetch`, and only lets `POST` requests through when they target an
+ * allowed URL.
  */
 export class GuardedXMLHttpRequest {
   readyState = 0;
@@ -140,23 +130,8 @@ export class GuardedXMLHttpRequest {
     void request.finally(() => pendingRequests.delete(request));
   }
 
-  /**
-   * Check whether the request may be sent.
-   *
-   * @param body - The request body.
-   * @returns Whether the request is allowed.
-   */
-  #isAllowed(body: string): boolean {
-    return (
-      this.#method === 'POST' &&
-      allowedUrls.has(this.#url) &&
-      getByteLength(body) <= NETWORK_LIMITS.maxRequestBodyBytes &&
-      controllers.size < NETWORK_LIMITS.maxConcurrentRequests
-    );
-  }
-
   async #run(body: string): Promise<RequestOutcome> {
-    if (!this.#isAllowed(body)) {
+    if (this.#method !== 'POST' || !allowedUrls.has(this.#url)) {
       return { type: 'error' };
     }
 
@@ -166,7 +141,7 @@ export class GuardedXMLHttpRequest {
     const timeout = setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, NETWORK_LIMITS.requestTimeoutMs);
+    }, REQUEST_TIMEOUT_MS);
 
     try {
       const response = await globalThis.fetch(this.#url, {
@@ -180,21 +155,7 @@ export class GuardedXMLHttpRequest {
         signal: controller.signal,
       });
 
-      const contentLength = Number(response.headers.get('content-length'));
-      if (contentLength > NETWORK_LIMITS.maxResponseBodyBytes) {
-        if (response.body && typeof response.body.cancel === 'function') {
-          await response.body.cancel();
-        }
-        allowedRequestFailed = true;
-        return { type: 'error' };
-      }
-
       const responseBody = await response.text();
-      if (getByteLength(responseBody) > NETWORK_LIMITS.maxResponseBodyBytes) {
-        allowedRequestFailed = true;
-        return { type: 'error' };
-      }
-
       if (response.status >= 400) {
         allowedRequestFailed = true;
       }
