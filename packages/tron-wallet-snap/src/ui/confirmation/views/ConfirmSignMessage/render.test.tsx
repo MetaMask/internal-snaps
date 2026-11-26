@@ -31,7 +31,7 @@ describe('ConfirmSignMessage render', () => {
     ],
     type: 'tron:eoa',
     scopes: [Network.Mainnet, Network.Shasta],
-    entropySource: 'entropy-source-1' as any,
+    entropySource: 'entropy-source-1',
     derivationPath: "m/44'/195'/0'/0/0",
     index: 0,
   };
@@ -49,16 +49,21 @@ describe('ConfirmSignMessage render', () => {
     useNftDetection: true,
   };
 
-  let mockSnapClient: Mocked<SnapClient>;
+  let mockSnapClient: Mocked<
+    Pick<SnapClient, 'createInterface' | 'showDialog' | 'getPreferences'>
+  >;
 
   beforeEach(() => {
+    const { snapClient } = snapContext;
     mockSnapClient = {
-      createInterface: vi.fn().mockResolvedValue('interface-id-123'),
-      showDialog: vi.fn().mockResolvedValue(true),
-      getPreferences: vi.fn().mockResolvedValue(mockPreferences),
-    } as any;
-
-    snapContext.snapClient = mockSnapClient;
+      createInterface: vi
+        .spyOn(snapClient, 'createInterface')
+        .mockResolvedValue('interface-id-123'),
+      showDialog: vi.spyOn(snapClient, 'showDialog').mockResolvedValue(true),
+      getPreferences: vi
+        .spyOn(snapClient, 'getPreferences')
+        .mockResolvedValue(mockPreferences),
+    };
   });
 
   it('renders the confirmation dialog with correct props', async () => {
@@ -145,7 +150,8 @@ describe('ConfirmSignMessage render', () => {
   it('handles missing origin gracefully', async () => {
     const request: TronWalletKeyringRequest = {
       id: '00000000-0000-4000-8000-000000000004',
-      origin: undefined as any,
+      // @ts-expect-error - a missing origin exercises the fallback
+      origin: undefined,
       account: mockAccount.id,
       scope: Network.Mainnet,
       request: {
