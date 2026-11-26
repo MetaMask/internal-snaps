@@ -1,5 +1,6 @@
 import type { JsonSLIP10Node } from '@metamask/key-tree';
 import type { EntropySourceId } from '@metamask/keyring-api';
+import { SnapError } from '@metamask/snaps-sdk';
 import type {
   ComponentOrElement,
   DialogResult,
@@ -8,12 +9,13 @@ import type {
   GetPreferencesResult,
   Json,
   ResolveInterfaceResult,
-  SnapsProvider,
   UpdateInterfaceResult,
 } from '@metamask/snaps-sdk';
 import { ensureError } from '@metamask/utils';
 
-import { XrplSnapException } from './errors';
+import { getSnapProvider } from './snapProvider';
+
+export { getSnapProvider } from './snapProvider';
 
 export const Duration = {
   OneSecond: 'PT1S',
@@ -31,16 +33,6 @@ export const Duration = {
 export type Duration = (typeof Duration)[keyof typeof Duration];
 
 /**
- * Returns the Snap provider.
- *
- * @returns The Snap provider.
- */
-export function getSnapProvider(): SnapsProvider {
-  // snap is a global variable provided by the Snap SDK
-  return snap;
-}
-
-/**
  * Retrieves a `SLIP10NodeInterface` object for the specified path and curve.
  *
  * @see https://docs.metamask.io/snaps/reference/snaps-api/#snap_getbip32entropy
@@ -50,7 +42,7 @@ export function getSnapProvider(): SnapsProvider {
  * @param params.path - The BIP32 derivation path for which to retrieve a `SLIP10NodeInterface`.
  * @param params.curve - The elliptic curve to use for key derivation.
  * @returns A Promise that resolves to a `SLIP10NodeInterface` object.
- * @throws {XrplSnapException} If the Snap RPC call fails (message is intentionally generic).
+ * @throws {SnapError} If the Snap RPC call fails (message is intentionally generic).
  */
 export async function getBip32Entropy({
   entropySource,
@@ -59,7 +51,7 @@ export async function getBip32Entropy({
 }: {
   entropySource?: EntropySourceId | undefined;
   path: string[];
-  curve: 'secp256k1' | 'ed25519';
+  curve: 'secp256k1' | 'ed25519' | 'ed25519Bip32';
 }): Promise<JsonSLIP10Node> {
   try {
     return await getSnapProvider().request({
@@ -72,7 +64,7 @@ export async function getBip32Entropy({
     });
   } catch {
     // For security reasons, we do not want to expose the error message to the user
-    throw new XrplSnapException('Failed to get BIP32 entropy from Snap');
+    throw new SnapError('Failed to get BIP32 entropy from Snap');
   }
 }
 
@@ -174,7 +166,8 @@ export async function cancelBackgroundEventIfExists(
   try {
     await cancelBackgroundEvent(id);
   } catch {
-    // Event may have already executed or been cancelled.
+    // This is not necessary to throw an error here
+    // because the event may have already executed or been cancelled.
   }
 }
 

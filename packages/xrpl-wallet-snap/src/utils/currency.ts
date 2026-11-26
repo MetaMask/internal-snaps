@@ -1,0 +1,176 @@
+import { BigNumber } from 'bignumber.js';
+
+import type { KnownCaip19AssetIdOrSlip44Id } from '../api';
+import { XRPL_DECIMAL_PLACES } from '../constants';
+import { isIouAssetId } from './caip';
+
+/**
+ * Converts an amount to the smallest unit of the asset.
+ *
+ * @example toSmallestUnit(new BigNumber('12.345678')) // 12345678 drops
+ *
+ * @param amount - The amount to convert.
+ * @param decimalPlaces - The number of decimal places to use.
+ * @returns The amount in the smallest unit.
+ */
+export function toSmallestUnit(
+  amount: BigNumber,
+  decimalPlaces: number = XRPL_DECIMAL_PLACES,
+): BigNumber {
+  return amount.multipliedBy(BigNumber(10).pow(decimalPlaces));
+}
+
+/**
+ * Amount written onto a send.
+ *
+ * Native XRP and MPT are smallest units (drops, or `AssetScale`). An IOU
+ * `Amount.value` is the decimal the user entered; the ledger does not scale it.
+ *
+ * @param assetId - CAIP-19 asset id.
+ * @param amount - Amount in display units.
+ * @param decimals - Native or MPT decimal places. Ignored for IOU.
+ * @returns Ledger amount.
+ */
+export function toLedgerSendAmount(
+  assetId: KnownCaip19AssetIdOrSlip44Id,
+  amount: BigNumber,
+  decimals: number,
+): BigNumber {
+  if (isIouAssetId(assetId)) {
+    return amount;
+  }
+  return toSmallestUnit(amount, decimals);
+}
+
+/**
+ * Checks if an amount has decimal places.
+ *
+ * @param amount - The amount to check.
+ * @returns True if the amount has decimal places, false otherwise.
+ */
+export function hasDecimals(amount: BigNumber): boolean {
+  const decimalPlaces = amount.decimalPlaces();
+  if (decimalPlaces === null) {
+    return false;
+  }
+  return decimalPlaces > 0;
+}
+
+/**
+ * Converts an amount from the smallest unit to a human-readable amount.
+ *
+ * @example normalizeAmount(new BigNumber(12345678)) // 12.345678
+ *
+ * @param amount - Amount in drops.
+ * @param decimalPlaces - The number of decimal places to use.
+ * @returns The amount in the human-readable format.
+ */
+export function normalizeAmount(
+  amount: BigNumber,
+  decimalPlaces: number = XRPL_DECIMAL_PLACES,
+): BigNumber {
+  return amount.dividedBy(BigNumber(10).pow(decimalPlaces));
+}
+
+/**
+ * Decimal string for keyring / MetaMask multichain balances.
+ * {@link BigNumber#toString} may use scientific notation (e.g. `1e-7`); the extension's
+ * `parseBalanceWithDecimals` only accepts `\d+(\.\d+)?`, so we use `toFixed` and trim
+ * redundant trailing zeros.
+ *
+ * @param amountInSmallestUnit - Balance in the asset's smallest unit (e.g. drops).
+ * @param decimalPlaces - Asset decimals (e.g. 6 for XRP / classic XRPL assets).
+ * @returns Decimal string suitable for the keyring / multichain balance APIs.
+ */
+export function toDisplayBalance(
+  amountInSmallestUnit: BigNumber,
+  decimalPlaces: number = XRPL_DECIMAL_PLACES,
+): string {
+  const fixed = normalizeAmount(amountInSmallestUnit, decimalPlaces).toFixed(
+    decimalPlaces,
+  );
+  return removeTrailingZeros(fixed);
+}
+
+/**
+ * Removes trailing zeros from a decimal number.
+ *
+ * @param amount - The amount to remove trailing zeros from.
+ * @returns The amount with trailing zeros removed.
+ */
+export function removeTrailingZeros(amount: string): string {
+  if (!amount.includes('.')) {
+    return amount;
+  }
+  const trimmed = amount.replace(/0+$/u, '').replace(/\.$/u, '');
+  return trimmed === '' ? '0' : trimmed;
+}
+
+/**
+ * Formats a number as currency (half-up rounded to 2 decimal places).
+ *
+ * @param amount - The amount of money.
+ * @param currency - The currency to format the amount as.
+ * @param locale - The locale to use for number formatting.
+ * @returns The formatted currency string.
+ * @throws {RangeError} If the amount is not a finite number.
+ */
+export function formatFiat(
+  amount: string,
+  currency: string,
+  locale: string,
+): string {
+  const rounded = new BigNumber(amount).decimalPlaces(
+    2,
+    BigNumber.ROUND_HALF_UP,
+  );
+
+  if (!rounded.isFinite()) {
+    throw new RangeError('Amount must be a finite number for fiat formatting');
+  }
+
+  const amountNumber = rounded.toNumber();
+  const [localeCode] = locale.split('_');
+
+  return amountNumber.toLocaleString(localeCode, {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  });
+}
+
+/**
+ * Converts a token amount to fiat currency using the provided conversion rate.
+ *
+ * @param tokenAmount - The amount of tokens to convert.
+ * @param rateConversion - The conversion rate from token to fiat.
+ * @returns The fiat value of the token amount.
+ */
+export function tokenToFiat(
+  tokenAmount: string,
+  rateConversion: string,
+): string {
+  const bigAmount = new BigNumber(tokenAmount);
+  return bigAmount.multipliedBy(new BigNumber(rateConversion)).toString();
+}
+
+/**
+ * Converts a token amount and rate to a formatted fiat string.
+ *
+ * @param tokenAmount - Token amount to convert.
+ * @param rateConversion - Token-to-fiat conversion rate.
+ * @param currency - Currency code.
+ * @param locale - Locale string.
+ * @returns A formatted fiat string, or null when no rate is available.
+ */
+export function tokenPriceToFiat(
+  tokenAmount: string | undefined,
+  rateConversion: string | null | undefined,
+  currency: string,
+  locale: string,
+): string | null {
+  return tokenAmount && rateConversion
+    ? formatFiat(tokenToFiat(tokenAmount, rateConversion), currency, locale)
+    : null;
+}
