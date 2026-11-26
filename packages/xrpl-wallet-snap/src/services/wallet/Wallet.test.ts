@@ -1,10 +1,15 @@
-import type { Transaction as XrplTransaction } from 'xrpl';
+import { verify as xrplVerify } from 'ripple-keypairs';
+import type {
+  Transaction as XrplTransaction,
+  Wallet as XrplWallet,
+} from 'xrpl';
 
+import { bufferToUint8Array } from '../../utils/buffer';
 import {
   createBip44XrplWallet,
   createTestWallet,
 } from './__mocks__/wallet.fixtures';
-import { SignTransactionException } from './exceptions';
+import { SignMessageException, SignTransactionException } from './exceptions';
 import { Wallet } from './Wallet';
 
 function createPaymentTransaction(account: string): XrplTransaction {
@@ -18,7 +23,7 @@ function createPaymentTransaction(account: string): XrplTransaction {
   };
 }
 
-function createFailingSigner() {
+function createFailingSigner(): XrplWallet {
   const base = createBip44XrplWallet(0);
   return {
     classicAddress: base.classicAddress,
@@ -26,7 +31,7 @@ function createFailingSigner() {
     sign: () => {
       throw new Error('sign failed');
     },
-  } as unknown as ConstructorParameters<typeof Wallet>[0];
+  } as unknown as XrplWallet;
 }
 
 describe('Wallet', () => {
@@ -65,6 +70,18 @@ describe('Wallet', () => {
       expect(result.hash).toMatch(/^[0-9A-F]{64}$/iu);
     });
 
+    it('signs a payment whose Account is not this wallet', () => {
+      const wallet = createTestWallet(0);
+      const otherAccount = createBip44XrplWallet(1).classicAddress;
+
+      const result = wallet.signTransaction(
+        createPaymentTransaction(otherAccount),
+      );
+
+      expect(result.signedTransaction).toMatch(/^[0-9A-F]+$/iu);
+      expect(result.hash).toMatch(/^[0-9A-F]{64}$/iu);
+    });
+
     it('throws SignTransactionException when the signer fails', () => {
       const wallet = new Wallet(createFailingSigner());
 
@@ -75,23 +92,76 @@ describe('Wallet', () => {
   });
 
   describe('signMessage', () => {
-    it.each([
-      { message: 'hello xrpl', encoding: 'hex' as const },
-      { message: 'hello xrpl', encoding: 'base64' as const },
-      { message: '', encoding: 'hex' as const },
-    ])(
-      'returns the message unchanged for encoding $encoding',
-      ({ message, encoding }) => {
-        const wallet = createTestWallet(0);
-        expect(wallet.signMessage(message, encoding)).toStrictEqual(message);
+    it.each(['hello xrpl', '', 'こんにちは'])(
+      'returns a hex signature that verifies for %j',
+      (message) => {
+        const xrplWallet = createBip44XrplWallet(0);
+        const wallet = new Wallet(xrplWallet);
+        const signatureHex = wallet.signMessage(message);
+
+        expect(signatureHex).toMatch(/^[0-9a-f]+$/iu);
+        expect(
+          xrplVerify(
+            bufferToUint8Array(message, 'utf8').toString('hex'),
+            signatureHex,
+            xrplWallet.publicKey,
+          ),
+        ).toBe(true);
       },
     );
 
-    it('defaults encoding to hex and returns the message unchanged', () => {
+    it('returns a base64 signature equivalent to the hex form', () => {
       const wallet = createTestWallet(0);
-      expect(wallet.signMessage('default encoding')).toStrictEqual(
-        'default encoding',
+      const message = 'hello xrpl';
+
+      const signatureHex = wallet.signMessage(message, 'hex');
+      const signatureBase64 = wallet.signMessage(message, 'base64');
+
+      expect(signatureBase64).toMatch(/^[A-Za-z0-9+/]+=*$/u);
+      expect(
+        bufferToUint8Array(signatureBase64, 'base64').toString('hex'),
+      ).toBe(signatureHex);
+    });
+
+    it('defaults encoding to hex', () => {
+      const wallet = createTestWallet(0);
+      const message = 'default encoding';
+
+      expect(wallet.signMessage(message)).toBe(
+        wallet.signMessage(message, 'hex'),
       );
+    });
+
+    it('is deterministic for the same message and key', () => {
+      const wallet = createTestWallet(0);
+
+      expect(wallet.signMessage('same')).toBe(wallet.signMessage('same'));
+    });
+
+    it('does not verify against a different wallet public key', () => {
+      const signer = createBip44XrplWallet(0);
+      const other = createBip44XrplWallet(1);
+      const message = 'hello xrpl';
+      const signatureHex = new Wallet(signer).signMessage(message);
+
+      expect(
+        xrplVerify(
+          bufferToUint8Array(message, 'utf8').toString('hex'),
+          signatureHex,
+          other.publicKey,
+        ),
+      ).toBe(false);
+    });
+
+    it('throws SignMessageException when signing fails', () => {
+      const base = createBip44XrplWallet(0);
+      const wallet = new Wallet({
+        classicAddress: base.classicAddress,
+        privateKey: 'not-a-valid-private-key',
+        publicKey: base.publicKey,
+      } as unknown as XrplWallet);
+
+      expect(() => wallet.signMessage('hello')).toThrow(SignMessageException);
     });
   });
 });

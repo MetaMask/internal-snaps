@@ -1,6 +1,6 @@
 import { BigNumber } from 'bignumber.js';
 
-import type { KnownCaip19AssetIdOrSlip44Id } from '../api';
+import type { KnownCaip19AssetIdOrSlip44Id } from '../api/asset';
 import { XRPL_DECIMAL_PLACES } from '../constants';
 import { isIouAssetId } from './caip';
 

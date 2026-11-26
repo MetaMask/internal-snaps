@@ -58,10 +58,17 @@ export const XRPL_SECP_CURVE = 'secp256k1';
 
 export const XRPL_ED25519_CURVE = 'ed25519';
 
-/** Xrpl BIP32 derivation path prefix. */
+/**
+ * Xrpl BIP32 secp256k1 derivation path prefix (`m/44'/144'/0'/0`).
+ * Address index is appended unhardened: `…/${index}`.
+ */
 export const XRPL_SECP_DERIVATION_PATH_PREFIX = `m/44'/${XRPL_COIN_TYPE}'/0'/0`;
 
-export const XRPL_ED25519_DERIVATION_PATH_PREFIX = `m/44'/${XRPL_COIN_TYPE}'`;
+/**
+ * Xrpl SLIP-0010 ed25519 derivation path prefix (`m/44'/144'/0'/0'`).
+ * hardened: `…/${index}'` → e.g. `m/44'/144'/0'/0'/0'`.
+ */
+export const XRPL_ED25519_DERIVATION_PATH_PREFIX = `m/44'/${XRPL_COIN_TYPE}'/0'/0'`;
 /**
  * Decimal places for native XRP (drops). 1 XRP = 10^6 drops.
  *

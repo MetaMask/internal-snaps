@@ -5,9 +5,8 @@ import type {
   KnownCaip19IouAssetId,
   KnownCaip19MptAssetId,
   KnownCaip19Slip44Id,
-  KnownCaip2ChainId,
   MptIssuanceId,
-} from '../api';
+} from '../api/asset';
 import {
   AssetType,
   CurrencyCodeStruct,
@@ -15,9 +14,10 @@ import {
   KnownCaip19MptAssetStruct,
   KnownCaip19Slip44IdMap,
   KnownCaip19Slip44IdStruct,
-  KnownCaip2ChainIdStruct,
   MptIssuanceIdStruct,
-} from '../api';
+} from '../api/asset';
+import type { KnownCaip2ChainId } from '../api/network';
+import { KnownCaip2ChainIdStruct } from '../api/network';
 import { MAX_IOU_ASSET_CODE_LENGTH } from '../constants';
 
 /**

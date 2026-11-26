@@ -21,3 +21,12 @@ export class SignTransactionException extends WalletServiceException {
     super('Failed to sign transaction');
   }
 }
+
+/**
+ * Thrown when the message cannot be signed.
+ */
+export class SignMessageException extends WalletServiceException {
+  constructor() {
+    super('Failed to sign message');
+  }
+}
