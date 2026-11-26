@@ -1,7 +1,9 @@
-import type { Infer } from '@metamask/superstruct';
+import type { Infer, Struct } from '@metamask/superstruct';
 import {
   array,
+  assign,
   boolean,
+  literal,
   min,
   number,
   optional,
@@ -11,6 +13,7 @@ import {
 } from '@metamask/superstruct';
 
 import { TronAddressStruct } from '../../validation/structs';
+import { FullNodeInternalTransactionStruct } from '../tron-http/structs';
 
 /**
  * Superstruct definitions for TrongridApiClient response validation.
@@ -111,6 +114,8 @@ export const ContractValueStruct = type({
   call_value: optional(min(number(), 0)),
   amount: optional(min(number(), 0)),
   asset_name: optional(string()),
+  frozen_balance_v2: optional(min(number(), 0)),
+  resource: optional(string()),
 });
 
 export const ContractParameterStruct = type({
@@ -135,12 +140,20 @@ export const InternalTransactionDataStruct = type({
   call_value: optional(InternalTransactionCallValueStruct),
 });
 
-export const InternalTransactionStruct = type({
-  internal_tx_id: optional(string()),
-  data: optional(InternalTransactionDataStruct),
-  to_address: optional(string()),
-  from_address: optional(string()),
-});
+/**
+ * Trongrid returns internal transactions in its own shape, but
+ * `TransactionsService` replaces them with the Full Node shape when it
+ * enriches potential swaps, so an entry may carry the fields of either.
+ */
+export const InternalTransactionStruct = assign(
+  type({
+    internal_tx_id: optional(string()),
+    data: optional(InternalTransactionDataStruct),
+    to_address: optional(string()),
+    from_address: optional(string()),
+  }),
+  FullNodeInternalTransactionStruct,
+);
 
 export const RawTransactionDataStruct = type({
   contract: array(ContractInfoStruct),
@@ -203,24 +216,29 @@ export const TrongridApiMetaStruct = type({
   page_size: min(number(), 0),
 });
 
-// Pre-built response structs for common use cases
-export const TrongridAccountResponseStruct = type({
-  data: array(TronAccountStruct),
-  success: boolean(),
-  meta: TrongridApiMetaStruct,
+export type TrongridApiMeta = Infer<typeof TrongridApiMetaStruct>;
+
+/**
+ * Trongrid reports failures in-band with `success: false`.
+ */
+export const TrongridApiSuccessStruct = type({
+  success: literal(true),
 });
 
-export const TrongridTransactionInfoResponseStruct = type({
-  data: array(TransactionInfoStruct),
-  success: boolean(),
-  meta: TrongridApiMetaStruct,
-});
-
-export const TrongridContractTransactionInfoResponseStruct = type({
-  data: array(ContractTransactionInfoStruct),
-  success: boolean(),
-  meta: TrongridApiMetaStruct,
-});
+/**
+ * Build the struct of a successful Trongrid `/v1` response envelope.
+ *
+ * @param itemStruct - The struct each entry of `data` must match.
+ * @returns The envelope struct. `data` is optional because Trongrid omits it for empty results.
+ */
+export const trongridApiResponseStruct = <Item>(
+  itemStruct: Struct<Item>,
+): Struct<{ success: true; meta: TrongridApiMeta; data?: Item[] }> =>
+  type({
+    success: literal(true),
+    meta: TrongridApiMetaStruct,
+    data: optional(array(itemStruct)),
+  });
 
 // --------------------------------------------------------------------------
 // TRC20 Balance Response Structs (for inactive account fallback)
@@ -231,12 +249,3 @@ export const TrongridContractTransactionInfoResponseStruct = type({
  * Each entry is a record mapping contract address to balance string.
  */
 export const Trc20BalanceStruct = record(string(), string());
-
-/**
- * Struct for validating the TRC20 balance API response.
- */
-export const TrongridTrc20BalanceResponseStruct = type({
-  data: array(Trc20BalanceStruct),
-  success: boolean(),
-  meta: TrongridApiMetaStruct,
-});

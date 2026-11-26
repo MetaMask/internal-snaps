@@ -6,8 +6,6 @@ import { TronWeb } from 'tronweb';
 import type { TRC10TokenMetadata } from '../../clients/tron-http/types';
 import type {
   ContractTransactionInfo,
-  ContractValue,
-  GeneralContractInfo,
   TransactionInfo,
   TransferAssetContractInfo,
   TransferContractInfo,
@@ -175,8 +173,8 @@ export class TransactionMapper {
     } = Networks[network];
 
     // Base TRX fee calculation
-    const transactionFeeInSun = transactionInfo.ret.reduce(
-      (total, result) => total + (result.fee || 0),
+    const transactionFeeInSun = (transactionInfo.ret ?? []).reduce(
+      (total, result) => total + (result.fee ?? 0),
       0,
     );
     const transactionFee = sunToTrx(transactionFeeInSun).toNumber();
@@ -199,8 +197,8 @@ export class TransactionMapper {
     };
 
     setFeeIfPresent(transactionFee, tronAsset);
-    setFeeIfPresent(transactionInfo.net_usage, bandwidthAsset);
-    setFeeIfPresent(transactionInfo.energy_usage, energyAsset);
+    setFeeIfPresent(transactionInfo.net_usage ?? 0, bandwidthAsset);
+    setFeeIfPresent(transactionInfo.energy_usage ?? 0, energyAsset);
 
     return fees;
   }
@@ -295,15 +293,11 @@ export class TransactionMapper {
 
     // Check for TRX movements where this account is involved
     // Note: internal_transactions from Full Node API uses caller_address/transferTo_address
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return internalTransactions.some((internal: any) => {
+    return internalTransactions.some((internal) => {
       const fromHex = internal.caller_address?.toLowerCase();
       const toHex = internal.transferTo_address?.toLowerCase();
       const hasCallValue = internal.callValueInfo?.some(
-        // TODO: Replace `any` with type
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (valueInfo: any) => (valueInfo.callValue ?? 0) > 0,
+        (valueInfo) => (valueInfo.callValue ?? 0) > 0,
       );
 
       return hasCallValue && (fromHex === accountHex || toHex === accountHex);
@@ -342,7 +336,7 @@ export class TransactionMapper {
     const isPending = status === TransactionStatus.Unconfirmed;
     const timestamp = isPending
       ? Math.floor(Date.now() / 1000)
-      : Math.floor(trongridTransaction.block_timestamp / 1000);
+      : Math.floor((trongridTransaction.block_timestamp ?? Date.now()) / 1000);
 
     // Convert from sun to TRX
     const amountInSun = contractValue.amount;
@@ -437,7 +431,7 @@ export class TransactionMapper {
     const isPending = status === TransactionStatus.Unconfirmed;
     const timestamp = isPending
       ? Math.floor(Date.now() / 1000)
-      : Math.floor(trongridTransaction.block_timestamp / 1000);
+      : Math.floor((trongridTransaction.block_timestamp ?? Date.now()) / 1000);
 
     const assetName = contractValue.asset_name;
 
@@ -616,7 +610,7 @@ export class TransactionMapper {
     const isPending = status === TransactionStatus.Unconfirmed;
     const timestamp = isPending
       ? Math.floor(Date.now() / 1000)
-      : Math.floor(trongridTransaction.block_timestamp / 1000);
+      : Math.floor((trongridTransaction.block_timestamp ?? Date.now()) / 1000);
 
     // Calculate sent amount
     const sentAmount = toUiAmount(
@@ -699,7 +693,7 @@ export class TransactionMapper {
     const isPending = status === TransactionStatus.Unconfirmed;
     const timestamp = isPending
       ? Math.floor(Date.now() / 1000)
-      : Math.floor(trongridTransaction.block_timestamp / 1000);
+      : Math.floor((trongridTransaction.block_timestamp ?? Date.now()) / 1000);
 
     // Calculate TRC20 received amount
     const trc20Amount = toUiAmount(
@@ -711,11 +705,8 @@ export class TransactionMapper {
     // 1. call_value from main contract (user sent TRX directly)
     // 2. internal_transactions where user is sender
     // 3. Sum of all internal TRX (fallback for complex DEX swaps)
-    const contractInfo = trongridTransaction.raw_data.contract?.[0];
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const contractCallValue = (contractInfo?.parameter?.value as any)
-      ?.call_value;
+    const contractCallValue =
+      trongridTransaction.raw_data.contract[0]?.parameter.value.call_value;
 
     let trxAmount = '0';
 
@@ -730,16 +721,11 @@ export class TransactionMapper {
 
       // Find the TRX movement where the account is the sender
       // Note: internal_transactions from Full Node API uses caller_address/callValueInfo
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for (const internal of internalTransactions as any[]) {
+      for (const internal of internalTransactions) {
         const fromHex = internal.caller_address?.toLowerCase();
         if (fromHex === accountHex) {
           const callValue =
-            // TODO: Replace `any` with type
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            internal.callValueInfo?.find((vi: any) => vi.callValue)
-              ?.callValue ?? 0;
+            internal.callValueInfo?.find((vi) => vi.callValue)?.callValue ?? 0;
           if (callValue > 0) {
             trxAmount = sunToTrx(callValue).toString();
             break;
@@ -751,14 +737,9 @@ export class TransactionMapper {
       // (DEX swaps often have TRX moving internally without the user's address)
       if (trxAmount === '0' && internalTransactions.length > 0) {
         let totalInternalTrx = 0;
-        // TODO: Replace `any` with type
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        for (const internal of internalTransactions as any[]) {
+        for (const internal of internalTransactions) {
           const callValue =
-            // TODO: Replace `any` with type
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            internal.callValueInfo?.find((vi: any) => vi.callValue)
-              ?.callValue ?? 0;
+            internal.callValueInfo?.find((vi) => vi.callValue)?.callValue ?? 0;
           totalInternalTrx += callValue;
         }
         if (totalInternalTrx > 0) {
@@ -837,15 +818,11 @@ export class TransactionMapper {
     // Determine transaction status first
     const status = this.#computeTransactionStatus(trongridTransaction);
 
-    const contractInfo = trongridTransaction.raw_data.contract?.[0];
-    const ownerAddress = contractInfo?.parameter?.value?.owner_address;
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const contractAddress = (contractInfo?.parameter?.value as any)
-      ?.contract_address;
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const callValue = (contractInfo?.parameter?.value as any)?.call_value;
+    const contractValue =
+      trongridTransaction.raw_data.contract[0]?.parameter.value;
+    const ownerAddress = contractValue?.owner_address;
+    const contractAddress = contractValue?.contract_address;
+    const callValue = contractValue?.call_value;
 
     // Handle failed transactions (even without TRC20 data)
     if (status === TransactionStatus.Failed) {
@@ -853,7 +830,9 @@ export class TransactionMapper {
         return null;
       }
 
-      const timestamp = Math.floor(trongridTransaction.block_timestamp / 1000);
+      const timestamp = Math.floor(
+        (trongridTransaction.block_timestamp ?? Date.now()) / 1000,
+      );
       const fees = TransactionMapper.#calculateTronFees(
         scope,
         trongridTransaction,
@@ -885,7 +864,9 @@ export class TransactionMapper {
         return null;
       }
 
-      const timestamp = Math.floor(trongridTransaction.block_timestamp / 1000);
+      const timestamp = Math.floor(
+        (trongridTransaction.block_timestamp ?? Date.now()) / 1000,
+      );
       const trxAmount = sunToTrx(callValue).toString();
       const fees = TransactionMapper.#calculateTronFees(
         scope,
@@ -992,12 +973,8 @@ export class TransactionMapper {
     const hasAnyInternalTrxMovement =
       trongridTransaction.internal_transactions &&
       trongridTransaction.internal_transactions.length > 0 &&
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      trongridTransaction.internal_transactions.some((internal: any) =>
-        // TODO: Replace `any` with type
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        internal.callValueInfo?.some((vi: any) => (vi.callValue ?? 0) > 0),
+      trongridTransaction.internal_transactions.some((internal) =>
+        internal.callValueInfo?.some((vi) => (vi.callValue ?? 0) > 0),
       );
 
     // TRX → TRC20: User receives TRC20 and there's TRX being sent or internal TRX movements
@@ -1117,11 +1094,8 @@ export class TransactionMapper {
     account: ExtendedKeyringAccount;
     trongridTransaction: TransactionInfo;
   }): Transaction | null {
-    const firstContract = trongridTransaction.raw_data
-      .contract[0] as GeneralContractInfo;
-    const contractValue = firstContract?.parameter?.value as ContractValue & {
-      resource?: 'BANDWIDTH' | 'ENERGY';
-    };
+    const contractValue =
+      trongridTransaction.raw_data.contract[0]?.parameter.value;
     if (!contractValue) {
       return null;
     }
@@ -1131,20 +1105,18 @@ export class TransactionMapper {
       return null;
     }
     const from = TronWeb.address.fromHex(ownerAddress);
-    const timestamp = Math.floor(trongridTransaction.block_timestamp / 1000);
+    const timestamp = Math.floor(
+      (trongridTransaction.block_timestamp ?? Date.now()) / 1000,
+    );
 
     // V2 uses "frozen_balance"; legacy may use "frozen_balance" or "frozen_balance_v2"
     const amountInSun: number =
-      Number(
-        contractValue.frozen_balance ??
-          // TODO: Replace `any` with type
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (contractValue as any).frozen_balance_v2,
-      ) || 0;
+      Number(contractValue.frozen_balance ?? contractValue.frozen_balance_v2) ||
+      0;
     const amountInTrx = sunToTrx(amountInSun).toString();
 
     // Determine resource and corresponding staked asset metadata
-    const { resource } = contractValue as { resource?: 'BANDWIDTH' | 'ENERGY' };
+    const { resource } = contractValue;
     const isEnergy = resource === 'ENERGY';
     const isBandwidth = resource === 'BANDWIDTH';
     if (!isEnergy && !isBandwidth) {
@@ -1220,11 +1192,8 @@ export class TransactionMapper {
     account: ExtendedKeyringAccount;
     trongridTransaction: TransactionInfo;
   }): Transaction | null {
-    const firstContract = trongridTransaction.raw_data
-      .contract[0] as GeneralContractInfo;
-    const contractValue = firstContract?.parameter?.value as ContractValue & {
-      resource?: 'BANDWIDTH' | 'ENERGY';
-    };
+    const contractValue =
+      trongridTransaction.raw_data.contract[0]?.parameter.value;
     if (!contractValue) {
       return null;
     }
@@ -1234,14 +1203,16 @@ export class TransactionMapper {
       return null;
     }
     const to = TronWeb.address.fromHex(ownerAddress);
-    const timestamp = Math.floor(trongridTransaction.block_timestamp / 1000);
+    const timestamp = Math.floor(
+      (trongridTransaction.block_timestamp ?? Date.now()) / 1000,
+    );
 
     // V2 uses "unfreeze_balance"; legacy may use this or a similar field
     const amountInSun: number = Number(contractValue.unfreeze_balance) || 0;
     const amountInTrx = sunToTrx(amountInSun).toString();
 
     // Determine resource and corresponding staked asset metadata
-    const { resource } = contractValue as { resource?: 'BANDWIDTH' | 'ENERGY' };
+    const { resource } = contractValue;
     const isEnergy = resource === 'ENERGY';
     const isBandwidth = resource === 'BANDWIDTH';
     if (!isEnergy && !isBandwidth) {

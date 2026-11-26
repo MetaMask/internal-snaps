@@ -83,9 +83,7 @@ export class TransactionsService {
       const hasEmptyInternalTransactions =
         !tx.internal_transactions || tx.internal_transactions.length === 0;
       const hasCallValue =
-        // TODO: Replace `any` with type
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (tx.raw_data.contract?.[0]?.parameter?.value as any)?.call_value > 0;
+        (tx.raw_data.contract[0]?.parameter.value.call_value ?? 0) > 0;
 
       if (
         isTriggerSmartContract &&
