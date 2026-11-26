@@ -1,10 +1,16 @@
 import { SnapError } from '@metamask/snaps-sdk';
-import { bytesToBase64, bytesToHex, stringToBytes } from '@metamask/utils';
-import { TronWeb } from 'tronweb';
-import type { Mocked } from 'vitest';
+import {
+  assert,
+  bytesToBase64,
+  bytesToHex,
+  stringToBytes,
+} from '@metamask/utils';
+import { TronWeb, Types as TronwebTypes } from 'tronweb';
+import type { Mock } from 'vitest';
 
-import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
+import { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import { Network } from '../../constants';
+import snapContext from '../../context';
 import type { TronKeyringAccount } from '../../entities/tronKeyringAccount';
 import {
   TronMultichainErrors,
@@ -12,45 +18,37 @@ import {
 } from '../../handlers/keyring/keyring-types';
 import { mockLogger } from '../../utils/mockLogger';
 import type { AccountsService } from '../accounts/AccountsService';
+import { configProvider } from '../config';
 import { WalletService } from './WalletService';
 
 const MOCK_BLOCK_TIMESTAMP = 1_700_000_000_000;
 
-/**
- * Builds a mock TRON block response.
- *
- * @param options - The block options.
- * @param options.number - The block number.
- * @param options.timestamp - The block timestamp.
- * @param options.hashSegment - The hash segment used for ref_block_hash.
- * @returns A mock TRON block response.
- */
-function createBlock({
-  number,
-  timestamp,
-  hashSegment = '1122334455667788',
-}: {
-  number: number;
-  timestamp: number;
-  hashSegment?: string;
-}): {
-  blockID: string;
-  block_header: { raw_data: { number: number; timestamp: number } };
-} {
-  return {
-    blockID: `${'0'.repeat(16)}${hashSegment}${'f'.repeat(32)}`,
-
-    block_header: {
-      raw_data: {
-        number,
-        timestamp,
-      },
-    },
-  };
-}
-
 const getRefBlockBytes = (number: number): string =>
   number.toString(16).slice(-4).padStart(4, '0');
+
+/**
+ * Builds a signed transaction as returned by `tronWeb.trx.sign`.
+ *
+ * @param signature - The transaction signatures.
+ * @returns A signed transaction.
+ */
+function createSignedTransaction(
+  signature: string[],
+): TronwebTypes.SignedTransaction {
+  return {
+    visible: false,
+    txID: '',
+    raw_data: {
+      contract: [],
+      ref_block_bytes: '',
+      ref_block_hash: '',
+      expiration: 0,
+      timestamp: 0,
+    },
+    raw_data_hex: '',
+    signature,
+  };
+}
 
 /**
  * Helper function to convert string to base64.
@@ -90,70 +88,73 @@ describe('WalletService', () => {
     methods: ['signMessage', 'signTransaction'],
     type: 'tron:eoa',
     scopes: [Network.Mainnet, Network.Shasta],
-    entropySource: 'entropy-source-1' as any,
+    entropySource: 'entropy-source-1',
     derivationPath: "m/44'/195'/0'/0/0",
     index: 0,
   };
 
   let walletService: WalletService;
-  let mockAccountsService: Mocked<AccountsService>;
-  let mockTronWebFactory: Mocked<TronWebFactory>;
-  let mockTronWeb: any;
+  let mockAccountsService: AccountsService;
+  let mockTronWebFactory: TronWebFactory;
+  let mockTronWeb: TronWeb;
+  let mockDeserializeTransaction: Mock<
+    (type: string, rawDataHex: string) => TronwebTypes.Transaction['raw_data']
+  >;
 
   beforeEach(() => {
-    mockTronWeb = {
-      trx: {
-        signMessageV2: vi.fn().mockReturnValue('0xsignature123'),
-        getCurrentBlock: vi.fn().mockResolvedValue(
-          createBlock({
-            number: 200_000,
-            timestamp: MOCK_BLOCK_TIMESTAMP,
-          }),
-        ),
-        getBlockByNumber: vi.fn(),
-        sign: vi.fn().mockResolvedValue({
-          signature: ['abcd1234signature'],
-        }),
-      },
-      utils: {
-        deserializeTx: {
-          deserializeTransaction: vi.fn().mockReturnValue({
-            contract: [
-              {
-                type: 'TransferContract',
-                parameter: {
-                  type_url: 'type.googleapis.com/protocol.TransferContract',
-                  value: {
-                    owner_address: TronWeb.address.toHex(TEST_ADDRESS),
+    mockTronWeb = new TronWeb({ fullHost: 'https://api.trongrid.io' });
+    vi.spyOn(mockTronWeb.trx, 'signMessageV2').mockReturnValue(
+      '0xsignature123',
+    );
+    vi.spyOn(mockTronWeb.trx, 'getCurrentBlock');
+    vi.spyOn(mockTronWeb.trx, 'sign').mockResolvedValue(
+      createSignedTransaction(['abcd1234signature']),
+    );
+    vi.spyOn(mockTronWeb, 'isAddress').mockReturnValue(true);
 
-                    to_address: '41123456',
-                    amount: 1000000,
-                  },
-                },
+    mockDeserializeTransaction = vi
+      .fn<
+        (
+          type: string,
+          rawDataHex: string,
+        ) => TronwebTypes.Transaction['raw_data']
+      >()
+      .mockReturnValue({
+        contract: [
+          {
+            type: TronwebTypes.ContractType.TransferContract,
+            parameter: {
+              type_url: 'type.googleapis.com/protocol.TransferContract',
+              value: {
+                owner_address: TronWeb.address.toHex(TEST_ADDRESS),
+
+                to_address: '41123456',
+                amount: 1000000,
               },
-            ],
-            ref_block_bytes: getRefBlockBytes(200_000),
-            ref_block_hash: '1122334455667788',
-            expiration: MOCK_BLOCK_TIMESTAMP + 45_000,
-            timestamp: MOCK_BLOCK_TIMESTAMP,
-          }),
-        },
-        transaction: {
-          txJsonToPb: vi.fn().mockImplementation((transaction) => transaction),
-          txPbToRawDataHex: vi.fn().mockReturnValue('refreshed-raw-data-hex'),
-          txPbToTxID: vi.fn().mockReturnValue('0xrefreshed-tx-id'),
-        },
+            },
+          },
+        ],
+        ref_block_bytes: getRefBlockBytes(200_000),
+        ref_block_hash: '1122334455667788',
+        expiration: MOCK_BLOCK_TIMESTAMP + 45_000,
+        timestamp: MOCK_BLOCK_TIMESTAMP,
+      });
+    mockTronWeb.utils = {
+      ...mockTronWeb.utils,
+      deserializeTx: { deserializeTransaction: mockDeserializeTransaction },
+      transaction: {
+        ...mockTronWeb.utils.transaction,
+        txPbToRawDataHex: vi.fn().mockReturnValue('refreshed-raw-data-hex'),
       },
-      isAddress: vi.fn().mockReturnValue(true),
     };
 
-    mockAccountsService = {
-      deriveTronKeypair: vi.fn().mockResolvedValue(mockTronKeypair),
-    } as any;
+    mockAccountsService = snapContext.accountsService;
+    vi.spyOn(mockAccountsService, 'deriveTronKeypair').mockResolvedValue(
+      mockTronKeypair,
+    );
 
-    mockTronWebFactory = {
-      createClient: vi.fn().mockReturnValue(mockTronWeb),
-    } as any;
+    mockTronWebFactory = new TronWebFactory({ configProvider });
+    vi.spyOn(mockTronWebFactory, 'createClient').mockReturnValue(mockTronWeb);
 
     walletService = new WalletService({
       logger: mockLogger,
@@ -207,17 +208,16 @@ describe('WalletService', () => {
         walletService.handleKeyringRequest({
           account: mockAccount,
           scope: Network.Mainnet,
-          method: 'unsupportedMethod' as any,
+          // @ts-expect-error - an unsupported method exercises the default branch
+          method: 'unsupportedMethod',
           params: {},
         }),
       ).rejects.toThrow(SnapError);
     });
 
     it('handles user rejection errors', async () => {
-      mockTronWeb.trx.signMessageV2.mockImplementation(() => {
-        const error: any = new Error('User rejected');
-        error.code = 4100;
-        throw error;
+      vi.mocked(mockTronWeb.trx.signMessageV2).mockImplementation(() => {
+        throw Object.assign(new Error('User rejected'), { code: 4100 });
       });
 
       await expect(
@@ -346,18 +346,16 @@ describe('WalletService', () => {
         params,
       });
 
-      expect(
-        mockTronWeb.utils.deserializeTx.deserializeTransaction,
-      ).toHaveBeenCalled();
+      expect(mockDeserializeTransaction).toHaveBeenCalled();
       expect(mockTronWeb.trx.sign).toHaveBeenCalled();
     });
 
     it('signs the original dApp payload without modifying it', async () => {
       const rawDataHex = toHex('transaction-data');
-      const deserializedRawData = {
+      const deserializedRawData: TronwebTypes.Transaction['raw_data'] = {
         contract: [
           {
-            type: 'TransferContract',
+            type: TronwebTypes.ContractType.TransferContract,
             parameter: {
               type_url: 'type.googleapis.com/protocol.TransferContract',
               value: {
@@ -375,9 +373,7 @@ describe('WalletService', () => {
         expiration: MOCK_BLOCK_TIMESTAMP - 1,
         timestamp: MOCK_BLOCK_TIMESTAMP - 60_000,
       };
-      mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue(
-        deserializedRawData,
-      );
+      mockDeserializeTransaction.mockReturnValue(deserializedRawData);
 
       await walletService.signTransaction({
         account: mockAccount,
@@ -391,7 +387,9 @@ describe('WalletService', () => {
         },
       });
 
-      const signedTransaction = mockTronWeb.trx.sign.mock.calls[0]?.[0];
+      const signedTransaction = vi.mocked(mockTronWeb.trx.sign).mock
+        .calls[0]?.[0];
+      assert(typeof signedTransaction === 'object');
 
       // The payload signed is exactly the one submitted by the dApp.
       expect(signedTransaction.raw_data).toStrictEqual(deserializedRawData);
@@ -408,11 +406,9 @@ describe('WalletService', () => {
     });
 
     it('handles transaction format errors', async () => {
-      mockTronWeb.utils.deserializeTx.deserializeTransaction.mockImplementation(
-        () => {
-          throw new Error('Failed to deserialize transaction');
-        },
-      );
+      mockDeserializeTransaction.mockImplementation(() => {
+        throw new Error('Failed to deserialize transaction');
+      });
 
       await expect(
         walletService.signTransaction({
@@ -442,9 +438,9 @@ describe('WalletService', () => {
     });
 
     it('prefixes signature with 0x', async () => {
-      mockTronWeb.trx.sign.mockResolvedValue({
-        signature: ['abcdef123456'],
-      });
+      vi.mocked(mockTronWeb.trx.sign).mockResolvedValue(
+        createSignedTransaction(['abcdef123456']),
+      );
 
       const result = await walletService.signTransaction({
         account: mockAccount,
@@ -463,9 +459,9 @@ describe('WalletService', () => {
     });
 
     it('handles empty signature array', async () => {
-      mockTronWeb.trx.sign.mockResolvedValue({
-        signature: [],
-      });
+      vi.mocked(mockTronWeb.trx.sign).mockResolvedValue(
+        createSignedTransaction([]),
+      );
 
       const result = await walletService.signTransaction({
         account: mockAccount,
@@ -483,11 +479,12 @@ describe('WalletService', () => {
     });
 
     it('rejects transactions whose owner_address does not match the signer', async () => {
-      mockTronWeb.utils.deserializeTx.deserializeTransaction.mockReturnValue({
+      mockDeserializeTransaction.mockReturnValue({
         contract: [
           {
-            type: 'TransferContract',
+            type: TronwebTypes.ContractType.TransferContract,
             parameter: {
+              type_url: 'type.googleapis.com/protocol.TransferContract',
               value: {
                 owner_address: ALT_OWNER_HEX,
 
@@ -497,6 +494,10 @@ describe('WalletService', () => {
             },
           },
         ],
+        ref_block_bytes: getRefBlockBytes(200_000),
+        ref_block_hash: '1122334455667788',
+        expiration: MOCK_BLOCK_TIMESTAMP + 45_000,
+        timestamp: MOCK_BLOCK_TIMESTAMP,
       });
 
       await expect(
@@ -517,7 +518,7 @@ describe('WalletService', () => {
     });
 
     it('rejects when the resolved account address does not match the derived signer', async () => {
-      mockAccountsService.deriveTronKeypair.mockResolvedValue({
+      vi.mocked(mockAccountsService.deriveTronKeypair).mockResolvedValue({
         ...mockTronKeypair,
         address: ALT_ADDRESS,
       });
@@ -565,7 +566,7 @@ describe('WalletService', () => {
         params: { address, message: toBase64('test') },
       };
 
-      mockTronWeb.isAddress.mockReturnValue(true);
+      vi.mocked(mockTronWeb.isAddress).mockReturnValue(true);
 
       const result = await walletService.resolveAccountAddress(
         keyringAccounts,
@@ -594,7 +595,7 @@ describe('WalletService', () => {
         },
       };
 
-      mockTronWeb.isAddress.mockReturnValue(true);
+      vi.mocked(mockTronWeb.isAddress).mockReturnValue(true);
 
       const result = await walletService.resolveAccountAddress(
         keyringAccounts,
@@ -615,7 +616,7 @@ describe('WalletService', () => {
         params: { address: 'invalid-address', message: toBase64('test') },
       };
 
-      mockTronWeb.isAddress.mockReturnValue(false);
+      vi.mocked(mockTronWeb.isAddress).mockReturnValue(false);
 
       await expect(
         walletService.resolveAccountAddress(keyringAccounts, scope, request),
@@ -646,7 +647,7 @@ describe('WalletService', () => {
         params: { address, message: toBase64('test') },
       };
 
-      mockTronWeb.isAddress.mockReturnValue(true);
+      vi.mocked(mockTronWeb.isAddress).mockReturnValue(true);
 
       await expect(
         walletService.resolveAccountAddress(keyringAccounts, scope, request),
@@ -691,7 +692,7 @@ describe('WalletService', () => {
         params: { address, message: toBase64('test') },
       };
 
-      mockTronWeb.isAddress.mockReturnValue(true);
+      vi.mocked(mockTronWeb.isAddress).mockReturnValue(true);
 
       const shastaResult = await walletService.resolveAccountAddress(
         keyringAccounts,
@@ -713,9 +714,10 @@ describe('WalletService', () => {
         jsonrpc: '2.0' as const,
         id: 1,
         params: { address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8' },
-      } as any;
+      };
 
       await expect(
+        // @ts-expect-error - a request without a method exercises validation
         walletService.resolveAccountAddress(keyringAccounts, scope, request),
       ).rejects.toThrow('Expected one of');
     });
