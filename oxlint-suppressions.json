@@ -1850,11 +1850,6 @@
       "count": 8
     }
   },
-  "packages/tron-wallet-snap/src/clients/trongrid/TrongridApiClient.ts": {
-    "typescript/no-unsafe-assignment": {
-      "count": 4
-    }
-  },
   "packages/tron-wallet-snap/src/handlers/clientRequest/clientRequest.ts": {
     "typescript/no-unsafe-assignment": {
       "count": 2
@@ -1881,11 +1876,6 @@
     },
     "typescript/no-unsafe-assignment": {
       "count": 2
-    }
-  },
-  "packages/tron-wallet-snap/src/services/send/FeeCalculatorService.test.ts": {
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 1
     }
   },
   "packages/tron-wallet-snap/src/services/send/FeeCalculatorService.ts": {
@@ -1954,28 +1944,6 @@
       "count": 3
     },
     "typescript/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/src/services/transactions/TransactionsMapper.ts": {
-    "typescript/no-unsafe-argument": {
-      "count": 4
-    },
-    "typescript/no-unsafe-assignment": {
-      "count": 10
-    },
-    "typescript/no-unsafe-call": {
-      "count": 7
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 17
-    },
-    "typescript/no-unsafe-return": {
-      "count": 2
-    }
-  },
-  "packages/tron-wallet-snap/src/services/transactions/TransactionsService.ts": {
-    "typescript/no-unsafe-member-access": {
       "count": 1
     }
   },

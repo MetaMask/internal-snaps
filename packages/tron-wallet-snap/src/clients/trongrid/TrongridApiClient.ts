@@ -13,7 +13,8 @@ import type {
   ResultWithExpiry,
   Serializable,
 } from '@metamask/snap-networks-utils';
-import { assert } from '@metamask/superstruct';
+import { assert, is } from '@metamask/superstruct';
+import type { Struct } from '@metamask/superstruct';
 
 import { Network } from '../../constants';
 import type { ConfigProvider } from '../../services/config';
@@ -30,14 +31,14 @@ import {
   Trc20BalanceStruct,
   TransactionInfoStruct,
   TronAccountStruct,
-  TrongridApiMetaStruct,
+  trongridApiResponseStruct,
+  TrongridApiSuccessStruct,
 } from './structs';
 import type {
   ContractTransactionInfo,
   Trc20Balance,
   TransactionInfo,
   TronAccount,
-  TrongridApiResponse,
 } from './types';
 
 /**
@@ -57,6 +58,28 @@ const CHAIN_PARAMETERS_FUNCTION_NAME = 'TrongridApiClient:getChainParameters';
  */
 const chainParametersCacheKey = (scope: Network): string =>
   `${CHAIN_PARAMETERS_FUNCTION_NAME}:${JSON.stringify(scope)}`;
+
+/**
+ * Parse and validate a Trongrid `/v1` response envelope.
+ *
+ * @param response - The raw response body.
+ * @param itemStruct - The struct each entry of `data` must match.
+ * @returns The validated `data` entries, or `undefined` when Trongrid omits `data`.
+ * @throws Error - When Trongrid reports `success: false`.
+ */
+function parseTrongridResponse<Item>(
+  response: string,
+  itemStruct: Struct<Item>,
+): Item[] | undefined {
+  const rawData: unknown = JSON.parse(response);
+
+  if (!is(rawData, TrongridApiSuccessStruct)) {
+    throw new Error('API request failed');
+  }
+  assert(rawData, trongridApiResponseStruct(itemStruct));
+
+  return rawData.data;
+}
 
 /**
  * How long identical request results are reused, covering keyring calls that
@@ -197,22 +220,11 @@ export class TrongridApiClient {
 
     const response = await this.#fetch(scope, url, headers);
 
-    const rawData: TrongridApiResponse<TronAccount[]> = JSON.parse(response);
-
-    // Validate API response structure
-    if (typeof rawData.success !== 'boolean' || !rawData.success) {
-      throw new Error('API request failed');
-    }
-    assert(rawData.meta, TrongridApiMetaStruct);
-
-    const account = rawData?.data?.[0];
+    const account = parseTrongridResponse(response, TronAccountStruct)?.[0];
 
     if (!account) {
       throw new TrongridAccountNotFoundError();
     }
-
-    // Validate account data schema
-    assert(account, TronAccountStruct);
 
     return account;
   }
@@ -251,25 +263,13 @@ export class TrongridApiClient {
 
     const response = await this.#fetch(scope, url, headers);
 
-    const rawData: TrongridApiResponse<TransactionInfo[]> =
-      JSON.parse(response);
+    const data = parseTrongridResponse(response, TransactionInfoStruct);
 
-    // Validate API response structure
-    if (typeof rawData.success !== 'boolean' || !rawData.success) {
-      throw new Error('API request failed');
-    }
-    assert(rawData.meta, TrongridApiMetaStruct);
-
-    if (!rawData.data) {
+    if (!data) {
       throw new Error('API request failed');
     }
 
-    // Validate each transaction info
-    for (const txInfo of rawData.data) {
-      assert(txInfo, TransactionInfoStruct);
-    }
-
-    return rawData.data;
+    return data;
   }
 
   /**
@@ -298,25 +298,13 @@ export class TrongridApiClient {
 
     const response = await this.#fetch(scope, url, headers);
 
-    const rawData: TrongridApiResponse<ContractTransactionInfo[]> =
-      JSON.parse(response);
+    const data = parseTrongridResponse(response, ContractTransactionInfoStruct);
 
-    // Validate API response structure
-    if (typeof rawData.success !== 'boolean' || !rawData.success) {
-      throw new Error('API request failed');
-    }
-    assert(rawData.meta, TrongridApiMetaStruct);
-
-    if (!rawData.data) {
+    if (!data) {
       throw new Error('API request failed');
     }
 
-    // Validate each contract transaction info
-    for (const txInfo of rawData.data) {
-      assert(txInfo, ContractTransactionInfoStruct);
-    }
-
-    return rawData.data;
+    return data;
   }
 
   /**
@@ -346,24 +334,7 @@ export class TrongridApiClient {
 
     const response = await this.#fetch(scope, url, headers);
 
-    const rawData: TrongridApiResponse<Trc20Balance[]> = JSON.parse(response);
-
-    // Validate API response structure
-    if (typeof rawData.success !== 'boolean' || !rawData.success) {
-      throw new Error('API request failed');
-    }
-    assert(rawData.meta, TrongridApiMetaStruct);
-
-    if (!rawData.data) {
-      return [];
-    }
-
-    // Validate each TRC20 balance entry
-    for (const balance of rawData.data) {
-      assert(balance, Trc20BalanceStruct);
-    }
-
-    return rawData.data;
+    return parseTrongridResponse(response, Trc20BalanceStruct) ?? [];
   }
 
   /**

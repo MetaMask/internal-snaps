@@ -11,7 +11,6 @@ import {
   TrongridRateLimitError,
 } from '../../clients/trongrid/errors';
 import type { TrongridApiClient } from '../../clients/trongrid/TrongridApiClient';
-import type { TronAccount } from '../../clients/trongrid/types';
 import { Network, ZERO } from '../../constants';
 import { mockLogger } from '../../utils/mockLogger';
 import nativeTransferMock from '../transactions/mocks/trongrid/account-transactions/native-transfer.json';
@@ -76,12 +75,14 @@ const getTransactionExample = (
 };
 
 // Helper to create a large transaction by modifying the TRC20 example
-const createLargeTransaction = (dataLength = 2000): Transaction => {
+const createLargeTransaction = (
+  dataLength = 2000,
+): TronwebTypes.Transaction<TronwebTypes.TriggerSmartContract> => {
   const baseTransaction = getTransactionExample('trc20');
   // Modify the data field to be much larger to simulate bandwidth issues
   const largeData = 'b'.repeat(dataLength);
 
-  const contract = baseTransaction.raw_data.contract[0];
+  const contract = trc20TransferMock.raw_data.contract[0];
 
   if (!contract) {
     throw new Error('Expected the TRC20 fixture to contain a contract.');
@@ -93,13 +94,13 @@ const createLargeTransaction = (dataLength = 2000): Transaction => {
       ...baseTransaction.raw_data,
       contract: [
         {
-          ...contract,
+          type: TronwebTypes.ContractType.TriggerSmartContract,
           parameter: {
-            ...contract?.parameter,
+            ...contract.parameter,
             value: {
-              ...contract?.parameter.value,
+              ...contract.parameter.value,
               data: largeData,
-            } as TronwebTypes.TriggerSmartContract,
+            },
           },
         },
       ],
@@ -258,7 +259,7 @@ describe('FeeCalculatorService', () => {
           trongridApiClient.getAccountInfoByAddress.mockResolvedValue({
             address: 'TExistingActiveAddress123456789012',
             balance: 1000000,
-          } as TronAccount);
+          });
 
           const fee = await feeCalculatorService.getAccountActivationFee({
             scope: Network.Mainnet,
@@ -1273,7 +1274,7 @@ describe('FeeCalculatorService', () => {
             trongridApiClient.getAccountInfoByAddress.mockResolvedValue({
               address: 'TExistingActiveAddress123456789012',
               balance: 1000000,
-            } as TronAccount);
+            });
 
             const transaction = getTransactionExample('native');
             const availableEnergy = ZERO;
