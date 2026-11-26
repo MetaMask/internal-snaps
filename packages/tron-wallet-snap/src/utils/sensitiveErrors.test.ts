@@ -10,8 +10,8 @@ describe('sensitiveErrors', () => {
       expect(sanitizeSensitiveError(error)).toBe(error);
     });
 
-    it('returns the original value when no error exists', () => {
-      expect(sanitizeSensitiveError(null)).toBeNull();
+    it('wraps a non-error value in an error', () => {
+      expect(sanitizeSensitiveError(null)).toBeInstanceOf(Error);
     });
 
     it('returns a generic error when the message contains sensitive info', () => {
