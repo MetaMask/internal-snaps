@@ -143,7 +143,7 @@ export class ConfirmationHandler {
     const tronWeb = this.#tronWebFactory.createClient(scope);
 
     // Rebuild the transaction from hex (same logic as clientRequest handler)
-    const rawData = tronWeb.utils.deserializeTx.deserializeTransaction(
+    const rawData: unknown = tronWeb.utils.deserializeTx.deserializeTransaction(
       type,
       rawDataHex,
     );
