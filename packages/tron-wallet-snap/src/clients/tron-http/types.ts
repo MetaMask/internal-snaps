@@ -1,65 +1,21 @@
+import type {
+  ValidatedChainParameter,
+  ValidatedContractInfo,
+  ValidatedFullNodeTransactionInfo,
+  ValidatedNextMaintenanceTime,
+  ValidatedTRC10TokenInfo,
+  ValidatedTriggerConstantContractResponse,
+} from './structs';
+
 /* eslint-disable @typescript-eslint/naming-convention */
 
 /**
  * Full Node API response for GetTransactionInfoById
  * Returns detailed transaction info including block number and fees
  */
-export type FullNodeTransactionInfo = {
-  id?: string;
-  fee?: number;
-  blockNumber?: number;
-  blockTimeStamp?: number;
-  contractResult?: string[];
-  contract_address?: string;
-  receipt?: {
-    energy_usage?: number;
-    energy_fee?: number;
-    origin_energy_usage?: number;
-    energy_usage_total?: number;
-    net_usage?: number;
-    net_fee?: number;
-    result?: string;
-    energy_penalty_total?: number;
-  };
-  log?: {
-    address: string;
-    topics: string[];
-    data: string;
-  }[];
-  result?: string;
-  resMessage?: string;
-  withdraw_amount?: number;
-  unfreeze_amount?: number;
-  internal_transactions?: {
-    hash: string;
-    caller_address: string;
-    transferTo_address: string;
-    callValueInfo: {
-      callValue?: number;
-      tokenId?: string;
-    }[];
-    note: string;
-    rejected: boolean;
-  }[];
-  withdraw_expire_amount?: number;
-  cancel_unfreezeV2_amount?: Record<string, number>;
-};
+export type FullNodeTransactionInfo = ValidatedFullNodeTransactionInfo;
 
-export type TRC10TokenInfo = {
-  id: string;
-  owner_address: string;
-  name: string;
-  abbr: string;
-  total_supply: number;
-  trx_num: number;
-  // eslint-disable-next-line id-denylist
-  num: number;
-  precision: number;
-  start_time: number;
-  end_time: number;
-  description: string;
-  url: string;
-};
+export type TRC10TokenInfo = ValidatedTRC10TokenInfo;
 
 export type TRC10TokenMetadata = {
   name: string;
@@ -72,23 +28,14 @@ export type TRC10TokenMetadata = {
  *
  * @see https://developers.tron.network/reference/getnextmaintenancetime
  */
-export type NextMaintenanceTime = {
-  /**
-   * Unix timestamp in milliseconds of the next maintenance period
-   */
-  // eslint-disable-next-line id-denylist
-  num: number;
-};
+export type NextMaintenanceTime = ValidatedNextMaintenanceTime;
 
 /**
  * Chain parameter
  *
  * @see https://developers.tron.network/reference/wallet-getchainparameters
  */
-export type ChainParameter = {
-  key: string;
-  value?: number;
-};
+export type ChainParameter = ValidatedChainParameter;
 
 /**
  * Request parameters for TriggerConstantContract
@@ -111,40 +58,8 @@ export type TriggerConstantContractRequest = {
  *
  * @see https://developers.tron.network/reference/triggerconstantcontract
  */
-export type TriggerConstantContractResponse = {
-  result: {
-    result: boolean;
-    message?: string;
-  };
-  energy_used: number;
-  constant_result: string[];
-  energy_penalty?: number;
-  transaction: {
-    ret: {
-      ret: string;
-    }[];
-    visible: boolean;
-    txID: string;
-    raw_data: {
-      contract: {
-        parameter: {
-          value: {
-            data: string;
-            owner_address: string;
-            contract_address: string;
-          };
-          type_url: string;
-        };
-        type: string;
-      }[];
-      ref_block_bytes: string;
-      ref_block_hash: string;
-      expiration: number;
-      timestamp: number;
-    };
-    raw_data_hex: string;
-  };
-};
+export type TriggerConstantContractResponse =
+  ValidatedTriggerConstantContractResponse;
 
 /**
  * Contract energy sharing parameters from /wallet/getcontract endpoint.
@@ -152,17 +67,4 @@ export type TriggerConstantContractResponse = {
  *
  * @see https://developers.tron.network/reference/wallet-getcontract
  */
-export type ContractInfo = {
-  /**
-   * The address of the contract deployer.
-   */
-  origin_address?: string;
-  /**
-   * Percentage of energy the USER/CALLER pays (0-100).
-   */
-  consume_user_resource_percent?: number;
-  /**
-   * Max energy the deployer will subsidize per transaction.
-   */
-  origin_energy_limit?: number;
-};
+export type ContractInfo = ValidatedContractInfo;

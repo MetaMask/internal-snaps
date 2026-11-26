@@ -18,7 +18,6 @@ import logger, { noOpLogger } from '../../utils/logger';
 import {
   AccountResourcesStruct,
   ChainParametersResponseStruct,
-  ChainParameterStruct,
   ContractInfoStruct,
   FullNodeTransactionInfoStruct,
   GetRewardResponseStruct,
@@ -26,7 +25,7 @@ import {
   TRC10TokenInfoStruct,
   TriggerConstantContractResponseStruct,
 } from './structs';
-import type { AccountResources, GetRewardResponse } from './structs';
+import type { AccountResources } from './structs';
 import type {
   ChainParameter,
   ContractInfo,
@@ -139,7 +138,7 @@ export class TronHttpClient {
       body,
     });
 
-    const tokenData: TRC10TokenInfo = JSON.parse(response.body);
+    const tokenData: unknown = JSON.parse(response.body);
 
     // Validate response schema
     assert(tokenData, TRC10TokenInfoStruct);
@@ -203,7 +202,7 @@ export class TronHttpClient {
       body,
     });
 
-    const accountResources: AccountResources = JSON.parse(response.body);
+    const accountResources: unknown = JSON.parse(response.body);
 
     // Validate response schema
     assert(accountResources, AccountResourcesStruct);
@@ -253,16 +252,16 @@ export class TronHttpClient {
       return null; // Transaction not found
     }
 
-    const txInfo: FullNodeTransactionInfo = JSON.parse(response.body);
-
-    // If the response is empty or doesn't have the expected data, return null
-    // Note: GetTransactionInfoById only returns data for confirmed transactions
-    if (!txInfo?.id || !txInfo?.blockNumber) {
-      return null;
-    }
+    const txInfo: unknown = JSON.parse(response.body);
 
     // Validate response schema
     assert(txInfo, FullNodeTransactionInfoStruct);
+
+    // If the response is empty or doesn't have the expected data, return null
+    // Note: GetTransactionInfoById only returns data for confirmed transactions
+    if (!txInfo.id || !txInfo.blockNumber) {
+      return null;
+    }
 
     return txInfo;
   }
@@ -292,7 +291,7 @@ export class TronHttpClient {
       headers,
     });
 
-    const data = JSON.parse(response.body);
+    const data: unknown = JSON.parse(response.body);
 
     // Validate response schema
     assert(data, NextMaintenanceTimeStruct);
@@ -321,19 +320,10 @@ export class TronHttpClient {
 
     const response = await this.#fetch(network, url, { headers });
 
-    const rawData = JSON.parse(response.body);
+    const rawData: unknown = JSON.parse(response.body);
 
     // Validate response schema
     assert(rawData, ChainParametersResponseStruct);
-
-    if (!rawData.chainParameter) {
-      throw new Error('No chain parameters found');
-    }
-
-    // Validate each chain parameter
-    for (const param of rawData.chainParameter) {
-      assert(param, ChainParameterStruct);
-    }
 
     return rawData.chainParameter;
   }
@@ -374,7 +364,7 @@ export class TronHttpClient {
       ),
     });
 
-    const result: TriggerConstantContractResponse = JSON.parse(response.body);
+    const result: unknown = JSON.parse(response.body);
 
     // Validate response schema
     assert(result, TriggerConstantContractResponseStruct);
@@ -416,7 +406,7 @@ export class TronHttpClient {
       body,
     });
 
-    const contractInfo: ContractInfo = JSON.parse(response.body);
+    const contractInfo: unknown = JSON.parse(response.body);
 
     // Empty response means contract not found (TRON returns {} for non-existent contracts)
     if (!contractInfo || Object.keys(contractInfo).length === 0) {
@@ -461,7 +451,7 @@ export class TronHttpClient {
       body,
     });
 
-    const rewardResponse: GetRewardResponse = JSON.parse(response.body);
+    const rewardResponse: unknown = JSON.parse(response.body);
 
     // Validate response schema
     assert(rewardResponse, GetRewardResponseStruct);
