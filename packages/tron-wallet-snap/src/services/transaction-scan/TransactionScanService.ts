@@ -6,7 +6,7 @@ import {
   BaseTransactionScanService,
   DEFAULT_METAMASK_ORIGIN,
 } from '@metamask/snap-networks-utils';
-import { assert } from '@metamask/superstruct';
+import { assert, is } from '@metamask/superstruct';
 import { BigNumber } from 'bignumber.js';
 import type { Types as TronwebTypes } from 'tronweb';
 
@@ -17,6 +17,8 @@ import type {
   TronScanRequestBody,
 } from '../../clients/security-alerts-api/structs';
 import {
+  Erc1155AssetChangeStruct,
+  Erc721AssetChangeStruct,
   SecurityAlertResponseStruct,
   SecurityAlertRequestStruct,
 } from '../../clients/security-alerts-api/structs';
@@ -111,7 +113,7 @@ export class TransactionScanService extends BaseTransactionScanService {
 
       assert(requestBody, SecurityAlertRequestStruct, 'Tron scan request body');
 
-      const result =
+      const result: unknown =
         await this.securityAlertsApiClient.scanTransaction(requestBody);
 
       assert(result, SecurityAlertResponseStruct, 'Tron scan response body');
@@ -240,7 +242,11 @@ export class TransactionScanService extends BaseTransactionScanService {
    */
   #isDisplayableChange(change: AssetChange): boolean {
     // NFT types (ERC721/ERC1155) use token_id instead of value
-    return 'token_id' in change || change.value !== undefined;
+    return (
+      is(change, Erc721AssetChangeStruct) ||
+      is(change, Erc1155AssetChangeStruct) ||
+      change.value !== undefined
+    );
   }
 
   /**
@@ -278,12 +284,13 @@ export class TransactionScanService extends BaseTransactionScanService {
     change: AssetChange,
     decimals: number | undefined,
   ): string {
-    if ('token_id' in change) {
+    if (is(change, Erc1155AssetChangeStruct)) {
+      return change.value;
+    }
+
+    if (is(change, Erc721AssetChangeStruct)) {
       // NFT assets (ERC721): each token is a single unit
-      // ERC1155: use the value field if present
-      return 'value' in change && typeof change.value === 'string'
-        ? change.value
-        : '1';
+      return '1';
     }
 
     if (change.raw_value && decimals !== undefined) {

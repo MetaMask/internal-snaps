@@ -1949,14 +1949,6 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/services/transaction-scan/TransactionScanService.ts": {
-    "internal-snaps/no-in-operator": {
-      "count": 3
-    },
-    "typescript/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/services/transactions/TransactionsMapper.ts": {
     "typescript/no-unsafe-argument": {
       "count": 4
