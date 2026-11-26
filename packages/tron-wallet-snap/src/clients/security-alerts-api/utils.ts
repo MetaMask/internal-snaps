@@ -1,6 +1,7 @@
 import { add0x } from '@metamask/utils';
 import { TronWeb, Types as TronwebTypes } from 'tronweb';
 
+import { getContractParameterValue } from '../../validation/transaction';
 import type { SecurityScanPayload } from './types';
 
 /**
@@ -53,16 +54,16 @@ export function isContractTypeSupported(
 export function extractScanParametersFromTransactionData(
   rawData: TronwebTypes.Transaction['raw_data'],
 ): SecurityScanPayload {
-  const contractParam = rawData.contract[0]?.parameter.value;
+  const contractParam = getContractParameterValue(rawData);
 
   if (!contractParam) {
     throw new Error('Could not extract scan parameters from transaction.');
   }
 
   let callValue = 0;
-  if ('call_value' in contractParam && contractParam.call_value) {
+  if (contractParam.call_value) {
     callValue = contractParam.call_value;
-  } else if ('amount' in contractParam && contractParam.amount) {
+  } else if (contractParam.amount) {
     callValue = contractParam.amount;
   }
 
@@ -71,13 +72,13 @@ export function extractScanParametersFromTransactionData(
     value: `0x${callValue.toString(16)}`,
   };
 
-  if ('contract_address' in contractParam && contractParam.contract_address) {
+  if (contractParam.contract_address) {
     payload.to = TronWeb.address.fromHex(contractParam.contract_address);
-  } else if ('to_address' in contractParam && contractParam.to_address) {
+  } else if (contractParam.to_address) {
     payload.to = TronWeb.address.fromHex(contractParam.to_address);
   }
 
-  if ('data' in contractParam && contractParam.data) {
+  if (contractParam.data) {
     payload.data = add0x(contractParam.data);
   }
 
