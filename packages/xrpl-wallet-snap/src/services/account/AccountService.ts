@@ -9,7 +9,7 @@ import { batchesAll, getSnapProvider } from '../../utils';
 import { getSupportedScopes } from '../../utils/scopes';
 import type { Wallet, WalletService } from '../wallet';
 import { getDerivationPath } from '../wallet';
-import { XrplSecpDerivationPath } from '../wallet';
+import { XrplDerivationPath } from '../wallet';
 import type { AccountsRepository } from './AccountsRepository';
 import { MultiChainMethod } from './api';
 import type { XrplKeyringAccount } from './api';
@@ -296,7 +296,7 @@ export class AccountService {
     id = globalThis.crypto.randomUUID(),
   }: {
     entropySource: EntropySourceId;
-    derivationPath: XrplSecpDerivationPath;
+    derivationPath: XrplDerivationPath;
     index: number;
     address: string;
     id?: string;
