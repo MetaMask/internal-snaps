@@ -40,8 +40,8 @@ describe('snap utils', () => {
 
   describe('Duration', () => {
     it('exposes ISO-8601 duration strings', () => {
-      expect(Duration.OneSecond).toStrictEqual('PT1S');
-      expect(Duration.OneHour).toStrictEqual('PT1H');
+      expect(Duration.OneSecond).toBe('PT1S');
+      expect(Duration.OneHour).toBe('PT1H');
     });
   });
 
@@ -58,12 +58,12 @@ describe('snap utils', () => {
     it('requests BIP32 entropy without a source when none is provided', async () => {
       request.mockResolvedValueOnce(node);
 
-      await expect(
-        getBip32Entropy({
+      expect(
+        await getBip32Entropy({
           path: ['m', "44'", "144'"],
           curve: 'secp256k1',
         }),
-      ).resolves.toStrictEqual(node);
+      ).toStrictEqual(node);
 
       expect(request).toHaveBeenCalledWith({
         method: 'snap_getBip32Entropy',
@@ -112,7 +112,7 @@ describe('snap utils', () => {
       ];
       request.mockResolvedValueOnce(sources);
 
-      await expect(listEntropySources()).resolves.toStrictEqual(sources);
+      expect(await listEntropySources()).toStrictEqual(sources);
       expect(request).toHaveBeenCalledWith({
         method: 'snap_listEntropySources',
       });
@@ -126,7 +126,7 @@ describe('snap utils', () => {
         { id: 'primary', name: 'Primary', type: 'mnemonic', primary: true },
       ] satisfies EntropySource[]);
 
-      await expect(getDefaultEntropySource()).resolves.toStrictEqual('primary');
+      expect(await getDefaultEntropySource()).toBe('primary');
     });
 
     it('throws when no primary entropy source exists', async () => {
@@ -144,7 +144,7 @@ describe('snap utils', () => {
     it('requests the client locked/unlocked status', async () => {
       request.mockResolvedValueOnce({ locked: false });
 
-      await expect(getClientStatus()).resolves.toStrictEqual({ locked: false });
+      expect(await getClientStatus()).toStrictEqual({ locked: false });
       expect(request).toHaveBeenCalledWith({
         method: 'snap_getClientStatus',
       });
@@ -155,12 +155,12 @@ describe('snap utils', () => {
     it('schedules a background event with default empty params', async () => {
       request.mockResolvedValueOnce('event-id');
 
-      await expect(
-        scheduleBackgroundEvent({
+      expect(
+        await scheduleBackgroundEvent({
           method: 'cron.tick',
           duration: Duration.OneSecond,
         }),
-      ).resolves.toStrictEqual('event-id');
+      ).toBe('event-id');
 
       expect(request).toHaveBeenCalledWith({
         method: 'snap_scheduleBackgroundEvent',
@@ -226,9 +226,9 @@ describe('snap utils', () => {
     it('swallows cancel failures', async () => {
       request.mockRejectedValueOnce(new Error('already executed'));
 
-      await expect(
-        cancelBackgroundEventIfExists('event-id'),
-      ).resolves.toBeUndefined();
+      expect(
+        await cancelBackgroundEventIfExists('event-id'),
+      ).toBeUndefined();
     });
   });
 
@@ -237,9 +237,9 @@ describe('snap utils', () => {
       request.mockResolvedValueOnce('interface-id');
       const ui = { type: 'Box' } as never;
 
-      await expect(
-        createInterface(ui, { step: 'confirm' }),
-      ).resolves.toStrictEqual('interface-id');
+      expect(await createInterface(ui, { step: 'confirm' })).toBe(
+        'interface-id',
+      );
 
       expect(request).toHaveBeenCalledWith({
         method: 'snap_createInterface',
@@ -255,9 +255,9 @@ describe('snap utils', () => {
     const ui = { type: 'Box' } as never;
 
     it('returns true when the update succeeds', async () => {
-      await expect(
-        updateInterfaceIfExists('interface-id', ui, { step: 'next' }),
-      ).resolves.toBe(true);
+      expect(
+        await updateInterfaceIfExists('interface-id', ui, { step: 'next' }),
+      ).toBe(true);
 
       expect(request).toHaveBeenCalledWith({
         method: 'snap_updateInterface',
@@ -272,7 +272,7 @@ describe('snap utils', () => {
     it('returns null when the interface was dismissed', async () => {
       request.mockRejectedValueOnce(new Error('Interface not found'));
 
-      await expect(updateInterfaceIfExists('gone', ui, {})).resolves.toBeNull();
+      expect(await updateInterfaceIfExists('gone', ui, {})).toBeNull();
     });
 
     it('rethrows unrelated update errors', async () => {
@@ -288,9 +288,9 @@ describe('snap utils', () => {
     it('returns the interface context', async () => {
       request.mockResolvedValueOnce({ step: 'confirm' });
 
-      await expect(
-        getInterfaceContextIfExists<{ step: string }>('interface-id'),
-      ).resolves.toStrictEqual({ step: 'confirm' });
+      expect(
+        await getInterfaceContextIfExists<{ step: string }>('interface-id'),
+      ).toStrictEqual({ step: 'confirm' });
 
       expect(request).toHaveBeenCalledWith({
         method: 'snap_getInterfaceContext',
@@ -301,13 +301,13 @@ describe('snap utils', () => {
     it('returns null when the context is empty', async () => {
       request.mockResolvedValueOnce(null);
 
-      await expect(getInterfaceContextIfExists('id')).resolves.toBeNull();
+      expect(await getInterfaceContextIfExists('id')).toBeNull();
     });
 
     it('returns null when the interface was dismissed', async () => {
       request.mockRejectedValueOnce(new Error('The interface was not found'));
 
-      await expect(getInterfaceContextIfExists('gone')).resolves.toBeNull();
+      expect(await getInterfaceContextIfExists('gone')).toBeNull();
     });
 
     it('rethrows unrelated context errors', async () => {
@@ -324,9 +324,9 @@ describe('snap utils', () => {
       request.mockResolvedValueOnce(null);
       const ui = { type: 'Box' } as never;
 
-      await expect(
-        updateInterfaceWithContext('interface-id', ui, { step: 'done' }),
-      ).resolves.toBeNull();
+      expect(
+        await updateInterfaceWithContext('interface-id', ui, { step: 'done' }),
+      ).toBeNull();
 
       expect(request).toHaveBeenCalledWith({
         method: 'snap_updateInterface',
@@ -343,7 +343,7 @@ describe('snap utils', () => {
     it('shows a custom dialog when type is omitted', async () => {
       request.mockResolvedValueOnce(true);
 
-      await expect(showDialog('interface-id')).resolves.toBe(true);
+      expect(await showDialog('interface-id')).toBe(true);
       expect(request).toHaveBeenCalledWith({
         method: 'snap_dialog',
         params: { id: 'interface-id' },
@@ -369,9 +369,9 @@ describe('snap utils', () => {
     it('resolves an interface with a value', async () => {
       request.mockResolvedValueOnce(null);
 
-      await expect(
-        resolveInterface('interface-id', { confirmed: true }),
-      ).resolves.toBeNull();
+      expect(
+        await resolveInterface('interface-id', { confirmed: true }),
+      ).toBeNull();
 
       expect(request).toHaveBeenCalledWith({
         method: 'snap_resolveInterface',
@@ -400,8 +400,7 @@ describe('snap utils', () => {
       };
       request.mockResolvedValueOnce(preferences);
 
-      await expect(getPreferences()).resolves.toStrictEqual(preferences);
-      expect(request).toHaveBeenCalledWith({
+      expect(await getPreferences()).toStrictEqual(preferences);      expect(request).toHaveBeenCalledWith({
         method: 'snap_getPreferences',
       });
     });
