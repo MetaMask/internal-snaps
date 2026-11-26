@@ -262,4 +262,8 @@ export {
   createInterface,
   updateInterfaceIfExists,
   updateInterfaceWithContext,
+  getInterfaceContextIfExists,
+  showDialog,
+  resolveInterface,
+  getPreferences,
 } from './utils/snap/snapHelpers';

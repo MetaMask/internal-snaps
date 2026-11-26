@@ -4,11 +4,11 @@ import {
   createSnapErrorHandling,
   FetchPolicyErrorName,
 } from '@metamask/snap-networks-utils';
+import { getSnapProvider } from '@metamask/snap-networks-utils';
 import type { Struct } from '@metamask/superstruct';
 import { assert, enums, object, type } from '@metamask/superstruct';
 
 import { logger } from './logger';
-import { getSnapProvider } from './snap';
 
 export { isSnapRpcError } from '@metamask/snap-networks-utils';
 export type { SnapRpcError } from '@metamask/snap-networks-utils';
