@@ -149,7 +149,7 @@ describe('ConfirmationHandler', () => {
 
     it('schedules Added then Approved and returns true when the user confirms', async () => {
       mockRenderConfirmTransactionRequest.mockResolvedValue({
-        result: true,
+        confirmed: true,
         context: {},
       });
 
@@ -178,7 +178,7 @@ describe('ConfirmationHandler', () => {
 
     it('schedules Added then Rejected and returns false when the user cancels', async () => {
       mockRenderConfirmTransactionRequest.mockResolvedValue({
-        result: false,
+        confirmed: false,
         context: {},
       });
 
@@ -209,7 +209,7 @@ describe('ConfirmationHandler', () => {
      */
     it('schedules Rejected when the render reports no confirmation', async () => {
       mockRenderConfirmTransactionRequest.mockResolvedValue({
-        result: false,
+        confirmed: false,
         context: {},
       });
 
@@ -233,7 +233,7 @@ describe('ConfirmationHandler', () => {
           "Security alert: A known attacker's account is involved in the transaction",
       };
       mockRenderConfirmTransactionRequest.mockResolvedValue({
-        result: true,
+        confirmed: true,
         context: { securityProperties },
       });
 
@@ -265,7 +265,7 @@ describe('ConfirmationHandler', () => {
           'Security alert: The account invests funds in a token that is part of an orchestrated honeypot scheme',
       };
       mockRenderConfirmTransactionRequest.mockResolvedValue({
-        result: false,
+        confirmed: false,
         context: { securityProperties },
       });
 
@@ -297,7 +297,7 @@ describe('ConfirmationHandler', () => {
         securityAlertResponse: 'Benign',
       };
       mockRenderConfirmTransactionRequest.mockResolvedValue({
-        result: true,
+        confirmed: true,
         context: { securityProperties },
       });
 
@@ -319,7 +319,7 @@ describe('ConfirmationHandler', () => {
 
     it('reports a MetaMask-originated transaction as a send', async () => {
       mockRenderConfirmTransactionRequest.mockResolvedValue({
-        result: true,
+        confirmed: true,
         context: {},
       });
 
@@ -348,7 +348,7 @@ describe('ConfirmationHandler', () => {
 
     it('does not schedule Approved when the user rejects', async () => {
       mockRenderConfirmTransactionRequest.mockResolvedValue({
-        result: false,
+        confirmed: false,
         context: {},
       });
 

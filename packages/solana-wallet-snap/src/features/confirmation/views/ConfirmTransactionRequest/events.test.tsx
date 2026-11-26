@@ -2,7 +2,6 @@ import { SolMethod } from '@metamask/keyring-api';
 import {
   DEFAULT_METAMASK_ORIGIN,
   MaliciousAcknowledgementFormNames,
-  serialize,
 } from '@metamask/snap-networks-utils';
 import type { UserInputEvent } from '@metamask/snaps-sdk';
 import { UserInputEventType } from '@metamask/snaps-sdk';
@@ -213,8 +212,11 @@ describe('confirm transaction request events', () => {
       await runEvent(name, buttonEvent(name), storedContext);
 
       expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
-        result: true,
-        context: serialize(storedContext),
+        confirmed: true,
+        securityProperties: {
+          securityAlertResponse: 'Malicious',
+          securityAlertReason: 'NotApplicable',
+        },
       });
       expect(updateInterface).not.toHaveBeenCalled();
     });
@@ -262,8 +264,11 @@ describe('confirm transaction request events', () => {
       await runEvent(name, buttonEvent(name), storedContext);
 
       expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
-        result: true,
-        context: serialize(storedContext),
+        confirmed: true,
+        securityProperties: {
+          securityAlertResponse: 'Malicious',
+          securityAlertReason: 'NotApplicable',
+        },
       });
     });
 
@@ -306,8 +311,11 @@ describe('confirm transaction request events', () => {
       } as never);
 
       expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
-        result: true,
-        context: serialize(storedContext),
+        confirmed: true,
+        securityProperties: {
+          securityAlertResponse: 'Error',
+          securityAlertReason: 'Error',
+        },
       });
     });
 
@@ -339,8 +347,11 @@ describe('confirm transaction request events', () => {
       await Promise.all([inFlightUpdate, proceed]);
 
       expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
-        result: true,
-        context: serialize(storedContext),
+        confirmed: true,
+        securityProperties: {
+          securityAlertResponse: 'Error',
+          securityAlertReason: 'Error',
+        },
       });
     });
   });
@@ -378,18 +389,21 @@ describe('confirm transaction request events', () => {
       ...overrides,
     });
 
-    it('resolves a confirmed send with the context the user saw', async () => {
+    it('resolves a confirmed send with the security properties the user saw', async () => {
       const name = ConfirmSignAndSendTransactionFormNames.Confirm;
       const storedContext = sendContext({ scan: warningScan });
       await runEvent(name, buttonEvent(name), storedContext);
 
       expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
-        result: true,
-        context: serialize(storedContext),
+        confirmed: true,
+        securityProperties: {
+          securityAlertResponse: 'Warning',
+          securityAlertReason: 'honeypot',
+        },
       });
     });
 
-    it('resolves a proceed after acknowledging a malicious verdict with the context the user saw', async () => {
+    it('resolves a proceed after acknowledging a malicious verdict with the security properties the user saw', async () => {
       const name = MaliciousAcknowledgementFormNames.Proceed;
       const storedContext = sendContext({
         acknowledgementScreen: true,
@@ -399,23 +413,29 @@ describe('confirm transaction request events', () => {
       await runEvent(name, buttonEvent(name), storedContext);
 
       expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
-        result: true,
-        context: serialize(storedContext),
+        confirmed: true,
+        securityProperties: {
+          securityAlertResponse: 'Malicious',
+          securityAlertReason: 'known_attacker',
+        },
       });
     });
 
-    it('resolves a cancel with the context the user saw', async () => {
+    it('resolves a cancel with the security properties the user saw', async () => {
       const name = ConfirmSignAndSendTransactionFormNames.Cancel;
       const storedContext = sendContext({ scan: warningScan });
       await runEvent(name, buttonEvent(name), storedContext);
 
       expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
-        result: false,
-        context: serialize(storedContext),
+        confirmed: false,
+        securityProperties: {
+          securityAlertResponse: 'Warning',
+          securityAlertReason: 'honeypot',
+        },
       });
     });
 
-    it('resolves a cancel with no context when the interface has none', async () => {
+    it('resolves a cancel with no security properties when the interface has none', async () => {
       const name = ConfirmSignAndSendTransactionFormNames.Cancel;
       (getInterfaceContext as Mock).mockResolvedValue(null);
 
@@ -426,12 +446,11 @@ describe('confirm transaction request events', () => {
       } as never);
 
       expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
-        result: false,
-        context: null,
+        confirmed: false,
       });
     });
 
-    it('resolves with the latest stored context rather than the event context', async () => {
+    it('resolves with the properties of the latest stored context rather than the event context', async () => {
       const name = ConfirmSignAndSendTransactionFormNames.Confirm;
       const storedContext = sendContext({ scan: warningScan });
       (getInterfaceContext as Mock).mockResolvedValue(storedContext);
@@ -443,8 +462,11 @@ describe('confirm transaction request events', () => {
       } as never);
 
       expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
-        result: true,
-        context: serialize(storedContext),
+        confirmed: true,
+        securityProperties: {
+          securityAlertResponse: 'Warning',
+          securityAlertReason: 'honeypot',
+        },
       });
     });
   });

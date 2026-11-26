@@ -78,4 +78,36 @@ describe('SecurityScanAlert', () => {
 
     expect(text).toContain(UNAVAILABLE_TITLE);
   });
+
+  it.each([
+    {
+      type: 'Malicious',
+      subtitle: 'confirmation.validationErrorSubtitle' as const,
+    },
+    {
+      type: 'Warning',
+      subtitle: 'confirmation.validationWarningSubtitle' as const,
+    },
+  ])(
+    'shows the translated copy, not the raw Blockaid description, for %j',
+    ({ type, subtitle }) => {
+      const text = JSON.stringify(
+        SecurityScanAlert({
+          scan: {
+            ...maliciousScan,
+            validation: {
+              type,
+              reason: 'known_attacker',
+              description: 'Raw Blockaid text',
+            },
+          },
+          scanFetchStatus: 'fetched',
+          preferences,
+        }),
+      );
+
+      expect(text).toContain(translate(subtitle));
+      expect(text).not.toContain('Raw Blockaid text');
+    },
+  );
 });

@@ -119,7 +119,7 @@ export class ConfirmationHandler {
       },
     });
 
-    const { result, context } = await renderConfirmTransactionRequest({
+    const { confirmed, context } = await renderConfirmTransactionRequest({
       ...DEFAULT_CONFIRMATION_CONTEXT,
       scope,
       method,
@@ -137,7 +137,7 @@ export class ConfirmationHandler {
       ? { securityProperties }
       : {};
 
-    if (result) {
+    if (confirmed) {
       // Trigger the side effects that need to happen when the transaction is approved
       await snap.request({
         method: 'snap_scheduleBackgroundEvent',

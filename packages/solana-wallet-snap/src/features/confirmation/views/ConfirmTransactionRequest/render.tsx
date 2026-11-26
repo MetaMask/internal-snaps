@@ -32,10 +32,7 @@ import type { FeePayment } from '../../utils/analyzeFeePayment';
 import { createFeePaymentChainReader } from '../../utils/createFeePaymentChainReader';
 import { extractDestinationAddress } from '../../utils/extractDestinationAddress';
 import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
-import {
-  getSecurityProperties,
-  parseConfirmTransactionRequestDialogValue,
-} from './securityProperties';
+import { parseConfirmTransactionRequestDialogValue } from './securityProperties';
 import type {
   ConfirmTransactionRequestContext as Context,
   ConfirmTransactionRequestResult,
@@ -353,16 +350,13 @@ export async function render(
     },
   });
 
-  // The verdict comes from the context the user acted on, which the dialog
-  // resolved with. The context is `null` when there is none.
-  const outcome = parseConfirmTransactionRequestDialogValue(
-    await dialogPromise,
-  );
+  // The verdict was computed from the context the user acted on, and the
+  // dialog resolved with it.
+  const { confirmed, securityProperties } =
+    parseConfirmTransactionRequestDialogValue(await dialogPromise);
 
   return {
-    result: outcome.result,
-    context: {
-      securityProperties: getSecurityProperties(outcome.context),
-    },
+    confirmed,
+    context: { securityProperties },
   };
 }

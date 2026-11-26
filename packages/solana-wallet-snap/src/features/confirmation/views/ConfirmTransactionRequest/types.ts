@@ -46,7 +46,7 @@ export type ConfirmTransactionRequestContext = {
  */
 export type ConfirmTransactionRequestResult = {
   /** Whether the user confirmed the transaction. */
-  result: boolean;
+  confirmed: boolean;
   context: {
     /**
      * The security properties of the verdict shown in the dialog, ready to

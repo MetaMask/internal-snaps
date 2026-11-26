@@ -1,8 +1,4 @@
 import { SolMethod } from '@metamask/keyring-api';
-import {
-  DEFAULT_METAMASK_ORIGIN,
-  serialize,
-} from '@metamask/snap-networks-utils';
 import type { Mock } from 'vitest';
 
 import { Network } from '../../../../core/constants/solana';
@@ -257,7 +253,7 @@ describe('render tracking', () => {
         origin: 'https://metamask.io',
       } as unknown as ConfirmTransactionRequestContext),
     ).toStrictEqual({
-      result: false,
+      confirmed: false,
       context: { securityProperties: undefined },
     });
 
@@ -268,33 +264,14 @@ describe('render tracking', () => {
     expect(trackError).toHaveBeenCalledTimes(4);
   });
 
-  it('computes the verdict from the context the dialog resolved with', async () => {
+  it('reports the security properties the dialog resolved with', async () => {
     const { render, showDialog } = await setupTest();
     const securityProperties = {
       securityAlertResponse: 'Malicious',
       securityAlertReason: 'known_attacker',
       securityAlertDescription: 'Known attacker involved in the transaction',
     };
-    const decidedContext = {
-      method: SolMethod.SignAndSendTransaction,
-      origin: DEFAULT_METAMASK_ORIGIN,
-      preferences: { useSecurityAlerts: true },
-      scan: {
-        status: 'SUCCESS',
-        estimatedChanges: { assets: [] },
-        validation: {
-          type: 'Malicious',
-          reason: 'known_attacker',
-          description: 'Known attacker involved in the transaction',
-        },
-        error: null,
-        validationError: null,
-      },
-    };
-    showDialog.mockResolvedValue({
-      result: true,
-      context: serialize(decidedContext),
-    });
+    showDialog.mockResolvedValue({ confirmed: true, securityProperties });
 
     expect(
       await render({
@@ -306,12 +283,12 @@ describe('render tracking', () => {
         },
         origin: 'https://metamask.io',
       } as unknown as ConfirmTransactionRequestContext),
-    ).toStrictEqual({ result: true, context: { securityProperties } });
+    ).toStrictEqual({ confirmed: true, context: { securityProperties } });
   });
 
-  it('reports no security properties when the dialog resolved without a context', async () => {
+  it('reports no security properties when the dialog resolved without any', async () => {
     const { render, showDialog } = await setupTest();
-    showDialog.mockResolvedValue({ result: true, context: null });
+    showDialog.mockResolvedValue({ confirmed: true });
 
     expect(
       await render({
@@ -324,7 +301,7 @@ describe('render tracking', () => {
         origin: 'https://metamask.io',
       } as unknown as ConfirmTransactionRequestContext),
     ).toStrictEqual({
-      result: true,
+      confirmed: true,
       context: { securityProperties: undefined },
     });
   });

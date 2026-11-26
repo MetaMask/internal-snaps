@@ -1,10 +1,9 @@
 import type { TransactionSecurityProperties } from '@metamask/snap-networks-utils';
 import {
-  deserialize,
   getTransactionSecurityProperties,
   SECURITY_ALERT_LOADING_RESPONSE,
+  TransactionSecurityPropertiesStruct,
 } from '@metamask/snap-networks-utils';
-import type { Json } from '@metamask/snaps-sdk';
 import { isObject } from '@metamask/utils';
 
 import type { ConfirmTransactionRequestContext } from './types';
@@ -38,32 +37,28 @@ export function getSecurityProperties(
 
 /**
  * Reads the value that the confirmation dialog resolved with. Any value that
- * is not a result object, such as a dismissed dialog, is a rejection with no
- * context. Only a boolean `true` is a confirmation.
- *
- * The context is trusted to have the shape of a stored confirmation context,
- * because only `resolveResult` writes it. Its shape is not checked, so reading
- * a context with another shape can throw in the code that uses it.
+ * is not a result object, such as a dismissed dialog, is a rejection. Only a
+ * boolean `true` is a confirmation. Security properties of the wrong shape are
+ * left out.
  *
  * @param value - The value the dialog resolved with.
- * @returns The decision, and the context it was made from.
+ * @returns The decision, and the security properties the user saw when there
+ * are any.
  */
 export function parseConfirmTransactionRequestDialogValue(value: unknown): {
-  result: boolean;
-  context: ConfirmTransactionRequestContext | null;
+  confirmed: boolean;
+  securityProperties?: TransactionSecurityProperties;
 } {
   if (!isObject(value)) {
-    return { result: false, context: null };
+    return { confirmed: false };
   }
 
-  const { result, context } = value as { result?: unknown; context?: unknown };
-
-  const deserializedContext = isObject(context)
-    ? (deserialize(context as Json) as ConfirmTransactionRequestContext)
-    : null;
+  const { confirmed, securityProperties } = value;
 
   return {
-    result: result === true,
-    context: deserializedContext,
+    confirmed: confirmed === true,
+    ...(TransactionSecurityPropertiesStruct.is(securityProperties)
+      ? { securityProperties }
+      : {}),
   };
 }
