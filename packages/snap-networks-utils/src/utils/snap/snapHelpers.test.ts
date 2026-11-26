@@ -13,7 +13,6 @@ import {
   getDefaultEntropySource,
   getInterfaceContextIfExists,
   getPreferences,
-  getSnapProvider,
   listEntropySources,
   resolveInterface,
   scheduleBackgroundEvent,
@@ -40,15 +39,18 @@ describe('snap utils', () => {
 
   describe('Duration', () => {
     it('exposes ISO-8601 duration strings', () => {
-      expect(Duration.OneSecond).toBe('PT1S');
-      expect(Duration.OneHour).toBe('PT1H');
-    });
-  });
-
-  describe('getSnapProvider', () => {
-    it('returns the mocked Snap provider', () => {
-      expect(getSnapProvider()).toStrictEqual({ request });
-      expect(getSnapProviderSpy).toHaveBeenCalled();
+      expect(Duration).toStrictEqual({
+        OneSecond: 'PT1S',
+        TwoSeconds: 'PT2S',
+        FiveSeconds: 'PT5S',
+        TwentySeconds: 'PT20S',
+        ThirtySeconds: 'PT30S',
+        OneMinute: 'PT1M',
+        FiveMinutes: 'PT5M',
+        TenMinutes: 'PT10M',
+        ThirtyMinutes: 'PT30M',
+        OneHour: 'PT1H',
+      });
     });
   });
 
