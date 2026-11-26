@@ -2098,20 +2098,6 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/utils/sensitiveErrors.ts": {
-    "typescript/no-unsafe-assignment": {
-      "count": 2
-    },
-    "typescript/no-unsafe-call": {
-      "count": 4
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 4
-    },
-    "typescript/no-unsafe-return": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/validation/transaction.ts": {
     "internal-snaps/no-in-operator": {
       "count": 2

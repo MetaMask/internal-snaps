@@ -1,6 +1,22 @@
 import { isSnapRpcError } from '@metamask/snap-networks-utils';
+import { ensureError, hasProperty, isObject } from '@metamask/utils';
 
 export { isSnapRpcError };
+
+/**
+ * Reads a string property of an unknown thrown value.
+ *
+ * @param value - The thrown value.
+ * @param key - The property to read.
+ * @returns The property value, or an empty string when it is not a string.
+ */
+function readStringProperty(value: unknown, key: string): string {
+  if (isObject(value) && hasProperty(value, key)) {
+    const property = value[key];
+    return typeof property === 'string' ? property : '';
+  }
+  return '';
+}
 
 /**
  * Sanitizes error messages that may contain sensitive cryptographic information.
@@ -9,11 +25,9 @@ export { isSnapRpcError };
  * @param error - The error to sanitize.
  * @returns A sanitized error with generic message if sensitive info detected.
  */
-// TODO: Replace `any` with type
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function sanitizeSensitiveError(error: any): Error {
-  const message = error?.message?.toLowerCase() ?? '';
-  const stack = error?.stack?.toLowerCase() ?? '';
+export function sanitizeSensitiveError(error: unknown): Error {
+  const message = readStringProperty(error, 'message').toLowerCase();
+  const stack = readStringProperty(error, 'stack').toLowerCase();
 
   const sensitiveKeywords = [
     'private',
@@ -43,5 +57,5 @@ export function sanitizeSensitiveError(error: any): Error {
     return sanitizedError;
   }
 
-  return error;
+  return ensureError(error);
 }
