@@ -1,22 +1,33 @@
-import type { JsonSLIP10Node, SLIP10PathTuple } from '@metamask/key-tree';
+import type { JsonSLIP10Node } from '@metamask/key-tree';
 import { SLIP10Node } from '@metamask/key-tree';
-import { getBip32Entropy } from '@metamask/snap-networks-utils';
 import { remove0x } from '@metamask/utils';
 import { Wallet as XrplWallet } from 'xrpl';
 
-import { XRPL_ED25519_CURVE, XRPL_SECP_CURVE } from '../../constants';
-import { bufferToUint8Array } from '../../utils/buffer';
+import { XRPL_SECP_CURVE } from '../../constants';
 import {
+  getBip32Entropy,
   rethrowIfInstanceElseThrow,
   XrplSnapException,
-} from '../../utils/errors';
-import type { XrplCurve } from './api';
+} from '../../utils';
 import { KeyDerivationException } from './exceptions';
 import { getDerivationPath } from './utils';
 import { Wallet } from './Wallet';
 
+type Slip10KeyMaterial = {
+  privateKey?: string;
+  publicKey?: string;
+};
+
 /**
  * Derives Xrpl signing material from keyring entropy.
+ *
+ * MetaMask `snap_getBip32Entropy` returns a {@link JsonSLIP10Node}: a secp256k1
+ * private key (32-byte hex) and compressed public key. That is not a family
+ * seed. xrpl.js builds the same wallet as BIP44 `fromMnemonic` with
+ * `new Wallet(publicKey, '00' + privateKey)`.
+ *
+ * Network / on-chain account access lives in {@link OnChainAccountService} and
+ * {@link NetworkService}.
  */
 export class WalletService {
   /**
@@ -25,17 +36,16 @@ export class WalletService {
    * @param params - Options object.
    * @param params.index - The derivation index for the account.
    * @param params.entropySource - Entropy source ID (e.g. from keyring).
-   * @param params.curve - Signing curve. Defaults to secp256k1.
    * @returns A Promise that resolves to the derived classic address.
    * @throws {KeyDerivationException} If keypair derivation fails.
    */
   async deriveAddress(params: {
     index: number;
     entropySource: string;
-    curve?: XrplCurve;
   }): Promise<string> {
-    const wallet = await this.resolveWallet(params);
-    return wallet.address;
+    const { index, entropySource } = params;
+    const keypair = await this.#deriveKeypair({ index, entropySource });
+    return keypair.address;
   }
 
   /**
@@ -47,48 +57,50 @@ export class WalletService {
    * @param params - Options object.
    * @param params.index - The derivation index for the account.
    * @param params.entropySource - Entropy source ID (e.g. from keyring).
-   * @param params.curve - Signing curve. Defaults to secp256k1.
    * @returns A promise that resolves to the signing wallet.
    * @throws {KeyDerivationException} If keypair derivation fails.
    */
   async resolveWallet(params: {
     index: number;
     entropySource: string;
-    curve?: XrplCurve;
   }): Promise<Wallet> {
-    return this.#deriveKeypair(params);
+    const keypair = await this.#deriveKeypair(params);
+    return new Wallet(keypair);
   }
 
   /**
    * Gets a wallet resolver function that resolves to a Wallet for the given index.
    *
    * @param entropySource - The entropy source to use for derivation.
-   * @param curve - Signing curve. Defaults to secp256k1.
    * @returns A function that resolves to a Wallet for the given index.
    * @throws {KeyDerivationException} If keypair derivation fails.
    */
   async getWalletResolver(
     entropySource: string,
-    curve: XrplCurve = XRPL_SECP_CURVE,
   ): Promise<(index: number) => Promise<Wallet>> {
-    const coinTypeNode = await this.#getRootNode(entropySource, curve);
-    return async (index: number): Promise<Wallet> => {
-      return this.#deriveKeypairBySlip10Node(coinTypeNode, index, curve);
+    const coinTypeNode = await this.#getRootNode(entropySource);
+    return async (index: number) => {
+      const keypair = await this.#deriveKeypairBySlip10Node(
+        coinTypeNode,
+        index,
+      );
+      return new Wallet(keypair);
     };
   }
 
   async #deriveKeypair({
     index,
     entropySource,
-    curve = XRPL_SECP_CURVE,
   }: {
     index: number;
     entropySource: string;
-    curve?: XrplCurve;
-  }): Promise<Wallet> {
+  }): Promise<XrplWallet> {
     try {
-      const resolver = await this.getWalletResolver(entropySource, curve);
-      return await resolver(index);
+      const jsonNode = await this.#getJsonNodeByEntropy(entropySource, index);
+
+      this.#assertNodeHasPrivateAndPublicKey(jsonNode);
+
+      return this.#xrplFromSlip10Keys(jsonNode);
     } catch (error: unknown) {
       return rethrowIfInstanceElseThrow(
         error,
@@ -98,16 +110,9 @@ export class WalletService {
     }
   }
 
-  async #getRootNode(
-    entropySource: string,
-    curve: XrplCurve,
-  ): Promise<SLIP10Node> {
+  async #getRootNode(entropySource: string): Promise<SLIP10Node> {
     try {
-      const jsonNode = await this.#getJsonNodeByEntropy(
-        entropySource,
-        undefined,
-        curve,
-      );
+      const jsonNode = await this.#getJsonNodeByEntropy(entropySource);
       const coinTypeNode = await SLIP10Node.fromJSON(jsonNode);
       return coinTypeNode;
     } catch (error: unknown) {
@@ -122,18 +127,15 @@ export class WalletService {
   async #deriveKeypairBySlip10Node(
     node: SLIP10Node,
     index: number,
-    curve: XrplCurve,
-  ): Promise<Wallet> {
+  ): Promise<XrplWallet> {
     try {
-      // secp256k1 address index is unhardened (`…/0'/0/${index}`).
-      // ed25519 address index is hardened (`…/0'/0'/${index}'`).
-      const pathSegment: SLIP10PathTuple =
-        curve === XRPL_ED25519_CURVE
-          ? [`slip10:${index}'`]
-          : [`slip10:${index}`];
-      const derivedNode = await node.derive(pathSegment);
+      // BIP44 address index is unhardened (`m/44'/144'/0'/0/${index}`), matching
+      // {@link getDerivationPath} and xrpl.js `fromMnemonic`.
+      const derivedNode = await node.derive([`slip10:${index}`]);
 
-      return await this.#xrplFromSlip10Keys(derivedNode, curve);
+      this.#assertNodeHasPrivateAndPublicKey(derivedNode);
+
+      return this.#xrplFromSlip10Keys(derivedNode);
     } catch (error: unknown) {
       return rethrowIfInstanceElseThrow(
         error,
@@ -145,107 +147,65 @@ export class WalletService {
 
   async #getJsonNodeByEntropy(
     entropySource: string,
-    index: number | undefined,
-    curve: XrplCurve,
+    index?: number,
   ): Promise<JsonSLIP10Node> {
     // getBip32Entropy already wrapped in an XRPL snap exception
     return getBip32Entropy({
       entropySource,
-      path: getDerivationPath(index, curve).split('/'),
-      curve,
+      path: this.#getDerivationPath(index),
+      curve: XRPL_SECP_CURVE,
     });
   }
 
+  #getDerivationPath(index?: number): string[] {
+    return getDerivationPath(index).split('/');
+  }
+
   #assertNodeHasPrivateAndPublicKey(
-    node: SLIP10Node,
-  ): asserts node is SLIP10Node & {
+    node: Slip10KeyMaterial,
+  ): asserts node is Slip10KeyMaterial & {
     privateKey: string;
     publicKey: string;
   } {
     if (!node.privateKey || !node.publicKey) {
       throw new KeyDerivationException('Derived node is missing key material');
     }
-
-    const privateKeyHex = remove0x(node.privateKey).toUpperCase();
-
-    if (privateKeyHex.length !== 64) {
-      throw new KeyDerivationException('Derived private key must be 32 bytes');
-    }
   }
 
   /**
-   * Builds an xrpl.js wallet from MetaMask SLIP-10 key material.
+   * Builds an xrpl.js wallet from MetaMask SLIP-10 secp256k1 key material.
    *
-   * @param node - Node with a 32-byte private key and curve-appropriate public key.
-   * @param curve - Signing curve used to choose XRPL key prefixes.
-   * @returns Wallet with XRPL-prefixed private/public keys.
+   * `Wallet.fromSeed` expects a base58 family seed (`s…`), not BIP32 key hex.
+   * Pass the compressed public key and XRPL-prefixed private key (`00` + 32 bytes).
+   *
+   * @param node - Node with a 32-byte private key and compressed public key.
+   * @returns Wallet whose `privateKey` is the XRPL `00`-prefixed hex form.
    */
-  async #xrplFromSlip10Keys(
-    node: SLIP10Node,
-    curve: XrplCurve,
-  ): Promise<Wallet> {
+  #xrplFromSlip10Keys(node: {
+    privateKey: string;
+    publicKey: string;
+  }): XrplWallet {
     try {
-      if (curve === XRPL_ED25519_CURVE) {
-        return this.#ed25519FromSlip10Keys(node);
+      const privateKeyHex = remove0x(node.privateKey).toUpperCase();
+      const publicKeyHex = remove0x(node.publicKey).toUpperCase();
+      if (privateKeyHex.length !== 64) {
+        throw new KeyDerivationException(
+          'Derived private key must be 32 bytes',
+        );
       }
-
-      if (curve === XRPL_SECP_CURVE) {
-        return this.#secp256k1FromSlip10Keys(node);
+      if (publicKeyHex.length !== 66) {
+        throw new KeyDerivationException(
+          'Derived public key must be a 33-byte compressed secp256k1 key',
+        );
       }
-
-      throw new KeyDerivationException('Invalid curve');
+      return new XrplWallet(publicKeyHex, `00${privateKeyHex}`);
     } catch (error: unknown) {
-      return rethrowIfInstanceElseThrow(
-        error,
-        [KeyDerivationException],
-        new KeyDerivationException(
-          'Unable to build Xrpl keypair from derived material',
-        ),
-      );
-    }
-  }
-
-  #ed25519FromSlip10Keys(node: SLIP10Node): Wallet {
-    this.#assertNodeHasPrivateAndPublicKey(node);
-    const publicKeyHex = remove0x(node.publicKey).toUpperCase();
-    const privateKeyHex = remove0x(node.privateKey).toUpperCase();
-
-    // MetaMask SLIP-10 ed25519 public keys are 33 bytes (`00` || raw key).
-    // XRPL keys may already be `ED`-prefixed.
-    const edPublicKeyHex =
-      (publicKeyHex.startsWith('ED') || publicKeyHex.startsWith('00')) &&
-      publicKeyHex.length === 66
-        ? publicKeyHex.slice(2)
-        : publicKeyHex;
-    if (edPublicKeyHex.length !== 64) {
+      if (error instanceof KeyDerivationException) {
+        throw error;
+      }
       throw new KeyDerivationException(
-        'Derived public key must be a 32-byte ed25519 key',
+        'Unable to build Xrpl keypair from derived material',
       );
     }
-    return new Wallet(
-      new XrplWallet(`ED${edPublicKeyHex}`, `ED${privateKeyHex}`),
-    );
-  }
-
-  #secp256k1FromSlip10Keys(node: SLIP10Node): Wallet {
-    this.#assertNodeHasPrivateAndPublicKey(node);
-
-    const privateKeyHex = remove0x(node.privateKey).toUpperCase();
-    let publicKeyHex = remove0x(node.publicKey).toUpperCase();
-
-    // 65 bytes public key (04 || x || y) refers to an uncompressed public key.
-    if (publicKeyHex.length === 130 && publicKeyHex.startsWith('04')) {
-      // Convert the uncompressed public key to a compressed public key.
-      publicKeyHex = bufferToUint8Array(node.compressedPublicKeyBytes).toString(
-        'hex',
-      );
-    }
-
-    if (publicKeyHex.length !== 66) {
-      throw new KeyDerivationException(
-        'Derived public key must be a 33-byte compressed secp256k1 key',
-      );
-    }
-    return new Wallet(new XrplWallet(publicKeyHex, `00${privateKeyHex}`));
   }
 }

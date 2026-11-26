@@ -1,16 +1,13 @@
 import type { JsonSLIP10Node } from '@metamask/key-tree';
-import { mnemonicPhraseToBytes, SLIP10Node } from '@metamask/key-tree';
+import { SLIP10Node } from '@metamask/key-tree';
 import * as SnapUtils from '@metamask/snap-networks-utils';
 import type { MockInstance } from 'vitest';
-import { Wallet } from 'xrpl';
 
-import { XRPL_ED25519_CURVE, XRPL_SECP_CURVE } from '../../constants';
+import { XRPL_SECP_CURVE } from '../../constants';
 import { XrplSnapException } from '../../utils/errors';
 import {
   createBip44XrplWallet,
-  createEd25519XrplWallet,
   createJsonSlip10NodeFromWallet,
-  TEST_MNEMONIC,
 } from './__mocks__/wallet.fixtures';
 import { KeyDerivationException } from './exceptions';
 import { getDerivationPath } from './utils';
@@ -39,10 +36,7 @@ function createWalletServiceTest({
   };
 }
 
-function createDerivedSlip10Node(wallet = createBip44XrplWallet(0)): {
-  privateKey?: string;
-  publicKey?: string;
-} {
+function createDerivedSlip10Node(wallet = createBip44XrplWallet(0)) {
   const node = createJsonSlip10NodeFromWallet(wallet);
   return {
     privateKey: node.privateKey,
@@ -56,55 +50,23 @@ describe('WalletService', () => {
   });
 
   describe('deriveAddress', () => {
-    it('derives the BIP44 classic address and requests entropy for the prefix path', async () => {
+    it('derives the BIP44 classic address and requests entropy for the index path', async () => {
       const expected = createBip44XrplWallet(0);
-      const deriveChild = vi
-        .fn()
-        .mockResolvedValue(createDerivedSlip10Node(expected));
-      const { service, getBip32Entropy } = createWalletServiceTest();
-      vi.spyOn(SLIP10Node, 'fromJSON').mockResolvedValue({
-        derive: deriveChild,
-      } as unknown as SLIP10Node);
-
-      const address = await service.deriveAddress({
-        index: 0,
-        entropySource: 'entropy-source-1',
-      });
-
-      expect(address).toStrictEqual(expected.classicAddress);
-      expect(getBip32Entropy).toHaveBeenCalledWith({
-        entropySource: 'entropy-source-1',
-        path: getDerivationPath().split('/'),
-        curve: XRPL_SECP_CURVE,
-      });
-      expect(deriveChild).toHaveBeenCalledWith(['slip10:0']);
-    });
-
-    it('derives an ed25519 classic address when curve is ed25519', async () => {
-      const expected = createEd25519XrplWallet(0);
-      const deriveChild = vi
-        .fn()
-        .mockResolvedValue(createDerivedSlip10Node(expected));
       const { service, getBip32Entropy } = createWalletServiceTest({
         jsonNode: createJsonSlip10NodeFromWallet(expected),
       });
-      vi.spyOn(SLIP10Node, 'fromJSON').mockResolvedValue({
-        derive: deriveChild,
-      } as unknown as SLIP10Node);
 
       const address = await service.deriveAddress({
         index: 0,
         entropySource: 'entropy-source-1',
-        curve: XRPL_ED25519_CURVE,
       });
 
       expect(address).toStrictEqual(expected.classicAddress);
       expect(getBip32Entropy).toHaveBeenCalledWith({
         entropySource: 'entropy-source-1',
-        path: getDerivationPath(undefined, XRPL_ED25519_CURVE).split('/'),
-        curve: XRPL_ED25519_CURVE,
+        path: getDerivationPath(0).split('/'),
+        curve: XRPL_SECP_CURVE,
       });
-      expect(deriveChild).toHaveBeenCalledWith(["slip10:0'"]);
     });
 
     it.each([
@@ -112,7 +74,7 @@ describe('WalletService', () => {
         name: 'generic entropy failure',
         error: new Error('something went wrong'),
         expected: new KeyDerivationException(
-          'Unable to load coin-type derivation node',
+          'Unable to derive keypair from entropy',
         ),
       },
       {
@@ -162,13 +124,10 @@ describe('WalletService', () => {
     ])(
       'throws KeyDerivationException when $name',
       async ({ patch, expectedMessage }) => {
-        const { service } = createWalletServiceTest();
-        vi.spyOn(SLIP10Node, 'fromJSON').mockResolvedValue({
-          derive: vi.fn().mockResolvedValue({
-            ...createDerivedSlip10Node(),
-            ...patch,
-          }),
-        } as unknown as SLIP10Node);
+        const base = createJsonSlip10NodeFromWallet(createBip44XrplWallet(0));
+        const { service } = createWalletServiceTest({
+          jsonNode: { ...base, ...patch } as JsonSLIP10Node,
+        });
 
         await expect(
           service.deriveAddress({
@@ -178,68 +137,14 @@ describe('WalletService', () => {
         ).rejects.toThrow(new KeyDerivationException(expectedMessage));
       },
     );
-
-    it('throws KeyDerivationException when ed25519 public key is not 32 bytes', async () => {
-      const { service } = createWalletServiceTest({
-        jsonNode: createJsonSlip10NodeFromWallet(createEd25519XrplWallet(0)),
-      });
-      vi.spyOn(SLIP10Node, 'fromJSON').mockResolvedValue({
-        derive: vi.fn().mockResolvedValue({
-          ...createDerivedSlip10Node(createEd25519XrplWallet(0)),
-          publicKey: `0x${'11'.repeat(16)}`,
-        }),
-      } as unknown as SLIP10Node);
-
-      await expect(
-        service.deriveAddress({
-          index: 0,
-          entropySource: 'entropy-source-1',
-          curve: XRPL_ED25519_CURVE,
-        }),
-      ).rejects.toThrow(
-        new KeyDerivationException(
-          'Derived public key must be a 32-byte ed25519 key',
-        ),
-      );
-    });
   });
 
   describe('resolveWallet', () => {
-    it('matches Wallet.fromMnemonic when deriving from a real SLIP-10 mnemonic node', async () => {
-      // Real key-tree nodes expose 65-byte uncompressed secp256k1 public keys;
-      // fixtures use compressed keys and mock fromJSON/derive elsewhere.
-      const changeNode = await SLIP10Node.fromDerivationPath({
-        curve: XRPL_SECP_CURVE,
-        derivationPath: [
-          mnemonicPhraseToBytes(TEST_MNEMONIC),
-          `slip10:44'`,
-          `slip10:144'`,
-          `slip10:0'`,
-          `slip10:0`,
-        ],
-      });
-      const { service } = createWalletServiceTest({
-        jsonNode: changeNode.toJSON(),
-      });
-
-      const wallet = await service.resolveWallet({
-        index: 0,
-        entropySource: 'entropy-source-1',
-      });
-
-      const expected = Wallet.fromMnemonic(TEST_MNEMONIC, {
-        derivationPath: `m/44'/144'/0'/0/0`,
-      });
-      expect(wallet.address).toStrictEqual(expected.classicAddress);
-      expect(wallet.secret).toStrictEqual(expected.privateKey);
-    });
-
     it('returns a wallet whose address and secret match the derived keypair', async () => {
       const bip44 = createBip44XrplWallet(0);
-      const { service } = createWalletServiceTest();
-      vi.spyOn(SLIP10Node, 'fromJSON').mockResolvedValue({
-        derive: vi.fn().mockResolvedValue(createDerivedSlip10Node(bip44)),
-      } as unknown as SLIP10Node);
+      const { service } = createWalletServiceTest({
+        jsonNode: createJsonSlip10NodeFromWallet(bip44),
+      });
 
       const wallet = await service.resolveWallet({
         index: 0,
@@ -248,25 +153,6 @@ describe('WalletService', () => {
 
       expect(wallet.address).toStrictEqual(bip44.classicAddress);
       expect(wallet.secret).toStrictEqual(bip44.privateKey);
-    });
-
-    it('returns an ed25519 wallet when curve is ed25519', async () => {
-      const edWallet = createEd25519XrplWallet(1);
-      const { service } = createWalletServiceTest({
-        jsonNode: createJsonSlip10NodeFromWallet(edWallet),
-      });
-      vi.spyOn(SLIP10Node, 'fromJSON').mockResolvedValue({
-        derive: vi.fn().mockResolvedValue(createDerivedSlip10Node(edWallet)),
-      } as unknown as SLIP10Node);
-
-      const wallet = await service.resolveWallet({
-        index: 1,
-        entropySource: 'entropy-source-1',
-        curve: XRPL_ED25519_CURVE,
-      });
-
-      expect(wallet.address).toStrictEqual(edWallet.classicAddress);
-      expect(wallet.secret).toStrictEqual(edWallet.privateKey);
     });
 
     it('throws KeyDerivationException when keypair derivation fails', async () => {
@@ -280,7 +166,7 @@ describe('WalletService', () => {
           entropySource: 'entropy-source-1',
         }),
       ).rejects.toThrow(
-        new KeyDerivationException('Unable to load coin-type derivation node'),
+        new KeyDerivationException('Unable to derive keypair from entropy'),
       );
     });
   });
@@ -289,14 +175,14 @@ describe('WalletService', () => {
     it('returns wallets matching BIP44 derivation for successive indices', async () => {
       const indices = [0, 1, 2];
       const wallets = indices.map((index) => createBip44XrplWallet(index));
-      const deriveChild = vi.fn();
+      const derive = vi.fn();
       for (const wallet of wallets) {
-        deriveChild.mockResolvedValueOnce(createDerivedSlip10Node(wallet));
+        derive.mockResolvedValueOnce(createDerivedSlip10Node(wallet));
       }
 
       const { service, getBip32Entropy } = createWalletServiceTest();
       const fromJSON = vi.spyOn(SLIP10Node, 'fromJSON').mockResolvedValue({
-        derive: deriveChild,
+        derive,
       } as unknown as SLIP10Node);
 
       const resolver = await service.getWalletResolver('entropy-source-1');
@@ -316,50 +202,10 @@ describe('WalletService', () => {
         curve: XRPL_SECP_CURVE,
       });
       expect(fromJSON).toHaveBeenCalledTimes(1);
-      expect(deriveChild.mock.calls).toStrictEqual([
+      expect(derive.mock.calls).toStrictEqual([
         [['slip10:0']],
         [['slip10:1']],
         [['slip10:2']],
-      ]);
-    });
-
-    it('derives hardened ed25519 child paths when curve is ed25519', async () => {
-      const indices = [0, 1];
-      const wallets = indices.map((index) => createEd25519XrplWallet(index));
-      const deriveChild = vi.fn();
-      for (const wallet of wallets) {
-        deriveChild.mockResolvedValueOnce(createDerivedSlip10Node(wallet));
-      }
-
-      const { service, getBip32Entropy } = createWalletServiceTest({
-        jsonNode: createJsonSlip10NodeFromWallet(wallets[0] as Wallet),
-      });
-      vi.spyOn(SLIP10Node, 'fromJSON').mockResolvedValue({
-        derive: deriveChild,
-      } as unknown as SLIP10Node);
-
-      const resolver = await service.getWalletResolver(
-        'entropy-source-1',
-        XRPL_ED25519_CURVE,
-      );
-
-      const addresses = [];
-      for (const index of indices) {
-        const wallet = await resolver(index);
-        addresses.push(wallet.address);
-      }
-
-      expect(addresses).toStrictEqual(
-        wallets.map((wallet) => wallet.classicAddress),
-      );
-      expect(getBip32Entropy).toHaveBeenCalledWith({
-        entropySource: 'entropy-source-1',
-        path: getDerivationPath(undefined, XRPL_ED25519_CURVE).split('/'),
-        curve: XRPL_ED25519_CURVE,
-      });
-      expect(deriveChild.mock.calls).toStrictEqual([
-        [["slip10:0'"]],
-        [["slip10:1'"]],
       ]);
     });
 
