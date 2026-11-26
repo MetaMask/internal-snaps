@@ -62,6 +62,19 @@ export const ContractParameterValueStruct = type({
 export type ContractParameterValue = Infer<typeof ContractParameterValueStruct>;
 
 /**
+ * The parameter value of a `TriggerSmartContract` contract.
+ */
+export const TriggerSmartContractValueStruct = type({
+  owner_address: string(),
+  contract_address: string(),
+  data: optional(string()),
+  call_value: optional(min(number(), 0)),
+  token_id: optional(number()),
+  call_token_id: optional(number()),
+  call_token_value: optional(number()),
+});
+
+/**
  * Returns the validated parameter value of the transaction's single contract.
  *
  * @param rawData - The raw transaction data.
