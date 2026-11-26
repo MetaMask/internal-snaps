@@ -256,6 +256,69 @@ describe('TrackTransactionHandler', () => {
     });
   });
 
+  it('reports the security verdict carried from the confirmation', async () => {
+    const { handler, getTransaction } = setup();
+    getTransaction.mockResolvedValue(
+      createNetworkTransaction(TransactionStatus.Failed),
+    );
+
+    await handler.handle({
+      jsonrpc: '2.0',
+      id: 1,
+      method: BackgroundEventMethod.TrackTransaction,
+      params: {
+        txId,
+        scope,
+        accountIdsOrAddresses: [accountId],
+        transactionType: TransactionType.Send,
+        securityProperties: {
+          securityAlertResponse: 'Malicious',
+          securityAlertReason: 'known_attacker',
+        },
+      },
+    });
+
+    expect(trackTransactionFinalized).toHaveBeenCalledWith({
+      origin: DEFAULT_METAMASK_ORIGIN,
+      accountType: KEYRING_ACCOUNT_TYPE,
+      chainIdCaip: scope,
+      transactionStatus: TransactionStatus.Failed,
+      transactionType: TransactionType.Send,
+      securityAlertResponse: 'Malicious',
+      securityAlertReason: 'known_attacker',
+    });
+  });
+
+  it('carries the security verdict on the rescheduled job', async () => {
+    const { handler, getTransaction } = setup();
+    getTransaction.mockRejectedValue(new TransactionNotFoundException(txId));
+    const securityProperties = { securityAlertResponse: 'Benign' };
+
+    await handler.handle({
+      jsonrpc: '2.0',
+      id: 1,
+      method: BackgroundEventMethod.TrackTransaction,
+      params: {
+        txId,
+        scope,
+        accountIdsOrAddresses: [accountId],
+        securityProperties,
+      },
+    });
+
+    expect(scheduleBackgroundEvent).toHaveBeenCalledWith({
+      method: BackgroundEventMethod.TrackTransaction,
+      params: {
+        txId,
+        scope,
+        accountIdsOrAddresses: [accountId],
+        attempt: 1,
+        securityProperties,
+      },
+      duration: Duration.TwoSeconds,
+    });
+  });
+
   it('tracks the error and stops when an unexpected error is thrown', async () => {
     const { handler, getTransaction } = setup();
     getTransaction.mockRejectedValue(new Error('boom'));

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add security fields to transaction events ([#710](https://github.com/MetaMask/internal-snaps/pull/710))
+  - In-app sends, trustline opt-ins and opt-outs: "Transaction Approved", "Transaction Rejected", "Transaction Submitted", and "Transaction Finalized"
+  - dApp `signTransaction` requests: "Transaction Approved" and "Transaction Rejected"
+
 ## [2.2.0]
 
 ### Added

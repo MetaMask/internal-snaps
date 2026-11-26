@@ -270,6 +270,44 @@ describe('Cronjob API structs', () => {
       expect(value.params.transactionType).toBe(TransactionType.Send);
     });
 
+    it('accepts the security verdict the user saw', () => {
+      const securityProperties = {
+        securityAlertResponse: 'Malicious',
+        securityAlertReason: 'known_attacker',
+        securityAlertDescription: 'A known attacker is involved',
+      };
+      const value = {
+        ...jsonRpcBase,
+        method: BackgroundEventMethod.TrackTransaction,
+        params: {
+          txId,
+          scope: KnownCaip2ChainId.Mainnet,
+          accountIdsOrAddresses: [senderAccountId],
+          securityProperties,
+        },
+      };
+      assert(value, TrackTransactionJsonRpcRequestStruct);
+      expect(value.params.securityProperties).toStrictEqual(securityProperties);
+    });
+
+    it('rejects an unknown security verdict', () => {
+      expect(() =>
+        assert(
+          {
+            ...jsonRpcBase,
+            method: BackgroundEventMethod.TrackTransaction,
+            params: {
+              txId,
+              scope: KnownCaip2ChainId.Mainnet,
+              accountIdsOrAddresses: [senderAccountId],
+              securityProperties: { securityAlertResponse: 'Suspicious' },
+            },
+          },
+          TrackTransactionJsonRpcRequestStruct,
+        ),
+      ).toThrow(StructError);
+    });
+
     it('rejects invalid accountIdsOrAddresses values', () => {
       expect(() =>
         assert(

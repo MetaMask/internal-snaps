@@ -9,7 +9,7 @@ import { resolveInterface, updateInterfaceIfExists } from '../../../../utils';
 import { ConfirmationInterfaceKey } from '../../api';
 import type { FetchStatus } from '../../api';
 import {
-  getMemoFromContext,
+  buildResolveResult,
   shouldDisableConfirmation,
   withLockedContext,
 } from '../../utils';
@@ -109,18 +109,7 @@ async function onProceedClick(
     return;
   }
 
-  // Confirm-send needs the UI memo in the dialog result; other flows keep a boolean.
-  if (
-    context.interfaceKey === ConfirmationInterfaceKey.ConfirmSendTransaction
-  ) {
-    await resolveInterface(id, {
-      confirmed: true,
-      memo: getMemoFromContext(context),
-    });
-    return;
-  }
-
-  await resolveInterface(id, true);
+  await resolveInterface(id, buildResolveResult(true, context));
 }
 
 /**

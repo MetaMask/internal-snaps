@@ -175,6 +175,45 @@ describe('SignTransactionHandler', () => {
     });
   });
 
+  it('signs when the confirmation resolves with a confirmed object', async () => {
+    const { handler, mockAccount, wallet, renderConfirmationDialog } =
+      setupHandler();
+
+    const transaction = buildMainnetPaymentFromWallet(wallet.address);
+    const xdr = transaction.getRaw().toXdr();
+    const signSpy = vi.spyOn(wallet, 'signTransaction');
+    renderConfirmationDialog.mockResolvedValue({
+      confirmed: true,
+      context: {},
+    });
+
+    const result = await handler.handle(buildRequest(mockAccount.id, xdr));
+
+    expect(signSpy).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ signerAddress: wallet.address });
+    expect(result).not.toHaveProperty('error');
+  });
+
+  it('rejects when the confirmation resolves with an object that is not confirmed', async () => {
+    const { handler, mockAccount, wallet, renderConfirmationDialog } =
+      setupHandler();
+
+    const transaction = buildMainnetPaymentFromWallet(wallet.address);
+    const xdr = transaction.getRaw().toXdr();
+    const signSpy = vi.spyOn(wallet, 'signTransaction');
+    renderConfirmationDialog.mockResolvedValue({
+      confirmed: false,
+      context: {},
+    });
+
+    const result = await handler.handle(buildRequest(mockAccount.id, xdr));
+
+    expect(signSpy).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      error: { code: Sep43ErrorCode.UserRejected },
+    });
+  });
+
   it('returns error -3 when XDR is invalid', async () => {
     const { handler, mockAccount, renderConfirmationDialog } = setupHandler();
 
@@ -341,6 +380,100 @@ describe('SignTransactionHandler', () => {
         expectedProperties,
       );
       expect(trackTransactionApprovedSpy).not.toHaveBeenCalled();
+    });
+
+    it('reports the security verdict on approved when the dialog showed one', async () => {
+      const {
+        handler,
+        mockAccount,
+        wallet,
+        renderConfirmationDialog,
+        trackTransactionAddedSpy,
+        trackTransactionApprovedSpy,
+        trackTransactionRejectedSpy,
+      } = setupHandler();
+
+      const transaction = buildMainnetPaymentFromWallet(wallet.address);
+      const xdr = transaction.getRaw().toXDR();
+      renderConfirmationDialog.mockResolvedValue({
+        confirmed: true,
+        securityProperties: { securityAlertResponse: 'Benign' },
+      });
+
+      await handler.handle(buildRequest(mockAccount.id, xdr));
+
+      const expectedProperties = {
+        origin: 'https://example.com',
+        accountType: mockAccount.type,
+        chainIdCaip: KnownCaip2ChainId.Mainnet,
+        transactionType: TransactionType.Send,
+      };
+
+      expect(trackTransactionAddedSpy).toHaveBeenCalledWith(expectedProperties);
+      expect(trackTransactionApprovedSpy).toHaveBeenCalledWith({
+        ...expectedProperties,
+        securityAlertResponse: 'Benign',
+      });
+      expect(trackTransactionRejectedSpy).not.toHaveBeenCalled();
+    });
+
+    it('reports the security verdict on rejected when the user declines', async () => {
+      const {
+        handler,
+        mockAccount,
+        wallet,
+        renderConfirmationDialog,
+        trackTransactionApprovedSpy,
+        trackTransactionRejectedSpy,
+      } = setupHandler();
+
+      const transaction = buildMainnetPaymentFromWallet(wallet.address);
+      const xdr = transaction.getRaw().toXDR();
+      renderConfirmationDialog.mockResolvedValue({
+        confirmed: false,
+        securityProperties: {
+          securityAlertResponse: 'Malicious',
+          securityAlertReason: 'known_attacker',
+          securityAlertDescription:
+            "A known attacker's account is involved in the transaction",
+        },
+      });
+
+      await handler.handle(buildRequest(mockAccount.id, xdr));
+
+      expect(trackTransactionRejectedSpy).toHaveBeenCalledWith({
+        origin: 'https://example.com',
+        accountType: mockAccount.type,
+        chainIdCaip: KnownCaip2ChainId.Mainnet,
+        transactionType: TransactionType.Send,
+        securityAlertResponse: 'Malicious',
+        securityAlertReason: 'known_attacker',
+        securityAlertDescription:
+          "A known attacker's account is involved in the transaction",
+      });
+      expect(trackTransactionApprovedSpy).not.toHaveBeenCalled();
+    });
+
+    it('omits security fields when the dialog reports no verdict', async () => {
+      const {
+        handler,
+        mockAccount,
+        wallet,
+        renderConfirmationDialog,
+        trackTransactionApprovedSpy,
+      } = setupHandler();
+
+      const transaction = buildMainnetPaymentFromWallet(wallet.address);
+      const xdr = transaction.getRaw().toXDR();
+      renderConfirmationDialog.mockResolvedValue(true);
+
+      await handler.handle(buildRequest(mockAccount.id, xdr));
+
+      const approvedProperties = trackTransactionApprovedSpy.mock
+        .calls[0]?.[0] as Record<string, unknown>;
+      expect(approvedProperties).not.toHaveProperty('securityAlertResponse');
+      expect(approvedProperties).not.toHaveProperty('securityAlertReason');
+      expect(approvedProperties).not.toHaveProperty('securityAlertDescription');
     });
   });
 });

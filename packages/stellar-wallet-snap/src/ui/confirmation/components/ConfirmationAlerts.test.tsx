@@ -285,6 +285,25 @@ describe('ConfirmationAlerts', () => {
       );
     });
 
+    it('renders the translated copy, not the raw Blockaid description', () => {
+      const component = renderScanAlert({
+        validation: {
+          type: TransactionScanValidationType.Malicious,
+          reason: 'known_attacker',
+          description: 'Raw Blockaid text',
+        },
+      });
+
+      expect(getProps(component)).toMatchObject({
+        severity: 'danger',
+        title: 'This is a deceptive request',
+      });
+      expect(JSON.stringify(component)).toContain(
+        'If you approve this request, a third party known for scams will take all your assets.',
+      );
+      expect(JSON.stringify(component)).not.toContain('Raw Blockaid text');
+    });
+
     it('renders warning validation alerts with softer warning copy', () => {
       const component = renderScanAlert({
         preferences: { ...preferences, simulateOnChainActions: false },

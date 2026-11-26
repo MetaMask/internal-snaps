@@ -202,13 +202,18 @@ function getSecurityAlert(
     );
   }
 
+  const validation = scan?.validation
+    ? // The raw Blockaid description is kept for telemetry only.
+      { ...scan.validation, description: null }
+    : null;
+
   return (
     <TransactionAlert
       labels={labels}
       isFetching={false}
       isFetchError={false}
       error={null}
-      validation={scan?.validation ?? null}
+      validation={validation}
     />
   );
 }

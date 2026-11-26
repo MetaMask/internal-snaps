@@ -13,9 +13,13 @@ import {
   collectTransactionAssetCaipIds,
 } from '../../services/transaction/utils';
 import type { Wallet } from '../../services/wallet';
-import type { ContextWithPrices } from '../../ui/confirmation/api';
+import type {
+  ContextWithPrices,
+  TransactionConfirmationResult,
+} from '../../ui/confirmation/api';
 import { ConfirmationInterfaceKey } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
+import { parseTransactionConfirmationResult } from '../../ui/confirmation/utils';
 import type { AccountResolver } from '../accountResolver';
 import type { SignTransactionRequest, SignTransactionResponse } from './api';
 import {
@@ -94,12 +98,23 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
 
     await this.#analyticsService.trackTransactionAdded(trackingProperties);
 
-    if (!(await this.#confirmation(request, transaction, account))) {
-      await this.#analyticsService.trackTransactionRejected(trackingProperties);
+    const { confirmed, securityProperties } = await this.#confirmation(
+      request,
+      transaction,
+      account,
+    );
+
+    const decisionProperties: TransactionEventProperties = {
+      ...trackingProperties,
+      ...securityProperties,
+    };
+
+    if (!confirmed) {
+      await this.#analyticsService.trackTransactionRejected(decisionProperties);
       throw new UserRejectedRequestError() as unknown as Error;
     }
 
-    await this.#analyticsService.trackTransactionApproved(trackingProperties);
+    await this.#analyticsService.trackTransactionApproved(decisionProperties);
 
     wallet.signTransaction(transaction);
     const signedTxXdr = transaction.getRaw().toXdr();
@@ -126,7 +141,7 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
     request: SignTransactionRequest,
     transaction: Transaction,
     account: StellarKeyringAccount,
-  ): Promise<boolean> {
+  ): Promise<TransactionConfirmationResult> {
     const readableTransaction = new OperationMapper().mapTransaction(
       transaction,
     );
@@ -141,8 +156,8 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
 
     // Sign-transaction estimated changes come entirely from remote Blockaid
     // simulation; the scan refresher fills them in once the scan returns.
-    return (
-      (await this.#confirmationUIController.renderConfirmationDialog({
+    const result =
+      await this.#confirmationUIController.renderConfirmationDialog({
         scope: request.scope,
         origin: request.origin,
         interfaceKey: ConfirmationInterfaceKey.SignTransaction,
@@ -161,7 +176,8 @@ export class SignTransactionHandler extends BaseSep43KeyringHandler<
           transaction: transaction.getRaw().toXdr(),
         },
         tokenPrices,
-      })) === true
-    );
+      });
+
+    return parseTransactionConfirmationResult(result);
   }
 }

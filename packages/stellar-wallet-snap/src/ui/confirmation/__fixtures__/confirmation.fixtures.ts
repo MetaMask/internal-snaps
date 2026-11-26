@@ -2,8 +2,10 @@ import type {
   ComponentOrElement,
   GetPreferencesResult,
 } from '@metamask/snaps-sdk';
+import type { Json } from '@metamask/utils';
 
 import { TransactionScanValidationType } from '../../../services/transaction-scan';
+import { FetchStatus } from '../api';
 
 /** Default user preferences with every alert/scan toggle enabled. */
 export const defaultPreferences: GetPreferencesResult = {
@@ -32,6 +34,32 @@ export const maliciousScan = {
   error: null,
   validationError: null,
 };
+
+/** The security properties reported for {@link maliciousScan}. */
+export const maliciousScanSecurityProperties = {
+  securityAlertResponse: 'Malicious',
+  securityAlertReason: 'known_attacker',
+};
+
+/**
+ * Builds the interface context that a transaction confirmation resolves with,
+ * after a completed {@link maliciousScan} with security validation enabled.
+ *
+ * @param overrides - Fields to override on the default context.
+ * @returns The interface context.
+ */
+export function buildScannedConfirmationContext(
+  overrides: Record<string, Json> = {},
+): Record<string, Json> {
+  return {
+    preferences: defaultPreferences,
+    scan: maliciousScan,
+    scanFetchStatus: FetchStatus.Fetched,
+    securityScanning: true,
+    remoteSimulation: false,
+    ...overrides,
+  };
+}
 
 /**
  * Reads the JSX element `type` from a rendered confirmation component.

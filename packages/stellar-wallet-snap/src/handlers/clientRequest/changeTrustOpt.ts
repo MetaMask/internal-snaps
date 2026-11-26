@@ -27,7 +27,9 @@ import {
   ConfirmationInterfaceKey,
   FetchStatus,
 } from '../../ui/confirmation/api';
+import type { TransactionConfirmationResult } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
+import { parseTransactionConfirmationResult } from '../../ui/confirmation/utils';
 import { render as renderAccountActivationPrompt } from '../../ui/confirmation/views/AccountActivationPrompt/render';
 import type {
   AccountResolver,
@@ -169,21 +171,28 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
 
     await this.#analyticsService.trackTransactionAdded(trackingProperties);
 
-    const confirmed = await this.#confirmChangeTrustOpt({
-      request,
-      account,
-      assetMetadata,
-      fee: transaction.totalFee.toString(),
-      action,
-      transaction,
-    });
+    const { confirmed, securityProperties } = await this.#confirmChangeTrustOpt(
+      {
+        request,
+        account,
+        assetMetadata,
+        fee: transaction.totalFee.toString(),
+        action,
+        transaction,
+      },
+    );
+
+    const decisionProperties: TransactionEventProperties = {
+      ...trackingProperties,
+      ...securityProperties,
+    };
 
     if (!confirmed) {
-      await this.#analyticsService.trackTransactionRejected(trackingProperties);
+      await this.#analyticsService.trackTransactionRejected(decisionProperties);
       throw ensureError(new UserRejectedRequestError());
     }
 
-    await this.#analyticsService.trackTransactionApproved(trackingProperties);
+    await this.#analyticsService.trackTransactionApproved(decisionProperties);
 
     const refreshed = await this.#refreshTransactionAfterConfirmation({
       request,
@@ -213,7 +222,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       transaction: refreshedTransaction,
     });
 
-    await this.#analyticsService.trackTransactionSubmitted(trackingProperties);
+    await this.#analyticsService.trackTransactionSubmitted(decisionProperties);
 
     await this.#transactionService.savePendingKeyringTransactionSafe({
       type:
@@ -240,6 +249,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
       accountIdsOrAddresses: [account.id],
       scope,
       transactionType,
+      ...(securityProperties ? { securityProperties } : {}),
     });
 
     return {
@@ -328,7 +338,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     fee: string;
     action: ChangeTrustOptAction;
     transaction: Transaction;
-  }): Promise<boolean> {
+  }): Promise<TransactionConfirmationResult> {
     return params.action === ChangeTrustOptAction.Delete
       ? await this.#confirmSignChangeTrustOptOut(params)
       : await this.#confirmSignChangeTrustOptIn(params);
@@ -340,7 +350,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     assetMetadata: StellarAssetMetadata;
     fee: string;
     transaction: Transaction;
-  }): Promise<boolean> {
+  }): Promise<TransactionConfirmationResult> {
     return this.#confirmSignChangeTrust({
       ...params,
       confirmationInterfaceKey: ConfirmationInterfaceKey.ChangeTrustlineOptIn,
@@ -353,7 +363,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     assetMetadata: StellarAssetMetadata;
     fee: string;
     transaction: Transaction;
-  }): Promise<boolean> {
+  }): Promise<TransactionConfirmationResult> {
     return this.#confirmSignChangeTrust({
       ...params,
       confirmationInterfaceKey: ConfirmationInterfaceKey.ChangeTrustlineOptOut,
@@ -369,7 +379,7 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     confirmationInterfaceKey:
       | typeof ConfirmationInterfaceKey.ChangeTrustlineOptIn
       | typeof ConfirmationInterfaceKey.ChangeTrustlineOptOut;
-  }): Promise<boolean> {
+  }): Promise<TransactionConfirmationResult> {
     const {
       request,
       account,
@@ -381,8 +391,8 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
     const { scope } = request.params;
     const xdr = transaction.getRaw().toXdr();
 
-    return (
-      (await this.#confirmationUIController.renderConfirmationDialog({
+    const confirmationResult =
+      await this.#confirmationUIController.renderConfirmationDialog({
         origin: DEFAULT_METAMASK_ORIGIN,
         scope,
         renderContext: {
@@ -408,8 +418,9 @@ export class ChangeTrustOptHandler extends BaseClientRequestHandler<
           transaction: xdr,
           request,
         },
-      })) === true
-    );
+      });
+
+    return parseTransactionConfirmationResult(confirmationResult);
   }
 
   /**

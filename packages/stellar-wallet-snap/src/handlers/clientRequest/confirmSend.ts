@@ -5,9 +5,8 @@ import type {
   Logger,
   TransactionEventProperties,
 } from '@metamask/snap-networks-utils';
-import type { DialogResult } from '@metamask/snaps-sdk';
 import { UserRejectedRequestError } from '@metamask/snaps-sdk';
-import { ensureError, isObject } from '@metamask/utils';
+import { ensureError } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip2ChainId } from '../../api';
@@ -26,12 +25,16 @@ import type {
 } from '../../services/transaction';
 import { AssetChangeDirection } from '../../services/transaction-scan';
 import type { TransactionScanEstimatedChanges } from '../../services/transaction-scan';
-import type { ContextWithPrices } from '../../ui/confirmation/api';
+import type {
+  ContextWithPrices,
+  TransactionConfirmationResult,
+} from '../../ui/confirmation/api';
 import {
   ConfirmationInterfaceKey,
   FetchStatus,
 } from '../../ui/confirmation/api';
 import type { ConfirmationUXController } from '../../ui/confirmation/controller';
+import { parseTransactionConfirmationResult } from '../../ui/confirmation/utils';
 import type { LocalizedMessage } from '../../utils';
 import {
   hasDecimals,
@@ -58,11 +61,6 @@ import {
   assertRefreshedTransactionFeeWithinBuffer,
   getTxnErrorMessageKey,
 } from './utils';
-
-type ConfirmSendDialogResult = {
-  confirmed: boolean;
-  memo?: string;
-};
 
 /**
  * Confirms and submits a send transaction for Unified Non-EVM Send.
@@ -184,7 +182,11 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
 
       await this.#analyticsService.trackTransactionAdded(trackingProperties);
 
-      const dialogResult = await this.#confirmSend({
+      const {
+        confirmed,
+        memo: dialogMemo,
+        securityProperties,
+      } = await this.#confirmSend({
         request,
         account: stellarKeyringAccount,
         assetMetadata,
@@ -196,14 +198,19 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
           : undefined,
       });
 
-      if (!dialogResult.confirmed) {
+      const decisionProperties: TransactionEventProperties = {
+        ...trackingProperties,
+        ...securityProperties,
+      };
+
+      if (!confirmed) {
         await this.#analyticsService.trackTransactionRejected(
-          trackingProperties,
+          decisionProperties,
         );
         throw ensureError(new UserRejectedRequestError());
       }
 
-      await this.#analyticsService.trackTransactionApproved(trackingProperties);
+      await this.#analyticsService.trackTransactionApproved(decisionProperties);
 
       // The client memo wins; the dialog memo is only a fallback when the
       // client did not supply one.
@@ -216,7 +223,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         request,
         confirmedTransaction: transaction,
         amount: amountInSmallestUnit,
-        memo: hasClientMemo ? memo : dialogResult.memo,
+        memo: hasClientMemo ? memo : dialogMemo,
       });
 
       refreshedWallet.signTransaction(refreshedTransaction);
@@ -230,7 +237,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
       });
 
       await this.#analyticsService.trackTransactionSubmitted(
-        trackingProperties,
+        decisionProperties,
       );
 
       await this.#transactionService.savePendingKeyringTransactionSafe({
@@ -254,6 +261,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         accountIdsOrAddresses: [stellarKeyringAccount.id, toAddress],
         scope,
         transactionType: TransactionType.Send,
+        ...(securityProperties ? { securityProperties } : {}),
       });
 
       return {
@@ -320,7 +328,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
     fee: BigNumber;
     transaction: Transaction;
     initialValidationError?: LocalizedMessage;
-  }): Promise<ConfirmSendDialogResult> {
+  }): Promise<TransactionConfirmationResult> {
     const {
       request,
       account,
@@ -391,24 +399,7 @@ export class ConfirmSendHandler extends BaseClientRequestHandler<
         } as ContextWithPrices['tokenPrices'],
       });
 
-    return this.#parseConfirmSendDialogResult(result);
-  }
-
-  #parseConfirmSendDialogResult(result: DialogResult): ConfirmSendDialogResult {
-    // Bare `true` from the Snap dialog: confirmed, and no memo was returned.
-    if (result === true) {
-      return { confirmed: true };
-    }
-    // Cancel, dismiss, or a non-object payload: the user did not confirm.
-    if (result === false || result === null || !isObject(result)) {
-      return { confirmed: false };
-    }
-
-    const confirmed = Boolean(result.confirmed);
-    const memo = typeof result.memo === 'string' ? result.memo.trim() : '';
-
-    // Blank, null, or a non-string memo is the same as no memo.
-    return memo ? { confirmed, memo } : { confirmed };
+    return parseTransactionConfirmationResult(result);
   }
 
   /**
