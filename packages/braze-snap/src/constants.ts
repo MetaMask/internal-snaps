@@ -1,9 +1,4 @@
 /**
- * The only origin allowed to call the snap.
- */
-export const ALLOWED_ORIGIN = 'metamask';
-
-/**
  * The paths the SDK may `POST` to on the configured endpoint.
  */
 export const ALLOWED_REQUEST_PATHS = ['/api/v3/data/'] as const;

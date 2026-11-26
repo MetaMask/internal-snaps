@@ -2,7 +2,7 @@ import type { JsonRpcRequest } from '@metamask/utils';
 
 import { mockBrazeSdk } from '../tests/braze';
 import { stubSnap } from '../tests/snap';
-import { BrazeMethod, onRpcRequest } from './rpc';
+import { BrazeMethod, onClientRequest } from './rpc';
 import { resetRuntime } from './runtime';
 import { resetStorage } from './storage';
 
@@ -16,21 +16,14 @@ const PARAMS = {
 };
 
 /**
- * Call the RPC handler.
+ * Call the client request handler.
  *
  * @param method - The method.
  * @param params - The params.
- * @param origin - The origin.
  * @returns The handler result.
  */
-async function call(
-  method: string,
-  params: unknown,
-  origin = 'metamask',
-): Promise<unknown> {
-  return onRpcRequest({
-    origin,
-    originMetadata: null,
+async function call(method: string, params: unknown): Promise<unknown> {
+  return onClientRequest({
     request: {
       jsonrpc: '2.0',
       id: 1,
@@ -40,7 +33,7 @@ async function call(
   });
 }
 
-describe('onRpcRequest', () => {
+describe('onClientRequest', () => {
   beforeEach(() => {
     resetRuntime();
     resetStorage();
@@ -49,15 +42,6 @@ describe('onRpcRequest', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
-  });
-
-  it('rejects requests from other origins', async () => {
-    const { changeUser } = mockBrazeSdk();
-
-    await expect(
-      call(BrazeMethod.SyncUser, PARAMS, 'https://example.com'),
-    ).rejects.toThrow(expect.objectContaining({ code: 4100 }));
-    expect(changeUser).not.toHaveBeenCalled();
   });
 
   it('rejects unknown methods', async () => {

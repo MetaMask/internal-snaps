@@ -1,14 +1,9 @@
-import type { OnRpcRequestHandler } from '@metamask/snaps-sdk';
-import {
-  InvalidParamsError,
-  MethodNotFoundError,
-  UnauthorizedError,
-} from '@metamask/snaps-sdk';
+import type { OnClientRequestHandler } from '@metamask/snaps-sdk';
+import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Struct } from '@metamask/superstruct';
 import { validate } from '@metamask/superstruct';
 
 import type { BrazeSdk } from './braze-sdk';
-import { ALLOWED_ORIGIN } from './constants';
 import { withBraze } from './runtime';
 import { snapStorage } from './storage';
 import type { SyncUserParams } from './structs';
@@ -94,14 +89,7 @@ async function syncUser({
   );
 }
 
-export const onRpcRequest: OnRpcRequestHandler = async ({
-  origin,
-  request,
-}) => {
-  if (origin !== ALLOWED_ORIGIN) {
-    throw new UnauthorizedError() as Error;
-  }
-
+export const onClientRequest: OnClientRequestHandler = async ({ request }) => {
   switch (request.method) {
     case BrazeMethod.SyncUser:
       await syncUser(validateParams(request.params, SyncUserParamsStruct));

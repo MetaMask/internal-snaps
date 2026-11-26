@@ -1,1 +1,1 @@
-export { onRpcRequest } from './rpc';
+export { onClientRequest } from './rpc';

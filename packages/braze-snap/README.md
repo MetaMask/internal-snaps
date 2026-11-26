@@ -6,7 +6,7 @@ MetaMask preinstalls this snap and hides it. It runs the [Braze Web SDK](https:/
 
 ## API
 
-The snap only accepts JSON-RPC requests from the `metamask` origin. Each request carries the Braze config, because the snap has no other way to read it.
+The snap exposes a client-only `onClientRequest` handler, so only MetaMask can invoke it. Each request carries the Braze config, because the snap has no other way to read it.
 
 ### `syncUser`
 
@@ -18,7 +18,7 @@ When `language` is given, it becomes the user's language in Braze. The snap only
 await snapController.handleRequest({
   snapId: 'npm:@metamask/braze-snap',
   origin: 'metamask',
-  handler: 'onRpcRequest',
+  handler: 'onClientRequest',
   request: {
     method: 'syncUser',
     params: {
@@ -75,7 +75,7 @@ The snap treats the SDK and the responses from Braze as untrusted.
 | A Braze response is large or malformed  | Responses above 1 MB are rejected. Responses are only parsed by the SDK, inside the sandbox.                                                                                                                                                          |
 | The SDK writes storage often or a lot   | The SDK writes to memory. The snap persists the `ab.storage.*` keys, except the in-app message triggers MetaMask does not show, with its own `metamask.*` items, once per request, only when they changed.                                            |
 | The SDK keeps running in the background | Network access only exists during a request, and requests still running when it ends are aborted. The client stops idle snaps.                                                                                                                        |
-| Another dapp or snap calls the snap     | The manifest only allows the `metamask` origin, and the handler rejects any other origin.                                                                                                                                                             |
+| Another dapp or snap calls the snap     | The snap only exports `onClientRequest` and has no `endowment:rpc` permission, so MetaMask blocks all non-client origins.                                                                                                                             |
 | The client sends unexpected params      | Params are validated against structs. The endpoint must be a bare host, so the config cannot inject a path or credentials.                                                                                                                            |
 | Several extension pages run the SDK     | Only the background calls the snap, and the snap serializes requests, so a single SDK instance runs.                                                                                                                                                  |
 

@@ -4,7 +4,7 @@ import { stubSnap } from '../tests/snap';
 import { brazeSdkLoader } from './braze-sdk';
 import { STORAGE_STATE_KEY } from './constants';
 import { abortRequests, drainRequests } from './network';
-import { BrazeMethod, onRpcRequest } from './rpc';
+import { BrazeMethod, onClientRequest } from './rpc';
 import { resetRuntime } from './runtime';
 import * as globals from './shims/globals';
 import type { ProvidedGlobal } from './shims/provided-globals';
@@ -24,15 +24,13 @@ type DataRequest = {
 };
 
 /**
- * Identify the device as a user through the RPC handler.
+ * Identify the device as a user through the client request handler.
  *
  * @param profileId - The profile ID.
  * @param language - The language, if any.
  */
 async function syncUser(profileId: string, language?: string): Promise<void> {
-  await onRpcRequest({
-    origin: 'metamask',
-    originMetadata: null,
+  await onClientRequest({
     request: {
       jsonrpc: '2.0',
       id: 1,
