@@ -1,5 +1,16 @@
 import { InvalidParamsError } from '@metamask/snaps-sdk';
-import { assert, define, is } from '@metamask/superstruct';
+import {
+  assert,
+  create,
+  define,
+  is,
+  min,
+  number,
+  optional,
+  string,
+  type,
+} from '@metamask/superstruct';
+import type { Infer } from '@metamask/superstruct';
 import type { BigNumber } from 'bignumber.js';
 import { TronWeb, Types as TronwebTypes } from 'tronweb';
 
@@ -35,6 +46,35 @@ export const TransactionRawDataStruct = define<
 });
 
 /**
+ * The fields of a contract parameter value that the Snap reads, across every
+ * contract type. TronWeb types the value as a union of contract types, so
+ * reading a field that only some of them carry needs this narrowing.
+ */
+export const ContractParameterValueStruct = type({
+  owner_address: string(),
+  to_address: optional(string()),
+  contract_address: optional(string()),
+  data: optional(string()),
+  amount: optional(min(number(), 0)),
+  call_value: optional(min(number(), 0)),
+});
+
+export type ContractParameterValue = Infer<typeof ContractParameterValueStruct>;
+
+/**
+ * Returns the validated parameter value of the transaction's single contract.
+ *
+ * @param rawData - The raw transaction data.
+ * @returns The contract parameter value, or null when the transaction has no contract.
+ */
+export function getContractParameterValue(
+  rawData: TronwebTypes.Transaction['raw_data'],
+): ContractParameterValue | null {
+  const value = rawData.contract[0]?.parameter?.value;
+  return value ? create(value, ContractParameterValueStruct) : null;
+}
+
+/**
  * Checks whether the transaction structure is well-formed.
  *
  * @param rawData - The raw transaction data.
@@ -56,8 +96,8 @@ export function isTransactionWellFormed(
  * @throws {InvalidParamsError} If the transaction is malformed.
  */
 export function assertTransactionStructure(
-  rawData: TronwebTypes.Transaction['raw_data'],
-): void {
+  rawData: unknown,
+): asserts rawData is TronwebTypes.Transaction['raw_data'] {
   try {
     assert(rawData, TransactionRawDataStruct);
   } catch (error: unknown) {
@@ -82,18 +122,18 @@ export function getTransactionTrxValue(
   rawData: TronwebTypes.Transaction['raw_data'],
 ): BigNumber {
   const contract = rawData.contract[0];
-  const value = contract?.parameter?.value;
+  const value = getContractParameterValue(rawData);
 
   if (!contract || !value) {
     return ZERO;
   }
 
   if (contract.type === TronwebTypes.ContractType.TransferContract) {
-    return sunToTrx('amount' in value ? (value.amount ?? 0) : 0);
+    return sunToTrx(value.amount ?? 0);
   }
 
   if (contract.type === TronwebTypes.ContractType.TriggerSmartContract) {
-    return sunToTrx('call_value' in value ? (value.call_value ?? 0) : 0);
+    return sunToTrx(value.call_value ?? 0);
   }
 
   return ZERO;
