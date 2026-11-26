@@ -1976,40 +1976,6 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/services/wallet/WalletService.test.ts": {
-    "typescript/no-explicit-any": {
-      "count": 7
-    },
-    "typescript/no-unnecessary-type-assertion": {
-      "count": 1
-    },
-    "typescript/no-unsafe-argument": {
-      "count": 1
-    },
-    "typescript/no-unsafe-call": {
-      "count": 11
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 24
-    },
-    "typescript/no-unsafe-return": {
-      "count": 1
-    }
-  },
-  "packages/tron-wallet-snap/src/services/wallet/WalletService.ts": {
-    "typescript/no-unsafe-argument": {
-      "count": 2
-    },
-    "typescript/no-unsafe-assignment": {
-      "count": 5
-    },
-    "typescript/no-unsafe-call": {
-      "count": 5
-    },
-    "typescript/no-unsafe-member-access": {
-      "count": 11
-    }
-  },
   "packages/tron-wallet-snap/src/ui/confirmation/components/EstimatedChanges/EstimatedChanges.tsx": {
     "typescript/no-unsafe-return": {
       "count": 1

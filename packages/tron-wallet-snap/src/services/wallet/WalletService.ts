@@ -3,7 +3,7 @@ import type { ResolvedAccountAddress } from '@metamask/keyring-api';
 import type { Logger } from '@metamask/snap-networks-utils';
 import { SnapError } from '@metamask/snaps-sdk';
 import type { Json, JsonRpcRequest } from '@metamask/snaps-sdk';
-import { bytesToHex, hexToBytes } from '@metamask/utils';
+import { bytesToHex, hexToBytes, isObject } from '@metamask/utils';
 
 import type { TronWebFactory } from '../../clients/tronweb/TronWebFactory';
 import type { Network } from '../../constants';
@@ -25,6 +25,25 @@ import {
 } from '../../validation/transaction';
 import { validateRequest, validateResponse } from '../../validation/validators';
 import type { AccountsService } from '../accounts/AccountsService';
+/**
+ * Reads the JSON-RPC style `code` and `message` of a thrown value.
+ *
+ * @param error - The thrown value.
+ * @returns The error code and message, when present.
+ */
+function getErrorCodeAndMessage(error: unknown): {
+  code?: unknown;
+  message?: string;
+} {
+  if (!isObject(error)) {
+    return {};
+  }
+  return {
+    code: error.code,
+    message: typeof error.message === 'string' ? error.message : undefined,
+  };
+}
+
 /**
  * Service responsible for handling wallet operations like signing messages and transactions.
  */
@@ -90,13 +109,13 @@ export class WalletService {
             TronMultichainErrors.InvalidParams,
           );
       }
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.#logger.error({ error }, 'Error handling wallet request');
 
+      const { code, message } = getErrorCodeAndMessage(error);
+
       // User rejected the request
-      if (error.code === 4100 || error.message?.includes('rejected')) {
+      if (code === 4100 || message?.includes('rejected')) {
         throw new SnapError(
           TronMultichainErrors.UserRejected.message,
           TronMultichainErrors.UserRejected,
@@ -104,16 +123,16 @@ export class WalletService {
       }
 
       // Invalid parameters
-      if (error.code === 4001 || error.message?.includes('Invalid')) {
+      if (code === 4001 || message?.includes('Invalid')) {
         throw new SnapError(
-          error.message ?? TronMultichainErrors.InvalidParams.message,
+          message ?? TronMultichainErrors.InvalidParams.message,
           TronMultichainErrors.InvalidParams,
         );
       }
 
       // Unknown error
       throw new SnapError(
-        error.message ?? TronMultichainErrors.UnknownError.message,
+        message ?? TronMultichainErrors.UnknownError.message,
         TronMultichainErrors.UnknownError,
       );
     }
@@ -173,9 +192,7 @@ export class WalletService {
       this.#logger.log('Message signed successfully', { address });
 
       return result;
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.#logger.error({ error }, 'Error signing message');
       throw error;
     }
@@ -220,10 +237,8 @@ export class WalletService {
       const tronWeb = this.#tronWebFactory.createClient(scope, privateKeyHex);
 
       // Rebuild the transaction from hex (same logic as clientRequest handler)
-      const rawData = tronWeb.utils.deserializeTx.deserializeTransaction(
-        type,
-        rawDataHex,
-      );
+      const rawData: unknown =
+        tronWeb.utils.deserializeTx.deserializeTransaction(type, rawDataHex);
       assertTransactionStructure(rawData);
       assertTransactionSignerConsistency(rawData, signerAddress);
 
@@ -244,10 +259,7 @@ export class WalletService {
 
       // Extract the signature from the signed transaction
       // signedTx.signature is an array of hex strings
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const signatureArray = (signedTx as any).signature as string[];
-      const signature = signatureArray?.[0] ?? '';
+      const signature = signedTx.signature[0] ?? '';
 
       const result = {
         signature: `0x${signature}`,
@@ -256,19 +268,19 @@ export class WalletService {
       this.#logger.log('Transaction signed successfully', { address, scope });
 
       return result;
-      // TODO: Replace `any` with type
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.#logger.error({ error }, 'Error signing transaction');
+
+      const { message } = getErrorCodeAndMessage(error);
 
       // Check if it's a transaction format error
       if (
-        error.message?.includes('deserialize') ||
-        error.message?.includes('parse') ||
-        error.message?.includes('invalid')
+        message?.includes('deserialize') ||
+        message?.includes('parse') ||
+        message?.includes('invalid')
       ) {
         throw new SnapError(
-          `Invalid transaction format: ${error.message}`,
+          `Invalid transaction format: ${message}`,
           TronMultichainErrors.InvalidTransaction,
         );
       }
@@ -317,9 +329,7 @@ export class WalletService {
     const { params } = request;
 
     // Validate that address exists in params
-    // TODO: Replace `any` with type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { address } = params as any;
+    const { address } = params;
     if (!address || typeof address !== 'string') {
       throw new Error('Address parameter is required and must be a string');
     }
