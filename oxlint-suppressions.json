@@ -2023,11 +2023,6 @@
       "count": 2
     }
   },
-  "packages/tron-wallet-snap/src/ui/confirmation/utils/getIconUrlForKnownAsset.ts": {
-    "internal-snaps/no-in-operator": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/ui/confirmation/views/ConfirmSignMessage/ConfirmSignMessage.tsx": {
     "typescript/no-unsafe-return": {
       "count": 1
