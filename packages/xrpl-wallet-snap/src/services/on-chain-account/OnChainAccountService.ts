@@ -45,6 +45,7 @@ import type {
   SerializableSpendableBalance,
 } from './api';
 import { OnChainAccountException } from './exceptions';
+import { mptAuthorizedFromHolderStatus } from './keyringBalance';
 import { OnChainAccount } from './OnChainAccount';
 import {
   calculateLedgerMetaFromMinReserve,
@@ -559,6 +560,9 @@ export class OnChainAccountService {
           new BigNumber(asset.balance.amount),
           decimals,
         ).toFixed(0);
+        const mptAuthorized = mptAuthorizedFromHolderStatus(
+          asset.balance.metadata.status,
+        );
         balances.push(
           SerializableMptSpendableBalanceStruct.create({
             type: OnChainAssetType.Mpt,
@@ -566,6 +570,7 @@ export class OnChainAccountService {
             mptAmount: spendable,
             balance: spendable,
             decimals,
+            ...(mptAuthorized ? { mptAuthorized: true } : {}),
           }),
         );
       }

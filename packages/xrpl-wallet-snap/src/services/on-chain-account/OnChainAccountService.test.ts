@@ -26,6 +26,7 @@ import type {
 import { OnChainAssetType } from './api';
 import type { MptAssetBalance } from './api';
 import { OnChainAccountException } from './exceptions';
+import { MptHolderStatus } from './keyringBalance';
 import type { OnChainAccount } from './OnChainAccount';
 import { OnChainAccountService } from './OnChainAccountService';
 
@@ -178,13 +179,15 @@ function nativeCoreAsset(): CoreNativeAsset {
   };
 }
 
-function mptCoreAsset(): CoreMptAsset {
+function mptCoreAsset(
+  status: number = MptHolderStatus.HolderOptedIn,
+): CoreMptAsset {
   return {
     id: mptAssetId,
     chainId: KnownCaip2ChainId.Mainnet,
     balance: {
       amount: '1.5',
-      metadata: { status: 1 },
+      metadata: { status },
     },
     metadata: { symbol: issuanceId, decimals: 6 },
   };
@@ -632,6 +635,32 @@ describe('OnChainAccountService', () => {
       expect(fetchAndPersistMptAssetMetadata).not.toHaveBeenCalled();
       expect(account?.nativeRawBalance.toFixed(0)).toBe('10000000');
       expect(mptDecimals(account, mptAssetId)).toBe(6);
+      const mpt = account?.getRawAsset(mptAssetId) as MptAssetBalance;
+      expect(mpt.type).toBe(OnChainAssetType.Mpt);
+      expect(mpt.mptAuthorized).not.toBe(true);
+    });
+
+    it('maps controller issuer-authorized status onto mptAuthorized', async () => {
+      const { service, getAccountAssetsByScope } =
+        createOnChainAccountServiceTest();
+      getAccountAssetsByScope.mockResolvedValue([
+        nativeCoreAsset(),
+        mptCoreAsset(
+          // eslint-disable-next-line no-bitwise -- HolderOptedIn | IssuerAuthorized
+          MptHolderStatus.HolderOptedIn | MptHolderStatus.IssuerAuthorized,
+        ),
+      ]);
+
+      const account = await service.resolveFromController(
+        'account-id',
+        address,
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(account?.getRawAsset(mptAssetId)).toMatchObject({
+        type: OnChainAssetType.Mpt,
+        mptAuthorized: true,
+      });
     });
   });
 });
