@@ -4,6 +4,8 @@ import { getSelectedAccounts } from '@metamask/keyring-snap-sdk';
 import * as KeyringSnapSdk from '@metamask/keyring-snap-sdk';
 import {
   BrokenCircuitError,
+  createFetchPolicyError,
+  FetchPolicyErrorName,
   State,
   SynchronizationError,
 } from '@metamask/snap-networks-utils';
@@ -59,6 +61,21 @@ describe('CronHandler', () => {
     const mockAccounts = [mockAccount1, mockAccount2];
     const request = { method: 'synchronizeAccounts' } as JsonRpcRequest;
 
+    /**
+     * Stubs the stored accounts: `listIds` returns every ID, and
+     * `getWalletsByIds` returns only the requested accounts.
+     *
+     * @param accounts - The stored accounts.
+     */
+    const mockStoredAccounts = (accounts: BitcoinAccount[]): void => {
+      mockAccountUseCases.listIds.mockResolvedValue(
+        accounts.map(({ id }) => id),
+      );
+      mockAccountUseCases.getWalletsByIds.mockImplementation(
+        async (ids: string[]) => accounts.filter(({ id }) => ids.includes(id)),
+      );
+    };
+
     beforeEach(() => {
       // Transactions built from these accounts are classified as receives.
       const receivedAmount = mock<Amount>();
@@ -84,7 +101,7 @@ describe('CronHandler', () => {
         'account-1',
         'account-2',
       ]);
-      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockStoredAccounts(mockAccounts);
       mockAccountUseCases.synchronize
         .mockResolvedValueOnce(mockResult1)
         .mockResolvedValueOnce(mockResult2);
@@ -92,7 +109,10 @@ describe('CronHandler', () => {
       await handler.route(request);
 
       expect(mockSnapClient.getClientStatus).toHaveBeenCalled();
-      expect(mockAccountUseCases.list).toHaveBeenCalled();
+      expect(mockAccountUseCases.getWalletsByIds).toHaveBeenCalledWith([
+        'account-1',
+        'account-2',
+      ]);
       expect(mockAccountUseCases.synchronize).toHaveBeenCalledTimes(
         mockAccounts.length,
       );
@@ -118,7 +138,7 @@ describe('CronHandler', () => {
         'account-1',
         'account-2',
       ]);
-      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockStoredAccounts(mockAccounts);
       mockAccountUseCases.synchronize
         .mockResolvedValueOnce(mockResult1)
         .mockResolvedValueOnce(mockResult2);
@@ -142,7 +162,7 @@ describe('CronHandler', () => {
         transactionSenders: senders,
       };
       (getSelectedAccounts as Mock).mockResolvedValue(['account-1']);
-      mockAccountUseCases.list.mockResolvedValue([mockAccount1]);
+      mockStoredAccounts([mockAccount1]);
       mockAccountUseCases.synchronize.mockResolvedValueOnce(mockResult1);
 
       await handler.route(request);
@@ -152,12 +172,28 @@ describe('CronHandler', () => {
       ).toHaveBeenCalledWith(mockAccount1, [mockTx], senders);
     });
 
-    it('propagates errors from list', async () => {
+    it('propagates errors from loading the selected accounts', async () => {
       const error = new Error();
       (getSelectedAccounts as Mock).mockResolvedValue(['account-1']);
-      mockAccountUseCases.list.mockRejectedValue(error);
+      mockAccountUseCases.getWalletsByIds.mockRejectedValue(error);
 
       await expect(handler.route(request)).rejects.toThrow(error);
+    });
+
+    it('reports a list failure with its cause and still propagates it', async () => {
+      const error = new Error('list failed');
+      (getSelectedAccounts as Mock).mockResolvedValue(['account-1']);
+      mockAccountUseCases.getWalletsByIds.mockRejectedValue(error);
+
+      await expect(handler.route(request)).rejects.toThrow(error);
+
+      expect(mockSnapClient.emitTrackingError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Selected account loading failed',
+          cause: error,
+        }),
+      );
+      expect(mockAccountUseCases.synchronize).not.toHaveBeenCalled();
     });
 
     it.each([
@@ -190,7 +226,7 @@ describe('CronHandler', () => {
         'account-1',
         'account-2',
       ]);
-      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockStoredAccounts(mockAccounts);
       mockAccountUseCases.synchronize
         .mockResolvedValueOnce(mockResult)
         .mockRejectedValueOnce(syncError);
@@ -218,7 +254,7 @@ describe('CronHandler', () => {
         'account-1',
         'account-2',
       ]);
-      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockStoredAccounts(mockAccounts);
       mockAccountUseCases.synchronize.mockRejectedValue(
         new ExternalServiceError(
           'Failed to synchronize account',
@@ -237,7 +273,7 @@ describe('CronHandler', () => {
         'account-1',
         'account-2',
       ]);
-      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockStoredAccounts(mockAccounts);
       mockAccountUseCases.synchronize
         .mockRejectedValueOnce(new Error('esplora down'))
         .mockRejectedValueOnce(new Error('rate limited'));
@@ -261,7 +297,7 @@ describe('CronHandler', () => {
         'account-1',
         'account-2',
       ]);
-      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockStoredAccounts(mockAccounts);
       mockAccountUseCases.synchronize
         .mockResolvedValueOnce(mockResult)
         // Wrapped errors report the wrapper's message together with the
@@ -289,7 +325,7 @@ describe('CronHandler', () => {
         'account-1',
         'account-2',
       ]);
-      mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+      mockStoredAccounts(mockAccounts);
       mockAccountUseCases.synchronize
         .mockResolvedValueOnce(mockResult)
         .mockRejectedValueOnce({
@@ -317,7 +353,7 @@ describe('CronHandler', () => {
           'account-1',
           'account-2',
         ]);
-        mockAccountUseCases.list.mockResolvedValue(mockAccounts);
+        mockStoredAccounts(mockAccounts);
         mockAccountUseCases.synchronize.mockResolvedValue({
           account: mockAccount1,
           transactionsToNotify: [],
@@ -400,7 +436,7 @@ describe('CronHandler', () => {
         }
 
         mockState.getKey.mockResolvedValue({ pending: [] });
-        mockAccountUseCases.list.mockResolvedValue([latestAccount]);
+        mockStoredAccounts([latestAccount]);
         mockAccountUseCases.synchronize.mockResolvedValue({
           account: latestAccount,
           transactionsToNotify: [confirmedTransaction],
@@ -425,7 +461,6 @@ describe('CronHandler', () => {
       });
 
       it('waits for normal synchronization and event publication before starting repair', async () => {
-        (getSelectedAccounts as Mock).mockResolvedValue(['account-2']);
         mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
         let releaseSynchronization!: (result: SyncResult) => void;
         const syncResult = new Promise<SyncResult>((resolve) => {
@@ -460,7 +495,6 @@ describe('CronHandler', () => {
       });
 
       it('does not start repair if the client locks during normal synchronization', async () => {
-        (getSelectedAccounts as Mock).mockResolvedValue(['account-2']);
         mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
         let releaseSynchronization!: (result: SyncResult) => void;
         const syncResult = new Promise<SyncResult>((resolve) => {
@@ -502,7 +536,7 @@ describe('CronHandler', () => {
 
       it('can retry synchronization after a failure and then repair pending accounts', async () => {
         mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
-        mockAccountUseCases.list.mockRejectedValueOnce(
+        mockAccountUseCases.getWalletsByIds.mockRejectedValueOnce(
           new Error('list failed'),
         );
         await expect(handler.synchronizeAccounts()).rejects.toThrow(
@@ -649,14 +683,163 @@ describe('CronHandler', () => {
         expect(mockAccountUseCases.fullScan).not.toHaveBeenCalled();
       });
 
-      it('does nothing when nothing is pending, short-circuiting before list()', async () => {
+      it('does nothing when nothing is pending, short-circuiting before listing IDs', async () => {
         mockState.getKey.mockResolvedValue({ pending: [] });
 
         await handler.route(request);
 
         expect(mockAccountUseCases.fullScan).not.toHaveBeenCalled();
         expect(mockState.setKey).not.toHaveBeenCalled();
-        expect(mockAccountUseCases.list).toHaveBeenCalledTimes(1);
+        expect(mockAccountUseCases.listIds).not.toHaveBeenCalled();
+      });
+
+      it('loads wallets only for selected accounts', async () => {
+        (getSelectedAccounts as Mock).mockResolvedValue(['account-2']);
+        mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
+
+        await handler.route(request);
+
+        expect(mockAccountUseCases.getWalletsByIds).toHaveBeenCalledWith([
+          'account-2',
+        ]);
+        expect(mockAccountUseCases.getWalletsByIds).toHaveBeenCalledTimes(1);
+      });
+
+      it('reuses the wallets loaded for synchronization instead of loading them again', async () => {
+        mockState.getKey.mockResolvedValue({ pending: ['account-2'] });
+        mockAccountUseCases.fullScan.mockResolvedValue({
+          account: mockAccount2,
+          transactionsToNotify: [],
+        });
+
+        await handler.route(request);
+
+        // Loading a wallet deserializes it into WASM memory; loading the
+        // selected wallets twice in one run risks exhausting that memory.
+        expect(mockAccountUseCases.getWalletsByIds).toHaveBeenCalledTimes(1);
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount2);
+      });
+
+      it('repairs the first pending account that is selected and leaves unselected ones pending', async () => {
+        (getSelectedAccounts as Mock).mockResolvedValue(['account-2']);
+        mockState.getKey.mockResolvedValue({
+          pending: ['account-1', 'account-2'],
+        });
+        mockAccountUseCases.fullScan.mockResolvedValue({
+          account: mockAccount2,
+          transactionsToNotify: [],
+        });
+
+        await handler.route(request);
+
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledTimes(1);
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount2);
+        expect(mockState.setKey).toHaveBeenCalledWith('rescanV1', {
+          pending: ['account-1'],
+        });
+      });
+
+      it('repairs a selected account whose selected ID differs from the stored ID only by case', async () => {
+        (getSelectedAccounts as Mock).mockResolvedValue(['ACCOUNT-2']);
+        // `getWalletsByIds` matches IDs case-insensitively and returns the
+        // accounts under their stored ID.
+        mockAccountUseCases.getWalletsByIds.mockImplementation(
+          async (ids: string[]) =>
+            mockAccounts.filter(({ id }) =>
+              ids.some((value) => value.toLowerCase() === id.toLowerCase()),
+            ),
+        );
+        mockState.getKey.mockResolvedValue({ pending: ['account-2'] });
+        mockAccountUseCases.fullScan.mockResolvedValue({
+          account: mockAccount2,
+          transactionsToNotify: [],
+        });
+
+        await handler.route(request);
+
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount2);
+        expect(mockState.setKey).toHaveBeenCalledWith('rescanV1', {
+          pending: [],
+        });
+      });
+
+      it('does not scan when no pending account is selected, keeping the pending list', async () => {
+        (getSelectedAccounts as Mock).mockResolvedValue(['account-2']);
+        mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
+
+        await handler.route(request);
+
+        expect(mockAccountUseCases.fullScan).not.toHaveBeenCalled();
+        expect(mockState.setKey).not.toHaveBeenCalled();
+        expect(mockSnapClient.emitTrackingError).not.toHaveBeenCalled();
+      });
+
+      it('on first run, persists every account as pending but scans only a selected one', async () => {
+        (getSelectedAccounts as Mock).mockResolvedValue(['account-2']);
+        mockState.getKey.mockResolvedValue(undefined);
+        mockAccountUseCases.fullScan.mockResolvedValue({
+          account: mockAccount2,
+          transactionsToNotify: [],
+        });
+
+        await handler.route(request);
+
+        expect(mockState.setKey).toHaveBeenNthCalledWith(1, 'rescanV1', {
+          pending: ['account-1', 'account-2'],
+        });
+        expect(mockAccountUseCases.fullScan).toHaveBeenCalledWith(mockAccount2);
+        expect(mockState.setKey).toHaveBeenNthCalledWith(2, 'rescanV1', {
+          pending: ['account-1'],
+        });
+      });
+
+      describe('scan failures', () => {
+        beforeEach(() => {
+          mockState.getKey.mockResolvedValue({ pending: ['account-1'] });
+        });
+
+        const failWith = (error: Error): void => {
+          mockAccountUseCases.fullScan.mockRejectedValue(
+            new ExternalServiceError(
+              'Failed to perform initial full scan',
+              { account: 'account-1' },
+              error,
+            ),
+          );
+        };
+
+        it.each([
+          [
+            'a network failure',
+            createFetchPolicyError('Reqwest(Failed to fetch)', {
+              name: FetchPolicyErrorName.Network,
+            }),
+          ],
+          [
+            'an HTTP 504 response',
+            createFetchPolicyError('HttpResponse { status: 504 }', {
+              httpStatus: 504,
+            }),
+          ],
+          ['an open circuit', new BrokenCircuitError()],
+          ['a WASM panic', new Error('unreachable')],
+        ])('reports %s and keeps the account pending', async (_name, cause) => {
+          failWith(cause);
+
+          await handler.route(request);
+
+          expect(mockSnapClient.emitTrackingError).toHaveBeenCalledWith(
+            expect.objectContaining({
+              message: 'Account repair scan failed',
+              cause: expect.objectContaining({
+                cause,
+              }),
+            }),
+          );
+          expect(mockState.setKey).not.toHaveBeenCalledWith('rescanV1', {
+            pending: [],
+          });
+        });
       });
 
       it('reports a repair failure without shortening the pending list', async () => {
@@ -980,7 +1163,8 @@ describe('CronHandler', () => {
   describe('sync coalescing', () => {
     it('coalesces concurrent synchronizeAccounts calls into one run', async () => {
       (getSelectedAccounts as Mock).mockResolvedValue([]);
-      mockAccountUseCases.list.mockResolvedValue([]);
+      mockAccountUseCases.getWalletsByIds.mockResolvedValue([]);
+      mockAccountUseCases.listIds.mockResolvedValue([]);
 
       await Promise.all([
         handler.synchronizeAccounts(),
@@ -988,23 +1172,25 @@ describe('CronHandler', () => {
         handler.synchronizeAccounts(),
       ]);
 
-      expect(mockAccountUseCases.list).toHaveBeenCalledTimes(1);
+      expect(mockAccountUseCases.getWalletsByIds).toHaveBeenCalledTimes(1);
     });
 
     it('runs synchronizeAccounts again once the previous run has finished', async () => {
       (getSelectedAccounts as Mock).mockResolvedValue([]);
-      mockAccountUseCases.list.mockResolvedValue([]);
+      mockAccountUseCases.getWalletsByIds.mockResolvedValue([]);
+      mockAccountUseCases.listIds.mockResolvedValue([]);
 
       await handler.synchronizeAccounts();
       await handler.synchronizeAccounts();
 
-      expect(mockAccountUseCases.list).toHaveBeenCalledTimes(2);
+      expect(mockAccountUseCases.getWalletsByIds).toHaveBeenCalledTimes(2);
     });
 
     it('reports failures once for coalesced synchronizeAccounts callers', async () => {
       const mockAccount = mock<BitcoinAccount>({ id: 'account-1' });
       (getSelectedAccounts as Mock).mockResolvedValue(['account-1']);
-      mockAccountUseCases.list.mockResolvedValue([mockAccount]);
+      mockAccountUseCases.getWalletsByIds.mockResolvedValue([mockAccount]);
+      mockAccountUseCases.listIds.mockResolvedValue(['account-1']);
       mockAccountUseCases.synchronize.mockRejectedValue(
         new Error('sync failed'),
       );

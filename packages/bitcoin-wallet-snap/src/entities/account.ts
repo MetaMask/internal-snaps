@@ -295,6 +295,23 @@ export type BitcoinAccountRepository = {
   getByIds(ids: string[]): Promise<BitcoinAccount[]>;
 
   /**
+   * Get accounts by their ids, loading each BDK wallet in full. Unlike
+   * {@link getByIds}, never returns metadata-only accounts, so the results can
+   * be synchronized.
+   *
+   * @param ids - Account IDs.
+   * @returns the accounts that exist, in requested order
+   */
+  getWalletsByIds(ids: string[]): Promise<BitcoinAccount[]>;
+
+  /**
+   * Get the IDs of all accounts without loading their wallets.
+   *
+   * @returns the account IDs
+   */
+  getIds(): Promise<string[]>;
+
+  /**
    * Get an account by its derivation path.
    *
    * @param derivationPath - derivation path.

@@ -276,6 +276,30 @@ export class AccountUseCases {
   }
 
   /**
+   * Lists the IDs of all accounts without loading their wallets.
+   *
+   * @returns The account IDs.
+   */
+  async listIds(): Promise<string[]> {
+    this.#logger.debug('Listing account IDs');
+
+    return this.#repository.getIds();
+  }
+
+  /**
+   * Gets accounts by id with their wallets loaded, using one account-map read.
+   * Only the requested wallets are deserialized.
+   *
+   * @param ids - Account IDs.
+   * @returns Existing accounts in requested order.
+   */
+  async getWalletsByIds(ids: string[]): Promise<BitcoinAccount[]> {
+    this.#logger.debug('Fetching account wallets: %o', ids);
+
+    return this.#repository.getWalletsByIds(ids);
+  }
+
+  /**
    * Gets accounts by id using one account-map read.
    *
    * @param ids - Account IDs.
