@@ -30,11 +30,13 @@ import type { IouAssetBalance, MptAssetBalance } from './api';
  *   issuer approval is needed.
  * - `3` (`HolderOptedIn | IssuerAuthorized`) — opted in and issuer-authorized.
  */
+/* eslint-disable no-bitwise -- MPT holder status is a uint bitmask */
 export const MptHolderStatus = {
   Inactive: 0,
   HolderOptedIn: 1 << 0,
   IssuerAuthorized: 1 << 1,
 } as const;
+/* eslint-enable no-bitwise */
 
 export type MptHolderStatus =
   (typeof MptHolderStatus)[keyof typeof MptHolderStatus];
@@ -129,6 +131,7 @@ function formatIouAmount(amount: BigNumber): string {
 export function mptHolderStatusFromBalance(asset: MptAssetBalance): number {
   let status: number = MptHolderStatus.HolderOptedIn;
   if (asset.mptAuthorized === true) {
+    // eslint-disable-next-line no-bitwise -- combine HolderOptedIn with IssuerAuthorized
     status |= MptHolderStatus.IssuerAuthorized;
   }
   return status;

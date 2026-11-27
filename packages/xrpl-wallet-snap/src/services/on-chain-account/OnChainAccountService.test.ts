@@ -143,7 +143,10 @@ function trustline(): TrustLine {
   };
 }
 
-function mptMetadata() {
+function mptMetadata(): {
+  assetId: typeof mptAssetId;
+  units: { symbol: typeof issuanceId; decimals: number }[];
+}[] {
   return [
     {
       assetId: mptAssetId,
@@ -242,7 +245,7 @@ describe('OnChainAccountService', () => {
         KnownCaip2ChainId.Mainnet,
       );
 
-      expect(account.sequenceNumber).toStrictEqual('1');
+      expect(account.sequenceNumber).toBe('1');
       expect(fetchAccountTrustlines).toHaveBeenCalledWith({
         accountAddress: address,
         scope: KnownCaip2ChainId.Mainnet,
@@ -336,8 +339,8 @@ describe('OnChainAccountService', () => {
       );
       expect(fetchAccountTrustlines).not.toHaveBeenCalled();
       expect(fetchAccountMptokens).not.toHaveBeenCalled();
-      expect(account.sequenceNumber).toStrictEqual('1');
-      expect(account.nativeRawBalance.toFixed(0)).toStrictEqual('10000000');
+      expect(account.sequenceNumber).toBe('1');
+      expect(account.nativeRawBalance.toFixed(0)).toBe('10000000');
     });
 
     it('keeps lsfRequireDestTag from account_info', async () => {
@@ -414,7 +417,7 @@ describe('OnChainAccountService', () => {
         scope: KnownCaip2ChainId.Mainnet,
         assetIds: [mptAssetId],
       });
-      expect(mptDecimals(account, mptAssetId)).toStrictEqual(6);
+      expect(mptDecimals(account, mptAssetId)).toBe(6);
     });
 
     it.each([
@@ -569,7 +572,7 @@ describe('OnChainAccountService', () => {
       );
 
       expect(fetchAndPersistMptAssetMetadata).not.toHaveBeenCalled();
-      expect(mptDecimals(account, mptAssetId)).toStrictEqual(6);
+      expect(mptDecimals(account, mptAssetId)).toBe(6);
     });
   });
 });
