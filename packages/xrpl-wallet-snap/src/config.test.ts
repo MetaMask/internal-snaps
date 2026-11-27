@@ -57,7 +57,6 @@ const FULL_ENVIRONMENT = {
       accountMptokens: '9000',
       transaction: '6000',
       validatedLedgerIndex: '4000',
-      mptIssuances: '800000',
       accountTransactions: '7500',
     },
   },
@@ -312,7 +311,6 @@ describe('ConfigProvider', () => {
         accountMptokens: 9000,
         transaction: 6000,
         validatedLedgerIndex: 4000,
-        mptIssuances: 800000,
         accountTransactions: 7500,
       });
     });
@@ -335,7 +333,6 @@ describe('ConfigProvider', () => {
               accountMptokens: undefined,
               transaction: '',
               validatedLedgerIndex: undefined,
-              mptIssuances: '',
               accountTransactions: undefined,
             },
           },
@@ -356,7 +353,6 @@ describe('ConfigProvider', () => {
         accountMptokens: 10 * 1000,
         transaction: 10 * 1000,
         validatedLedgerIndex: 5 * 1000,
-        mptIssuances: 60 * 60 * 1000,
         accountTransactions: 10 * 1000,
       });
     });
