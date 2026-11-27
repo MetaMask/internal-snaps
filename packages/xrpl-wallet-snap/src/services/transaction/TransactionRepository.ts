@@ -128,7 +128,7 @@ export class TransactionRepository {
           lastScanTokens,
         )) {
           state[this.#lastScanTokensKey][accountId] = {
-            ...(allLastScanTokensByAccountId[accountId] ?? {}),
+            ...allLastScanTokensByAccountId[accountId],
             ...lastScanToken,
           };
         }

@@ -18,6 +18,8 @@ import {
   isXrplTransaction,
 } from './utils';
 
+type TransactionRawData = DraftTxJson | TxJson | XrplTransaction;
+
 /**
  * Snap-domain wrapper around unsigned or signed XRPL transaction JSON.
  *
@@ -29,12 +31,12 @@ export class Transaction {
 
   readonly #scope: KnownCaip2ChainId;
 
-  #rawData: DraftTxJson | TxJson | XrplTransaction;
+  #rawData: TransactionRawData;
 
   #innerTransactions: Transaction[] = [];
 
   constructor(
-    inner: DraftTxJson | TxJson | XrplTransaction,
+    inner: TransactionRawData,
     scope: KnownCaip2ChainId,
     {
       status,
@@ -71,7 +73,7 @@ export class Transaction {
    * @param raw - Filled or updated transaction JSON.
    * @returns This wrapper for chaining.
    */
-  withRaw(raw: DraftTxJson | TxJson | XrplTransaction): this {
+  withRaw(raw: TransactionRawData): this {
     this.#rawData = raw;
     this.refresh();
     return this;

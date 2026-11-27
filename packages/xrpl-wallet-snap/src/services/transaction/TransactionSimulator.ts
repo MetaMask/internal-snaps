@@ -209,7 +209,7 @@ export class TransactionSimulator {
 
     return transactions.reduce<SimulationState[]>(
       (stack, transaction) => {
-        const beforeState = stack[stack.length - 1];
+        const beforeState = stack.at(-1);
         if (beforeState === undefined) {
           throw new TransactionValidationException(
             'Simulation failed: missing state snapshot',

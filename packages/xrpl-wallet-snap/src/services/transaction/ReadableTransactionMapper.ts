@@ -87,6 +87,11 @@ const ADDRESS_KEYS = new Set([
   'Holder',
 ]);
 
+/**
+ * String values here are treated as XRP drops (`['native', display]`).
+ * Do not include `MaximumAmount` — that is a raw MPT unit string on
+ * `MPTokenIssuanceCreate`, not drops.
+ */
 const AMOUNT_KEYS = new Set([
   'Amount',
   'Amount2',
@@ -105,7 +110,6 @@ const AMOUNT_KEYS = new Set([
   'EPrice',
   'LPTokenOut',
   'LPTokenIn',
-  'MaximumAmount',
 ]);
 
 const ASSET_KEYS = new Set([
@@ -552,11 +556,7 @@ export class ReadableTransactionMapper {
     }
 
     if (COPYABLE_KEYS.has(xrplKey)) {
-      return this.field(
-        key,
-        typeof value === 'string' ? value : value,
-        FieldType.copyable,
-      );
+      return this.field(key, value, FieldType.copyable);
     }
 
     if (

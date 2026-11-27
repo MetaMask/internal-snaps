@@ -174,6 +174,36 @@ describe('ReadableTransactionMapper', () => {
     );
   });
 
+  it('maps MPTokenIssuanceCreate MaximumAmount as raw units, not as XRP', () => {
+    const transaction = new Transaction(
+      {
+        TransactionType: XrplTransactionType.MPTokenIssuanceCreate,
+        Account: sender,
+        Fee: '12',
+        Sequence: 1,
+        AssetScale: 6,
+        MaximumAmount: '1000000',
+      },
+      KnownCaip2ChainId.Mainnet,
+    );
+
+    const readable = mapper.map(transaction);
+    expect(readable.type).toStrictEqual(
+      XrplTransactionType.MPTokenIssuanceCreate,
+    );
+    expect(readable.params).toContainEqual({
+      key: 'maximumAmount',
+      value: '1000000',
+      type: FieldType.text,
+    });
+    expect(readable.params).not.toContainEqual(
+      expect.objectContaining({
+        key: 'maximumAmount',
+        value: ['native', expect.anything()],
+      }),
+    );
+  });
+
   it('maps Batch outer flags and recursive inners', () => {
     const transaction = new Transaction(
       {

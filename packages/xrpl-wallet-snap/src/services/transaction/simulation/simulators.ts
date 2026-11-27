@@ -242,7 +242,7 @@ export class PaymentSimulator implements TypedTransactionSimulator<Payment> {
     amount: BigNumber;
     issuer: string;
     issuerState: AccountState | undefined;
-    skipExceptions?: SimulationContext['skipExceptions'];
+    skipExceptions: SimulationContext['skipExceptions'];
   }): void {
     const {
       sender,
