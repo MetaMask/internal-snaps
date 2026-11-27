@@ -15,7 +15,7 @@ describe('Transaction.destinationTag', () => {
       KnownCaip2ChainId.Mainnet,
     );
 
-    expect(transaction.destinationTag).toStrictEqual(1234);
+    expect(transaction.destinationTag).toBe(1234);
   });
 
   it('returns undefined when the Payment omits DestinationTag', () => {

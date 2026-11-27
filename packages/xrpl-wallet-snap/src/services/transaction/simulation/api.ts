@@ -71,7 +71,7 @@ export type TypedTransactionSimulator<TransactionJson> = {
    * Checks the transaction against the current snapshot.
    *
    * @param ctx - Accounts and chain id.
-   * @param transaction - Payment or TrustSet JSON.
+   * @param transaction - Payment, TrustSet, or MPTokenAuthorize JSON.
    */
   validate(ctx: SimulationContext, transaction: TransactionJson): void;
 
@@ -79,7 +79,8 @@ export type TypedTransactionSimulator<TransactionJson> = {
    * Writes the transaction's balance changes into the snapshot.
    *
    * @param ctx - Accounts to update.
-   * @param transaction - Payment or TrustSet JSON that already passed {@link validate}.
+   * @param transaction - Payment, TrustSet, or MPTokenAuthorize JSON that already
+   * passed {@link validate}.
    */
   apply(ctx: SimulationContext, transaction: TransactionJson): void;
 };

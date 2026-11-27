@@ -45,7 +45,7 @@ describe('KeyringTransactionBuilder', () => {
       status: TransactionStatus.Unconfirmed,
       timestamp: 100,
     });
-    expect(transaction.to?.[0]?.address).toStrictEqual(
+    expect(transaction.to?.[0]?.address).toBe(
       'rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe',
     );
   });

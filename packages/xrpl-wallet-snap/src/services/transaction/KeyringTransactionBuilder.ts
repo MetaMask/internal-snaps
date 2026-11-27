@@ -4,6 +4,7 @@ import {
   TransactionType,
 } from '@metamask/keyring-api';
 import type { Transaction as KeyringTransaction } from '@metamask/keyring-api';
+import type { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip2ChainId } from '../../api';
 import type { KnownCaip19AssetIdOrSlip44Id } from '../../api/asset';
@@ -117,6 +118,14 @@ export type KeyringTransactionRequest =
   | {
       type: typeof KeyringTransactionType.ChangeTrustOptOut;
       request: ChangeTrustTransactionRequest;
+    }
+  | {
+      type: typeof KeyringTransactionType.ChangeMptOptIn;
+      request: ChangeMptOptTransactionRequest;
+    }
+  | {
+      type: typeof KeyringTransactionType.ChangeMptOptOut;
+      request: ChangeMptOptTransactionRequest;
     }
   | {
       type: typeof KeyringTransactionType.Send;
@@ -308,22 +317,29 @@ export class KeyringTransactionBuilder {
     const { txId, account, scope } = request;
     const status = request.status ?? TransactionStatus.Unconfirmed;
 
-    // if the request has from and to, it is a pending classic swap transaction
-    if ('from' in request) {
+    // Pending classic swap / bridge rows carry `from`/`to`; others carry `asset`.
+    if (Object.hasOwn(request, 'from')) {
+      const pendingTransfer = request as Extract<
+        PendingTransactionRequest,
+        { from: KeyringTransaction['from'] }
+      >;
       return this.#buildKeyringTransaction({
-        type: request.transactionType,
+        type: pendingTransfer.transactionType,
         id: txId,
         account,
         scope,
-        from: request.from,
-        to: request.to,
+        from: pendingTransfer.from,
+        to: pendingTransfer.to,
         status,
         timestamp,
-        fees: request.fees ?? [],
+        fees: pendingTransfer.fees ?? [],
       });
     }
 
-    const { asset } = request;
+    const { asset } = request as Extract<
+      PendingTransactionRequest,
+      { asset: { type: KnownCaip19AssetIdOrSlip44Id; symbol: string } }
+    >;
 
     return this.#buildKeyringTransaction({
       type: request.transactionType ?? TransactionType.Unknown,
@@ -476,7 +492,7 @@ export class KeyringTransactionBuilder {
    *
    * @param feeAmountInDrops - The fee amount in drops.
    * @param scope - The CAIP-2 chain ID.
-   * @returns The base fees for a transaction.
+   * @returns Keyring fee entries with `amount` in display XRP units.
    */
   getBaseFees(
     feeAmountInDrops: BigNumber,
@@ -488,7 +504,6 @@ export class KeyringTransactionBuilder {
         asset: {
           unit: NATIVE_ASSET_SYMBOL,
           type: getSlip44AssetId(scope),
-          // Fee is stored in drops (smallest XRP unit).
           amount: toDisplayBalance(feeAmountInDrops),
           fungible: true,
         },

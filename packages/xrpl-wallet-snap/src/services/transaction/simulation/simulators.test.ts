@@ -95,7 +95,7 @@ describe('PaymentSimulator IOU', () => {
     const balance = ctx.state.accounts
       .get(holder)
       ?.trustlines.get(assetId)?.balance;
-    expect(balance?.toString()).toStrictEqual('3.5');
+    expect(balance?.toString()).toBe('3.5');
   });
 
   it('still requires the holder trust line when paying the issuer', () => {
@@ -253,7 +253,7 @@ describe('MPTokenAuthorizeSimulator', () => {
 
     const holderState = ctx.state.accounts.get(holder);
     expect(holderState?.mptokens.has(mptAssetId)).toBe(true);
-    expect(holderState?.ownerCount).toStrictEqual(1);
+    expect(holderState?.ownerCount).toBe(1);
   });
 
   it('is a no-op apply when the holding already exists', () => {
@@ -268,14 +268,31 @@ describe('MPTokenAuthorizeSimulator', () => {
 
   it('rejects authorize when spendable XRP cannot cover the owner reserve', () => {
     const ctx = mptContext(false);
-    const holderState = ctx.state.accounts.get(holder);
-    if (holderState) {
-      holderState.nativeRawBalance = new BigNumber('1000000');
-      holderState.ownerCount = 0;
-    }
+    const holderState = ctx.state.accounts.get(holder) as NonNullable<
+      ReturnType<typeof ctx.state.accounts.get>
+    >;
+    holderState.nativeRawBalance = new BigNumber('1000000');
+    holderState.ownerCount = 0;
 
     expect(() => simulator.validate(ctx, authorizeTx())).toThrow(
       InsufficientBalanceToCoverBaseReserveException,
+    );
+  });
+
+  it('rejects unauthorize when spendable is zero but mptAmount remains', () => {
+    const ctx = mptContext(true, '0');
+    const holderState = ctx.state.accounts.get(holder) as NonNullable<
+      ReturnType<typeof ctx.state.accounts.get>
+    >;
+    holderState.mptokens.set(mptAssetId, {
+      balance: new BigNumber(0),
+      mptAmount: new BigNumber('1500000'),
+      lockedAmount: new BigNumber('500000'),
+      mptAuthorized: true,
+    });
+
+    expect(() => simulator.validate(ctx, authorizeTx(true))).toThrow(
+      RemoveMptWithNonZeroBalanceException,
     );
   });
 
@@ -288,7 +305,7 @@ describe('MPTokenAuthorizeSimulator', () => {
     expect(ctx.state.accounts.get(holder)?.mptokens.has(mptAssetId)).toBe(
       false,
     );
-    expect(ctx.state.accounts.get(holder)?.ownerCount).toStrictEqual(0);
+    expect(ctx.state.accounts.get(holder)?.ownerCount).toBe(0);
   });
 
   it('rejects unauthorize when the holding is missing', () => {

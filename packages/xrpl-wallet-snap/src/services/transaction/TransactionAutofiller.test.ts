@@ -55,7 +55,7 @@ describe('TransactionAutofiller', () => {
     );
 
     expect(filled).not.toHaveProperty('DeliverMax');
-    expect(filled.TransactionType).toStrictEqual('Payment');
+    expect(filled.TransactionType).toBe('Payment');
     const payment = filled as Extract<
       XrplTransaction,
       { TransactionType: 'Payment' }
@@ -99,8 +99,8 @@ describe('TransactionAutofiller', () => {
       },
     );
 
-    expect(filled.Fee).toStrictEqual('120');
-    expect(filled.Sequence).toStrictEqual(7);
+    expect(filled.Fee).toBe('120');
+    expect(filled.Sequence).toBe(7);
     expect(filled.LastLedgerSequence).toBeUndefined();
     expect(networkService.fetchAccountInfo).not.toHaveBeenCalled();
     expect(networkService.fetchValidatedLedgerIndex).not.toHaveBeenCalled();
@@ -119,9 +119,9 @@ describe('TransactionAutofiller', () => {
       KnownCaip2ChainId.Mainnet,
     );
 
-    expect(filled.Sequence).toStrictEqual(10);
-    expect(filled.Fee).toStrictEqual('120');
-    expect(filled.LastLedgerSequence).toStrictEqual(1020);
+    expect(filled.Sequence).toBe(10);
+    expect(filled.Fee).toBe('120');
+    expect(filled.LastLedgerSequence).toBe(1020);
     expect(networkService.fetchAccountInfo).toHaveBeenCalledTimes(1);
     expect(networkService.fetchValidatedLedgerIndex).toHaveBeenCalledTimes(1);
     expect(networkService.getBaseFee).toHaveBeenCalledTimes(1);

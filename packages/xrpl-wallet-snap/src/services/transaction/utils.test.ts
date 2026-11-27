@@ -137,8 +137,8 @@ describe('isDestinationRequiresTag', () => {
   });
 
   it('returns false when the destination was not preloaded', () => {
-    expect(
-      isDestinationRequiresTag(destination, [funded(issuer, true)]),
-    ).toStrictEqual(false);
+    expect(isDestinationRequiresTag(destination, [funded(issuer, true)])).toBe(
+      false,
+    );
   });
 });

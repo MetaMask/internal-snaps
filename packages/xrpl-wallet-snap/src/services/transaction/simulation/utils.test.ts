@@ -55,17 +55,13 @@ describe('simulation utils', () => {
   });
 
   it('subtracts the 1 XRP base reserve from spendable drops', () => {
-    expect(getSpendable(account('10000000')).toFixed(0)).toStrictEqual(
-      '9000000',
-    );
+    expect(getSpendable(account('10000000')).toFixed(0)).toBe('9000000');
   });
 
   it('returns a preloaded account and rejects a missing one', () => {
     const state = { accounts: new Map([['rSender', account('1')]]) };
 
-    expect(
-      getAccount(state, 'rSender').nativeRawBalance.toFixed(0),
-    ).toStrictEqual('1');
+    expect(getAccount(state, 'rSender').nativeRawBalance.toFixed(0)).toBe('1');
     expect(() => getAccount(state, 'rMissing')).toThrow(
       TransactionValidationException,
     );
@@ -74,8 +70,8 @@ describe('simulation utils', () => {
   it('creates an account funded by the payment amount', () => {
     const created = createdAccount(new BigNumber('1000000'));
 
-    expect(created.nativeRawBalance.toFixed(0)).toStrictEqual('1000000');
-    expect(created.trustlines.size).toStrictEqual(0);
+    expect(created.nativeRawBalance.toFixed(0)).toBe('1000000');
+    expect(created.trustlines.size).toBe(0);
   });
 
   it('detects an issued amount', () => {

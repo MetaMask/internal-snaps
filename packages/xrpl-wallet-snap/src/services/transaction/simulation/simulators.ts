@@ -286,6 +286,12 @@ export class PaymentSimulator implements TypedTransactionSimulator<Payment> {
 
     this.#assertTrustline(receiverLine, assetId, destination);
 
+    // Self-payment debits and credits the same line and nets to zero in apply.
+    // Comparing balance + amount to the limit would false-fail.
+    if (destination === senderId) {
+      return;
+    }
+
     const delivered = receiverLine.balance.plus(amount);
     if (
       delivered.isGreaterThan(receiverLine.limit) &&
@@ -343,8 +349,8 @@ export class PaymentSimulator implements TypedTransactionSimulator<Payment> {
         `Issuer ${issuer} could not be loaded for global-freeze checks on ${assetId}`,
       );
     }
-    if (issuerState.globalFreeze === true) {
-      throw new TrustlineFrozenException(assetId, senderId);
+    if (issuerState.globalFreeze) {
+      throw new TrustlineFrozenException(assetId, issuer);
     }
   }
 
@@ -518,9 +524,11 @@ export class MPTokenAuthorizeSimulator implements TypedTransactionSimulator<MPTo
       if (holding === undefined) {
         throw new MptHoldingNotFoundException(assetId, transaction.Account);
       }
-      if (!holding.balance.isZero()) {
+      // Spendable `balance` can be 0 while tokens remain locked / frozen.
+      // Opt-out requires the holder object to be empty (mptAmount and locked).
+      if (!holding.mptAmount.isZero() || !holding.lockedAmount.isZero()) {
         throw new RemoveMptWithNonZeroBalanceException(
-          `MPT ${assetId} still holds ${holding.balance.toString()}`,
+          `MPT ${assetId} still holds ${holding.mptAmount.toString()} (locked ${holding.lockedAmount.toString()})`,
         );
       }
       return;

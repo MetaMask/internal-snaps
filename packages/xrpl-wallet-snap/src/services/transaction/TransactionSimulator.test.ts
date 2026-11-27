@@ -118,8 +118,12 @@ function createSimulatorTest({
   fetchDepositAuthorized: ReturnType<typeof vi.fn>;
 } {
   const fetchDepositAuthorized = vi.fn().mockResolvedValue(depositAuthorized);
-  const logger = {
-    withPrefix() {
+  type TestLogger = {
+    withPrefix: () => TestLogger;
+    debug: ReturnType<typeof vi.fn>;
+  };
+  const logger: TestLogger = {
+    withPrefix(): TestLogger {
       return this;
     },
     debug: vi.fn(),
@@ -138,7 +142,9 @@ describe('TransactionSimulator', () => {
     it.each([
       {
         name: 'native payment that does not cover the amount after the fee',
-        run: (simulator: TransactionSimulator) =>
+        run: (
+          simulator: TransactionSimulator,
+        ): ReturnType<TransactionSimulator['simulate']> =>
           simulator.simulate(
             createPayment('1000000'),
             createSnapshot({
@@ -147,30 +153,39 @@ describe('TransactionSimulator', () => {
             }),
           ),
         expected: InsufficientBalanceException,
+        depositAuthorized: true,
       },
       {
         name: 'unfunded destination when the XRP amount is below the account reserve',
-        run: (simulator: TransactionSimulator) =>
+        run: (
+          simulator: TransactionSimulator,
+        ): ReturnType<TransactionSimulator['simulate']> =>
           simulator.simulate(
             createPayment('1000'),
             createSnapshot({ accountId: sender }),
             [],
           ),
         expected: InvalidAmountForCreateAccountException,
+        depositAuthorized: true,
       },
       {
         name: 'missing destination tag when the destination requires one',
-        run: (simulator: TransactionSimulator) =>
+        run: (
+          simulator: TransactionSimulator,
+        ): ReturnType<TransactionSimulator['simulate']> =>
           simulator.simulate(
             createPayment('1000000'),
             createSnapshot({ accountId: sender }),
             [createFundedDestination({ lsfRequireDestTag: true })],
           ),
         expected: RequiresDestinationTagException,
+        depositAuthorized: true,
       },
       {
         name: 'unauthorized deposit',
-        run: (simulator: TransactionSimulator) =>
+        run: (
+          simulator: TransactionSimulator,
+        ): ReturnType<TransactionSimulator['simulate']> =>
           simulator.simulate(
             createPayment('1000000'),
             createSnapshot({ accountId: sender }),
@@ -181,7 +196,9 @@ describe('TransactionSimulator', () => {
       },
       {
         name: 'IOU payment that would exceed the destination trust-line limit',
-        run: (simulator: TransactionSimulator) =>
+        run: (
+          simulator: TransactionSimulator,
+        ): ReturnType<TransactionSimulator['simulate']> =>
           simulator.simulate(
             createPayment({ currency: 'USD', issuer, value: '20' }),
             createSnapshot({
@@ -197,10 +214,13 @@ describe('TransactionSimulator', () => {
             ],
           ),
         expected: TrustlineExceedLimitException,
+        depositAuthorized: true,
       },
       {
         name: 'IOU payment to an unactivated destination',
-        run: (simulator: TransactionSimulator) =>
+        run: (
+          simulator: TransactionSimulator,
+        ): ReturnType<TransactionSimulator['simulate']> =>
           simulator.simulate(
             createPayment({ currency: 'USD', issuer, value: '20' }),
             createSnapshot({
@@ -210,10 +230,13 @@ describe('TransactionSimulator', () => {
             [],
           ),
         expected: InvalidAssetForCreateAccountException,
+        depositAuthorized: true,
       },
       {
         name: 'removing a trust line that still has a balance',
-        run: (simulator: TransactionSimulator) =>
+        run: (
+          simulator: TransactionSimulator,
+        ): ReturnType<TransactionSimulator['simulate']> =>
           simulator.simulate(
             createTrustSet('0'),
             createSnapshot({
@@ -222,19 +245,25 @@ describe('TransactionSimulator', () => {
             }),
           ),
         expected: RemoveTrustlineWithNonZeroBalanceException,
+        depositAuthorized: true,
       },
       {
         name: 'removing a trust line that does not exist',
-        run: (simulator: TransactionSimulator) =>
+        run: (
+          simulator: TransactionSimulator,
+        ): ReturnType<TransactionSimulator['simulate']> =>
           simulator.simulate(
             createTrustSet('0'),
             createSnapshot({ accountId: sender }),
           ),
         expected: TrustlineNotFoundException,
+        depositAuthorized: true,
       },
       {
         name: 'new trust line when the sender cannot cover the owner reserve',
-        run: (simulator: TransactionSimulator) =>
+        run: (
+          simulator: TransactionSimulator,
+        ): ReturnType<TransactionSimulator['simulate']> =>
           simulator.simulate(
             createTrustSet('100'),
             createSnapshot({
@@ -243,10 +272,11 @@ describe('TransactionSimulator', () => {
             }),
           ),
         expected: InsufficientBalanceToCoverBaseReserveException,
+        depositAuthorized: true,
       },
     ])('rejects $name', async ({ run, expected, depositAuthorized }) => {
       const { simulator } = createSimulatorTest({
-        depositAuthorized: depositAuthorized ?? true,
+        depositAuthorized,
       });
 
       await expect(run(simulator)).rejects.toBeInstanceOf(expected);
