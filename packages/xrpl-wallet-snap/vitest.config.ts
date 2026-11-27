@@ -43,10 +43,10 @@ export default mergeConfig(
           'src/**/context.ts',
         ],
         thresholds: {
-          branches: 69,
+          branches: 70,
           functions: 66.66,
-          lines: 75.34,
-          statements: 75.34,
+          lines: 75.62,
+          statements: 75.62,
         },
       },
     },

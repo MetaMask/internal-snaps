@@ -133,7 +133,7 @@ export class WalletService {
           : [`slip10:${index}`];
       const derivedNode = await node.derive(pathSegment);
 
-      return await this.#xrplFromSlip10Keys(derivedNode, curve);
+      return this.#xrplFromSlip10Keys(derivedNode, curve);
     } catch (error: unknown) {
       return rethrowIfInstanceElseThrow(
         error,
@@ -148,7 +148,6 @@ export class WalletService {
     index: number | undefined,
     curve: XrplCurve,
   ): Promise<JsonSLIP10Node> {
-    // getBip32Entropy already wrapped in an XRPL snap exception
     return getBip32Entropy({
       entropySource,
       path: getDerivationPath(index, curve).split('/'),
@@ -180,10 +179,7 @@ export class WalletService {
    * @param curve - Signing curve used to choose XRPL key prefixes.
    * @returns Wallet with XRPL-prefixed private/public keys.
    */
-  async #xrplFromSlip10Keys(
-    node: SLIP10Node,
-    curve: XrplCurve,
-  ): Promise<Wallet> {
+  #xrplFromSlip10Keys(node: SLIP10Node, curve: XrplCurve): Promise<Wallet> {
     try {
       if (curve === XRPL_ED25519_CURVE) {
         return this.#ed25519FromSlip10Keys(node);
