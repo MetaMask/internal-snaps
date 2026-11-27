@@ -11,6 +11,7 @@ export const PROVIDED_GLOBALS = [
   'screen',
   'localStorage',
   'XMLHttpRequest',
+  'fetch',
   'CustomEvent',
   'dispatchEvent',
   'addEventListener',

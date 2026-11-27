@@ -89,7 +89,9 @@ describe('Braze Web SDK in the snap globals', () => {
     resetRuntime();
     resetStorage();
     for (const name of PROVIDED_GLOBALS) {
-      vi.stubGlobal(name, shims[name]);
+      if (name !== 'fetch') {
+        vi.stubGlobal(name, shims[name]);
+      }
     }
 
     requests = [];

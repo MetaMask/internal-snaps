@@ -4,6 +4,7 @@ import { REQUEST_TIMEOUT_MS } from './constants';
 import {
   GuardedXMLHttpRequest,
   abortRequests,
+  blockedFetch,
   drainRequests,
   hasRequestFailure,
   resetRequestFailures,
@@ -273,5 +274,16 @@ describe('drainRequests', () => {
 
   it('resolves immediately when nothing is running', async () => {
     expect(await drainRequests()).toBeUndefined();
+  });
+});
+
+describe('blockedFetch', () => {
+  it('rejects direct fetch calls without calling global fetch', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    await expect(blockedFetch('https://evil.example/')).rejects.toThrow(
+      TypeError,
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

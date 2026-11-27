@@ -1,4 +1,7 @@
-export { GuardedXMLHttpRequest as XMLHttpRequest } from '../network';
+export {
+  GuardedXMLHttpRequest as XMLHttpRequest,
+  blockedFetch as fetch,
+} from '../network';
 export { storageShim as localStorage } from '../storage';
 export {
   CustomEventShim as CustomEvent,

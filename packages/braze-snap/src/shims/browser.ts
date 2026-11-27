@@ -1,4 +1,4 @@
-import { GuardedXMLHttpRequest } from '../network';
+import { GuardedXMLHttpRequest, blockedFetch } from '../network';
 
 const noop = (): undefined => undefined;
 
@@ -116,6 +116,7 @@ export const windowShim = Object.freeze({
   dispatchEvent: dispatchEventShim,
   CustomEvent: CustomEventShim,
   XMLHttpRequest: GuardedXMLHttpRequest,
+  fetch: blockedFetch,
   crypto: Object.freeze({
     getRandomValues: <Type extends ArrayBufferView | null>(array: Type): Type =>
       globalThis.crypto.getRandomValues(array),

@@ -1,4 +1,4 @@
-import { GuardedXMLHttpRequest } from '../network';
+import { GuardedXMLHttpRequest, blockedFetch } from '../network';
 import {
   CustomEventShim,
   addEventListenerShim,
@@ -86,8 +86,13 @@ describe('browser shims', () => {
     expect(new CustomEventShim('braze').detail).toBeUndefined();
   });
 
-  it('exposes the guarded XMLHttpRequest on window', () => {
+  it('exposes the guarded XMLHttpRequest and blocked fetch on window', async () => {
+    expect(PROVIDED_GLOBALS).toContain('fetch');
     expect(windowShim.XMLHttpRequest).toBe(GuardedXMLHttpRequest);
+    expect(windowShim.fetch).toBe(blockedFetch);
+    await expect(windowShim.fetch('https://example.com/')).rejects.toThrow(
+      TypeError,
+    );
   });
 
   it('forwards randomness, encoding, and timers to the snap globals', () => {

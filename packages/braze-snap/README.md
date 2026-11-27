@@ -16,18 +16,18 @@ When `language` is given, it becomes the user's language in Braze. The snap skip
 
 ```ts
 const { flushed } = await snapController.handleRequest({
-  snapId: 'npm:@metamask/braze-snap',
-  origin: 'metamask',
-  handler: 'onClientRequest',
+  snapId: "npm:@metamask/braze-snap",
+  origin: "metamask",
+  handler: "onClientRequest",
   request: {
-    method: 'syncUser',
+    method: "syncUser",
     params: {
-      profileId: '<canonical profile ID>',
-      language: 'fr',
+      profileId: "<canonical profile ID>",
+      language: "fr",
       config: {
-        apiKey: '<Braze Web SDK API key>',
-        endpoint: 'sdk.iad-01.braze.com',
-        appVersion: '13.0.0',
+        apiKey: "<Braze Web SDK API key>",
+        endpoint: "sdk.iad-01.braze.com",
+        appVersion: "13.0.0",
         enableLogging: false,
       },
     },
@@ -61,23 +61,23 @@ Each request runs in the same steps:
 
 Requests never interleave. Because the snap runtime clears timers and cancels requests once a request ends, nothing the SDK schedules in the background runs between requests.
 
-The SDK expects browser globals. The bundler replaces every reference to `window`, `document`, `navigator`, `location`, `screen`, `localStorage`, `XMLHttpRequest`, `CustomEvent`, `dispatchEvent`, `addEventListener`, and `removeEventListener` with the shims in [`src/shims`](./src/shims/globals.ts).
+The SDK expects browser globals. The bundler replaces every reference to `window`, `document`, `navigator`, `location`, `screen`, `localStorage`, `XMLHttpRequest`, `fetch`, `CustomEvent`, `dispatchEvent`, `addEventListener`, and `removeEventListener` with the shims in [`src/shims`](./src/shims/globals.ts).
 
 ## Security model
 
 The snap treats the SDK and the responses from Braze as untrusted.
 
-| Concern                                 | Mitigation                                                                                                                                                                                                 |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The SDK reads wallet data               | The SDK only sees the profile ID, the language, and the config passed in each request. The snap has no permission besides network access and its own state.                                                |
-| The SDK writes to the DOM               | There is no DOM. `document` only resolves URLs, has no cookies, and returns inert element stubs for non-anchor tags. The SDK is initialized without Font Awesome and without user-supplied JavaScript.     |
-| The SDK sends data elsewhere            | `fetch` is only reachable through a guarded `XMLHttpRequest`. It only sends `POST` requests to `https://<endpoint>/api/v3/data/`, with a 20 second timeout, without credentials, redirects, or a referrer. |
-| A Braze response is unexpected          | Responses are only parsed by the SDK, inside the sandbox.                                                                                                                                                  |
-| The SDK writes storage often or a lot   | The SDK writes to memory. The snap persists the `ab.storage.*` keys, except the in-app message triggers MetaMask does not show, alongside `appliedLanguage`, once per request, only when they changed.     |
-| The SDK keeps running in the background | Network access only exists during a request, and requests still running when it ends are aborted. The client stops idle snaps.                                                                             |
-| Another dapp or snap calls the snap     | The snap only exports `onClientRequest` and has no `endowment:rpc` permission, so MetaMask blocks all non-client origins.                                                                                  |
-| The client sends unexpected params      | Params are validated against structs. The endpoint must be a bare host, so the config cannot inject a path or credentials.                                                                                 |
-| Several extension pages run the SDK     | Only the background calls the snap, and the snap serializes requests, so a single SDK instance runs.                                                                                                       |
+| Concern                                 | Mitigation                                                                                                                                                                                                                              |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The SDK reads wallet data               | The SDK only sees the profile ID, the language, and the config passed in each request. The snap has no permission besides network access and its own state.                                                                             |
+| The SDK writes to the DOM               | There is no DOM. `document` only resolves URLs, has no cookies, and returns inert element stubs for non-anchor tags. The SDK is initialized without Font Awesome and without user-supplied JavaScript.                                  |
+| The SDK sends data elsewhere            | Free `fetch` and `window.fetch` are replaced with a blocked shim, and `GuardedXMLHttpRequest` only sends `POST` requests to `https://<endpoint>/api/v3/data/`, with a 20 second timeout, without credentials, redirects, or a referrer. |
+| A Braze response is unexpected          | Responses are only parsed by the SDK, inside the sandbox.                                                                                                                                                                               |
+| The SDK writes storage often or a lot   | The SDK writes to memory. The snap persists the `ab.storage.*` keys, except the in-app message triggers MetaMask does not show, alongside `appliedLanguage`, once per request, only when they changed.                                  |
+| The SDK keeps running in the background | Network access only exists during a request, and requests still running when it ends are aborted. The client stops idle snaps.                                                                                                          |
+| Another dapp or snap calls the snap     | The snap only exports `onClientRequest` and has no `endowment:rpc` permission, so MetaMask blocks all non-client origins.                                                                                                               |
+| The client sends unexpected params      | Params are validated against structs. The endpoint must be a bare host, so the config cannot inject a path or credentials.                                                                                                              |
+| Several extension pages run the SDK     | Only the background calls the snap, and the snap serializes requests, so a single SDK instance runs.                                                                                                                                    |
 
 The SDK storage holds the Braze device ID, user ID (the canonical profile ID), session, and the device time zone. The snap adds the last language it set for the user. It is unencrypted so persisting Braze state does not require the wallet's encryption key or trigger an unlock prompt.
 

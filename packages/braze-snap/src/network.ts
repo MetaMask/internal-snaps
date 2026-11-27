@@ -9,6 +9,18 @@ const pendingRequests = new Set<Promise<void>>();
 let allowedRequestFailed = false;
 
 /**
+ * Blocked `fetch` replacement exposed to the SDK and browser shims so free
+ * `fetch` and `window.fetch` calls fail instead of bypassing
+ * {@link GuardedXMLHttpRequest}.
+ *
+ * @returns A rejected promise.
+ */
+export const blockedFetch: typeof globalThis.fetch = async () =>
+  Promise.reject(
+    new TypeError('Direct fetch is disabled; use XMLHttpRequest.'),
+  );
+
+/**
  * Reset the per-request allowed-network failure tracker.
  */
 export function resetRequestFailures(): void {
