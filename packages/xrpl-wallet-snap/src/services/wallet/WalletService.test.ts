@@ -1,5 +1,5 @@
 import type { JsonSLIP10Node } from '@metamask/key-tree';
-import { SLIP10Node } from '@metamask/key-tree';
+import { mnemonicPhraseToBytes, SLIP10Node } from '@metamask/key-tree';
 import * as SnapUtils from '@metamask/snap-networks-utils';
 import type { MockInstance } from 'vitest';
 import { Wallet } from 'xrpl';
@@ -10,6 +10,7 @@ import {
   createBip44XrplWallet,
   createEd25519XrplWallet,
   createJsonSlip10NodeFromWallet,
+  TEST_MNEMONIC,
 } from './__mocks__/wallet.fixtures';
 import { KeyDerivationException } from './exceptions';
 import { getDerivationPath } from './utils';
@@ -204,6 +205,35 @@ describe('WalletService', () => {
   });
 
   describe('resolveWallet', () => {
+    it('matches Wallet.fromMnemonic when deriving from a real SLIP-10 mnemonic node', async () => {
+      // Real key-tree nodes expose 65-byte uncompressed secp256k1 public keys;
+      // fixtures use compressed keys and mock fromJSON/derive elsewhere.
+      const changeNode = await SLIP10Node.fromDerivationPath({
+        curve: XRPL_SECP_CURVE,
+        derivationPath: [
+          mnemonicPhraseToBytes(TEST_MNEMONIC),
+          `slip10:44'`,
+          `slip10:144'`,
+          `slip10:0'`,
+          `slip10:0`,
+        ],
+      });
+      const { service } = createWalletServiceTest({
+        jsonNode: changeNode.toJSON(),
+      });
+
+      const wallet = await service.resolveWallet({
+        index: 0,
+        entropySource: 'entropy-source-1',
+      });
+
+      const expected = Wallet.fromMnemonic(TEST_MNEMONIC, {
+        derivationPath: `m/44'/144'/0'/0/0`,
+      });
+      expect(wallet.address).toStrictEqual(expected.classicAddress);
+      expect(wallet.secret).toStrictEqual(expected.privateKey);
+    });
+
     it('returns a wallet whose address and secret match the derived keypair', async () => {
       const bip44 = createBip44XrplWallet(0);
       const { service } = createWalletServiceTest();
