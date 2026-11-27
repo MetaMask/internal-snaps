@@ -4,7 +4,7 @@ import type { Logger } from '@metamask/snap-networks-utils';
 import { InvalidParamsError } from '@metamask/snaps-sdk';
 
 import type { XrplAddress, KnownCaip2ChainId } from '../../api';
-import { KEYRING_ACCOUNT_TYPE } from '../../constants';
+import { KEYRING_ACCOUNT_TYPE, XRPL_SECP_CURVE } from '../../constants';
 import { batchesAll, getSnapProvider } from '../../utils';
 import { getSupportedScopes } from '../../utils/scopes';
 import type { Wallet, WalletService } from '../wallet';
@@ -113,6 +113,8 @@ export class AccountService {
     toIndex: number;
     walletResolver: WalletResolver | Promise<WalletResolver>;
   }): Promise<XrplKeyringAccount[]> {
+    // TODO: this may have to change if we allow multiple curves.
+    const curve = XRPL_SECP_CURVE;
     const { fromIndex, toIndex, entropySource } = options;
 
     const [accounts, walletResolver] = await Promise.all([
@@ -120,15 +122,18 @@ export class AccountService {
       Promise.resolve(options.walletResolver),
     ]);
 
-    // 1. Index existing accounts in range by derivation index
-    const existingAccountsByIndex = new Map<number, XrplKeyringAccount>();
+    // 1. Index existing accounts in range by derivation path (HD slot already filled?).
+    const existingAccountsByDerivationPath = new Map<
+      XrplDerivationPath,
+      XrplKeyringAccount
+    >();
     for (const account of accounts) {
       if (
         account.entropySource === entropySource &&
         account.index >= fromIndex &&
         account.index <= toIndex
       ) {
-        existingAccountsByIndex.set(account.index, account);
+        existingAccountsByDerivationPath.set(account.derivationPath, account);
       }
     }
 
@@ -144,29 +149,26 @@ export class AccountService {
       rangeIndices,
       BATCH_DERIVATION_SIZE,
       async (index: number) => {
-        let account = existingAccountsByIndex.get(index);
-        if (account === undefined) {
-          const wallet = await walletResolver(index);
-          account = this.#toXrplKeyringAccount({
-            entropySource,
-            derivationPath: getDerivationPath(index),
-            index,
-            address: wallet.address,
-          });
+        const derivationPath = getDerivationPath(index, curve);
+        const existing = existingAccountsByDerivationPath.get(derivationPath);
+        if (existing !== undefined) {
+          return existing;
         }
-        return account;
+        const wallet = await walletResolver(index);
+        return this.#toXrplKeyringAccount({
+          entropySource,
+          derivationPath,
+          index,
+          address: wallet.address,
+        });
       },
     );
 
-    const createdAccounts = returnAccounts.filter(
-      (account: XrplKeyringAccount) =>
-        !existingAccountsByIndex.has(account.index),
+    // 3. Persist; address reconcile collapses concurrent creates to one id.
+    // Returns canonical accounts in the same order as `returnAccounts`.
+    return await this.#accountsRepository.saveManyAndReconciledByAddress(
+      returnAccounts,
     );
-
-    // 4. Save all new accounts
-    await this.#accountsRepository.saveMany(createdAccounts);
-
-    return returnAccounts;
   }
 
   /**

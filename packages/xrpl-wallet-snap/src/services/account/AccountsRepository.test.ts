@@ -172,28 +172,77 @@ describe('AccountsRepository', () => {
     });
   });
 
-  describe('saveMany', () => {
+  describe('saveManyAndReconciledByAddress', () => {
     it('persists multiple accounts', async () => {
       const repository = new AccountsRepository(createState());
       const accounts = generateMockXrplKeyringAccounts(2, 'entropy-source-1');
 
-      await repository.saveMany(accounts);
+      const result = await repository.saveManyAndReconciledByAddress(accounts);
 
+      expect(result).toStrictEqual(accounts);
       expect(await repository.getAll()).toStrictEqual(
         expect.arrayContaining(accounts),
       );
       expect(await repository.getAll()).toHaveLength(2);
     });
 
-    it('is a no-op for an empty list', async () => {
+    it('returns an empty list for an empty input without updating state', async () => {
       const state = createState();
       const updateSpy = vi.spyOn(state, 'update');
       const repository = new AccountsRepository(state);
 
-      await repository.saveMany([]);
+      const result = await repository.saveManyAndReconciledByAddress([]);
 
+      expect(result).toStrictEqual([]);
       expect(updateSpy).not.toHaveBeenCalled();
       expect(await repository.getAll()).toStrictEqual([]);
+    });
+
+    it('reuses an existing account with the same address and does not write a second id', async () => {
+      const [existing] = generateMockXrplKeyringAccounts(
+        1,
+        'entropy-source-1',
+      ) as [XrplKeyringAccount];
+      const repository = new AccountsRepository(
+        createState({ [existing.id]: existing }),
+      );
+      const duplicate = generateXrplKeyringAccount(
+        globalThis.crypto.randomUUID(),
+        existing.address,
+        'entropy-source-1',
+        existing.index,
+      );
+
+      const result = await repository.saveManyAndReconciledByAddress([
+        duplicate,
+      ]);
+
+      expect(result).toStrictEqual([existing]);
+      expect(await repository.getAll()).toStrictEqual([existing]);
+    });
+
+    it('collapses duplicate addresses within the same batch to one write', async () => {
+      const repository = new AccountsRepository(createState());
+      const first = generateXrplKeyringAccount(
+        globalThis.crypto.randomUUID(),
+        'rHsMGQEkVNJmpGWs8XUBoTBiAAbwxZN5v3',
+        'entropy-source-1',
+        0,
+      );
+      const second = generateXrplKeyringAccount(
+        globalThis.crypto.randomUUID(),
+        first.address,
+        'entropy-source-1',
+        0,
+      );
+
+      const result = await repository.saveManyAndReconciledByAddress([
+        first,
+        second,
+      ]);
+
+      expect(result).toStrictEqual([first, first]);
+      expect(await repository.getAll()).toStrictEqual([first]);
     });
   });
 

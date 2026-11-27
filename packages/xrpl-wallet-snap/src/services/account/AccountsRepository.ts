@@ -94,26 +94,54 @@ export class AccountsRepository {
   }
 
   /**
-   * Persists multiple accounts in keyring state.
+   * Persists multiple accounts in keyring state, reconciling by address.
+   *
+   * Inside the atomic state update, if an account with the same address already
+   * exists (including earlier entries in this batch), that existing account is
+   * reused and the new id is not written. This prevents concurrent creates of
+   * the same address from producing duplicate IDs.
    *
    * @param accounts - The accounts to create.
-   * @returns A Promise that resolves when the accounts have been written.
+   * @returns The canonical accounts in input order (existing id when reconciled).
    */
-  async saveMany(accounts: XrplKeyringAccount[]): Promise<void> {
+  async saveManyAndReconciledByAddress(
+    accounts: XrplKeyringAccount[],
+  ): Promise<XrplKeyringAccount[]> {
     if (accounts.length === 0) {
-      return;
+      return [];
     }
+
+    const resolved: XrplKeyringAccount[] = [];
 
     await this.#state.update((state) => {
       const newState = cloneDeep(state);
       if (!newState[this.#storageKey]) {
         newState[this.#storageKey] = {};
       }
+
+      const accountsByAddress = new Map<string, XrplKeyringAccount>(
+        Object.values(newState[this.#storageKey]).map((account) => [
+          account.address,
+          account,
+        ]),
+      );
+
       for (const account of accounts) {
+        const existing = accountsByAddress.get(account.address);
+        if (existing !== undefined) {
+          resolved.push(existing);
+          continue;
+        }
+
         newState[this.#storageKey][account.id] = account;
+        accountsByAddress.set(account.address, account);
+        resolved.push(account);
       }
+
       return newState;
     });
+
+    return resolved;
   }
 
   /**

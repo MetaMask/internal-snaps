@@ -7,6 +7,7 @@ import type { Wallet } from '../wallet';
 import { WalletService } from '../wallet';
 import {
   generateMockXrplKeyringAccounts,
+  generateXrplKeyringAccount,
   mockAccountService,
 } from './__mocks__/account.fixtures';
 import type { AccountService } from './AccountService';
@@ -26,7 +27,9 @@ describe('AccountService', () => {
 
   type AccountsRepositorySpies = {
     saveSpy: Mock<AccountsRepository['save']>;
-    saveManySpy: Mock<AccountsRepository['saveMany']>;
+    saveManyAndReconciledByAddressSpy: Mock<
+      AccountsRepository['saveManyAndReconciledByAddress']
+    >;
     deleteSpy: Mock<AccountsRepository['delete']>;
     getAllSpy: Mock<AccountsRepository['getAll']>;
     findByIdSpy: Mock<AccountsRepository['findById']>;
@@ -37,7 +40,10 @@ describe('AccountService', () => {
   const getAccountsRepositorySpies = (): AccountsRepositorySpies => {
     return {
       saveSpy: vi.spyOn(AccountsRepository.prototype, 'save'),
-      saveManySpy: vi.spyOn(AccountsRepository.prototype, 'saveMany'),
+      saveManyAndReconciledByAddressSpy: vi.spyOn(
+        AccountsRepository.prototype,
+        'saveManyAndReconciledByAddress',
+      ),
       deleteSpy: vi.spyOn(AccountsRepository.prototype, 'delete'),
       getAllSpy: vi.spyOn(AccountsRepository.prototype, 'getAll'),
       findByIdSpy: vi.spyOn(AccountsRepository.prototype, 'findById'),
@@ -58,13 +64,17 @@ describe('AccountService', () => {
   });
 
   describe('batchCreate', () => {
-    it('derives, persists in range order, and calls saveMany once', async () => {
+    it('derives, persists in range order, and calls saveManyAndReconciledByAddress once', async () => {
       const entropySource = 'entropy-source-default';
       const walletResolver = vi.fn(
         async (index: number) => ({ address: `address-${index}` }) as Wallet,
       );
-      const { saveManySpy, getAllSpy } = getAccountsRepositorySpies();
+      const { saveManyAndReconciledByAddressSpy, getAllSpy } =
+        getAccountsRepositorySpies();
       getAllSpy.mockResolvedValue([]);
+      saveManyAndReconciledByAddressSpy.mockImplementation(
+        async (accounts) => accounts,
+      );
 
       const result = await accountService.batchCreate({
         entropySource,
@@ -73,8 +83,12 @@ describe('AccountService', () => {
         walletResolver,
       });
 
-      expect(saveManySpy).toHaveBeenCalledTimes(1);
-      expect(saveManySpy.mock.calls[0]?.[0]).toHaveLength(2);
+      expect(saveManyAndReconciledByAddressSpy).toHaveBeenCalledTimes(1);
+      expect(saveManyAndReconciledByAddressSpy).toHaveBeenCalledWith([
+        expect.objectContaining({ index: 0, address: 'address-0' }),
+        expect.objectContaining({ index: 1, address: 'address-1' }),
+      ]);
+      expect(result).toHaveLength(2);
       expect(result.map((account) => account.index)).toStrictEqual([0, 1]);
       expect(walletResolver).toHaveBeenCalledTimes(2);
       expect(
@@ -100,15 +114,23 @@ describe('AccountService', () => {
       });
     });
 
-    it('reuses existing accounts in the range and saves only missing accounts', async () => {
+    it('reuses existing accounts by derivation path and skips deriving those slots', async () => {
       const entropySource = 'entropy-source-batch';
-      const existing = generateMockXrplKeyringAccounts(3, entropySource);
-      const onlyMiddle = existing[1] as XrplKeyringAccount;
+      const onlyMiddle = generateXrplKeyringAccount(
+        globalThis.crypto.randomUUID(),
+        'address-1',
+        entropySource,
+        1,
+      );
       const walletResolver = vi.fn(
         async (index: number) => ({ address: `address-${index}` }) as Wallet,
       );
-      const { saveManySpy, getAllSpy } = getAccountsRepositorySpies();
+      const { saveManyAndReconciledByAddressSpy, getAllSpy } =
+        getAccountsRepositorySpies();
       getAllSpy.mockResolvedValue([onlyMiddle]);
+      saveManyAndReconciledByAddressSpy.mockImplementation(
+        async (accounts) => accounts,
+      );
 
       const result = await accountService.batchCreate({
         entropySource,
@@ -121,10 +143,44 @@ describe('AccountService', () => {
       expect(
         walletResolver.mock.calls.map((call) => call[0]).sort((a, b) => a - b),
       ).toStrictEqual([0, 2]);
-      expect(saveManySpy).toHaveBeenCalledTimes(1);
-      expect(saveManySpy.mock.calls[0]?.[0]).toHaveLength(2);
+      expect(saveManyAndReconciledByAddressSpy).toHaveBeenCalledTimes(1);
+      // All range accounts are passed; reconcile skips writing existing addresses.
+      expect(saveManyAndReconciledByAddressSpy).toHaveBeenCalledWith([
+        expect.objectContaining({ index: 0, address: 'address-0' }),
+        onlyMiddle,
+        expect.objectContaining({ index: 2, address: 'address-2' }),
+      ]);
       expect(result[1]).toStrictEqual(onlyMiddle);
       expect(result.map((account) => account.index)).toStrictEqual([0, 1, 2]);
+    });
+
+    it('returns the reconciled id when a concurrent create won', async () => {
+      const entropySource = 'entropy-source-race';
+      const walletResolver = vi.fn(
+        async (index: number) => ({ address: `address-${index}` }) as Wallet,
+      );
+      const { saveManyAndReconciledByAddressSpy, getAllSpy } =
+        getAccountsRepositorySpies();
+      getAllSpy.mockResolvedValue([]);
+      const winnerId = '00000000-0000-4000-8000-000000000001';
+      saveManyAndReconciledByAddressSpy.mockImplementation(
+        async ([account]) => [{ ...account, id: winnerId }],
+      );
+
+      const result = await accountService.batchCreate({
+        entropySource,
+        fromIndex: 0,
+        toIndex: 0,
+        walletResolver,
+      });
+
+      expect(result).toStrictEqual([
+        expect.objectContaining({
+          id: winnerId,
+          address: 'address-0',
+          index: 0,
+        }),
+      ]);
     });
 
     it('derives a large inclusive range without throwing', async () => {
@@ -132,8 +188,12 @@ describe('AccountService', () => {
       const walletResolver = vi.fn(
         async (index: number) => ({ address: `address-${index}` }) as Wallet,
       );
-      const { saveManySpy, getAllSpy } = getAccountsRepositorySpies();
+      const { saveManyAndReconciledByAddressSpy, getAllSpy } =
+        getAccountsRepositorySpies();
       getAllSpy.mockResolvedValue([]);
+      saveManyAndReconciledByAddressSpy.mockImplementation(
+        async (accounts) => accounts,
+      );
 
       const result = await accountService.batchCreate({
         entropySource,
@@ -147,7 +207,7 @@ describe('AccountService', () => {
       expect(
         walletResolver.mock.calls.map((call) => call[0]).sort((a, b) => a - b),
       ).toStrictEqual(Array.from({ length: 16 }, (_, index) => index));
-      expect(saveManySpy).toHaveBeenCalledTimes(1);
+      expect(saveManyAndReconciledByAddressSpy).toHaveBeenCalledTimes(1);
     });
   });
 
