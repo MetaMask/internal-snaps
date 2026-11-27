@@ -99,6 +99,52 @@ describe('CoreAssetStruct', () => {
     expect(is(iouAsset, CoreAssetStruct)).toBe(true);
   });
 
+  it('accepts IOU amounts with up to 15 fractional digits', () => {
+    expect(
+      is(
+        {
+          ...iouAsset,
+          balance: {
+            amount: '0.000000000000001',
+            metadata: { limit: '1000000' },
+          },
+        },
+        CoreAssetStruct,
+      ),
+    ).toBe(true);
+  });
+
+  it('accepts IOU amounts above native XRP drop limits', () => {
+    // Human XRP max is 100_000_000_000; issued currency may be larger.
+    expect(
+      is(
+        {
+          ...iouAsset,
+          balance: {
+            amount: '100000000001',
+            metadata: { limit: '100000000001' },
+          },
+        },
+        CoreAssetStruct,
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects IOU amounts with more than 15 fractional digits', () => {
+    expect(
+      is(
+        {
+          ...iouAsset,
+          balance: {
+            amount: '0.0000000000000001',
+            metadata: { limit: '1000000' },
+          },
+        },
+        CoreAssetStruct,
+      ),
+    ).toBe(false);
+  });
+
   it('accepts MPT assets with amount and status metadata', () => {
     expect(is(mptAsset, CoreAssetStruct)).toBe(true);
   });
