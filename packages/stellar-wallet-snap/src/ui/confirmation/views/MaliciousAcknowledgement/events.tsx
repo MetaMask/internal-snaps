@@ -10,6 +10,7 @@ import { ConfirmationInterfaceKey } from '../../api';
 import type { FetchStatus } from '../../api';
 import {
   buildResolveResult,
+  getMemoFromContext,
   shouldDisableConfirmation,
   withLockedContext,
 } from '../../utils';
@@ -109,7 +110,14 @@ async function onProceedClick(
     return;
   }
 
-  await resolveInterface(id, buildResolveResult(true, context));
+  const isConfirmSend =
+    context?.interfaceKey === ConfirmationInterfaceKey.ConfirmSendTransaction;
+
+  const sendContext = isConfirmSend
+    ? { memo: getMemoFromContext(context) }
+    : undefined;
+
+  await resolveInterface(id, buildResolveResult(true, context, sendContext));
 }
 
 /**

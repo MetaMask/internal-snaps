@@ -26,11 +26,7 @@ import {
   withInterfaceLock,
 } from '../../utils';
 import { xlmIcon } from '../images';
-import {
-  ConfirmationInterfaceKey,
-  ContextWithSecurityScanStruct,
-  FetchStatus,
-} from './api';
+import { ContextWithSecurityScanStruct, FetchStatus } from './api';
 import type { FeeData, TransactionConfirmationResult } from './api';
 
 const NetworkName = {
@@ -462,7 +458,8 @@ export function withLockedContext(
 /**
  * Returns the security properties of the verdict the dialog showed. Returns
  * `undefined` when there is nothing to report: there is no context, the dialog
- * did not open with a scan, or security alerts were disabled.
+ * did not open with a scan, security alerts were disabled, or the scan was
+ * paused by a failed transaction validation before it produced a verdict.
  *
  * While no verdict is stored yet, a scan that is still running is reported as
  * `Loading`. Once a verdict is stored, a re-scan in progress reports that
@@ -476,10 +473,18 @@ export function withLockedContext(
 export function getSecurityProperties(
   context: Record<string, Json> | null,
 ): TransactionSecurityProperties | undefined {
-  // The scan fields are only stored when the dialog opened with a scan.
+  const isLocalValidationFailed = isLocalTransactionValidationFailed(
+    context?.transactionsFetchStatus as FetchStatus | undefined,
+  );
+
   if (
+    // The scan fields are only stored when the dialog opened with a scan.
     !ContextWithSecurityScanStruct.is(context) ||
-    !context.preferences.useSecurityAlerts
+    !context.preferences.useSecurityAlerts ||
+    // The scan was paused, not run: a failed transaction validation stops it
+    // before any verdict exists. The user never saw a verdict and the scan did
+    // not fail, so there is nothing to report.
+    (isLocalValidationFailed && !context.scan?.validation)
   ) {
     return undefined;
   }
@@ -498,29 +503,27 @@ export function getSecurityProperties(
  * Builds the value that a confirmation event resolves its interface with.
  *
  * The interface context holds much more than the handlers need, so only the
- * decision, the security verdict, and, for a confirmed send, the saved memo are
- * passed on. Fields with no value are left out, because the resolved value must
- * be JSON.
+ * decision, the security verdict, and the caller's `customContext` are passed
+ * on. Each caller decides what extra data its flow resolves with, for example
+ * the confirm-send flow passes the saved memo. Fields with no value are left
+ * out, because the resolved value must be JSON.
  *
  * @param confirmed - Whether the user confirmed the transaction.
  * @param context - The latest interface context, read under the interface lock.
+ * @param customContext - Extra flow-specific fields to resolve the interface with.
  * @returns The value to resolve the interface with.
  */
 export function buildResolveResult(
   confirmed: boolean,
   context: Record<string, Json> | null | undefined,
+  customContext: Record<string, Json> = {},
 ): Json {
-  const isConfirmSend =
-    context?.interfaceKey === ConfirmationInterfaceKey.ConfirmSendTransaction;
-  // Only the send reads the memo, and only once the user has confirmed.
-  const memo = confirmed && isConfirmSend ? getMemoFromContext(context) : null;
-
   const securityProperties = getSecurityProperties(context ?? null);
 
   return {
     confirmed,
-    ...(memo ? { memo } : {}),
     ...(securityProperties ? { securityProperties } : {}),
+    ...customContext,
   };
 }
 

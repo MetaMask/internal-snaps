@@ -509,6 +509,28 @@ describe('confirmation utils', () => {
       });
     });
 
+    it('returns undefined when a failed transaction validation paused the scan', () => {
+      // Send opened with a missing memo: the scan is paused, not failed.
+      const context = buildContext({
+        scan: buildScan(null),
+        scanFetchStatus: FetchStatus.Error,
+        transactionsFetchStatus: FetchStatus.Error,
+      });
+
+      expect(getSecurityProperties(context)).toBeUndefined();
+    });
+
+    it('reports the stored verdict when the transaction validation failed later', () => {
+      const context = buildContext({
+        scanFetchStatus: FetchStatus.Error,
+        transactionsFetchStatus: FetchStatus.Error,
+      });
+
+      expect(getSecurityProperties(context)).toStrictEqual({
+        securityAlertResponse: 'Benign',
+      });
+    });
+
     it('returns undefined when there is no context', () => {
       expect(getSecurityProperties(null)).toBeUndefined();
     });
@@ -533,14 +555,6 @@ describe('confirmation utils', () => {
   });
 
   describe('buildResolveResult', () => {
-    const buildSendContext = (
-      overrides: Record<string, Json> = {},
-    ): Record<string, Json> =>
-      buildContext({
-        interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
-        ...overrides,
-      });
-
     it('passes on the decision and the security verdict', () => {
       expect(buildResolveResult(true, buildContext())).toStrictEqual({
         confirmed: true,
@@ -548,60 +562,50 @@ describe('confirmation utils', () => {
       });
     });
 
-    it('passes on the trimmed memo of a confirmed send', () => {
-      const context = buildSendContext({ memo: '  memo  ' });
-
-      expect(buildResolveResult(true, context)).toStrictEqual({
+    it('passes on the custom context of the caller', () => {
+      expect(
+        buildResolveResult(true, buildContext(), { memo: 'memo' }),
+      ).toStrictEqual({
         confirmed: true,
         memo: 'memo',
         securityProperties: { securityAlertResponse: 'Benign' },
       });
     });
 
-    it('does not pass on the memo of a rejected send', () => {
-      const context = buildSendContext({ memo: 'memo' });
-
-      expect(buildResolveResult(false, context)).toStrictEqual({
-        confirmed: false,
-        securityProperties: { securityAlertResponse: 'Benign' },
+    it('never reads the memo from the interface context itself', () => {
+      const context = buildContext({
+        memo: 'memo',
+        interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
       });
-    });
-
-    it.each([
-      ConfirmationInterfaceKey.SignTransaction,
-      ConfirmationInterfaceKey.ChangeTrustlineOptIn,
-      ConfirmationInterfaceKey.ChangeTrustlineOptOut,
-    ])('does not pass on the memo of a %s confirmation', (interfaceKey) => {
-      const context = buildContext({ memo: 'memo', interfaceKey });
-
-      expect(buildResolveResult(true, context)).not.toHaveProperty('memo');
-    });
-
-    it('does not pass on the memo when the context has no interface key', () => {
-      const context = buildContext({ memo: 'memo' });
 
       expect(buildResolveResult(true, context)).not.toHaveProperty('memo');
     });
 
     it('passes on nothing else of the context', () => {
-      const context = buildSendContext({
+      const context = buildContext({
         memo: 'memo',
         transaction: 'xdr',
         account: { id: 'a' },
       });
-      const result = buildResolveResult(true, context);
+      const result = buildResolveResult(true, context, { memo: 'memo' });
 
       expect(Object.keys(result as object)).toStrictEqual([
         'confirmed',
-        'memo',
         'securityProperties',
+        'memo',
       ]);
     });
 
-    it('leaves out a blank memo', () => {
-      const context = buildSendContext({ memo: '   ' });
+    it('lets the custom context take precedence over the decision and verdict', () => {
+      const result = buildResolveResult(true, buildContext(), {
+        confirmed: false,
+        securityProperties: { securityAlertResponse: 'Malicious' },
+      });
 
-      expect(buildResolveResult(true, context)).not.toHaveProperty('memo');
+      expect(result).toStrictEqual({
+        confirmed: false,
+        securityProperties: { securityAlertResponse: 'Malicious' },
+      });
     });
 
     it('leaves out the verdict when there is none to report', () => {
@@ -626,10 +630,10 @@ describe('confirmation utils', () => {
     });
 
     it('survives being parsed back', () => {
-      const context = buildSendContext({ memo: '  memo  ' });
-
       expect(
-        parseTransactionConfirmationResult(buildResolveResult(true, context)),
+        parseTransactionConfirmationResult(
+          buildResolveResult(true, buildContext(), { memo: 'memo' }),
+        ),
       ).toStrictEqual({
         confirmed: true,
         memo: 'memo',

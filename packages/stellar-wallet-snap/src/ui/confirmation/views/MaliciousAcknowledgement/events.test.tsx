@@ -134,6 +134,7 @@ describe('malicious acknowledgement events', () => {
     const name = MaliciousAcknowledgementFormNames.Proceed;
     const context = {
       ...baseContext,
+      interfaceKey: ConfirmationInterfaceKey.SignTransaction,
       acknowledgementScreen: true,
       acknowledged: true,
     };

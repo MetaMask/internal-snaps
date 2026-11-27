@@ -47,7 +47,7 @@ describe('ConfirmSendTransaction event handlers', () => {
     });
   });
 
-  it('leaves out the memo and the verdict when the context has none', async () => {
+  it('resolves confirm with a null memo and no verdict when the context has none', async () => {
     vi.mocked(getInterfaceContextIfExists).mockResolvedValue({});
 
     await handlers[ConfirmSendTransactionFormNames.Confirm]?.({
@@ -58,6 +58,7 @@ describe('ConfirmSendTransaction event handlers', () => {
 
     expect(resolveInterface).toHaveBeenCalledWith('interface-id', {
       confirmed: true,
+      memo: null,
     });
   });
 
