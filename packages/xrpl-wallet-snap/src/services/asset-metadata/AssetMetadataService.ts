@@ -49,10 +49,11 @@ export class AssetMetadataService {
   }
 
   /**
-   * Loads asset metadata from persisted state, then the token API.
+   * Resolves metadata for a single CAIP-19 / slip44 asset id.
    *
    * @param assetId - Native, IOU, or MPT CAIP-19 asset id.
    * @returns Resolved asset data for wallet / transaction use.
+   * @throws {AssetMetadataServiceException} When non-native metadata cannot be resolved.
    */
   async resolve(
     assetId: KnownCaip19AssetIdOrSlip44Id,
@@ -71,7 +72,7 @@ export class AssetMetadataService {
   }
 
   /**
-   * Resolves asset metadata for ids that are not in the watched catalog.
+   * Resolves asset metadata for the given ids.
    *
    * @param assetIds - IOU or MPT CAIP-19 asset ids to resolve.
    * @returns Metadata for the ids that could be resolved. Missing ids are omitted.
@@ -112,16 +113,13 @@ export class AssetMetadataService {
   }
 
   /**
-   * Loads MPT metadata for the requested ids, or the persisted catalog when ids are omitted.
-   *
-   * Uses the same AssetsController → snap → token API path as
-   * {@link fetchAndPersistAssetsByAssetIds}. Ids missing from those sources are
-   * omitted (no ledger fallback).
+   * Loads MPT metadata for the requested ids, or snap-persisted MPT rows when
+   * ids are omitted.
    *
    * @param params - MPT metadata lookup.
    * @param params.scope - CAIP-2 network.
-   * @param params.assetIds - MPT asset ids. Omit or pass an empty list to use the persisted catalog.
-   * @returns MPT metadata for the requested ids, or the persisted catalog.
+   * @param params.assetIds - MPT asset ids. Omit or pass an empty list to read snap state only.
+   * @returns MPT metadata for the requested ids, or snap-persisted MPT rows for `scope`.
    */
   async fetchAndPersistMptAssetMetadata(params: {
     scope: KnownCaip2ChainId;
@@ -140,21 +138,22 @@ export class AssetMetadataService {
   }
 
   /**
-   * Fetches and persists all Assets for the given chain ID from the token API.
+   * Fetches the token API asset list for `scope` and persists the returned rows.
+   *
+   * Persists via `saveMany(..., true)` so `assetMetadataLastSyncedAt` advances
+   * only for a successful non-empty full catalog write.
    *
    * @param scope - The chain ID to fetch and persist assets for.
    */
   async synchronize(scope: KnownCaip2ChainId): Promise<void> {
-    const tokensMetadata = (await this.#fetchAssetsByChainId(scope)).filter(
-      (asset) => asset.assetType !== AssetType.Mpt,
-    );
+    const tokensMetadata = await this.#fetchAssetsByChainId(scope);
     await this.#assetMetadataRepository.saveMany(tokensMetadata, true);
   }
 
   /**
-   * Synchronizes the asset catalog if it is stale.
+   * Runs {@link synchronize} when the global catalog TTL is stale.
    *
-   * @param scope - The chain ID to synchronize the asset catalog for.
+   * @param scope - The chain ID passed to {@link synchronize} when a refresh runs.
    */
   async synchronizeIfStale(scope: KnownCaip2ChainId): Promise<void> {
     if (
@@ -259,20 +258,29 @@ export class AssetMetadataService {
       // The order doesn't matter here, as we are not using the order of the assets.
       await Promise.all(
         assetIds.map(async (assetId) => {
-          const metadata = await this.#assetsService.getAssetMetadata(assetId);
-          if (metadata) {
-            hits.push(
-              toXrplAssetMetadata({
-                assetId,
-                decimals: metadata.decimals,
-                symbol: metadata.symbol,
-                name: metadata.name,
-                iconUrl: metadata.image,
-              }),
+          try {
+            const metadata =
+              await this.#assetsService.getAssetMetadata(assetId);
+            if (metadata) {
+              hits.push(
+                toXrplAssetMetadata({
+                  assetId,
+                  decimals: metadata.decimals,
+                  symbol: metadata.symbol,
+                  name: metadata.name,
+                  iconUrl: metadata.image,
+                }),
+              );
+              return;
+            }
+            missing.push(assetId);
+          } catch (error) {
+            this.#logger.debug(
+              'AssetsController metadata read failed; treating as miss',
+              { assetId, error },
             );
-            return;
+            missing.push(assetId);
           }
-          missing.push(assetId);
         }),
       );
     }

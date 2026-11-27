@@ -35,6 +35,9 @@ import {
 } from './api';
 import { TokenApiException } from './exceptions';
 
+/**
+ * HTTP client for the MetaMask Token API asset metadata endpoints.
+ */
 export class TokenApiClient {
   readonly #fetch: typeof globalThis.fetch;
 
@@ -59,6 +62,12 @@ export class TokenApiClient {
     });
   }
 
+  /**
+   * Fetches token metadata for the given CAIP-19 / slip44 asset ids.
+   *
+   * @param assetIds - Asset ids to look up.
+   * @returns Token metadata rows for the ids the API returned.
+   */
   async fetchAssetsByAssetIds(
     assetIds: KnownCaip19AssetIdOrSlip44Id[],
   ): Promise<TokenMetadataByAssetIdsResponse> {
@@ -96,12 +105,12 @@ export class TokenApiClient {
   }
 
   /**
-   * Fetches all tokens metadata for the given chain ID.
+   * Fetches the token list for the given chain ID (up to 1000 rows).
    *
    * @see https://tokens.api.cx.metamask.io/v3/chains/xrpl:0/assets?first=10&includeIconUrl=true&includeDuplicateSymbolAssets=true&useAggregatorIcons=true
    *
-   * @param scope - The chain ID to fetch all tokens metadata for.
-   * @returns A Promise that resolves to the token metadata responses.
+   * @param scope - The chain ID to fetch tokens metadata for.
+   * @returns Token metadata for the chain (at most the requested page size).
    */
   async fetchAssetsByChainId(
     scope: KnownCaip2ChainId,

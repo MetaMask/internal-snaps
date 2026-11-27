@@ -7,7 +7,7 @@ import { parseCoreXrplAsset, parseCoreAssetMetadata } from './api';
 import type { CoreAsset, CoreAssetMetadata } from './api';
 
 /**
- * Assets service to read Assets balance and metadata from CoreAssetsAdapter.
+ * Reads account holdings and catalog metadata via {@link CoreAssetsAdapter}.
  */
 export class AssetsService {
   readonly #coreAdapter: CoreAssetsAdapter;
@@ -78,7 +78,7 @@ export class AssetsService {
   }
 
   /**
-   * Returns Xrpl account assets for one chain. Non-Xrpl assets are dropped.
+   * Returns Xrpl account assets for one chain.
    *
    * @param scope - The CAIP-2 chain id.
    * @param accountId - The id of the account.
@@ -102,7 +102,7 @@ export class AssetsService {
   }
 
   /**
-   * Returns Xrpl account assets across mainnet and testnet. Non-Xrpl assets are dropped.
+   * Returns Xrpl account assets for mainnet (the only known XRPL scope today).
    *
    * @param accountId - The id of the account.
    * @returns The parsed Xrpl assets.
