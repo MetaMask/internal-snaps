@@ -179,7 +179,7 @@ export class WalletService {
    * @param curve - Signing curve used to choose XRPL key prefixes.
    * @returns Wallet with XRPL-prefixed private/public keys.
    */
-  #xrplFromSlip10Keys(node: SLIP10Node, curve: XrplCurve): Promise<Wallet> {
+  #xrplFromSlip10Keys(node: SLIP10Node, curve: XrplCurve): Wallet {
     try {
       if (curve === XRPL_ED25519_CURVE) {
         return this.#ed25519FromSlip10Keys(node);
