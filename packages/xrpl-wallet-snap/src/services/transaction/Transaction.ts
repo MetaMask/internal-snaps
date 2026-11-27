@@ -22,7 +22,7 @@ import {
  * Snap-domain wrapper around unsigned or signed XRPL transaction JSON.
  *
  * Protocol fill (sequence, fee, last ledger) belongs on raw JSON via
- * {@link TransactionService.autofill}, not on this class.
+ * {@link TransactionAutofiller.autofill}, not on this class.
  */
 export class Transaction {
   readonly #status: TransactionStatus;
@@ -160,6 +160,7 @@ export class Transaction {
    * CAIP-19 MPT ids carried by this transaction.
    *
    * A Payment contributes one id from `Amount` when it is an MPT amount.
+   * An `MPTokenAuthorize` contributes its `MPTokenIssuanceID`.
    * A Batch contributes the ids from each inner.
    *
    * @returns Distinct MPT asset ids, in first-seen order.
@@ -179,12 +180,15 @@ export class Transaction {
   }
 
   /**
-   * MPT id for a single Payment.
+   * MPT id for a single Payment or MPTokenAuthorize.
    *
    * @param raw - Underlying XRPL JSON.
    * @returns The asset id, or `undefined` when this transaction has none.
    */
   #mptAssetIdFromRaw(raw: XrplTransaction): KnownCaip19MptAssetId | undefined {
+    if (raw.TransactionType === XrplTransactionType.MPTokenAuthorize) {
+      return toCaip19MptAssetId(this.#scope, raw.MPTokenIssuanceID);
+    }
     if (raw.TransactionType !== XrplTransactionType.Payment) {
       return undefined;
     }
@@ -202,18 +206,18 @@ export class Transaction {
    * @returns The asset id, or `undefined` when this transaction has none.
    */
   #iouAssetIdFromRaw(raw: XrplTransaction): KnownCaip19IouAssetId | undefined {
-    if (raw.TransactionType === XrplTransactionType.Payment) {
-      const { Amount } = raw;
-      if (!isIouPaymentAmt(Amount)) {
-        return undefined;
-      }
-      return toCaip19IouAssetId(this.#scope, Amount.currency, Amount.issuer);
-    }
     if (raw.TransactionType === XrplTransactionType.TrustSet) {
       const { currency, issuer } = raw.LimitAmount;
       return toCaip19IouAssetId(this.#scope, currency, issuer);
     }
-    return undefined;
+    if (raw.TransactionType !== XrplTransactionType.Payment) {
+      return undefined;
+    }
+    const { Amount } = raw;
+    if (!isIouPaymentAmt(Amount)) {
+      return undefined;
+    }
+    return toCaip19IouAssetId(this.#scope, Amount.currency, Amount.issuer);
   }
 
   /**

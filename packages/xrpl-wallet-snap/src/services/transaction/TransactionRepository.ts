@@ -5,17 +5,12 @@ import sortBy from 'lodash/sortBy';
 import uniqBy from 'lodash/uniqBy';
 
 import type { KnownCaip2ChainId } from '../../api';
-import type { XrplKeyringTransaction } from './api';
+import type { TransactionStateValue, XrplKeyringTransaction } from './api';
 import {
   isPendingTransactionStatus,
   shouldDropPendingTransaction,
   toKeyringTransactions,
 } from './utils';
-
-export type TransactionStateValue = {
-  transactions: Record<string, XrplKeyringTransaction[]>;
-  lastScanTokens: Record<string, Record<KnownCaip2ChainId, string | null>>;
-};
 
 export class TransactionRepository {
   readonly #state: IStateManager<TransactionStateValue>;

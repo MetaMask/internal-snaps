@@ -6,7 +6,7 @@ import { encode } from 'xrpl';
 import { KnownCaip2ChainId } from '../../api';
 import { IOU_DECIMAL_PLACES, LEDGER_SEQUENCE_OFFSET } from '../../constants';
 import { getSlip44AssetId, toCaip19IouAssetId } from '../../utils';
-import { XrplTransactionType } from '../network';
+import { AccountNotActivatedException, XrplTransactionType } from '../network';
 import type { NetworkService } from '../network';
 import { OnChainAssetType } from '../on-chain-account';
 import type { OnChainAccountService } from '../on-chain-account';
@@ -73,7 +73,7 @@ describe('TransactionService', () => {
   const fetchDepositAuthorized = vi.fn(async () => true);
   const sendTransaction = vi.fn(async () => 'abc');
   const fetchTransaction = vi.fn();
-  const fetchActivatedAccount = vi.fn();
+  const fetchAccountWithBalances = vi.fn();
   const findByAccountId = vi.fn(async () => []);
 
   const logger = {
@@ -89,9 +89,8 @@ describe('TransactionService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    fetchActivatedAccount.mockImplementation(
-      async ({ address }: { address: string }) =>
-        account({ accountId: address, sequenceNumber: '1' }),
+    fetchAccountWithBalances.mockImplementation(async (address: string) =>
+      account({ accountId: address, sequenceNumber: '1' }),
     );
     service = new TransactionService({
       logger,
@@ -106,7 +105,7 @@ describe('TransactionService', () => {
         fetchTransaction,
       } as unknown as NetworkService,
       onChainAccountService: {
-        fetchActivatedAccount,
+        fetchAccountWithBalances,
       } as unknown as OnChainAccountService,
     });
   });
@@ -120,19 +119,15 @@ describe('TransactionService', () => {
       destination: peerAddress,
     });
 
-    expect(transaction.transactionType).toStrictEqual(
-      XrplTransactionType.Payment,
-    );
-    expect(transaction.account).toStrictEqual(accountAddress);
-    expect(transaction.sequence).toStrictEqual(42);
-    expect(transaction.fee.toFixed(0)).toStrictEqual(
+    expect(transaction.transactionType).toBe(XrplTransactionType.Payment);
+    expect(transaction.account).toBe(accountAddress);
+    expect(transaction.sequence).toBe(42);
+    expect(transaction.fee.toFixed(0)).toBe(
       String(baseFeeDrops * feeMultiplier),
     );
-    expect(transaction.lastLedgerSequence).toStrictEqual(
-      1_000 + LEDGER_SEQUENCE_OFFSET,
-    );
+    expect(transaction.lastLedgerSequence).toBe(1_000 + LEDGER_SEQUENCE_OFFSET);
     expect(transaction.getRaw()).not.toHaveProperty('NetworkID');
-    expect(transaction.getRaw().Amount).toStrictEqual('1000000');
+    expect(transaction.getRaw().Amount).toBe('1000000');
   });
 
   it('builds an IOU payment with a 15-digit value', async () => {
@@ -153,7 +148,7 @@ describe('TransactionService', () => {
       value: '12.500000000000000',
     });
     expect(transaction.getRaw()).not.toHaveProperty('NetworkID');
-    expect(transaction.fee.toFixed(0)).toStrictEqual(
+    expect(transaction.fee.toFixed(0)).toBe(
       String(baseFeeDrops * feeMultiplier),
     );
   });
@@ -168,7 +163,7 @@ describe('TransactionService', () => {
       destinationTag: 1234,
     });
 
-    expect(transaction.destinationTag).toStrictEqual(1234);
+    expect(transaction.destinationTag).toBe(1234);
   });
 
   it('passes preflight with fee-only autofill (amount-input path)', async () => {
@@ -185,18 +180,20 @@ describe('TransactionService', () => {
       },
     });
 
-    expect(transaction.fee.toFixed(0)).toStrictEqual(
+    expect(transaction.fee.toFixed(0)).toBe(
       String(baseFeeDrops * feeMultiplier),
     );
     // Sequence comes from the builder snapshot; LLS is intentionally omitted.
-    expect(transaction.sequence).toStrictEqual(42);
+    expect(transaction.sequence).toBe(42);
     expect(transaction.getRaw().LastLedgerSequence).toBeUndefined();
-    expect(fetchActivatedAccount).not.toHaveBeenCalled();
+    expect(fetchAccountWithBalances).not.toHaveBeenCalled();
     expect(fetchValidatedLedgerIndex).not.toHaveBeenCalled();
   });
 
   it('rejects an IOU payment to an unactivated destination', async () => {
-    fetchActivatedAccount.mockResolvedValueOnce(null);
+    fetchAccountWithBalances.mockRejectedValueOnce(
+      new AccountNotActivatedException(peerAddress, scope),
+    );
 
     await expect(
       service.createValidatedSendTransaction({
@@ -212,7 +209,7 @@ describe('TransactionService', () => {
     ).rejects.toBeInstanceOf(InvalidAssetForCreateAccountException);
   });
 
-  it('forwards useCache to preload account reads', async () => {
+  it('preloads peer accounts with the requested asset ids', async () => {
     await service.createValidatedSendTransaction({
       onChainAccount: account({ accountId: accountAddress }),
       scope,
@@ -222,11 +219,10 @@ describe('TransactionService', () => {
       useCache: true,
     });
 
-    expect(fetchActivatedAccount).toHaveBeenCalledWith(
-      expect.objectContaining({
-        address: peerAddress,
-        useCache: true,
-      }),
+    expect(fetchAccountWithBalances).toHaveBeenCalledWith(
+      peerAddress,
+      scope,
+      [],
     );
   });
 
@@ -238,18 +234,14 @@ describe('TransactionService', () => {
       limit: '1000',
     });
 
-    expect(transaction.transactionType).toStrictEqual(
-      XrplTransactionType.TrustSet,
-    );
+    expect(transaction.transactionType).toBe(XrplTransactionType.TrustSet);
     expect(transaction.getRaw().LimitAmount).toStrictEqual({
       currency: 'USD',
       issuer,
       value: '1000',
     });
     expect(transaction.getRaw()).not.toHaveProperty('NetworkID');
-    expect(transaction.lastLedgerSequence).toStrictEqual(
-      1_000 + LEDGER_SEQUENCE_OFFSET,
-    );
+    expect(transaction.lastLedgerSequence).toBe(1_000 + LEDGER_SEQUENCE_OFFSET);
   });
 
   it('rejects swap transactions', async () => {
@@ -279,7 +271,7 @@ describe('TransactionService', () => {
       signedTransaction,
     });
 
-    expect(hash).toStrictEqual('abc');
+    expect(hash).toBe('abc');
     expect(sendTransaction).toHaveBeenCalledWith(signedTransaction, scope);
     expect(fetchValidatedLedgerIndex).not.toHaveBeenCalled();
     expect(getBaseFee).not.toHaveBeenCalled();
@@ -302,7 +294,7 @@ describe('TransactionService', () => {
 
     const transaction = await service.fetchTransaction('abc', scope);
 
-    expect(transaction.status).toStrictEqual(TransactionStatus.Confirmed);
+    expect(transaction.status).toBe(TransactionStatus.Confirmed);
     expect(fetchTransaction).toHaveBeenCalledWith('abc', scope);
   });
 

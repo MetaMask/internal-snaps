@@ -19,9 +19,9 @@ import {
   trackError,
 } from '../../utils';
 import type { NetworkService } from '../network';
+import { AccountNotActivatedException } from '../network';
 import type { OnChainAccountService } from '../on-chain-account';
 import type { OnChainAccount } from '../on-chain-account/OnChainAccount';
-import { ActivatedAccountPair } from '../sync/api';
 import {
   TransactionBuilderException,
   TransactionDeserializationException,
@@ -29,19 +29,17 @@ import {
 import type { KeyringTransactionRequest } from './KeyringTransactionBuilder';
 import { KeyringTransactionBuilder } from './KeyringTransactionBuilder';
 import { Transaction } from './Transaction';
-import {
-  TransactionAutofiller,
-  TransactionAutofillerOptions,
-} from './TransactionAutofiller';
+import type { TransactionAutofillerOptions } from './TransactionAutofiller';
+import { TransactionAutofiller } from './TransactionAutofiller';
 import { TransactionBuilder } from './TransactionBuilder';
 import { TransactionFeeEstimator } from './TransactionFeeEstimator';
 import type { TransactionRepository } from './TransactionRepository';
-import { TransactionSimulator } from './TransactionSimulator';
 import type { TransactionSimulatorOptions } from './TransactionSimulator';
+import { TransactionSimulator } from './TransactionSimulator';
 import {
   assertAccountScopeMatch,
   emitAccountTransactionsUpdated,
-  getTransactions,
+  normalizeTransactions,
   statusFromTxResponse,
 } from './utils';
 
@@ -112,7 +110,7 @@ export class TransactionService {
    * @param params - The parameters for the transaction.
    * @param params.onChainAccount - The on-chain account.
    * @param params.scope - The CAIP-2 chain ID.
-   * @param params.assetId - The CAIP-19 asset ID (native, IOU, or MPT).
+   * @param params.assetId - The CAIP-19 IOU asset ID.
    * @param params.limit - The limit for the trustline, 0 for delete trustline.
    * @returns A promise that resolves to the validated transaction.
    */
@@ -317,7 +315,7 @@ export class TransactionService {
    * @param request - The request {@link KeyringTransactionRequest} to create the pending transaction for.
    * @returns A promise that resolves to the pending transaction.
    */
-  async savePendingKeyringTransaction(
+  async #savePendingKeyringTransaction(
     request: KeyringTransactionRequest,
   ): Promise<KeyringTransaction> {
     const transaction =
@@ -338,14 +336,13 @@ export class TransactionService {
    * @param request - Pending transaction payload to persist.
    * @returns The saved keyring transaction, or `null` when persistence fails.
    */
-  async savePendingKeyringTransactionSafe(
+  async savePendingKeyringTransaction(
     request: KeyringTransactionRequest,
   ): Promise<KeyringTransaction | null> {
     try {
-      return await this.savePendingKeyringTransaction(request);
+      return await this.#savePendingKeyringTransaction(request);
     } catch (error: unknown) {
       await trackError(error);
-
       this.#logger.error('Failed to save pending transaction', { error });
       return null;
     }
@@ -371,7 +368,6 @@ export class TransactionService {
     const accounts = await this.#preloadInvokedAccounts(
       transaction,
       onChainAccount,
-      options?.useCache === true,
     );
     await this.#transactionSimulator.simulate(
       transaction,
@@ -415,20 +411,21 @@ export class TransactionService {
   }
 
   /**
-   * Loads accounts other than the source.
+   * Loads every non-source account referenced by the transaction, with the
+   * trust lines / MPT holdings each one needs for validation.
    *
-   * Each account is loaded with only the trust lines the transaction uses.
-   * An account missing from the ledger is left out. A native payment can create it.
+   * Accounts that are not funded are omitted. Other fetch errors propagate.
+   * Caching is unnecessary here: the only `useCache` callers (for example
+   * `onAmountInput`) probe the source against itself as destination, so the
+   * source is already loaded and no other party needs a cached read.
    *
    * @param transaction - Transaction about to be validated.
-   * @param source - Source account, already loaded.
-   * @param useCache - When true, reuse cached `account_info` reads.
-   * @returns Accounts that exist on the ledger.
+   * @param source - Source account, already loaded (skipped when extracting parties).
+   * @returns Funded accounts other than the source.
    */
   async #preloadInvokedAccounts(
     transaction: Transaction,
     source: OnChainAccount,
-    useCache: boolean = false,
   ): Promise<OnChainAccount[]> {
     const addressesAndAssetIdsPairs =
       this.#extractAddressesAndAssetIdsPairsFromTransaction(
@@ -436,20 +433,25 @@ export class TransactionService {
         source,
       );
 
-    const accounts = await Promise.all(
+    const results = await Promise.allSettled(
       addressesAndAssetIdsPairs.map(async (load) =>
-        this.#onChainAccountService.fetchActivatedAccount({
-          address: load.address,
-          assetIds: load.assetIds,
-          scope: source.scope,
-          useCache,
-        }),
+        this.#onChainAccountService.fetchAccountWithBalances(
+          load.address,
+          source.scope,
+          load.assetIds,
+        ),
       ),
     );
 
-    const activatedAccounts = accounts.filter(
-      (account): account is OnChainAccount => account !== null,
-    );
+    const activatedAccounts = [];
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        activatedAccounts.push(result.value);
+      } else if (!(result.reason instanceof AccountNotActivatedException)) {
+        throw result.reason;
+      }
+    }
 
     this.#logger.debug('Preloaded invoked accounts', {
       count: activatedAccounts.length,
@@ -474,7 +476,7 @@ export class TransactionService {
   ): AccountLoad[] {
     const addressAssetIdsMap = new Map<string, Set<KnownCaip19AssetId>>();
 
-    for (const transaction of getTransactions(rootTransaction)) {
+    for (const transaction of normalizeTransactions(rootTransaction)) {
       const addresses = [transaction.account];
       if (transaction.destination !== undefined) {
         addresses.push(transaction.destination);
@@ -516,8 +518,7 @@ export class TransactionService {
   }
 
   /**
-   * Submits an already-signed transaction blob (`fail_hard`). Does not sign or
-   * autofill. A `tefPAST_SEQ` or `terPRE_SEQ` result is not retried.
+   * Submits an already-signed transaction blob (`fail_hard`).
    *
    * @see https://xrpl.org/docs/concepts/transactions/reliable-transaction-submission
    *
@@ -525,8 +526,7 @@ export class TransactionService {
    * @param params.scope - The CAIP-2 chain ID.
    * @param params.signedTransaction - Signed XRPL `tx_blob` hex.
    * @returns The transaction hash from a `tesSUCCESS` submit.
-   * @throws {TransactionRetryableException} When rippled reports a sequence mismatch.
-   * @throws {TransactionSendException} When submission fails for another reason.
+   * @throws {TransactionSendException} When submission fails (including sequence mismatch).
    */
   async sendTransaction(params: {
     scope: KnownCaip2ChainId;
@@ -581,18 +581,5 @@ export class TransactionService {
     return new Transaction(txJson, scope, {
       status: statusFromTxResponse(response),
     });
-  }
-
-  /**
-   * Refreshes keyring transaction history for activated accounts.
-   *
-   * @param _activatedAccountPairs - Funded keyring + on-chain account pairs.
-   * @param _scope - CAIP-2 network scope.
-   */
-  async synchronize(
-    _activatedAccountPairs: ActivatedAccountPair[],
-    _scope: KnownCaip2ChainId,
-  ): Promise<void> {
-    // TODO: Implement transaction synchronization
   }
 }

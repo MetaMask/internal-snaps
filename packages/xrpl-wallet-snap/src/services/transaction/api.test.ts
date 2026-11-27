@@ -24,7 +24,7 @@ describe('DraftTxJsonStruct', () => {
       Account: account,
       DestinationTag: '1234',
     });
-    expect(draft.DestinationTag).toStrictEqual(1234);
+    expect(draft.DestinationTag).toBe(1234);
   });
 });
 

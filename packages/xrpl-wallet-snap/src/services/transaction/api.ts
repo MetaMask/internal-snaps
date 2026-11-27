@@ -12,6 +12,7 @@ import {
 } from '@metamask/superstruct';
 
 import {
+  KnownCaip2ChainId,
   UnSignedIntegerStruct,
   ValidDestinationTagStruct,
   ValidXrplDropsStruct,
@@ -121,3 +122,8 @@ export const BatchInnerTransactionStruct = refine(
 );
 
 export type BatchInnerTransaction = Infer<typeof BatchInnerTransactionStruct>;
+
+export type TransactionStateValue = {
+  transactions: Record<string, XrplKeyringTransaction[]>;
+  lastScanTokens: Record<string, Record<KnownCaip2ChainId, string | null>>;
+};

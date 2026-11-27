@@ -1,5 +1,3 @@
-import type { Transaction as XrplTransaction } from 'xrpl';
-
 import { KnownCaip2ChainId } from '../../api';
 import { XrplTransactionType } from '../network/api';
 import {
@@ -44,7 +42,7 @@ describe('ReadableTransactionMapper', () => {
         LastLedgerSequence: 99,
         DestinationTag: 4242,
         SigningPubKey: 'ED00',
-      } as XrplTransaction,
+      },
       KnownCaip2ChainId.Mainnet,
     );
 
@@ -57,7 +55,7 @@ describe('ReadableTransactionMapper', () => {
       feeDrops: '12',
       destinationTag: 4242,
     });
-    expect(readable.params).toEqual(
+    expect(readable.params).toStrictEqual(
       expect.arrayContaining([
         {
           key: 'destination',
@@ -71,10 +69,10 @@ describe('ReadableTransactionMapper', () => {
         },
       ]),
     );
-    expect(readable.params.map((param) => param.key)).not.toEqual(
+    expect(readable.params.map((param) => param.key)).not.toStrictEqual(
       expect.arrayContaining([...HIDDEN_PARAM_KEYS]),
     );
-    expect(readable.innerTransactions).toEqual([]);
+    expect(readable.innerTransactions).toStrictEqual([]);
   });
 
   it('maps an IOU Payment amount as CODE.issuer', () => {
@@ -86,7 +84,7 @@ describe('ReadableTransactionMapper', () => {
         Amount: { currency: 'USD', issuer, value: '10.50' },
         Fee: '12',
         Sequence: 1,
-      } as XrplTransaction,
+      },
       KnownCaip2ChainId.Mainnet,
     );
 
@@ -108,7 +106,7 @@ describe('ReadableTransactionMapper', () => {
         Amount: { mpt_issuance_id: mptIssuanceId, value: '100' },
         Fee: '12',
         Sequence: 1,
-      } as XrplTransaction,
+      },
       KnownCaip2ChainId.Mainnet,
     );
 
@@ -128,7 +126,7 @@ describe('ReadableTransactionMapper', () => {
         Sequence: 1,
         LimitAmount: { currency: 'USD', issuer, value: '1000' },
         Flags: 0x00_02_00_00,
-      } as XrplTransaction,
+      },
       KnownCaip2ChainId.Mainnet,
     );
 
@@ -155,12 +153,12 @@ describe('ReadableTransactionMapper', () => {
         Sequence: 1,
         TakerGets: '5000000',
         TakerPays: { currency: 'USD', issuer, value: '3' },
-      } as XrplTransaction,
+      },
       KnownCaip2ChainId.Mainnet,
     );
 
     const readable = mapper.map(transaction);
-    expect(readable.params).toEqual(
+    expect(readable.params).toStrictEqual(
       expect.arrayContaining([
         {
           key: 'takerGets',
@@ -197,7 +195,7 @@ describe('ReadableTransactionMapper', () => {
             },
           },
         ],
-      } as XrplTransaction,
+      },
       KnownCaip2ChainId.Mainnet,
     );
 

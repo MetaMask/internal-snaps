@@ -38,16 +38,11 @@ import type { Transaction } from './Transaction';
 import {
   assertAccountScopeMatch,
   assertTransactionScope,
-  getTransactions,
+  normalizeTransactions,
 } from './utils';
 
 /**
  * Options for {@link TransactionSimulator.simulate}.
- *
- * `skipExceptions` may suppress destination-tag and trust-line limit checks
- * only (`RequiresDestinationTagException`, `TrustlineExceedLimitException`).
- * `useCache` reuses cached network reads for amount-input preflight
- * (`deposit_authorized`, and account preload via TransactionService).
  */
 export type TransactionSimulatorOptions = {
   skipExceptions?: readonly AnyErrorConstructor[];
@@ -108,7 +103,7 @@ export class TransactionSimulator {
     invokedAccounts: OnChainAccount[] = [],
     options?: TransactionSimulatorOptions,
   ): Promise<SimulationState[]> {
-    const transactions = getTransactions(transaction);
+    const transactions = normalizeTransactions(transaction);
     await this.#preflightValidation(
       account,
       transaction,
@@ -133,6 +128,7 @@ export class TransactionSimulator {
    * @param transaction - Outer transaction.
    * @param source - Source account.
    * @param destinations - Destinations that exist on the ledger.
+   * @param useCache - When true, reuse a cached `deposit_authorized` read.
    */
   async #validateIfDestinationAccountAuthorized(
     transaction: Transaction,
@@ -143,7 +139,7 @@ export class TransactionSimulator {
     const loadedAccounts = new Set(
       destinations.map((account) => account.accountId),
     );
-    const payments = getTransactions(transaction).filter(
+    const payments = normalizeTransactions(transaction).filter(
       (payment) => payment.transactionType === XrplTransactionType.Payment,
     );
 
@@ -203,6 +199,8 @@ export class TransactionSimulator {
     const { transactions, rootTransaction, initialState, skipExceptions } =
       params;
 
+    // Always validate and apply the fee from the root transaction.
+    // Batch inner transactions do not pay fees.
     const feeState = this.#validateAndApplyFeeState({
       state: this.#cloneSimulationState(initialState),
       sourceId: rootTransaction.account,
@@ -238,6 +236,7 @@ export class TransactionSimulator {
    * @param account - Source account.
    * @param transaction - Outer transaction.
    * @param invokedAccounts - Destinations that exist on the ledger.
+   * @param useCache - When true, reuse a cached `deposit_authorized` read.
    */
   async #preflightValidation(
     account: OnChainAccount,
@@ -325,7 +324,7 @@ export class TransactionSimulator {
       sponsoredOwnerCount: account.sponsoredOwnerCount,
       paysOwnBaseReserve: account.paysOwnBaseReserve,
       requireDestTag: account.requireDestTag,
-      globalFreeze: account.flags.lsfGlobalFreeze === true,
+      globalFreeze: account.flags?.lsfGlobalFreeze === true,
       trustlines,
       mptokens,
     };

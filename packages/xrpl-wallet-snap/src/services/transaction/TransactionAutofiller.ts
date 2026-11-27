@@ -10,6 +10,7 @@ import { BatchInnerTransactionStruct } from './api';
 import { TransactionAutofillerException } from './exceptions';
 import { Transaction } from './Transaction';
 import type { TransactionFeeEstimator } from './TransactionFeeEstimator';
+import { isIouPaymentAmt, isMptPaymentAmt } from './utils';
 
 export const TransactionAutofillerFillItems = {
   sequence: 'sequence',
@@ -53,12 +54,6 @@ export class TransactionAutofiller {
   /**
    * Fills XRPL autofill fields on raw transaction JSON using rippled JSON-RPC.
    *
-   * Returns a shallow copy (deep-copied batch inners) so confirmation UI state
-   * is not mutated. `NetworkID` is never set. This snap only supports mainnet,
-   * and mainnet must omit that field or rippled rejects the blob with
-   * `telNETWORK_ID_MAKES_TX_NON_CANONICAL`. Selected missing fields are loaded
-   * in parallel. When `forceRefresh` is set, selected fields are written again.
-   *
    * @param transaction - Unsigned XRPL JSON.
    * @param scope - CAIP-2 chain ID used to choose the rippled client.
    * @param options - Autofill options.
@@ -83,33 +78,39 @@ export class TransactionAutofiller {
       this.#applyDeliverMax(raw);
     }
 
+    const shouldFillSequence = this.#shouldFill({
+      fillItems,
+      key: TransactionAutofillerFillItems.sequence,
+      forceRefresh,
+      isMissing: isNullOrUndefined(raw.Sequence),
+    });
+    const shouldFillFee = this.#shouldFill({
+      fillItems,
+      key: TransactionAutofillerFillItems.fee,
+      forceRefresh,
+      isMissing: isNullOrUndefined(raw.Fee),
+    });
+    const shouldFillLastLedgerSequence = this.#shouldFill({
+      fillItems,
+      key: TransactionAutofillerFillItems.lastLedgerSequence,
+      forceRefresh,
+      isMissing: isNullOrUndefined(raw.LastLedgerSequence),
+    });
+    const shouldFillBatch =
+      raw.TransactionType === XrplTransactionType.Batch &&
+      fillItems.has(TransactionAutofillerFillItems.batch);
+
+    // Outer Sequence must be known before batch inners (inner[n] = outer + n).
+    if (shouldFillSequence) {
+      await this.fillSequence(raw, scope, useCache);
+    }
+
     await Promise.all([
-      this.#shouldFill({
-        fillItems,
-        key: TransactionAutofillerFillItems.sequence,
-        forceRefresh,
-        isMissing: isNullOrUndefined(raw.Sequence),
-      })
-        ? this.fillSequence(raw, scope, useCache)
-        : Promise.resolve(),
-      this.#shouldFill({
-        fillItems,
-        key: TransactionAutofillerFillItems.fee,
-        forceRefresh,
-        isMissing: isNullOrUndefined(raw.Fee),
-      })
-        ? this.fillFee(raw, scope, useCache)
-        : Promise.resolve(),
-      this.#shouldFill({
-        fillItems,
-        key: TransactionAutofillerFillItems.lastLedgerSequence,
-        forceRefresh,
-        isMissing: isNullOrUndefined(raw.LastLedgerSequence),
-      })
+      shouldFillFee ? this.fillFee(raw, scope, useCache) : Promise.resolve(),
+      shouldFillLastLedgerSequence
         ? this.fillLastLedgerSequence(raw, scope, useCache)
         : Promise.resolve(),
-      raw.TransactionType === XrplTransactionType.Batch &&
-      fillItems.has(TransactionAutofillerFillItems.batch)
+      shouldFillBatch
         ? this.autofillBatch(raw, scope, forceRefresh, useCache)
         : Promise.resolve(),
     ]);
@@ -141,6 +142,7 @@ export class TransactionAutofiller {
    *
    * @param transaction - Raw transaction whose `Account` is loaded.
    * @param scope - CAIP-2 chain ID used to choose the rippled client.
+   * @param useCache - When true, reuse a cached `account_info` read.
    * @throws {TransactionAutofillerException} When `Account` is missing.
    */
   async fillSequence(
@@ -265,6 +267,15 @@ export class TransactionAutofiller {
     const nextSequence = new Map<string, number>();
     await Promise.all(
       [...accountsToLoad].map(async (account) => {
+        // Outer Batch Sequence is already filled; inners for that account start
+        // at outer + 1. Other accounts start at their current ledger sequence.
+        if (
+          account === transaction.Account &&
+          transaction.Sequence !== undefined
+        ) {
+          nextSequence.set(account, transaction.Sequence + 1);
+          return;
+        }
         const current = await this.#loadCurrentSequence(
           account,
           scope,
@@ -330,63 +341,34 @@ export class TransactionAutofiller {
     }
     if (isNullOrUndefined(transaction.Amount)) {
       transaction.Amount = deliverMax;
-    } else if (!paymentAmountsEqual(transaction.Amount, deliverMax)) {
+    } else if (!this.#paymentAmountsEqual(transaction.Amount, deliverMax)) {
       throw new TransactionAutofillerException(
         'Payment Amount and DeliverMax must be identical when both are provided',
       );
     }
     delete transaction.DeliverMax;
   }
-}
 
-/**
- * Whether two payment amounts are the same drops string or the same issued
- * currency. Object identity is not enough: equal IOU amounts are different
- * objects.
- *
- * @param left - Payment `Amount`.
- * @param right - Payment `DeliverMax`.
- * @returns True when both amounts would deliver the same value.
- */
-function paymentAmountsEqual(
-  left: Payment['Amount'],
-  right: NonNullable<Payment['DeliverMax']>,
-): boolean {
-  if (typeof left === 'string' || typeof right === 'string') {
-    return left === right;
+  #paymentAmountsEqual(
+    left: Payment['Amount'],
+    right: NonNullable<Payment['DeliverMax']>,
+  ): boolean {
+    if (typeof left === 'string' || typeof right === 'string') {
+      return left === right;
+    }
+    if (isIouPaymentAmt(left) && isIouPaymentAmt(right)) {
+      return (
+        left.currency === right.currency &&
+        left.issuer === right.issuer &&
+        left.value === right.value
+      );
+    }
+    if (isMptPaymentAmt(left) && isMptPaymentAmt(right)) {
+      return (
+        left.mpt_issuance_id === right.mpt_issuance_id &&
+        left.value === right.value
+      );
+    }
+    return false;
   }
-  if (isIouPaymentAmt(left) && isIouPaymentAmt(right)) {
-    return (
-      left.currency === right.currency &&
-      left.issuer === right.issuer &&
-      left.value === right.value
-    );
-  }
-  if (isMptPaymentAmt(left) && isMptPaymentAmt(right)) {
-    return (
-      left.mpt_issuance_id === right.mpt_issuance_id &&
-      left.value === right.value
-    );
-  }
-  return false;
-}
-
-/**
- * @param amount - Payment amount object.
- * @returns Whether the amount is an issued currency.
- */
-function isIouPaymentAmt(
-  amount: object,
-): amount is { currency: string; issuer: string; value: string } {
-  return Object.hasOwn(amount, 'currency') && Object.hasOwn(amount, 'issuer');
-}
-
-/**
- * @param amount - Payment amount object.
- * @returns Whether the amount is an MPT amount.
- */
-function isMptPaymentAmt(
-  amount: object,
-): amount is { mpt_issuance_id: string; value: string } {
-  return Object.hasOwn(amount, 'mpt_issuance_id');
 }

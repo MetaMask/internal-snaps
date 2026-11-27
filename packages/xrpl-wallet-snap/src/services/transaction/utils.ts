@@ -4,11 +4,11 @@ import { emitSnapKeyringEvent } from '@metamask/keyring-snap-sdk';
 import { groupBy } from 'lodash';
 import type { Transaction as XrplTransaction } from 'xrpl';
 
-import {
-  ValidDestinationTagStruct,
-  type KnownCaip19AssetIdOrSlip44Id,
-  type KnownCaip2ChainId,
+import type {
+  KnownCaip19AssetIdOrSlip44Id,
+  KnownCaip2ChainId,
 } from '../../api';
+import { ValidDestinationTagStruct } from '../../api';
 import { AppConfig } from '../../config';
 import {
   getSlip44AssetId,
@@ -102,36 +102,26 @@ export function assertDestinationTagIfNeeded(
 /**
  * Rejects a raw transaction that names a non-mainnet chain.
  *
- * Mainnet's network id is 0, and a mainnet transaction must omit `NetworkID`.
- * A set `NetworkID` means the blob is for a chain whose id is 1025 or higher.
- * Crafted transactions never set the field. This check is for a raw
- * transaction a caller asked the snap to sign.
+ * Mainnet's network id is 0, and a transaction must omit NetworkID.
+ * @see https://xrpl.org/docs/references/protocol/transactions/common-fields#networkid-field
  *
  * @param transaction - Wrapped transaction decoded from the request.
  * @throws {TransactionValidationException} When the outer transaction or a batch inner sets `NetworkID`.
  */
 export function assertMainnetTransaction(transaction: Transaction): void {
-  rejectNetworkId(transaction.getRaw());
-}
-
-/**
- * @param raw - Outer transaction, or one batch inner.
- * @throws {TransactionValidationException} When `NetworkID` is set.
- */
-function rejectNetworkId(raw: XrplTransaction): void {
+  const raw = transaction.getRaw();
   if (raw.NetworkID !== undefined) {
     throw new TransactionValidationException(
       `Transaction targets network ${raw.NetworkID}. This snap only signs mainnet transactions, which omit NetworkID.`,
     );
   }
-  if (raw.TransactionType !== 'Batch') {
-    return;
-  }
-  for (const inner of raw.RawTransactions ?? []) {
-    if (inner.RawTransaction.NetworkID !== undefined) {
-      throw new TransactionValidationException(
-        `Batch inner transaction targets network ${inner.RawTransaction.NetworkID}. This snap only signs mainnet transactions, which omit NetworkID.`,
-      );
+  if (raw.TransactionType === 'Batch') {
+    for (const inner of raw.RawTransactions ?? []) {
+      if (inner.RawTransaction.NetworkID !== undefined) {
+        throw new TransactionValidationException(
+          `Batch inner transaction targets network ${inner.RawTransaction.NetworkID}. This snap only signs mainnet transactions, which omit NetworkID.`,
+        );
+      }
     }
   }
 }
@@ -155,6 +145,13 @@ export function assertAssetScopeMatch(
   }
 }
 
+/**
+ * Ensures the account scope matches the expected chain before network I/O or simulation.
+ *
+ * @param account - On-chain account.
+ * @param expectedScope - CAIP-2 chain ID the caller intends.
+ * @throws {TransactionValidationException} When {@link OnChainAccount.scope} differs from `expectedScope`.
+ */
 export function assertAccountScopeMatch(
   account: OnChainAccount,
   expectedScope: KnownCaip2ChainId,
@@ -357,7 +354,7 @@ export async function emitAccountTransactionsUpdated(
  * @param transaction - The batch transaction.
  * @returns The canonicalized list of transactions.
  */
-export function getTransactions(transaction: Transaction): Transaction[] {
+export function normalizeTransactions(transaction: Transaction): Transaction[] {
   if (transaction.transactionType === XrplTransactionType.Batch) {
     return transaction.innerTransactions;
   }
