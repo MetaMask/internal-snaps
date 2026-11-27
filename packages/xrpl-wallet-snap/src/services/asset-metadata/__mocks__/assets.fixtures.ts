@@ -19,7 +19,6 @@ import {
 } from '../../../utils/caip';
 import { logger } from '../../../utils/logger';
 import type { AssetsService } from '../../assets';
-import type { NetworkService } from '../../network/NetworkService';
 import type { AssetMetadataByAssetId, MptXrplAssetMetadata } from '../api';
 import { AssetMetadataRepository } from '../AssetMetadataRepository';
 import { AssetMetadataService } from '../AssetMetadataService';
@@ -99,7 +98,7 @@ export const generateMockXrplAssetMetadata = (): AssetMetadataByAssetId => {
       iconUrl: 'https://example.test/icon.png',
       units: [{ name: 'USDT', symbol: 'USDT', decimals: 6 }],
     },
-  } as AssetMetadataByAssetId;
+  };
 };
 
 export const getMockMptAssets = (): MptXrplAssetMetadata[] => {
@@ -115,7 +114,12 @@ export const getMockMptAssets = (): MptXrplAssetMetadata[] => {
   return [usdcMpt, usdtMpt];
 };
 
-export const createMockAssetMetadataService = () => {
+export const createMockAssetMetadataService = (): {
+  service: AssetMetadataService;
+  assetsService: AssetsService;
+  assetMetadataRepositorySaveManySpy: ReturnType<typeof vi.spyOn>;
+  assetMetadataRepositoryGetByAssetIdsSpy: ReturnType<typeof vi.spyOn>;
+} => {
   const assetsService = {
     getAssetMetadata: vi.fn().mockResolvedValue(null),
   } as unknown as AssetsService;
@@ -128,7 +132,6 @@ export const createMockAssetMetadataService = () => {
     ),
     logger,
     assetsService,
-    networkService: {} as unknown as NetworkService,
   });
 
   const assetMetadataRepositorySaveManySpy = vi.spyOn(

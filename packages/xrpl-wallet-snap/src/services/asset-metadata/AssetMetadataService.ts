@@ -9,7 +9,6 @@ import { KnownCaip2ChainId, AssetType } from '../../api';
 import { AppConfig } from '../../config';
 import { getXrplAssetChainId, isSlip44Id } from '../../utils';
 import type { AssetsService } from '../assets';
-import type { NetworkService } from '../network/NetworkService';
 import type { MptXrplAssetMetadata, XrplAssetMetadata } from './api';
 import type { AssetMetadataRepository } from './AssetMetadataRepository';
 import { AssetMetadataServiceException } from './exceptions';
@@ -32,18 +31,14 @@ export class AssetMetadataService {
 
   readonly #assetsService: AssetsService;
 
-  readonly #networkService: NetworkService;
-
   constructor({
     assetMetadataRepository,
     logger,
     assetsService,
-    networkService,
   }: {
     assetMetadataRepository: AssetMetadataRepository;
     logger: Logger;
     assetsService: AssetsService;
-    networkService: NetworkService;
   }) {
     this.#tokenApiClient = new TokenApiClient({
       baseUrl: AppConfig.api.tokenApi.baseUrl,
@@ -51,7 +46,6 @@ export class AssetMetadataService {
     this.#assetMetadataRepository = assetMetadataRepository;
     this.#logger = logger.withPrefix('[🪙 AssetMetadataService]');
     this.#assetsService = assetsService;
-    this.#networkService = networkService;
   }
 
   /**

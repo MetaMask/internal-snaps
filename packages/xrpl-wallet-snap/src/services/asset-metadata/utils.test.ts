@@ -21,7 +21,7 @@ const nativeAssetId = getSlip44AssetId(scope);
 
 describe('fallbackDisplayLabel', () => {
   it('decodes an IOU hex currency code', () => {
-    expect(fallbackDisplayLabel(iouAssetId)).toStrictEqual('RLUSD');
+    expect(fallbackDisplayLabel(iouAssetId)).toBe('RLUSD');
   });
 
   it('uses the MPT issuance id', () => {

@@ -82,7 +82,7 @@ export class TokenApiClient {
         undefined,
         this.#fetch,
       );
-      const data = JSON.parse(body);
+      const data = JSON.parse(body) as unknown;
 
       assertHttpResponse(data, TokenMetadataByAssetIdsResponseStruct);
 
@@ -126,7 +126,7 @@ export class TokenApiClient {
         undefined,
         this.#fetch,
       );
-      const data = JSON.parse(body);
+      const data = JSON.parse(body) as unknown;
 
       assertHttpResponse(data, TokenMetadataByChainIdResponseStruct);
 

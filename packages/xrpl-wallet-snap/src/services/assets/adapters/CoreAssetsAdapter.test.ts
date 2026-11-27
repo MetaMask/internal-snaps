@@ -167,11 +167,8 @@ describe('CoreAssetsAdapter', () => {
   describe('getAccountAssets', () => {
     it('returns mainnet assets from known scopes', async () => {
       const { adapter, getAccountAssetsByScope } = createAdapter();
-      getAccountAssetsByScope.mockImplementation(async (scope: string) => {
-        if (scope === KnownCaip2ChainId.Mainnet) {
-          return { [MAINNET_ASSET_ID]: mainnetAsset };
-        }
-        return {};
+      getAccountAssetsByScope.mockImplementation(async (_scope: string) => {
+        return { [MAINNET_ASSET_ID]: mainnetAsset };
       });
 
       expect(await adapter.getAccountAssets(ACCOUNT_ID)).toStrictEqual([
@@ -185,11 +182,8 @@ describe('CoreAssetsAdapter', () => {
 
     it('keeps the scope error when a network read fails', async () => {
       const { adapter, getAccountAssetsByScope } = createAdapter();
-      getAccountAssetsByScope.mockImplementation(async (scope: string) => {
-        if (scope === KnownCaip2ChainId.Mainnet) {
-          throw new Error('messenger down');
-        }
-        return {};
+      getAccountAssetsByScope.mockImplementation(async (_scope: string) => {
+        throw new Error('messenger down');
       });
 
       await expect(adapter.getAccountAssets(ACCOUNT_ID)).rejects.toThrow(
