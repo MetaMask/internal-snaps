@@ -68,6 +68,7 @@
     "lodash": "^4.17.21",
     "oxfmt": "^0.70.0",
     "qrcode-generator": "^2.0.4",
+    "ripple-keypairs": "^3.1.0",
     "vite": "^8.3.5",
     "vitest": "^5.0.5",
     "webpack": "5.107.2",
