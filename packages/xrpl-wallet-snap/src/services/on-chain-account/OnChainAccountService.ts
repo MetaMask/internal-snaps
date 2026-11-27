@@ -54,10 +54,8 @@ import type { ReserveLedgerMeta } from './utils';
 /**
  * Loads and binds {@link OnChainAccount} from either the ledger or AssetsController.
  *
- * Two paths:
- * 1. Network — `account_info` for the account root. Callers then bind every
- *    holding or a chosen asset id list.
- * 2. Controller — indexed holdings (native + trust-line metadata; MPT spendable only), then bind.
+ * - Network — `account_info` for the account root, then bind holdings (all or a chosen list)
+ * - Controller — indexed holdings (native + trust-line metadata; MPT spendable only), then bind
  */
 export class OnChainAccountService {
   readonly #networkService: NetworkService;
@@ -87,8 +85,6 @@ export class OnChainAccountService {
 
   /**
    * Whether the address has a funded account on the network.
-   *
-   * Reads `account_info` on the validated ledger.
    *
    * @param params - Address and network.
    * @param params.address - XRPL account address.
@@ -187,10 +183,6 @@ export class OnChainAccountService {
   /**
    * Loads the account root from the ledger.
    *
-   * Reads `account_info` only: sequence, reserve, flags, and the XRP balance.
-   * Trust lines and MPT holdings stay empty until
-   * {@link bindAssetsBalancesFromOnChain}.
-   *
    * @param params - Address and network.
    * @param params.accountAddress - XRPL account address.
    * @param params.scope - CAIP-2 network.
@@ -230,11 +222,6 @@ export class OnChainAccountService {
 
   /**
    * Reads trust lines and MPT holdings onto an account that is already loaded.
-   *
-   * `'all'` reads every holding. An asset id list reads only those lines.
-   * An empty list reads neither. MPT `AssetScale` values come from
-   * {@link AssetMetadataService.fetchAndPersistMptAssetMetadata} (AssetsController /
-   * snap / token API). Missing scales fail closed.
    *
    * @param onChainAccount - Account root from {@link fetchAccount}. Entries are written onto this object.
    * @param scope - CAIP-2 network.
@@ -286,12 +273,6 @@ export class OnChainAccountService {
 
   /**
    * Loads issuance `AssetScale` for the MPT holdings just read.
-   *
-   * Uses {@link AssetMetadataService.fetchAndPersistMptAssetMetadata} so
-   * AssetsController / snap / token API metadata is reused and newly fetched
-   * catalog rows are persisted. An empty holding list does not call the
-   * metadata service. A holding whose issuance is missing from those sources
-   * fails with {@link OnChainAccountException}.
    *
    * @param mptokens - MPT holdings from `account_mptokens`.
    * @param scope - CAIP-2 network.
@@ -399,9 +380,6 @@ export class OnChainAccountService {
   /**
    * Binds ledger responses into an {@link OnChainAccount}.
    *
-   * Converts `account_info` into {@link OnChainAccountSerializableFull},
-   * then hydrates the account from that snapshot. Holdings are empty.
-   *
    * @param accountInfo - `account_info` response.
    * @param scope - CAIP-2 network the response was read from.
    * @returns Account root with native balance and no IOU or MPT entries.
@@ -442,11 +420,7 @@ export class OnChainAccountService {
   }
 
   /**
-   * Path 2: AssetsController → bind.
-   *
-   * Reads indexed holdings and binds a best-effort account. Native and IOU keep
-   * the same shapes as the ledger path (IOU is trust-line metadata). MPT rows
-   * only carry spendable (`mpt_amount = spendable`, `locked_amount = 0`).
+   * Binds a on-chain account from the AssetsController.
    *
    * @param keyringAccountId - MetaMask keyring account id.
    * @param accountAddress - XRPL account address for the account header.
@@ -523,10 +497,6 @@ export class OnChainAccountService {
 
   /**
    * Maps AssetsController holdings into a full snapshot for {@link OnChainAccount.fromSerializable}.
-   *
-   * Native: ledger balance + reserve meta derived from `minimumReserveBalance`.
-   * IOU: trust-line `limit`. Currency stays inside `assetId`.
-   * MPT: spendable only (`mptAmount` and `balance` are the spendable amount, `lockedAmount` is 0).
    *
    * @param params - Account header and controller assets.
    * @param params.accountAddress - XRPL account address.
