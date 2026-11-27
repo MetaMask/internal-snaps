@@ -288,7 +288,10 @@ export class TransactionAutofiller {
     );
 
     for (const inner of parsed) {
-      if (this.#batchInnerNeedsSequence(inner, forceRefresh)) {
+      if (inner.TicketSequence !== undefined) {
+        // XRPL requires Sequence 0 whenever a ticket is used.
+        inner.Sequence = 0;
+      } else if (this.#batchInnerNeedsSequence(inner, forceRefresh)) {
         const { Account: account } = inner;
         const sequence = nextSequence.get(account);
         if (sequence === undefined) {
@@ -306,11 +309,13 @@ export class TransactionAutofiller {
   }
 
   /**
-   * Whether a batch inner still needs a sequence assigned.
+   * Whether a batch inner still needs an account sequence assigned.
+   *
+   * Ticketed inners are handled separately (`Sequence` must be `0`).
    *
    * @param inner - Inner transaction already checked by {@link BatchInnerTransactionStruct}.
-   * @param forceRefresh - When true, a sequence is assigned again unless a ticket is set.
-   * @returns True when this autofill pass should write `Sequence`.
+   * @param forceRefresh - When true, a sequence is assigned again.
+   * @returns True when this autofill pass should write a non-ticket `Sequence`.
    */
   #batchInnerNeedsSequence(
     inner: { Sequence?: number; TicketSequence?: number },
@@ -322,10 +327,7 @@ export class TransactionAutofiller {
     if (forceRefresh) {
       return true;
     }
-    return (
-      isNullOrUndefined(inner.TicketSequence) &&
-      isNullOrUndefined(inner.Sequence)
-    );
+    return isNullOrUndefined(inner.Sequence);
   }
 
   /**

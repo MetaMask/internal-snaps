@@ -468,10 +468,7 @@ export class ReadableTransactionMapper {
     const raw = transaction.getRaw();
     const type = raw.TransactionType as XrplTransactionType;
     const destinationTag =
-      type === XrplTransactionType.Payment &&
-      typeof raw.DestinationTag === 'number'
-        ? raw.DestinationTag
-        : null;
+      typeof raw.DestinationTag === 'number' ? raw.DestinationTag : null;
 
     return {
       scope: transaction.scope,
