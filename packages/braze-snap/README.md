@@ -16,18 +16,18 @@ When `language` is given, it becomes the user's language in Braze. The snap skip
 
 ```ts
 const { flushed } = await snapController.handleRequest({
-  snapId: "npm:@metamask/braze-snap",
-  origin: "metamask",
-  handler: "onClientRequest",
+  snapId: 'npm:@metamask/braze-snap',
+  origin: 'metamask',
+  handler: 'onClientRequest',
   request: {
-    method: "syncUser",
+    method: 'syncUser',
     params: {
-      profileId: "<canonical profile ID>",
-      language: "fr",
+      profileId: '<canonical profile ID>',
+      language: 'fr',
       config: {
-        apiKey: "<Braze Web SDK API key>",
-        endpoint: "sdk.iad-01.braze.com",
-        appVersion: "13.0.0",
+        apiKey: '<Braze Web SDK API key>',
+        endpoint: 'sdk.iad-01.braze.com',
+        appVersion: '13.0.0',
         enableLogging: false,
       },
     },
