@@ -5,7 +5,7 @@ export {
   OnChainAssetType,
   SerializableIouSpendableBalanceStruct,
   SerializableMptSpendableBalanceStruct,
-  SerializableNativeSpendableBalanceStruct,
+  SerializableNativeBalanceStruct,
   SerializableSpendableBalanceStruct,
 } from './api';
 export * from './OnChainAccount';
