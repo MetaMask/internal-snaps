@@ -501,7 +501,8 @@ export class SendService {
     if (feeLimit !== undefined) {
       transaction.raw_data.fee_limit = feeLimit;
 
-      const transactionPb = tronWeb.utils.transaction.txJsonToPb(transaction);
+      const transactionPb: unknown =
+        tronWeb.utils.transaction.txJsonToPb(transaction);
 
       transaction.raw_data_hex =
         tronWeb.utils.transaction.txPbToRawDataHex(transactionPb);

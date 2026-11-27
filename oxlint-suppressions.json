@@ -1907,11 +1907,6 @@
       "count": 1
     }
   },
-  "packages/tron-wallet-snap/src/services/send/SendService.ts": {
-    "typescript/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
   "packages/tron-wallet-snap/src/services/staking/StakingService.test.ts": {
     "typescript/no-explicit-any": {
       "count": 7
