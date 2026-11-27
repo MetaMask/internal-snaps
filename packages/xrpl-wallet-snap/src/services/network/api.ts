@@ -1,10 +1,4 @@
-import {
-  defaulted,
-  Infer,
-  record,
-  Struct,
-  unknown,
-} from '@metamask/superstruct';
+import { Infer, record, Struct, unknown } from '@metamask/superstruct';
 import {
   array,
   assign,
@@ -494,11 +488,11 @@ export const MptHolderNodeStruct = type({
   Account: XrplAddressStruct,
   MPTokenIssuanceID: MptIssuanceIdStruct,
   Flags: UnSignedIntegerStruct,
-  MPTAmount: defaulted(UnSignedIntegerStringStruct, '0'),
+  MPTAmount: UnSignedIntegerStringStruct,
   OwnerNode: string(),
   PreviousTxnID: Hash256Struct,
   PreviousTxnLgrSeq: UnSignedIntegerStruct,
-  LockedAmount: defaulted(UnSignedIntegerStringStruct, '0'),
+  LockedAmount: optional(UnSignedIntegerStringStruct),
 });
 
 export type MptHolderNode = Infer<typeof MptHolderNodeStruct>;
@@ -666,23 +660,64 @@ export const TxJsonStruct = union([
 
 export type TxJson = Infer<typeof TxJsonStruct>;
 
-/**
- * Transaction payload shared by `tx` results and `account_tx` entries.
- * API v2 places `hash` next to `tx_json` (not inside it).
- */
-export const BaseTxResultStruct = type({
+/** Transaction metadata (JSON object or binary hex string). */
+export const TxMetaStruct = union([record(string(), unknown()), string()]);
+
+export type TxMeta = Infer<typeof TxMetaStruct>;
+
+const BaseTxFieldsStruct = type({
   hash: XrplTransactionHashStruct,
-  meta: union([record(string(), unknown()), string()]),
   tx_json: optional(TxJsonStruct),
   ledger_index: optional(UnSignedIntegerStruct),
   ledger_hash: optional(Hash256Struct),
   close_time_iso: optional(string()),
 });
 
+/**
+ * Transaction payload shared by `tx` results and `account_tx` entries.
+ * API v2 places `hash` next to `tx_json` (not inside it).
+ *
+ * `meta` is omitted until the transaction is in a validated ledger.
+ */
+export const BaseTxResultStruct = assign(
+  BaseTxFieldsStruct,
+  type({
+    meta: optional(TxMetaStruct),
+  }),
+);
+
 export type BaseTxResult = Infer<typeof BaseTxResultStruct>;
 
-export const BaseTxResponseStruct =
-  mergeBaseRpcResponseStruct(BaseTxResultStruct);
+/** Pending `tx` fields: `validated` omitted/`false`; `meta` optional. */
+const PendingTxResultFieldsStruct = assign(
+  BaseTxFieldsStruct,
+  type({
+    validated: optional(literal(false)),
+    meta: optional(TxMetaStruct),
+  }),
+);
+
+/** Validated `tx` fields: `validated: true`; `meta` required. */
+const ValidatedTxResultFieldsStruct = assign(
+  BaseTxFieldsStruct,
+  type({
+    validated: literal(true),
+    meta: TxMetaStruct,
+  }),
+);
+
+/**
+ * Full `tx` JSON-RPC envelope.
+ *
+ * Union of {@link mergeBaseRpcResponseStruct} branches, discriminated on
+ * `result.validated`:
+ * - pending: `validated` omitted/`false`, `meta` optional
+ * - validated: `validated: true`, `meta` required
+ */
+export const BaseTxResponseStruct = union([
+  mergeBaseRpcResponseStruct(PendingTxResultFieldsStruct),
+  mergeBaseRpcResponseStruct(ValidatedTxResultFieldsStruct),
+]);
 
 export type BaseTxResponse = Infer<typeof BaseTxResponseStruct>['result'];
 
