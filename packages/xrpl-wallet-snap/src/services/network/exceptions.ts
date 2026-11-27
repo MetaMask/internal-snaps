@@ -1,4 +1,4 @@
-import type { KnownCaip19MptAssetId, KnownCaip2ChainId } from '../../api';
+import type { KnownCaip2ChainId } from '../../api';
 import { XrplSnapException } from '../../utils/errors';
 import type { XrplSnapExceptionOptions } from '../../utils/errors';
 
@@ -54,12 +54,6 @@ export class TransactionSendException extends NetworkServiceException {
   }
 }
 
-/**
- * Submit failed with a sequence mismatch (`tefPAST_SEQ` / `terPRE_SEQ`).
- * Do not automatically submit another sequence; stop and determine why it mismatched.
- */
-export class TransactionRetryableException extends TransactionSendException {}
-
 /** Thrown when a transaction is not found. */
 export class TransactionNotFoundException extends NetworkServiceException {
   readonly transactionHash: string;
@@ -67,19 +61,6 @@ export class TransactionNotFoundException extends NetworkServiceException {
   constructor(transactionHash: string, options?: XrplSnapExceptionOptions) {
     super(`Transaction ${transactionHash} not found`, options);
     this.transactionHash = transactionHash;
-  }
-}
-
-/** Thrown when a ledger entry is not found. */
-export class LedgerEntryNotFoundException extends NetworkServiceException {
-  readonly assetId: KnownCaip19MptAssetId;
-
-  constructor(
-    assetId: KnownCaip19MptAssetId,
-    options?: XrplSnapExceptionOptions,
-  ) {
-    super(`Ledger entry ${assetId} not found`, options);
-    this.assetId = assetId;
   }
 }
 
@@ -91,7 +72,7 @@ export class SimulationException extends NetworkServiceException {
 }
 
 /**
- * rippled or Clio accepted the HTTP request and returned a JSON-RPC error
+ * Xrpld or Clio accepted the HTTP request and returned a JSON-RPC error
  * (`actNotFound`, `txnNotFound`, and the rest).
  */
 export class RpcResponseException extends NetworkServiceException {

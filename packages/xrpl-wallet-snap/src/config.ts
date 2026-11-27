@@ -114,7 +114,6 @@ export const ConfigStruct = object({
       accountMptokens: parseIntegerStruct(1000, 10 * 1000),
       transaction: parseIntegerStruct(1000, 10 * 1000),
       validatedLedgerIndex: parseIntegerStruct(1000, 5 * 1000),
-      mptIssuances: parseIntegerStruct(1000, 60 * 60 * 1000),
       accountTransactions: parseIntegerStruct(1000, 10 * 1000),
     }),
   }),
@@ -188,7 +187,6 @@ const ENVIRONMENT = {
       transaction: process.env.XRPL_TRANSACTION_TTL_MILLISECONDS,
       validatedLedgerIndex:
         process.env.XRPL_VALIDATED_LEDGER_INDEX_TTL_MILLISECONDS,
-      mptIssuances: process.env.XRPL_MPT_ISSUANCES_TTL_MILLISECONDS,
       accountTransactions:
         process.env.XRPL_ACCOUNT_TRANSACTIONS_TTL_MILLISECONDS,
     },

@@ -17,8 +17,8 @@ import type {
   AccountLinesResponse,
   AccountMptokensRequest,
   AccountMptokensResponse,
-  AccountTransactionsRequest,
-  BaseAccountTransactionsResponse,
+  FetchAccountTransactionsRequest,
+  FetchAccountTransactionsResponse,
   BaseRpcResponse,
   BaseTxResponse,
   BaseTxResult,
@@ -47,8 +47,8 @@ import {
   AccountLinesResponseStruct,
   AccountMptokensRequestStruct,
   AccountMptokensResponseStruct,
-  AccountTransactionsRequestStruct,
-  BaseAccountTransactionsResponseStruct,
+  FetchAccountTransactionsRequestStruct,
+  FetchAccountTransactionsResponseStruct,
   BaseTxResponseStruct,
   DepositAuthorizedRequestStruct,
   DepositAuthorizedResponseStruct,
@@ -69,7 +69,8 @@ import {
 } from './api';
 import { NetworkServiceException, RpcResponseException } from './exceptions';
 
-/** Reads sent together by {@link JsonRpcClient.batchRead}. */
+/** Reads sent together by {@link JsonRpcClient.batchRead}.
+ */
 export type JsonRpcRead<Params, Response> = {
   method: string;
   params: Params;
@@ -77,14 +78,17 @@ export type JsonRpcRead<Params, Response> = {
   resultStruct: Struct<Response>;
 };
 
-/** Chunk size and pause used by {@link JsonRpcClient.batchRead}. */
+/** Chunk size and pause used by {@link JsonRpcClient.batchRead}.
+ */
 export type JsonRpcBatchOptions = {
-  /** Reads started together. Defaults to 10. */
+  /** Reads started together. Defaults to 10.
+   */
   chunkSize?: number;
   /**
    * Milliseconds to wait before the next chunk when a response carries
    * `warning: "load"`. Defaults to 1 second. No delay otherwise.
-   */
+ 
+  */
   delayMs?: number;
 };
 
@@ -94,7 +98,8 @@ const DEFAULT_RPC_CHUNK_DELAY_MS = 1000;
 
 const RPC_LOAD_WARNING = 'load';
 
-/** Default `limit` for XRPL paginated account reads (server clamps to 10–400). */
+/** Default `limit` for XRPL paginated account reads (server clamps to 10–400).
+ */
 const DEFAULT_PAGE_LIMIT = 400;
 
 type LedgerScopedRequest = {
@@ -261,7 +266,7 @@ export class HttpClient {
 }
 
 /**
- * JSON-RPC POST client shared by rippled ({@link RpcClient}) and Clio
+ * JSON-RPC POST client shared by Xrpld ({@link RpcClient}) and Clio
  * ({@link ClioClient}). Validates the request params and the `result` object
  * with superstruct before returning.
  */
@@ -303,41 +308,8 @@ class JsonRpcClient {
    * @param reads - JSON-RPC reads. Order is preserved in the result.
    * @param options - Chunk size and load-backoff delay. `delayMs` defaults to 1 second.
    * @returns One validated result per read. `null` is a missing ledger entry.
-   * @example
-   * Each read posts the same wire shape as a single-method RPC call.
-   * Request (one of N concurrent posts):
-   * ```json
-   * {
-   *   "method": "ledger_entry",
-   *   "params": [{
-   *     "mpt_issuance": "05FAA0DF561E39FA605779B829BB5974E82B40AF173D6AF3",
-   *     "ledger_index": "validated",
-   *     "api_version": 2
-   *   }]
-   * }
-   * ```
-   * Response per read (`batchRead` returns each `result`, or `null` for
-   * `entryNotFound`):
-   * ```json
-   * {
-   *   "result": {
-   *     "index": "A6C5A4E7B2F1D0C9B8A796857463524110FEDCBBA9876543210FEDCBA9876543",
-   *     "node": {
-   *       "LedgerEntryType": "MPTokenIssuance",
-   *       "Flags": 0,
-   *       "Issuer": "rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY",
-   *       "Sequence": 1,
-   *       "OutstandingAmount": "1000000",
-   *       "OwnerNode": "0",
-   *       "PreviousTxnID": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
-   *       "PreviousTxnLgrSeq": 88901200
-   *     },
-   *     "status": "success",
-   *     "validated": true
-   *   }
-   * }
-   * ```
-   */
+ 
+  */
   async batchRead<Params, Response extends BaseRpcResponse>(
     reads: readonly JsonRpcRead<Params, Response>[],
     options: JsonRpcBatchOptions = {},
@@ -419,8 +391,8 @@ class JsonRpcClient {
         );
       }
 
-      const jsonReponse: unknown = await response.json();
-      const rpcError = this.#extractRpcError(jsonReponse);
+      const jsonResponse: unknown = await response.json();
+      const rpcError = this.#extractRpcError(jsonResponse);
       if (rpcError !== undefined) {
         throw new RpcResponseException(
           method,
@@ -429,9 +401,9 @@ class JsonRpcClient {
         );
       }
 
-      assertHttpResponse(jsonReponse, resultStruct);
+      assertHttpResponse(jsonResponse, resultStruct);
 
-      return jsonReponse;
+      return jsonResponse;
     } catch (error: unknown) {
       return this.#throwError(error, `Failed to call ${method}`);
     }
@@ -477,7 +449,7 @@ class JsonRpcClient {
 
 /**
  * Clio JSON-RPC. `account_mptokens` is served by Clio v2.7.0+, not by an
- * xrpld node.
+ * Xrpld node.
  */
 export class ClioClient extends JsonRpcClient {
   /**
@@ -485,37 +457,8 @@ export class ClioClient extends JsonRpcClient {
    *
    * @param params - Account to read, plus an optional validated-ledger selector and page.
    * @returns One page of MPT balances. `marker` is set when another page remains.
-   * @example
-   * Request:
-   * ```json
-   * {
-   *   "method": "account_mptokens",
-   *   "params": [{
-   *     "account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *     "ledger_index": "validated",
-   *     "limit": 400,
-   *     "api_version": 2
-   *   }]
-   * }
-   * ```
-   * Response (`call` returns `result`):
-   * ```json
-   * {
-   *   "result": {
-   *     "account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *     "mptokens": [{
-   *       "mpt_id": "0000000000000000000000000000000000000000000000000000000000000001",
-   *       "account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *       "mpt_issuance_id": "05FAA0DF561E39FA605779B829BB5974E82B40AF173D6AF3",
-   *       "mpt_amount": "1500000"
-   *     }],
-   *     "status": "success",
-   *     "validated": true,
-   *     "ledger_index": 88901234
-   *   }
-   * }
-   * ```
-   */
+ 
+  */
   async fetchAccountMptokens(
     params: AccountMptokensRequest,
   ): Promise<AccountMptokensResponse> {
@@ -540,18 +483,8 @@ export class ClioClient extends JsonRpcClient {
    * @param params.filter - Keep only matching holdings. Omit to keep every holding.
    * @param params.shouldStop - Stop after a page even when a marker remains.
    * @returns Flattened holdings across pages.
-   * @example
-   * Underlying page request/response: see {@link ClioClient.fetchAccountMptokens}.
-   * Method return value:
-   * ```json
-   * [{
-   *   "mpt_id": "0000000000000000000000000000000000000000000000000000000000000001",
-   *   "account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *   "mpt_issuance_id": "05FAA0DF561E39FA605779B829BB5974E82B40AF173D6AF3",
-   *   "mpt_amount": "1500000"
-   * }]
-   * ```
-   */
+ 
+  */
   async fetchAllAccountMptokens(params: {
     account: string;
     limit?: number;
@@ -580,40 +513,15 @@ export class ClioClient extends JsonRpcClient {
   }
 }
 
-/** rippled JSON-RPC for account, ledger, fee, transaction reads, simulate, and submit. */
+/** Xrpld JSON-RPC for account, ledger, fee, transaction reads, simulate, and submit.
+ */
 export class RpcClient extends JsonRpcClient {
   /**
    * Reads reserve requirements, the reference transaction cost, and load factor.
    *
    * @returns The `server_info` result.
-   * @example
-   * Request:
-   * ```json
-   * {
-   *   "method": "server_info",
-   *   "params": [{ "api_version": 2 }]
-   * }
-   * ```
-   * Response (`call` returns `result`):
-   * ```json
-   * {
-   *   "result": {
-   *     "info": {
-   *       "load_factor": 1,
-   *       "validated_ledger": {
-   *         "age": 2,
-   *         "base_fee_xrp": 0.00001,
-   *         "hash": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
-   *         "reserve_base_xrp": 10,
-   *         "reserve_inc_xrp": 2,
-   *         "seq": 88901234
-   *       }
-   *     },
-   *     "status": "success"
-   *   }
-   * }
-   * ```
-   */
+ 
+  */
   async fetchServerInfo(): Promise<ServerInfoResponse> {
     return this.call(
       'server_info',
@@ -629,32 +537,8 @@ export class RpcClient extends JsonRpcClient {
    *
    * @param params - Optional ledger selector. Defaults to `ledger_index: 'validated'`.
    * @returns The ledger hash and index.
-   * @example
-   * Request:
-   * ```json
-   * {
-   *   "method": "ledger",
-   *   "params": [{
-   *     "ledger_index": "validated",
-   *     "api_version": 2
-   *   }]
-   * }
-   * ```
-   * Response (`call` returns `result`):
-   * ```json
-   * {
-   *   "result": {
-   *     "ledger": {
-   *       "ledger_hash": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
-   *       "ledger_index": 88901234,
-   *       "closed": true
-   *     },
-   *     "status": "success",
-   *     "validated": true
-   *   }
-   * }
-   * ```
-   */
+ 
+  */
   async fetchLedgerInfo(params: LedgerRequest = {}): Promise<LedgerResponse> {
     return this.call(
       'ledger',
@@ -669,41 +553,8 @@ export class RpcClient extends JsonRpcClient {
    *
    * @param params - `mpt_issuance`, or `mptoken` as an index or holder key.
    * @returns The ledger entry node plus its index.
-   * @example
-   * Request:
-   * ```json
-   * {
-   *   "method": "ledger_entry",
-   *   "params": [{
-   *     "mpt_issuance": "05FAA0DF561E39FA605779B829BB5974E82B40AF173D6AF3",
-   *     "ledger_index": "validated",
-   *     "api_version": 2
-   *   }]
-   * }
-   * ```
-   * Response (`call` returns `result`):
-   * ```json
-   * {
-   *   "result": {
-   *     "index": "A6C5A4E7B2F1D0C9B8A796857463524110FEDCBBA9876543210FEDCBA9876543",
-   *     "node": {
-   *       "LedgerEntryType": "MPTokenIssuance",
-   *       "Flags": 0,
-   *       "Issuer": "rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY",
-   *       "Sequence": 1,
-   *       "OutstandingAmount": "1000000",
-   *       "OwnerNode": "0",
-   *       "PreviousTxnID": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
-   *       "PreviousTxnLgrSeq": 88901200,
-   *       "AssetScale": 6
-   *     },
-   *     "status": "success",
-   *     "validated": true,
-   *     "ledger_index": 88901234
-   *   }
-   * }
-   * ```
-   */
+ 
+  */
   async fetchLedgerEntry(
     params: LedgerEntryRequest,
   ): Promise<LedgerEntryResponse> {
@@ -720,48 +571,8 @@ export class RpcClient extends JsonRpcClient {
    *
    * @param params - Account to read. Defaults to the validated ledger.
    * @returns Account root fields and parsed `account_flags`.
-   * @example
-   * Request:
-   * ```json
-   * {
-   *   "method": "account_info",
-   *   "params": [{
-   *     "account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *     "ledger_index": "validated",
-   *     "api_version": 2
-   *   }]
-   * }
-   * ```
-   * Response (`call` returns `result`):
-   * ```json
-   * {
-   *   "result": {
-   *     "account_data": {
-   *       "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *       "Balance": "1000000000",
-   *       "Flags": 0,
-   *       "LedgerEntryType": "AccountRoot",
-   *       "OwnerCount": 0,
-   *       "Sequence": 1
-   *     },
-   *     "account_flags": {
-   *       "defaultRipple": false,
-   *       "depositAuth": false,
-   *       "disableMasterKey": false,
-   *       "disallowIncomingXRP": false,
-   *       "globalFreeze": false,
-   *       "noFreeze": false,
-   *       "passwordSpent": false,
-   *       "requireAuthorization": false,
-   *       "requireDestinationTag": false
-   *     },
-   *     "status": "success",
-   *     "validated": true,
-   *     "ledger_index": 88901234
-   *   }
-   * }
-   * ```
-   */
+ 
+  */
   async fetchAccountInfo(
     params: AccountInfoRequest,
   ): Promise<AccountInfoResponse> {
@@ -778,39 +589,8 @@ export class RpcClient extends JsonRpcClient {
    *
    * @param params - Account to read, plus an optional peer filter and page.
    * @returns One page of trust lines. `marker` is set when another page remains.
-   * @example
-   * Request:
-   * ```json
-   * {
-   *   "method": "account_lines",
-   *   "params": [{
-   *     "account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *     "ledger_index": "validated",
-   *     "limit": 400,
-   *     "api_version": 2
-   *   }]
-   * }
-   * ```
-   * Response (`call` returns `result`):
-   * ```json
-   * {
-   *   "result": {
-   *     "account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *     "lines": [{
-   *       "account": "rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY",
-   *       "balance": "1.5",
-   *       "currency": "USD",
-   *       "limit": "10",
-   *       "quality_in": 0,
-   *       "quality_out": 0
-   *     }],
-   *     "status": "success",
-   *     "validated": true,
-   *     "ledger_index": 88901234
-   *   }
-   * }
-   * ```
-   */
+ 
+  */
   async fetchAccountTrustlines(
     params: AccountLinesRequest,
   ): Promise<AccountLinesResponse> {
@@ -836,20 +616,8 @@ export class RpcClient extends JsonRpcClient {
    * @param params.filter - Keep only matching lines. Omit to keep every line.
    * @param params.shouldStop - Stop after a page even when a marker remains.
    * @returns Flattened trust lines across pages.
-   * @example
-   * Underlying page request/response: see {@link RpcClient.fetchAccountTrustlines}.
-   * Method return value:
-   * ```json
-   * [{
-   *   "account": "rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY",
-   *   "balance": "1.5",
-   *   "currency": "USD",
-   *   "limit": "10",
-   *   "quality_in": 0,
-   *   "quality_out": 0
-   * }]
-   * ```
-   */
+ 
+  */
   async fetchAllAccountTrustlines(params: {
     account: string;
     peer?: string;
@@ -880,38 +648,8 @@ export class RpcClient extends JsonRpcClient {
    *
    * @param params - Transaction hash and optional ledger search bounds.
    * @returns The unwrapped `tx` result. `validated` is omitted or `false` until the ledger closes.
-   * @example
-   * Request:
-   * ```json
-   * {
-   *   "method": "tx",
-   *   "params": [{
-   *     "transaction": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
-   *     "api_version": 2
-   *   }]
-   * }
-   * ```
-   * Response (`call` returns `result`):
-   * ```json
-   * {
-   *   "result": {
-   *     "hash": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
-   *     "meta": { "TransactionResult": "tesSUCCESS" },
-   *     "tx_json": {
-   *       "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *       "TransactionType": "Payment",
-   *       "Destination": "rN7n7otQDd6FczFgLdlqtyMVea5zArihM",
-   *       "Amount": "1000000",
-   *       "Fee": "12",
-   *       "Sequence": 1
-   *     },
-   *     "status": "success",
-   *     "validated": true,
-   *     "ledger_index": 88901234
-   *   }
-   * }
-   * ```
-   */
+ 
+  */
   async fetchTransactionInfo(params: TxRequest): Promise<BaseTxResponse> {
     return this.call('tx', params, TxRequestStruct, BaseTxResponseStruct);
   }
@@ -921,45 +659,16 @@ export class RpcClient extends JsonRpcClient {
    *
    * @param params - Account and optional marker / filters.
    * @returns The unwrapped `account_tx` result. Entries are payloads, not envelopes.
-   * @example
-   * Request:
-   * ```json
-   * {
-   *   "method": "account_tx",
-   *   "params": [{
-   *     "account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *     "limit": 400,
-   *     "api_version": 2
-   *   }]
-   * }
-   * ```
-   * Response (`call` returns `result`):
-   * ```json
-   * {
-   *   "result": {
-   *     "transactions": [{
-   *       "hash": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
-   *       "meta": { "TransactionResult": "tesSUCCESS" },
-   *       "tx_json": {
-   *         "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *         "TransactionType": "Payment"
-   *       }
-   *     }],
-   *     "marker": { "ledger": 88901200, "seq": 4 },
-   *     "status": "success",
-   *     "validated": true
-   *   }
-   * }
-   * ```
-   */
+ 
+  */
   async fetchAccountTransactions(
-    params: AccountTransactionsRequest,
-  ): Promise<BaseAccountTransactionsResponse> {
+    params: FetchAccountTransactionsRequest,
+  ): Promise<FetchAccountTransactionsResponse> {
     return this.call(
       'account_tx',
       params,
-      AccountTransactionsRequestStruct,
-      BaseAccountTransactionsResponseStruct,
+      FetchAccountTransactionsRequestStruct,
+      FetchAccountTransactionsResponseStruct,
     );
   }
 
@@ -974,20 +683,8 @@ export class RpcClient extends JsonRpcClient {
    * @param params.account - XRPL account address.
    * @param params.limit - Page size. Defaults to 400.
    * @returns Flattened transaction entries across pages.
-   * @example
-   * Underlying page request/response: see {@link RpcClient.fetchAccountTransactions}.
-   * Method return value:
-   * ```json
-   * [{
-   *   "hash": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
-   *   "meta": { "TransactionResult": "tesSUCCESS" },
-   *   "tx_json": {
-   *     "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *     "TransactionType": "Payment"
-   *   }
-   * }]
-   * ```
-   */
+ 
+  */
   async fetchAllAccountTransactions(params: {
     account: string;
     limit?: number;
@@ -1009,33 +706,8 @@ export class RpcClient extends JsonRpcClient {
    *
    * @param params - Source and destination accounts. Defaults to the validated ledger.
    * @returns `deposit_authorized` for the selected ledger.
-   * @example
-   * Request:
-   * ```json
-   * {
-   *   "method": "deposit_authorized",
-   *   "params": [{
-   *     "source_account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *     "destination_account": "rN7n7otQDd6FczFgLdlqtyMVea5zArihM",
-   *     "ledger_index": "validated",
-   *     "api_version": 2
-   *   }]
-   * }
-   * ```
-   * Response (`call` returns `result`):
-   * ```json
-   * {
-   *   "result": {
-   *     "deposit_authorized": true,
-   *     "source_account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *     "destination_account": "rN7n7otQDd6FczFgLdlqtyMVea5zArihM",
-   *     "status": "success",
-   *     "validated": true,
-   *     "ledger_index": 88901234
-   *   }
-   * }
-   * ```
-   */
+ 
+  */
   async fetchDepositAuthorized(
     params: DepositAuthorizedRequest,
   ): Promise<DepositAuthorizedResponse> {
@@ -1048,52 +720,15 @@ export class RpcClient extends JsonRpcClient {
   }
 
   /**
-   * Dry-runs an unsigned transaction. rippled fills `Fee`, `Sequence`,
+   * Dry-runs an unsigned transaction. Xrpld fills `Fee`, `Sequence`,
    * `SigningPubKey`, and `NetworkID` when they are omitted. Nothing is
    * submitted, and a later submission can differ because ledger state changes.
    *
    * @param params - Exactly one of `tx_blob` or `tx_json`, plus optional `binary`.
    * @returns The engine result and the simulated transaction. `meta` is omitted when the transaction would not be included in a ledger.
    * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/simulate
-   * @example
-   * Request:
-   * ```json
-   * {
-   *   "method": "simulate",
-   *   "params": [{
-   *     "tx_json": {
-   *       "TransactionType": "Payment",
-   *       "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *       "Destination": "rN7n7otQDd6FczFgLdlqtyMVea5zArihM",
-   *       "Amount": "1000000"
-   *     },
-   *     "api_version": 2
-   *   }]
-   * }
-   * ```
-   * Response (`call` returns `result`):
-   * ```json
-   * {
-   *   "result": {
-   *     "applied": true,
-   *     "engine_result": "tesSUCCESS",
-   *     "engine_result_code": 0,
-   *     "engine_result_message": "The simulated transaction would succeed.",
-   *     "ledger_index": 88901234,
-   *     "tx_json": {
-   *       "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *       "TransactionType": "Payment",
-   *       "Destination": "rN7n7otQDd6FczFgLdlqtyMVea5zArihM",
-   *       "Amount": "1000000",
-   *       "Fee": "12",
-   *       "Sequence": 1
-   *     },
-   *     "meta": { "TransactionResult": "tesSUCCESS" },
-   *     "status": "success"
-   *   }
-   * }
-   * ```
-   */
+ 
+  */
   async simulateTransaction(
     params: SimulateRequest,
   ): Promise<SimulateResponse> {
@@ -1107,63 +742,25 @@ export class RpcClient extends JsonRpcClient {
 
   /**
    * Submits an already-signed transaction blob. This does not sign or autofill.
-   * rippled returns a preliminary `engine_result` for local failures as well as
-   * success. {@link NetworkService.sendTransaction} decides which results count
-   * as submitted.
+   * Always sends `fail_hard: true` so a local failure is not relayed to other
+   * servers. Xrpld returns a preliminary `engine_result` for local failures as
+   * well as success. {@link NetworkService.sendTransaction} decides which
+   * results count as submitted.
    *
    * @param txBlob - Signed transaction hex (`tx_blob`).
-   * @param failHard - When true, a local failure is not relayed to other servers.
    * @returns The preliminary `submit` result, including `engine_result` and `tx_json`.
-   * @example
-   * Request:
-   * ```json
-   * {
-   *   "method": "submit",
-   *   "params": [{
-   *     "tx_blob": "12000022800000002400000001201B00...",
-   *     "fail_hard": true,
-   *     "api_version": 2
-   *   }]
-   * }
-   * ```
-   * Response (`call` returns `result`):
-   * ```json
-   * {
-   *   "result": {
-   *     "engine_result": "tesSUCCESS",
-   *     "engine_result_code": 0,
-   *     "engine_result_message": "The transaction was applied. Only final in a validated ledger.",
-   *     "tx_blob": "12000022800000002400000001201B00...",
-   *     "tx_json": {
-   *       "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *       "TransactionType": "Payment",
-   *       "Destination": "rN7n7otQDd6FczFgLdlqtyMVea5zArihM",
-   *       "Amount": "1000000",
-   *       "Fee": "12",
-   *       "Sequence": 1
-   *     },
-   *     "hash": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
-   *     "accepted": true,
-   *     "applied": true,
-   *     "broadcast": true,
-   *     "kept": true,
-   *     "queued": false,
-   *     "status": "success",
-   *     "validated_ledger_index": 88901234
-   *   }
-   * }
-   * ```
-   */
+ 
+  */
   async submitTransaction(
     txBlob: SubmitRequest['tx_blob'],
-    failHard = false,
   ): Promise<SubmitResponse> {
+    const params: SubmitRequest = {
+      tx_blob: txBlob,
+      fail_hard: true,
+    };
     return this.call(
       'submit',
-      {
-        tx_blob: txBlob,
-        fail_hard: failHard,
-      },
+      params,
       SubmitRequestStruct,
       SubmitResponseStruct,
     );

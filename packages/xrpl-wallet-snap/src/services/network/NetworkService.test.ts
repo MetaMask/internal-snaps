@@ -9,8 +9,7 @@ import type {
   XrplTransactionString,
 } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
-import { toCaip19MptAssetId } from '../../utils';
-import type { BaseTxResult, SubmitResponse } from './api';
+import type { BaseTxResult, ServerInfoResponse, SubmitResponse } from './api';
 import { LedgerState } from './api';
 import {
   AccountNotActivatedException,
@@ -18,7 +17,6 @@ import {
   NetworkServiceException,
   RpcResponseException,
   TransactionNotFoundException,
-  TransactionRetryableException,
   TransactionSendException,
 } from './exceptions';
 import { ClioClient, RpcClient } from './NetworkClient';
@@ -32,10 +30,20 @@ const assetId = `xrpl:0/xls33:${issuanceId}` as KnownCaip19MptAssetId;
 const issuer = 'rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY';
 const account = 'rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh';
 
-function createNetworkServiceTest() {
+function createNetworkServiceTest(): {
+  service: NetworkService;
+  submitTransaction: ReturnType<typeof vi.fn>;
+  fetchServerInfo: ReturnType<typeof vi.fn>;
+  fetchTrustlinePage: ReturnType<typeof vi.fn>;
+  fetchMptokenPage: ReturnType<typeof vi.fn>;
+  fetchAccountTransactions: ReturnType<typeof vi.fn>;
+  fetchAccountInfo: ReturnType<typeof vi.fn>;
+  fetchTransactionInfo: ReturnType<typeof vi.fn>;
+  fetchLedgerInfo: ReturnType<typeof vi.fn>;
+  fetchDepositAuthorized: ReturnType<typeof vi.fn>;
+} {
   const submitTransaction = vi.fn();
   const fetchServerInfo = vi.fn();
-  const batchRead = vi.fn();
   const fetchTrustlinePage = vi.fn();
   const fetchMptokenPage = vi.fn();
   const fetchAccountTransactions = vi.fn();
@@ -58,7 +66,6 @@ function createNetworkServiceTest() {
   vi.spyOn(RpcClient.prototype, 'fetchServerInfo').mockImplementation(
     fetchServerInfo,
   );
-  vi.spyOn(RpcClient.prototype, 'batchRead').mockImplementation(batchRead);
   vi.spyOn(RpcClient.prototype, 'fetchAccountTrustlines').mockImplementation(
     fetchTrustlinePage,
   );
@@ -88,7 +95,6 @@ function createNetworkServiceTest() {
     }),
     submitTransaction,
     fetchServerInfo,
-    batchRead,
     fetchTrustlinePage,
     fetchMptokenPage,
     fetchAccountTransactions,
@@ -115,12 +121,19 @@ function submitResponse(engineResult: string, hash?: string): SubmitResponse {
   };
 }
 
-function validatedServerInfo() {
+function validatedServerInfo(): ServerInfoResponse {
   return {
     status: 'success',
     validated: true,
     info: {
-      validated_ledger: { base_fee_xrp: 0.00001 },
+      validated_ledger: {
+        hash: '1',
+        age: 1,
+        base_fee_xrp: 0.00001,
+        reserve_base_xrp: 0.00001,
+        reserve_inc_xrp: 0.00001,
+        seq: 1,
+      },
       load_factor: 1,
     },
   };
@@ -155,7 +168,7 @@ describe('NetworkService', () => {
       );
 
       expect(result).toStrictEqual(transactionHash);
-      expect(submitTransaction).toHaveBeenCalledWith(signedBlob, true);
+      expect(submitTransaction).toHaveBeenCalledWith(signedBlob);
       expect(hashes.hashSignedTx).not.toHaveBeenCalled();
     });
 
@@ -191,6 +204,16 @@ describe('NetworkService', () => {
         engineResult: 'tefALREADY',
         hash: undefined,
       },
+      {
+        scenario: 'for tefPAST_SEQ',
+        engineResult: 'tefPAST_SEQ',
+        hash: undefined,
+      },
+      {
+        scenario: 'for terPRE_SEQ',
+        engineResult: 'terPRE_SEQ',
+        hash: undefined,
+      },
     ])(
       'throws TransactionSendException $scenario',
       async ({ engineResult, hash }) => {
@@ -215,18 +238,6 @@ describe('NetworkService', () => {
       expect(result).toStrictEqual(transactionHash);
       expect(hashes.hashSignedTx).toHaveBeenCalledWith(signedBlob);
     });
-
-    it.each(['tefPAST_SEQ', 'terPRE_SEQ'])(
-      'throws TransactionRetryableException when the signed sequence does not match (%s)',
-      async (engineResult) => {
-        const { service, submitTransaction } = createNetworkServiceTest();
-        submitTransaction.mockResolvedValue(submitResponse(engineResult));
-
-        await expect(
-          service.sendTransaction(signedBlob, KnownCaip2ChainId.Mainnet),
-        ).rejects.toBeInstanceOf(TransactionRetryableException);
-      },
-    );
 
     it('wraps a transport failure as TransactionSendException', async () => {
       const { service, submitTransaction } = createNetworkServiceTest();
@@ -423,7 +434,7 @@ describe('NetworkService', () => {
         KnownCaip2ChainId.Mainnet,
       );
 
-      expect(ledgerIndex).toStrictEqual(42);
+      expect(ledgerIndex).toBe(42);
       expect(fetchLedgerInfo).toHaveBeenCalledWith({
         ledger_index: LedgerState.Validated,
       });
@@ -481,173 +492,16 @@ describe('NetworkService', () => {
         marker,
       });
     });
-  });
 
-  describe('fetchMptIssuances', () => {
-    it('returns an empty list without a request when no assets are given', async () => {
-      const { service, batchRead } = createNetworkServiceTest();
-
-      const issuances = await service.fetchMptIssuances(
-        [],
-        KnownCaip2ChainId.Mainnet,
+    it('throws AccountNotActivatedException when the account is missing', async () => {
+      const { service, fetchAccountTransactions } = createNetworkServiceTest();
+      fetchAccountTransactions.mockRejectedValue(
+        new RpcResponseException('account_tx', 'actNotFound', 'missing'),
       );
 
-      expect(issuances).toStrictEqual([]);
-      expect(batchRead).not.toHaveBeenCalled();
-    });
-
-    it('reads AssetScale and the issuer through one batched ledger_entry call', async () => {
-      const { service, batchRead } = createNetworkServiceTest();
-      batchRead.mockResolvedValue([
-        {
-          node: {
-            LedgerEntryType: 'MPTokenIssuance',
-            AssetScale: 6,
-            Issuer: issuer,
-          },
-        },
-      ]);
-
-      const issuances = await service.fetchMptIssuances(
-        [assetId],
-        KnownCaip2ChainId.Mainnet,
-      );
-
-      expect(issuances).toStrictEqual([
-        {
-          assetId,
-          decimals: 6,
-          issuer,
-          name: undefined,
-          symbol: undefined,
-        },
-      ]);
-      expect(batchRead).toHaveBeenCalledTimes(1);
-      const [reads] = batchRead.mock.calls[0] as [
-        {
-          method: string;
-          params: { mpt_issuance: string; ledger_index: string };
-        }[],
-      ];
-      expect(reads).toHaveLength(1);
-      expect(reads[0]).toMatchObject({
-        method: 'ledger_entry',
-        params: {
-          ledger_index: 'validated',
-          mpt_issuance: issuanceId,
-        },
-      });
-    });
-
-    it('sends the 192-bit issuance id when the CAIP id is zero-padded', async () => {
-      const { service, batchRead } = createNetworkServiceTest();
-      const paddedAssetId = toCaip19MptAssetId(
-        KnownCaip2ChainId.Mainnet,
-        issuanceId,
-      );
-      batchRead.mockResolvedValue([
-        {
-          node: {
-            LedgerEntryType: 'MPTokenIssuance',
-            AssetScale: 2,
-            Issuer: issuer,
-          },
-        },
-      ]);
-
-      await service.fetchMptIssuances(
-        [paddedAssetId],
-        KnownCaip2ChainId.Mainnet,
-      );
-
-      expect(batchRead).toHaveBeenCalledWith(
-        [
-          expect.objectContaining({
-            params: expect.objectContaining({
-              mpt_issuance: issuanceId,
-            }),
-          }),
-        ],
-        {},
-      );
-    });
-
-    it('uses 0 when the issuance omits AssetScale', async () => {
-      const { service, batchRead } = createNetworkServiceTest();
-      batchRead.mockResolvedValue([
-        {
-          node: {
-            LedgerEntryType: 'MPTokenIssuance',
-            Issuer: issuer,
-          },
-        },
-      ]);
-
-      const issuances = await service.fetchMptIssuances(
-        [assetId],
-        KnownCaip2ChainId.Mainnet,
-      );
-
-      expect(issuances).toStrictEqual([
-        {
-          assetId,
-          decimals: 0,
-          issuer,
-          name: undefined,
-          symbol: undefined,
-        },
-      ]);
-    });
-
-    it('omits a null slot and still returns the other issuances', async () => {
-      const { service, batchRead } = createNetworkServiceTest();
-      const otherAssetId = toCaip19MptAssetId(
-        KnownCaip2ChainId.Mainnet,
-        '11'.repeat(24),
-      );
-      batchRead.mockResolvedValue([
-        null,
-        {
-          node: {
-            LedgerEntryType: 'MPTokenIssuance',
-            AssetScale: 4,
-            Issuer: issuer,
-          },
-        },
-      ]);
-
-      const issuances = await service.fetchMptIssuances(
-        [assetId, otherAssetId],
-        KnownCaip2ChainId.Mainnet,
-      );
-
-      expect(issuances).toStrictEqual([
-        {
-          assetId: otherAssetId,
-          decimals: 4,
-          issuer,
-          name: undefined,
-          symbol: undefined,
-        },
-      ]);
-    });
-
-    it('omits a ledger entry that is not an issuance', async () => {
-      const { service, batchRead } = createNetworkServiceTest();
-      batchRead.mockResolvedValue([
-        {
-          node: {
-            LedgerEntryType: 'MPToken',
-          },
-        },
-      ]);
-
-      const issuances = await service.fetchMptIssuances(
-        [assetId],
-        KnownCaip2ChainId.Mainnet,
-      );
-
-      expect(issuances).toStrictEqual([]);
+      await expect(
+        service.fetchAccountTransactions(account, KnownCaip2ChainId.Mainnet),
+      ).rejects.toBeInstanceOf(AccountNotActivatedException);
     });
   });
 

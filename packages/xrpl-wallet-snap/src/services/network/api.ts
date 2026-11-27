@@ -40,7 +40,7 @@ import { MptIssuanceIdStruct } from '../../api/asset';
 import { Hash256Struct } from '../../api/string';
 
 /**
- * Known rippled JSON-RPC error codes returned by `submit` and shared universal
+ * Known Xrpld JSON-RPC error codes returned by `submit` and shared universal
  * method failures.
  *
  * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/submit
@@ -153,12 +153,10 @@ export type XrplTransactionType =
   (typeof XrplTransactionType)[keyof typeof XrplTransactionType];
 
 /**
- * JSON-RPC request and response structs for the rippled and Clio methods this
+ * JSON-RPC request and response structs for the Xrpld and Clio methods this
  * snap calls. Request structs use `object` so unexpected fields are rejected.
  * Response structs use `type` so the server can add fields without failing
  * validation.
- *
- * @see https://xrpl.org/docs/references/http-websocket-apis
  */
 export const LedgerState = {
   Validated: 'validated',
@@ -183,6 +181,11 @@ const LedgerSelectionStruct = object({
   ledger_hash: optional(Hash256Struct),
 });
 
+/**
+ * Marker for paginated methods.
+ *
+ * @see https://xrpl.org/docs/references/http-websocket-apis/api-conventions/markers-and-pagination
+ */
 const StringPageMarkerStruct = string();
 const ObjectPageMarkerStruct = object({
   ledger: UnSignedIntegerStruct,
@@ -197,7 +200,7 @@ const PageMarkerStruct = union([
 export type PageMarker = Infer<typeof PageMarkerStruct>;
 const PageLimitStruct = size(integer(), 10, 400);
 
-/** `limit` accepted by paginated account methods (server clamps to 10–400). */
+/** `limit` accepted by paginated methods (server clamps to 10–400). */
 export const PageRequestStruct = object({
   limit: optional(PageLimitStruct),
   marker: optional(PageMarkerStruct),
@@ -206,7 +209,7 @@ export const PageRequestStruct = object({
 export type PageRequest = Infer<typeof PageRequestStruct>;
 
 /**
- * Shared fields on every successful rippled/Clio `result`.
+ * Shared fields on every successful Xrpld/Clio `result`.
  *
  * `status` is always present. `validated` is omitted on some methods (e.g.
  * `submit`, `server_info`, `simulate`) and present on ledger-scoped reads.
@@ -387,7 +390,7 @@ export type AccountLinesResponse = Infer<
 >['result'];
 
 /**
- * `account_mptokens` params. Clio v2.7.0+ only; rippled does not serve this.
+ * `account_mptokens` params. Clio v2.7.0+ only; Xrpld does not serve this.
  *
  * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/clio-methods/account_mptokens
  */
@@ -573,7 +576,7 @@ export type LedgerResponse = Infer<typeof LedgerResponseStruct>['result'];
 /**
  * `deposit_authorized` params.
  *
- * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/deposit_authorized
+ * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/path-and-order-book-methods/deposit_authorized
  */
 export const DepositAuthorizedRequestStruct = assign(
   LedgerSelectionStruct,
@@ -615,7 +618,7 @@ export const TxRequestStruct = object({
 export type TxRequest = Infer<typeof TxRequestStruct>;
 
 /**
- * RPC `tx_json` as returned by rippled / Clio (`tx`, `submit`, `account_tx`, simulate).
+ * RPC `tx_json` as returned by Xrpld / Clio (`tx`, `submit`, `account_tx`, simulate).
  *
  * Includes optional ledger `hash` and signatures. Unsigned build/autofill drafts
  * live in `services/transaction/api`.
@@ -683,45 +686,46 @@ export const BaseTxResponseStruct =
 
 export type BaseTxResponse = Infer<typeof BaseTxResponseStruct>['result'];
 
-const DelicationFilterStruct = object({
+const DelegationFilterStruct = object({
   delegate_filter: string(),
   counter_party: optional(XrplAddressStruct),
 });
 
 /**
- * `account_transactions` params.
+ * `account_tx` params.
  *
- * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_transactions
+ * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_tx
  */
-export const AccountTransactionsRequestStruct = object({
+export const FetchAccountTransactionsRequestStruct = object({
   account: XrplAddressStruct,
-  tx_type: optional(UnSignedIntegerStruct),
+  tx_type: optional(string()),
   ledger_index_min: optional(min(integer(), -1)),
   ledger_index_max: optional(min(integer(), -1)),
   binary: optional(boolean()),
   forward: optional(boolean()),
-  delegate: optional(DelicationFilterStruct),
+  delegate: optional(DelegationFilterStruct),
   limit: optional(PageLimitStruct),
   marker: optional(PageMarkerStruct),
 });
 
-export type AccountTransactionsRequest = Infer<
-  typeof AccountTransactionsRequestStruct
+export type FetchAccountTransactionsRequest = Infer<
+  typeof FetchAccountTransactionsRequestStruct
 >;
 
-export const BaseAccountTransactionsResponseStruct = mergeBaseRpcResponseStruct(
-  type({
-    transactions: array(BaseTxResultStruct),
-    limit: optional(PageLimitStruct),
-    marker: optional(PageMarkerStruct),
-  }),
-);
+export const FetchAccountTransactionsResponseStruct =
+  mergeBaseRpcResponseStruct(
+    type({
+      transactions: array(BaseTxResultStruct),
+      limit: optional(PageLimitStruct),
+      marker: optional(PageMarkerStruct),
+    }),
+  );
 
-export type BaseAccountTransactionsResponse = Infer<
-  typeof BaseAccountTransactionsResponseStruct
+export type FetchAccountTransactionsResponse = Infer<
+  typeof FetchAccountTransactionsResponseStruct
 >['result'];
 
-/** JSON-RPC `result` object when rippled or Clio rejected the command. */
+/** JSON-RPC `result` object when Xrpld or Clio rejected the command. */
 export const RpcErrorResponseStruct = type({
   error: nonempty(string()),
   error_code: optional(union([string(), integer()])),
@@ -784,14 +788,15 @@ export const SimulateResponseStruct = mergeBaseRpcResponseStruct(
 export type SimulateResponse = Infer<typeof SimulateResponseStruct>['result'];
 
 /**
- * Submit-only `submit` params. `tx_blob` is a signed transaction. The response
- * is preliminary until `tx` reports a validated result.
+ * Submit transaction params.
+ * `tx_blob` is a signed transaction.
+ * `fail_hard` is always `true` so a local failure is not relayed.
  *
  * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/submit
  */
 export const SubmitRequestStruct = object({
   tx_blob: XrplTransactionStringStruct,
-  fail_hard: optional(boolean()),
+  fail_hard: literal(true),
 });
 
 export type SubmitRequest = Infer<typeof SubmitRequestStruct>;
