@@ -7,8 +7,16 @@ import {
   toCaip19IouAssetId,
   toCaip19MptAssetId,
 } from '../../utils';
-import type { SerializableSpendableBalance } from './api';
-import { OnChainAssetType, SerializableIouSpendableBalanceStruct } from './api';
+import type {
+  IouAssetBalance,
+  MptAssetBalance,
+  SerializableSpendableBalance,
+} from './api';
+import {
+  OnChainAssetType,
+  SerializableIouSpendableBalanceStruct,
+  SerializableMptSpendableBalanceStruct,
+} from './api';
 import { OnChainAccountException } from './exceptions';
 import { OnChainAccount } from './OnChainAccount';
 
@@ -181,5 +189,65 @@ describe('OnChainAccount', () => {
       freeze: true,
       freezePeer: undefined,
     });
+  });
+
+  it('round-trips a locked MPT holding with zero spendable balance', () => {
+    const holding = SerializableMptSpendableBalanceStruct.create({
+      type: OnChainAssetType.Mpt,
+      assetId: mptAssetId,
+      mptAmount: '1500000',
+      lockedAmount: '500000',
+      balance: '0',
+      decimals: 6,
+      mptLocked: true,
+    });
+    const account = fundedAccount([holding]);
+    const asset = account.getRawAsset(mptAssetId) as MptAssetBalance;
+
+    expect(asset).toMatchObject({
+      type: OnChainAssetType.Mpt,
+      mptLocked: true,
+      balance: new BigNumber(0),
+      mptAmount: new BigNumber('1500000'),
+      lockedAmount: new BigNumber('500000'),
+    });
+    expect(account.toSerializableFull().balances[1]).toMatchObject({
+      type: OnChainAssetType.Mpt,
+      mptAmount: '1500000',
+      lockedAmount: '500000',
+      balance: '0',
+      mptLocked: true,
+    });
+  });
+
+  it('returns BigNumber clones from getAsset and getRawAsset', () => {
+    const account = fundedAccount([iouLine('USD', '1.5', '10')]);
+    const first = account.getAsset(usdAssetId) as IouAssetBalance;
+    const second = account.getRawAsset(usdAssetId) as IouAssetBalance;
+
+    expect(first.type).toBe(OnChainAssetType.Iou);
+    expect(second.type).toBe(OnChainAssetType.Iou);
+    expect(first.balance).not.toBe(second.balance);
+    expect(first.limit).not.toBe(second.limit);
+    expect(first.balance.eq(second.balance)).toBe(true);
+
+    first.balance = new BigNumber('99');
+    first.limit = new BigNumber('99');
+
+    expect(account.getAsset(usdAssetId)).toMatchObject({
+      balance: new BigNumber('1.5'),
+      limit: new BigNumber('10'),
+    });
+  });
+
+  it('leaves AccountRoot flags undefined before a full bind', () => {
+    const account = OnChainAccount.fromSerializable({
+      accountId: address,
+      sequenceNumber: '1',
+      scope,
+    });
+
+    expect(account.flags).toBeUndefined();
+    expect(account.requireDestTag).toBe(false);
   });
 });

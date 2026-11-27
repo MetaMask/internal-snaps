@@ -1,4 +1,5 @@
 import type { Logger } from '@metamask/snap-networks-utils';
+import { BigNumber } from 'bignumber.js';
 import type { Mock } from 'vitest';
 
 import type {
@@ -6,9 +7,15 @@ import type {
   KnownCaip19MptAssetId,
 } from '../../api';
 import { KnownCaip2ChainId } from '../../api';
-import { toCaip19IouAssetId, toCaip19MptAssetId } from '../../utils';
+import { NATIVE_ASSET_SYMBOL } from '../../constants';
+import {
+  getSlip44AssetId,
+  toCaip19IouAssetId,
+  toCaip19MptAssetId,
+} from '../../utils';
 import type { AssetMetadataService } from '../asset-metadata';
 import type { AssetsService } from '../assets';
+import type { CoreMptAsset, CoreNativeAsset } from '../assets/api';
 import type { NetworkService } from '../network';
 import { AccountNotActivatedException } from '../network';
 import type {
@@ -17,6 +24,7 @@ import type {
   TrustLine,
 } from '../network/api';
 import { OnChainAssetType } from './api';
+import type { MptAssetBalance } from './api';
 import { OnChainAccountException } from './exceptions';
 import type { OnChainAccount } from './OnChainAccount';
 import { OnChainAccountService } from './OnChainAccountService';
@@ -155,6 +163,33 @@ function mptMetadata(): {
   ];
 }
 
+function nativeCoreAsset(): CoreNativeAsset {
+  return {
+    id: getSlip44AssetId(KnownCaip2ChainId.Mainnet),
+    chainId: KnownCaip2ChainId.Mainnet,
+    balance: {
+      amount: '10',
+      metadata: {
+        spendableBalance: '9000000',
+        minimumReserveBalance: '1000000',
+      },
+    },
+    metadata: { symbol: NATIVE_ASSET_SYMBOL, decimals: 6 },
+  };
+}
+
+function mptCoreAsset(): CoreMptAsset {
+  return {
+    id: mptAssetId,
+    chainId: KnownCaip2ChainId.Mainnet,
+    balance: {
+      amount: '1.5',
+      metadata: { status: 1 },
+    },
+    metadata: { symbol: issuanceId, decimals: 6 },
+  };
+}
+
 describe('OnChainAccountService', () => {
   describe('isAccountActivated', () => {
     it.each([
@@ -254,54 +289,6 @@ describe('OnChainAccountService', () => {
         accountAddress: address,
         scope: KnownCaip2ChainId.Mainnet,
       });
-    });
-  });
-
-  describe('fetchActivatedAccount', () => {
-    it('loads a funded account with the requested holdings', async () => {
-      const { service, fetchAccountInfo, fetchAccountTrustlines } =
-        createOnChainAccountServiceTest();
-      fetchAccountTrustlines.mockResolvedValue([trustline()]);
-
-      const account = await service.fetchActivatedAccount({
-        address,
-        scope: KnownCaip2ChainId.Mainnet,
-        assetIds: [iouAssetId],
-      });
-
-      expect(account?.getAsset(iouAssetId)?.type).toStrictEqual(
-        OnChainAssetType.Iou,
-      );
-      expect(fetchAccountInfo).toHaveBeenCalledWith(
-        address,
-        KnownCaip2ChainId.Mainnet,
-        'validated',
-        { cache: false },
-      );
-      expect(fetchAccountTrustlines).toHaveBeenCalledWith({
-        accountAddress: address,
-        scope: KnownCaip2ChainId.Mainnet,
-        assetIds: [iouAssetId],
-      });
-    });
-
-    it('returns null when fetchActivatedAccount misses the ledger', async () => {
-      const { service, fetchAccountTrustlines, fetchAccountMptokens } =
-        createOnChainAccountServiceTest({
-          accountInfoError: new AccountNotActivatedException(
-            address,
-            KnownCaip2ChainId.Mainnet,
-          ),
-        });
-
-      const account = await service.fetchActivatedAccount({
-        address,
-        scope: KnownCaip2ChainId.Mainnet,
-      });
-
-      expect(account).toBeNull();
-      expect(fetchAccountTrustlines).not.toHaveBeenCalled();
-      expect(fetchAccountMptokens).not.toHaveBeenCalled();
     });
   });
 
@@ -544,9 +531,87 @@ describe('OnChainAccountService', () => {
       expect(account.getAsset(iouAssetId)).toBeUndefined();
       expect(account.getAsset(mptAssetId)).toBeUndefined();
     });
+
+    it('does not leave trust lines bound when an MPT holding fails validation', async () => {
+      const {
+        service,
+        fetchAccountTrustlines,
+        fetchAccountMptokens,
+        fetchAndPersistMptAssetMetadata,
+      } = createOnChainAccountServiceTest();
+      fetchAccountTrustlines.mockResolvedValue([trustline()]);
+      fetchAccountMptokens.mockResolvedValue([
+        {
+          ...holding(),
+          mpt_amount: '100',
+          locked_amount: '200',
+        },
+      ]);
+      fetchAndPersistMptAssetMetadata.mockResolvedValue(mptMetadata());
+      const account = await service.fetchAccount({
+        accountAddress: address,
+        scope: KnownCaip2ChainId.Mainnet,
+      });
+
+      await expect(
+        service.bindAssetsBalancesFromOnChain(
+          account,
+          KnownCaip2ChainId.Mainnet,
+          'all',
+        ),
+      ).rejects.toThrow(OnChainAccountException);
+      expect(account.getAsset(iouAssetId)).toBeUndefined();
+      expect(account.getAsset(mptAssetId)).toBeUndefined();
+    });
+
+    it('binds a locked MPT holding with zero spendable balance', async () => {
+      const { service, fetchAccountMptokens, fetchAndPersistMptAssetMetadata } =
+        createOnChainAccountServiceTest();
+      fetchAccountMptokens.mockResolvedValue([
+        {
+          ...holding(),
+          locked_amount: '500000',
+          mpt_locked: true,
+        },
+      ]);
+      fetchAndPersistMptAssetMetadata.mockResolvedValue(mptMetadata());
+      const account = await service.fetchAccount({
+        accountAddress: address,
+        scope: KnownCaip2ChainId.Mainnet,
+      });
+
+      await service.bindAssetsBalancesFromOnChain(
+        account,
+        KnownCaip2ChainId.Mainnet,
+        [mptAssetId],
+      );
+
+      const asset = account.getRawAsset(mptAssetId) as MptAssetBalance;
+      expect(asset).toMatchObject({
+        type: OnChainAssetType.Mpt,
+        mptLocked: true,
+        balance: new BigNumber(0),
+        mptAmount: new BigNumber('1500000'),
+        lockedAmount: new BigNumber('500000'),
+      });
+    });
   });
 
   describe('resolveFromController', () => {
+    it('returns null when the controller has no native XRP row', async () => {
+      const { service, getAccountAssetsByScope } =
+        createOnChainAccountServiceTest();
+      getAccountAssetsByScope.mockResolvedValue([mptCoreAsset()]);
+
+      const account = await service.resolveFromController(
+        'account-id',
+        address,
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(account).toBeNull();
+    });
+
     it('stores the controller asset scale on an MPT holding', async () => {
       const {
         service,
@@ -554,15 +619,8 @@ describe('OnChainAccountService', () => {
         getAccountAssetsByScope,
       } = createOnChainAccountServiceTest();
       getAccountAssetsByScope.mockResolvedValue([
-        {
-          id: mptAssetId,
-          chainId: KnownCaip2ChainId.Mainnet,
-          balance: {
-            amount: '1.5',
-            metadata: { status: 1 },
-          },
-          metadata: { symbol: issuanceId, decimals: 6 },
-        },
+        nativeCoreAsset(),
+        mptCoreAsset(),
       ]);
 
       const account = await service.resolveFromController(
@@ -572,6 +630,7 @@ describe('OnChainAccountService', () => {
       );
 
       expect(fetchAndPersistMptAssetMetadata).not.toHaveBeenCalled();
+      expect(account?.nativeRawBalance.toFixed(0)).toBe('10000000');
       expect(mptDecimals(account, mptAssetId)).toBe(6);
     });
   });

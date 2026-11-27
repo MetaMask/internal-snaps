@@ -52,16 +52,16 @@ export const OnChainAccountBaseDataStruct = object({
 export type OnChainAccountBaseData = Infer<typeof OnChainAccountBaseDataStruct>;
 
 /**
- * Native XRP holding. The ledger balance in drops, with no reserve math.
+ * Native holding. `balance` is the on-ledger total in drops.
  */
-export const SerializableNativeSpendableBalanceStruct = object({
+export const SerializableNativeBalanceStruct = object({
   type: literal(OnChainAssetType.Native),
   assetId: KnownCaip19Slip44IdStruct,
   balance: ValidXrplDropsStruct,
 });
 
-export type SerializableNativeSpendableBalance = Infer<
-  typeof SerializableNativeSpendableBalanceStruct
+export type SerializableNativeBalance = Infer<
+  typeof SerializableNativeBalanceStruct
 >;
 
 /**
@@ -128,11 +128,12 @@ export type SerializableMptSpendableBalance = Infer<
 >;
 
 /**
- * JSON-safe asset entries. Native is drops. IOU amounts stay decimal strings.
- * MPT amounts stay integer strings.
+ * JSON-safe asset entries. Native `balance` is raw ledger drops (not spendable).
+ * IOU amounts stay decimal strings. MPT amounts stay integer strings; MPT
+ * `balance` is the spendable amount.
  */
 export const SerializableSpendableBalanceStruct = union([
-  SerializableNativeSpendableBalanceStruct,
+  SerializableNativeBalanceStruct,
   SerializableIouSpendableBalanceStruct,
   SerializableMptSpendableBalanceStruct,
 ]);
@@ -143,8 +144,6 @@ export type SerializableSpendableBalance = Infer<
 
 /**
  * Full binding: reserve meta, asset entries, and the on-ledger XRP total in drops.
- * Spendable XRP is recomputed on bind from `rawNativeBalance` and `meta`.
- * `flags` holds enabled `lsf*` keys.
  */
 export const OnChainAccountSerializableFullStruct = assign(
   OnChainAccountBaseDataStruct,
@@ -173,12 +172,10 @@ export type OnChainAccountSerializable =
 
 /**
  * XRP holding kept in memory.
- * Same shape as {@link SerializableNativeSpendableBalance}, with `balance` as a {@link BigNumber}.
+ * Same shape as {@link SerializableNativeBalance}, with `balance` as a {@link BigNumber}.
+ * `balance` is the raw on-ledger total in drops (not spendable after reserve).
  */
-export type NativeAssetBalance = Omit<
-  SerializableNativeSpendableBalance,
-  'balance'
-> & {
+export type NativeAssetBalance = Omit<SerializableNativeBalance, 'balance'> & {
   balance: BigNumber;
 };
 
