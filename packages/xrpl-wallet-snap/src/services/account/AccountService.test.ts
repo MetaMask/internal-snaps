@@ -164,7 +164,8 @@ describe('AccountService', () => {
       getAllSpy.mockResolvedValue([]);
       const winnerId = '00000000-0000-4000-8000-000000000001';
       saveManyAndReconciledByAddressSpy.mockImplementation(
-        async ([account]) => [{ ...account, id: winnerId }],
+        async ([account]) =>
+          [{ ...account, id: winnerId }] as XrplKeyringAccount[],
       );
 
       const result = await accountService.batchCreate({
