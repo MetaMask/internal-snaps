@@ -22,7 +22,7 @@ import {
   OnChainAssetType,
   SerializableIouSpendableBalanceStruct,
   SerializableMptSpendableBalanceStruct,
-  SerializableNativeSpendableBalanceStruct,
+  SerializableNativeBalanceStruct,
 } from './api';
 import {
   OnChainAccountBalanceNotAvailableException,
@@ -40,11 +40,35 @@ import type { ReserveLedgerMeta } from './utils';
 export type XrplAccountFlags = LedgerEntry.AccountRootFlagsInterface;
 
 /**
- * XRPL account bound from {@link OnChainAccountSerializable}.
+ * Deep-copies a spendable balance entry so callers cannot mutate stored BigNumbers.
  *
- * A snapshot is either minimal (`accountId`, `sequenceNumber`, `scope`) or full
- * (reserve meta, flags, XRP balance, trust lines, and MPT holdings).
- * Build a full account with {@link OnChainAccount.fromSerializable}.
+ * @param entry - Stored inventory entry.
+ * @returns A new entry with cloned {@link BigNumber} fields.
+ */
+function cloneSpendableBalance(entry: SpendableBalance): SpendableBalance {
+  if (entry.type === OnChainAssetType.Native) {
+    return {
+      ...entry,
+      balance: new BigNumber(entry.balance),
+    };
+  }
+  if (entry.type === OnChainAssetType.Iou) {
+    return {
+      ...entry,
+      balance: new BigNumber(entry.balance),
+      limit: new BigNumber(entry.limit),
+    };
+  }
+  return {
+    ...entry,
+    mptAmount: new BigNumber(entry.mptAmount),
+    lockedAmount: new BigNumber(entry.lockedAmount),
+    balance: new BigNumber(entry.balance),
+  };
+}
+
+/**
+ * XRPL account bound from {@link OnChainAccountSerializable}.
  */
 export class OnChainAccount {
   readonly #accountId: string;
@@ -162,12 +186,12 @@ export class OnChainAccount {
   }
 
   /**
-   * AccountRoot flags. Empty until the account is fully bound.
+   * AccountRoot flags. `undefined` until the account is fully bound.
    *
-   * @returns Enabled `lsf*` flags stored on the snapshot.
+   * @returns Enabled `lsf*` flags stored on the snapshot, or `undefined` when unbound.
    */
-  get flags(): XrplAccountFlags {
-    return this.#flags ?? {};
+  get flags(): XrplAccountFlags | undefined {
+    return this.#flags;
   }
 
   /**
@@ -183,12 +207,12 @@ export class OnChainAccount {
   /**
    * Whether inbound payments must set a destination tag.
    *
-   * This is AccountRoot `lsfRequireDestTag`.
+   * This is AccountRoot `lsfRequireDestTag`. `false` when flags are unbound.
    *
    * @returns `true` when the account requires a destination tag.
    */
   get requireDestTag(): boolean {
-    return this.flags.lsfRequireDestTag === true;
+    return this.flags?.lsfRequireDestTag === true;
   }
 
   /**
@@ -258,13 +282,15 @@ export class OnChainAccount {
   /**
    * Visible asset entry for keyring, sends, and trust-line UX.
    *
-   * A native entry is returned when stored. An IOU entry is returned unless
-   * both `limit` and `balance` are zero (cleared / fully removed line). An MPT
-   * entry is returned when stored. Empty lines with `limit > 0` stay visible
-   * so opt-out and redundant opt-in checks can see them.
+   * A native entry is returned when stored; its `balance` is the raw on-ledger
+   * total in drops (not spendable after reserve). An IOU entry is returned
+   * unless both `limit` and `balance` are zero (cleared / fully removed line).
+   * An MPT entry is returned when stored. Empty lines with `limit > 0` stay
+   * visible so opt-out and redundant opt-in checks can see them.
    *
    * @param assetId - The asset id to look up.
-   * @returns A shallow copy of the entry, or `undefined` when the asset is not visible.
+   * @returns A copy of the entry with cloned BigNumbers, or `undefined` when
+   * the asset is not visible.
    */
   getAsset(
     assetId: KnownCaip19AssetIdOrSlip44Id,
@@ -276,10 +302,12 @@ export class OnChainAccount {
    * Stored asset entry, with no visibility filter.
    *
    * Pairs with {@link rawAssetIds}. Includes cleared IOU entries (`limit` and
-   * `balance` both zero) that {@link getAsset} omits.
+   * `balance` both zero) that {@link getAsset} omits. Native `balance` is the
+   * raw on-ledger total in drops.
    *
    * @param assetId - The asset id to look up.
-   * @returns A shallow copy of the entry, or `undefined` when nothing is stored for the id.
+   * @returns A copy of the entry with cloned BigNumbers, or `undefined` when
+   * nothing is stored for the id.
    */
   getRawAsset(
     assetId: KnownCaip19AssetIdOrSlip44Id,
@@ -288,7 +316,7 @@ export class OnChainAccount {
     if (entry === undefined) {
       return undefined;
     }
-    return { ...entry };
+    return cloneSpendableBalance(entry);
   }
 
   #getVisibleAsset(
@@ -303,14 +331,14 @@ export class OnChainAccount {
       entry.type === OnChainAssetType.Native ||
       entry.type === OnChainAssetType.Mpt
     ) {
-      return { ...entry };
+      return cloneSpendableBalance(entry);
     }
 
     if (
       entry.type === OnChainAssetType.Iou &&
       !(entry.limit.isZero() && entry.balance.isZero())
     ) {
-      return { ...entry };
+      return cloneSpendableBalance(entry);
     }
 
     return undefined;
@@ -356,7 +384,7 @@ export class OnChainAccount {
     for (const [assetId, entry] of this.#balances) {
       if (entry.type === OnChainAssetType.Native) {
         balances.push(
-          SerializableNativeSpendableBalanceStruct.create({
+          SerializableNativeBalanceStruct.create({
             type: OnChainAssetType.Native,
             assetId: entry.assetId,
             balance: entry.balance.toFixed(0),
@@ -382,23 +410,24 @@ export class OnChainAccount {
         );
         continue;
       }
-      if (entry.type !== OnChainAssetType.Mpt || !isMptId(assetId)) {
-        throw new OnChainAccountException(`Asset id not supported: ${assetId}`);
+      if (entry.type === OnChainAssetType.Mpt && isMptId(assetId)) {
+        balances.push(
+          SerializableMptSpendableBalanceStruct.create({
+            type: OnChainAssetType.Mpt,
+            assetId,
+            mptAmount: entry.mptAmount.toFixed(0),
+            lockedAmount: entry.lockedAmount.toFixed(0),
+            balance: entry.balance.toFixed(0),
+            decimals: entry.decimals,
+            mptAuthorized: entry.mptAuthorized,
+            ...(entry.mptLocked === undefined
+              ? {}
+              : { mptLocked: entry.mptLocked }),
+          }),
+        );
+        continue;
       }
-      balances.push(
-        SerializableMptSpendableBalanceStruct.create({
-          type: OnChainAssetType.Mpt,
-          assetId,
-          mptAmount: entry.mptAmount.toFixed(0),
-          lockedAmount: entry.lockedAmount.toFixed(0),
-          balance: entry.balance.toFixed(0),
-          decimals: entry.decimals,
-          mptAuthorized: entry.mptAuthorized,
-          ...(entry.mptLocked === undefined
-            ? {}
-            : { mptLocked: entry.mptLocked }),
-        }),
-      );
+      throw new OnChainAccountException(`Asset id not supported: ${assetId}`);
     }
 
     return {
@@ -468,7 +497,7 @@ export class OnChainAccount {
       });
 
       assetEntries.forEach((assetEntry) => {
-        if (SerializableNativeSpendableBalanceStruct.is(assetEntry)) {
+        if (SerializableNativeBalanceStruct.is(assetEntry)) {
           return;
         }
 

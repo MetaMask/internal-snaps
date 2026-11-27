@@ -91,11 +91,14 @@ export function minimumBalanceDrops(meta: ReserveLedgerMeta): BigNumber {
  *
  * A total of at least 1 XRP is this account's own base reserve (`paysOwnBaseReserve`)
  * plus 0.2 XRP owner objects. A smaller total does not include that base
- * reserve. Sponsorship counts stay 0. Prefer {@link reserveMetaFromAccountData}
- * when `account_info` is available.
+ * reserve.
+ *
+ * XLS-68 sponsorship counts (`sponsoringAccountCount`, `sponsoringOwnerCount`,
+ * `sponsoredOwnerCount`) are always 0 — a single drops total cannot recover them.
+ * Prefer {@link reserveMetaFromAccountData} when `account_info` is available.
  *
  * @param minimumReserveBalanceDrops - AssetsController `minimumReserveBalance` (integer drops).
- * @returns Ledger meta derived from that total.
+ * @returns Ledger meta derived from that total (sponsorship counts zeroed).
  */
 export function calculateLedgerMetaFromMinReserve(
   minimumReserveBalanceDrops: string,
