@@ -107,6 +107,7 @@ describe('toMptBalanceEntry', () => {
       amount: '1.5',
       metadata: {
         status:
+          // eslint-disable-next-line no-bitwise -- combine disjoint MptHolderStatus bits
           MptHolderStatus.HolderOptedIn | MptHolderStatus.IssuerAuthorized,
       },
     });

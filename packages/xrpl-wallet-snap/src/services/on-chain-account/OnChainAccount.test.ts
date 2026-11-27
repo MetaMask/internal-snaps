@@ -115,11 +115,11 @@ describe('OnChainAccount', () => {
   it('computes the reserve and the spendable XRP balance', () => {
     const account = fundedAccount([], 1);
 
-    expect(account.ownerCount).toStrictEqual(1);
+    expect(account.ownerCount).toBe(1);
     expect(account.paysOwnBaseReserve).toBe(true);
-    expect(account.minimumReserveBalance.toFixed(0)).toStrictEqual('1200000');
-    expect(account.nativeSpendableBalance.toFixed(0)).toStrictEqual('800000');
-    expect(account.nativeRawBalance.toFixed(0)).toStrictEqual('2000000');
+    expect(account.minimumReserveBalance.toFixed(0)).toBe('1200000');
+    expect(account.nativeSpendableBalance.toFixed(0)).toBe('800000');
+    expect(account.nativeRawBalance.toFixed(0)).toBe('2000000');
   });
 
   it('rejects an asset entry that does not match the asset id', () => {
