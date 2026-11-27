@@ -40,10 +40,6 @@ function generateMptAsset(chainId: KnownCaip2ChainId): MptXrplAssetMetadata {
   };
 }
 
-/**
- *
- * @param initial
- */
 function createMockStateManager(
   initial: AssetMetadataState,
 ): IStateManager<AssetMetadataState> {
@@ -57,6 +53,7 @@ function createMockStateManager(
       if (key === 'assetMetadataLastSyncedAt') {
         return state.assetMetadataLastSyncedAt as TResponse;
       }
+      // eslint-disable-next-line unicorn/no-useless-undefined
       return undefined;
     },
     setKey: vi.fn(async () => Promise.resolve()),

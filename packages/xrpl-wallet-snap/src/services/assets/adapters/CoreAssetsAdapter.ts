@@ -111,12 +111,11 @@ export class CoreAssetsAdapter {
   }
 
   async getAccountAssets(accountId: string): Promise<Asset[]> {
-    const [mainnetAssets, testnetAssets] = await Promise.all([
-      this.getAccountAssetsByScope(KnownCaip2ChainId.Mainnet, accountId),
-      this.getAccountAssetsByScope(KnownCaip2ChainId.Testnet, accountId),
-    ]);
-
-    return [...mainnetAssets, ...testnetAssets];
+    const mainnetAssets = await this.getAccountAssetsByScope(
+      KnownCaip2ChainId.Mainnet,
+      accountId,
+    );
+    return mainnetAssets;
   }
 
   async getAssetMetadata(

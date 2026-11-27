@@ -14,10 +14,10 @@ import { TokenApiClient } from './TokenApiClient';
 
 const baseUrl = 'https://tokens.test';
 
-function createJsonResponse(
+const jsonResponse = (
   body: unknown,
   init: { ok?: boolean; status?: number } = {},
-): Response {
+): Response => {
   const { ok = true, status = ok ? 200 : 500 } = init;
   return {
     ok,
@@ -25,34 +25,26 @@ function createJsonResponse(
     headers: { get: () => null },
     text: async () => JSON.stringify(body),
   } as unknown as Response;
-}
+};
 
-function createTokenMetadataResponse(
+const tokenMetadataResponse = (
   assetId: string,
   overrides: Record<string, unknown> = {},
-) {
-  return {
-    assetId,
-    decimals: IOU_DECIMAL_PLACES,
-    ...overrides,
-  };
-}
-
-function createClientTest(): {
-  client: TokenApiClient;
-  mockFetch: MockedFunction<typeof fetch>;
-} {
-  const mockFetch = vi.fn() as MockedFunction<typeof fetch>;
-  return {
-    client: new TokenApiClient({ baseUrl }, mockFetch),
-    mockFetch,
-  };
-}
+): { assetId: string; decimals: number; [key: string]: unknown } => ({
+  assetId,
+  decimals: IOU_DECIMAL_PLACES,
+  ...overrides,
+});
 
 describe('TokenApiClient', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
+  const mockFetch = vi.fn() as MockedFunction<typeof fetch>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
+
+  const createClient = (): TokenApiClient =>
+    new TokenApiClient({ baseUrl }, mockFetch);
 
   it('creates a fetch policy for the token API', () => {
     const createFetchPolicySpy = vi.spyOn(
@@ -60,7 +52,7 @@ describe('TokenApiClient', () => {
       'createFetchPolicy',
     );
 
-    createClientTest();
+    createClient();
 
     expect(createFetchPolicySpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -72,18 +64,18 @@ describe('TokenApiClient', () => {
   describe('fetchAssetsByAssetIds', () => {
     it('requests token API with assetIds in query and returns parsed body', async () => {
       const body = [
-        createTokenMetadataResponse(USDC_IOU, {
+        tokenMetadataResponse(USDC_IOU, {
           name: 'USD Coin',
           symbol: 'USDC',
         }),
       ];
-      const { client, mockFetch } = createClientTest();
-      mockFetch.mockResolvedValueOnce(createJsonResponse(body));
+      mockFetch.mockResolvedValueOnce(jsonResponse(body));
 
+      const client = createClient();
       const result = await client.fetchAssetsByAssetIds([USDC_IOU]);
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch.mock.calls[0]?.[0]).toStrictEqual(
+      expect(mockFetch.mock.calls[0]?.[0]).toBe(
         buildUrl({
           baseUrl,
           path: '/v3/assets',
@@ -95,129 +87,106 @@ describe('TokenApiClient', () => {
 
     it('joins multiple asset ids in the query param', async () => {
       const body = [
-        createTokenMetadataResponse(USDC_MPT, {
+        tokenMetadataResponse(USDC_MPT, {
           decimals: 6,
           name: 'A',
           symbol: 'A',
         }),
-        createTokenMetadataResponse(USDT_MPT, {
+        tokenMetadataResponse(USDT_MPT, {
           decimals: 6,
           name: 'B',
           symbol: 'B',
         }),
       ];
-      const { client, mockFetch } = createClientTest();
-      mockFetch.mockResolvedValueOnce(createJsonResponse(body));
+      mockFetch.mockResolvedValueOnce(jsonResponse(body));
 
+      const client = createClient();
       await client.fetchAssetsByAssetIds([USDC_MPT, USDT_MPT]);
 
+      expect(mockFetch).toHaveBeenCalledTimes(1);
       const urlArg = mockFetch.mock.calls[0]?.[0];
-      expect(typeof urlArg).toStrictEqual('string');
-      expect(
-        new URL(urlArg as string).searchParams.get('assetIds'),
-      ).toStrictEqual(`${USDC_MPT},${USDT_MPT}`);
+      expect(typeof urlArg).toBe('string');
+      const assetIdsParam = new URL(urlArg as string).searchParams.get(
+        'assetIds',
+      );
+      expect(assetIdsParam).toBe(`${USDC_MPT},${USDT_MPT}`);
     });
 
-    it.each([
-      {
-        name: 'HTTP error response',
-        setup: (mockFetch: MockedFunction<typeof fetch>) => {
-          mockFetch.mockResolvedValue(
-            createJsonResponse([], { ok: false, status: 503 }),
-          );
-        },
-        expected: HttpResponseException,
-        fetchCalls: 4,
-      },
-      {
-        name: 'invalid response body',
-        setup: (mockFetch: MockedFunction<typeof fetch>) => {
-          mockFetch.mockResolvedValueOnce(
-            createJsonResponse({ notAnArray: true }),
-          );
-        },
-        expected: InvalidHttpResponseException,
-        fetchCalls: 1,
-      },
-      {
-        name: 'network fetch rejection',
-        setup: (mockFetch: MockedFunction<typeof fetch>) => {
-          mockFetch.mockRejectedValue(
-            Object.assign(new Error('network down'), {
-              cause: { code: 'ECONNREFUSED' },
-            }),
-          );
-        },
-        expected: HttpException,
-        fetchCalls: 4,
-      },
-    ])(
-      'throws $expected.name for $name',
-      async ({ setup, expected, fetchCalls }) => {
-        const { client, mockFetch } = createClientTest();
-        setup(mockFetch);
+    it('throws HttpResponseException when response is not ok', async () => {
+      mockFetch.mockResolvedValue(jsonResponse([], { ok: false, status: 503 }));
 
-        await expect(client.fetchAssetsByAssetIds([USDC_IOU])).rejects.toThrow(
-          expected,
-        );
-        expect(mockFetch).toHaveBeenCalledTimes(fetchCalls);
-      },
-    );
+      const client = createClient();
+      await expect(client.fetchAssetsByAssetIds([USDC_IOU])).rejects.toThrow(
+        HttpResponseException,
+      );
+      expect(mockFetch).toHaveBeenCalledTimes(4);
+    });
 
     it('retries when reading the response body fails', async () => {
       const body = [
-        createTokenMetadataResponse(USDC_IOU, {
+        tokenMetadataResponse(USDC_IOU, {
           name: 'USD Coin',
           symbol: 'USDC',
         }),
       ];
-      const { client, mockFetch } = createClientTest();
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
           text: vi.fn().mockRejectedValueOnce(new Error('Body failed')),
         } as unknown as Response)
-        .mockResolvedValueOnce(createJsonResponse(body));
+        .mockResolvedValueOnce(jsonResponse(body));
 
-      expect(await client.fetchAssetsByAssetIds([USDC_IOU])).toStrictEqual(
-        body,
-      );
+      expect(
+        await createClient().fetchAssetsByAssetIds([USDC_IOU]),
+      ).toStrictEqual(body);
       expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('throws InvalidHttpResponseException when response body is invalid', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({ notAnArray: true }));
+
+      const client = createClient();
+      await expect(client.fetchAssetsByAssetIds([USDC_IOU])).rejects.toThrow(
+        InvalidHttpResponseException,
+      );
+    });
+
+    it('throws HttpException when fetch rejects', async () => {
+      const networkError = Object.assign(new Error('network down'), {
+        cause: { code: 'ECONNREFUSED' },
+      });
+      mockFetch.mockRejectedValue(networkError);
+
+      const client = createClient();
+      await expect(client.fetchAssetsByAssetIds([USDC_IOU])).rejects.toThrow(
+        HttpException,
+      );
+      expect(mockFetch).toHaveBeenCalledTimes(4);
     });
   });
 
   describe('fetchAssetsByChainId', () => {
-    it.each([
-      {
-        name: 'populated catalog',
-        body: {
-          data: [
-            createTokenMetadataResponse(USDC_MPT, {
-              decimals: 6,
-              name: 'A',
-              symbol: 'A',
-            }),
-          ],
-          count: 1,
-          totalCount: 1,
-        },
-      },
-      {
-        name: 'empty catalog',
-        body: {
-          data: [],
-          count: 0,
-          totalCount: 0,
-        },
-      },
-    ])('returns parsed body for $name', async ({ body }) => {
-      const { client, mockFetch } = createClientTest();
-      mockFetch.mockResolvedValueOnce(createJsonResponse(body));
+    it('requests chain token API and returns parsed body', async () => {
+      const body = {
+        data: [
+          tokenMetadataResponse(USDC_MPT, {
+            decimals: 6,
+            name: 'A',
+            symbol: 'A',
+          }),
+        ],
+        count: 1,
+        totalCount: 1,
+      };
+      mockFetch.mockResolvedValueOnce(jsonResponse(body));
 
-      expect(
-        await client.fetchAssetsByChainId(KnownCaip2ChainId.Mainnet),
-      ).toStrictEqual(body);
-      expect(mockFetch.mock.calls[0]?.[0]).toStrictEqual(
+      const client = createClient();
+      const result = await client.fetchAssetsByChainId(
+        KnownCaip2ChainId.Mainnet,
+      );
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch.mock.calls[0]?.[0]).toBe(
         buildUrl({
           baseUrl,
           path: `/v3/chains/${KnownCaip2ChainId.Mainnet}/assets`,
@@ -229,52 +198,55 @@ describe('TokenApiClient', () => {
           },
         }),
       );
+      expect(result).toStrictEqual(body);
     });
 
-    it.each([
-      {
-        name: 'HTTP error response',
-        setup: (mockFetch: MockedFunction<typeof fetch>) => {
-          mockFetch.mockResolvedValue(
-            createJsonResponse({ data: [] }, { ok: false, status: 502 }),
-          );
-        },
-        expected: HttpResponseException,
-        fetchCalls: 4,
-      },
-      {
-        name: 'invalid response body',
-        setup: (mockFetch: MockedFunction<typeof fetch>) => {
-          mockFetch.mockResolvedValueOnce(
-            createJsonResponse([{ notValid: true }]),
-          );
-        },
-        expected: InvalidHttpResponseException,
-        fetchCalls: 1,
-      },
-      {
-        name: 'network fetch rejection',
-        setup: (mockFetch: MockedFunction<typeof fetch>) => {
-          mockFetch.mockRejectedValue(
-            Object.assign(new Error('network down'), {
-              cause: { code: 'ECONNREFUSED' },
-            }),
-          );
-        },
-        expected: HttpException,
-        fetchCalls: 4,
-      },
-    ])(
-      'throws $expected.name for $name',
-      async ({ setup, expected, fetchCalls }) => {
-        const { client, mockFetch } = createClientTest();
-        setup(mockFetch);
+    it('returns parsed body when response data is empty', async () => {
+      const body = {
+        data: [],
+        count: 0,
+        totalCount: 0,
+      };
+      mockFetch.mockResolvedValueOnce(jsonResponse(body));
 
-        await expect(
-          client.fetchAssetsByChainId(KnownCaip2ChainId.Mainnet),
-        ).rejects.toThrow(expected);
-        expect(mockFetch).toHaveBeenCalledTimes(fetchCalls);
-      },
-    );
+      const client = createClient();
+      expect(
+        await client.fetchAssetsByChainId(KnownCaip2ChainId.Mainnet),
+      ).toStrictEqual(body);
+    });
+
+    it('throws HttpResponseException on HTTP error', async () => {
+      mockFetch.mockResolvedValue(
+        jsonResponse({ data: [] }, { ok: false, status: 502 }),
+      );
+
+      const client = createClient();
+      await expect(
+        client.fetchAssetsByChainId(KnownCaip2ChainId.Mainnet),
+      ).rejects.toThrow(HttpResponseException);
+      expect(mockFetch).toHaveBeenCalledTimes(4);
+    });
+
+    it('throws InvalidHttpResponseException when body does not match schema', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse([{ notValid: true }]));
+
+      const client = createClient();
+      await expect(
+        client.fetchAssetsByChainId(KnownCaip2ChainId.Mainnet),
+      ).rejects.toThrow(InvalidHttpResponseException);
+    });
+
+    it('throws HttpException when fetch rejects', async () => {
+      const networkError = Object.assign(new Error('network down'), {
+        cause: { code: 'ECONNREFUSED' },
+      });
+      mockFetch.mockRejectedValue(networkError);
+
+      const client = createClient();
+      await expect(
+        client.fetchAssetsByChainId(KnownCaip2ChainId.Mainnet),
+      ).rejects.toThrow(HttpException);
+      expect(mockFetch).toHaveBeenCalledTimes(4);
+    });
   });
 });

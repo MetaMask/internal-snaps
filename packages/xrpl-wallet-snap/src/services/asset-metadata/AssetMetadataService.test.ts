@@ -7,7 +7,6 @@ import { AppConfig } from '../../config';
 import { IOU_DECIMAL_PLACES, XRPL_DECIMAL_PLACES } from '../../constants';
 import { getSlip44AssetId, logger, parseMptIssuanceId } from '../../utils';
 import type { AssetsService } from '../assets';
-import type { NetworkService } from '../network/NetworkService';
 import { RLUSD_IOU, USDC_IOU, USDC_MPT } from './__mocks__/assets.fixtures';
 import type { IouXrplAssetMetadata, MptXrplAssetMetadata } from './api';
 import type { AssetMetadataRepository } from './AssetMetadataRepository';
@@ -45,7 +44,18 @@ function createCachedMpt(assetId: KnownCaip19MptAssetId): MptXrplAssetMetadata {
   };
 }
 
-function createService(deps: { repo?: Partial<AssetMetadataRepository> } = {}) {
+function createService(
+  deps: { repo?: Partial<AssetMetadataRepository> } = {},
+): {
+  service: AssetMetadataService;
+  assetsService: AssetsService;
+  fetchAssetsByAssetIds: MockedFunction<
+    TokenApiClient['fetchAssetsByAssetIds']
+  >;
+  fetchAssetsByChainId: MockedFunction<TokenApiClient['fetchAssetsByChainId']>;
+  getByAssetIds: MockedFunction<AssetMetadataRepository['getByAssetIds']>;
+  saveMany: MockedFunction<AssetMetadataRepository['saveMany']>;
+} {
   const fetchAssetsByAssetIds = vi.fn().mockResolvedValue([]);
   const fetchAssetsByChainId = vi.fn().mockResolvedValue({
     data: [],
@@ -84,7 +94,6 @@ function createService(deps: { repo?: Partial<AssetMetadataRepository> } = {}) {
     assetMetadataRepository: repo,
     logger,
     assetsService,
-    networkService: {} as unknown as NetworkService,
   });
 
   return {
@@ -106,269 +115,345 @@ describe('AssetMetadataService', () => {
     vi.restoreAllMocks();
   });
 
-  it('returns native metadata for mainnet slip44 id', async () => {
-    const { service, getByAssetIds, fetchAssetsByAssetIds } = createService({});
-    const slipId = getSlip44AssetId(scope);
-    const result = await service.resolve(slipId);
+  describe('resolve', () => {
+    it('returns native metadata for mainnet slip44 id', async () => {
+      const { service, getByAssetIds, fetchAssetsByAssetIds } = createService(
+        {},
+      );
+      const slipId = getSlip44AssetId(scope);
+      const result = await service.resolve(slipId);
 
-    expect(result.assetId).toStrictEqual(slipId);
-    expect(result.assetType).toStrictEqual(AssetType.Native);
-    expect(result.units[0]?.decimals).toStrictEqual(XRPL_DECIMAL_PLACES);
-    expect(getByAssetIds).not.toHaveBeenCalled();
-    expect(fetchAssetsByAssetIds).not.toHaveBeenCalled();
-  });
+      expect(result.assetId).toStrictEqual(slipId);
+      expect(result.assetType).toStrictEqual(AssetType.Native);
+      expect(result.units[0]?.decimals).toStrictEqual(XRPL_DECIMAL_PLACES);
+      expect(getByAssetIds).not.toHaveBeenCalled();
+      expect(fetchAssetsByAssetIds).not.toHaveBeenCalled();
+    });
 
-  it('throws for an uncached IOU when the token API returns no row', async () => {
-    const { service, saveMany, fetchAssetsByAssetIds } = createService({});
+    it('throws for an uncached IOU when the token API returns no row', async () => {
+      const { service, saveMany, fetchAssetsByAssetIds } = createService({});
 
-    await expect(service.resolve(USDC_IOU)).rejects.toThrow(
-      AssetMetadataServiceException,
-    );
-    expect(fetchAssetsByAssetIds).toHaveBeenCalledWith([USDC_IOU]);
-    expect(saveMany).not.toHaveBeenCalled();
-  });
+      await expect(service.resolve(USDC_IOU)).rejects.toThrow(
+        AssetMetadataServiceException,
+      );
+      expect(fetchAssetsByAssetIds).toHaveBeenCalledWith([USDC_IOU]);
+      expect(saveMany).not.toHaveBeenCalled();
+    });
 
-  it('returns a cached IOU without calling the token API', async () => {
-    const cached = createCachedIou(USDC_IOU);
-    const { service, getByAssetIds, saveMany, fetchAssetsByAssetIds } =
-      createService({
+    it('returns a cached IOU without calling the token API', async () => {
+      const cached = createCachedIou(USDC_IOU);
+      const { service, getByAssetIds, saveMany, fetchAssetsByAssetIds } =
+        createService({
+          repo: {
+            getByAssetIds: vi.fn().mockResolvedValue([cached]),
+          },
+        });
+
+      const result = await service.resolve(USDC_IOU);
+
+      expect(result).toStrictEqual(cached);
+      expect(getByAssetIds).toHaveBeenCalledWith([USDC_IOU]);
+      expect(fetchAssetsByAssetIds).not.toHaveBeenCalled();
+      expect(saveMany).not.toHaveBeenCalled();
+    });
+
+    it('throws when the token API does not return metadata for a mainnet IOU', async () => {
+      const { service, fetchAssetsByAssetIds } = createService({});
+
+      await expect(service.resolve(USDC_IOU)).rejects.toThrow(
+        AssetMetadataServiceException,
+      );
+      expect(fetchAssetsByAssetIds).toHaveBeenCalledWith([USDC_IOU]);
+    });
+
+    it('returns cached mainnet IOU without calling token API', async () => {
+      const cached = createCachedIou(USDC_IOU);
+      const {
+        service,
+        assetsService,
+        getByAssetIds,
+        saveMany,
+        fetchAssetsByAssetIds,
+      } = createService({
         repo: {
           getByAssetIds: vi.fn().mockResolvedValue([cached]),
         },
       });
+      const getAssetMetadata = vi
+        .spyOn(assetsService, 'getAssetMetadata')
+        .mockResolvedValue(null);
 
-    const result = await service.resolve(USDC_IOU);
+      const result = await service.resolve(USDC_IOU);
 
-    expect(result).toStrictEqual(cached);
-    expect(getByAssetIds).toHaveBeenCalledWith([USDC_IOU]);
-    expect(fetchAssetsByAssetIds).not.toHaveBeenCalled();
-    expect(saveMany).not.toHaveBeenCalled();
-  });
-
-  it('persists only the ids returned by the token API', async () => {
-    const tokenRow: TokenMetadata = {
-      assetId: USDC_MPT,
-      decimals: 6,
-      name: 'USDC',
-      symbol: 'USDC',
-    };
-    const { service, saveMany, fetchAssetsByAssetIds } = createService({});
-    fetchAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
-
-    const result = await service.fetchAndPersistAssetsByAssetIds([
-      USDC_MPT,
-      USDC_IOU,
-    ]);
-
-    expect(fetchAssetsByAssetIds).toHaveBeenCalledWith([USDC_MPT, USDC_IOU]);
-    expect(result).toStrictEqual([
-      expect.objectContaining({
-        assetId: USDC_MPT,
-        assetType: AssetType.Mpt,
-      }),
-    ]);
-    expect(saveMany).toHaveBeenCalledWith([
-      expect.objectContaining({ assetId: USDC_MPT }),
-    ]);
-  });
-
-  it('throws when the token API does not return metadata for a mainnet IOU', async () => {
-    const { service, fetchAssetsByAssetIds } = createService({});
-
-    await expect(service.resolve(USDC_IOU)).rejects.toThrow(
-      AssetMetadataServiceException,
-    );
-    expect(fetchAssetsByAssetIds).toHaveBeenCalledWith([USDC_IOU]);
-  });
-
-  it('returns cached mainnet IOU without calling token API', async () => {
-    const cached = createCachedIou(USDC_IOU);
-    const {
-      service,
-      assetsService,
-      getByAssetIds,
-      saveMany,
-      fetchAssetsByAssetIds,
-    } = createService({
-      repo: {
-        getByAssetIds: vi.fn().mockResolvedValue([cached]),
-      },
+      expect(result).toStrictEqual(cached);
+      expect(getAssetMetadata).toHaveBeenCalledWith(USDC_IOU);
+      expect(getByAssetIds).toHaveBeenCalledWith([USDC_IOU]);
+      expect(fetchAssetsByAssetIds).not.toHaveBeenCalled();
+      expect(saveMany).not.toHaveBeenCalled();
     });
-    const getAssetMetadata = vi
-      .spyOn(assetsService, 'getAssetMetadata')
-      .mockResolvedValue(null);
 
-    const result = await service.resolve(USDC_IOU);
+    it('resolves mainnet IOU from token API when API returns metadata', async () => {
+      const tokenRow: TokenMetadata = {
+        assetId: USDC_IOU,
+        decimals: IOU_DECIMAL_PLACES,
+        name: 'USD Coin',
+        symbol: 'USDC',
+      };
+      const { service, saveMany, fetchAssetsByAssetIds } = createService({});
+      fetchAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
 
-    expect(result).toStrictEqual(cached);
-    expect(getAssetMetadata).toHaveBeenCalledWith(USDC_IOU);
-    expect(getByAssetIds).toHaveBeenCalledWith([USDC_IOU]);
-    expect(fetchAssetsByAssetIds).not.toHaveBeenCalled();
-    expect(saveMany).not.toHaveBeenCalled();
+      const result = await service.resolve(USDC_IOU);
+
+      expect(result).toMatchObject({
+        assetId: USDC_IOU,
+        name: 'USD Coin',
+        symbol: 'USDC',
+        chainId: scope,
+        assetType: AssetType.Token,
+        fungible: true,
+        units: [
+          {
+            name: 'USD Coin',
+            symbol: 'USDC',
+            decimals: IOU_DECIMAL_PLACES,
+          },
+        ],
+        iconUrl: buildUrl({
+          baseUrl: AppConfig.api.staticApi.baseUrl,
+          path: '/api/v2/tokenIcons/assets/{assetId}.png',
+          pathParams: {
+            assetId: USDC_IOU.replace(/:/gu, '/'),
+          },
+          encodePathParams: false,
+        }),
+      });
+      expect(saveMany).toHaveBeenCalledWith([
+        expect.objectContaining({ assetId: USDC_IOU }),
+      ]);
+    });
+
+    it('falls back IOU name and symbol to a decoded currency code when the API omits them', async () => {
+      const tokenRow: TokenMetadata = {
+        assetId: RLUSD_IOU,
+        decimals: IOU_DECIMAL_PLACES,
+      };
+      const { service, fetchAssetsByAssetIds } = createService({});
+      fetchAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
+
+      const result = await service.resolve(RLUSD_IOU);
+
+      expect(result).toMatchObject({
+        name: 'RLUSD',
+        symbol: 'RLUSD',
+        units: [
+          {
+            name: 'RLUSD',
+            symbol: 'RLUSD',
+            decimals: IOU_DECIMAL_PLACES,
+          },
+        ],
+      });
+    });
+
+    it('falls back MPT name and symbol to the issuance id when the API omits them', async () => {
+      const tokenRow: TokenMetadata = {
+        assetId: USDC_MPT,
+        decimals: 0,
+      };
+      const { service, fetchAssetsByAssetIds } = createService({});
+      fetchAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
+
+      const result = await service.resolve(USDC_MPT);
+
+      expect(result).toMatchObject({
+        name: parseMptIssuanceId(USDC_MPT),
+        symbol: parseMptIssuanceId(USDC_MPT),
+      });
+    });
+
+    it('uses token API iconUrl when provided', async () => {
+      const iconUrl = 'https://cdn.example/token.png';
+      const tokenRow: TokenMetadata = {
+        assetId: USDC_IOU,
+        decimals: IOU_DECIMAL_PLACES,
+        name: 'USD Coin',
+        symbol: 'USDC',
+        iconUrl,
+      };
+      const { service, fetchAssetsByAssetIds } = createService({});
+      fetchAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
+
+      const result = await service.resolve(USDC_IOU);
+
+      expect(result.iconUrl).toStrictEqual(iconUrl);
+    });
+
+    it('maps AssetsController catalog metadata into XrplAssetMetadata without reading snap state', async () => {
+      const {
+        service,
+        assetsService,
+        getByAssetIds,
+        saveMany,
+        fetchAssetsByAssetIds,
+      } = createService({});
+      const getAssetMetadata = vi
+        .spyOn(assetsService, 'getAssetMetadata')
+        .mockResolvedValue({
+          symbol: 'USDC',
+          decimals: IOU_DECIMAL_PLACES,
+          name: 'USD Coin',
+        });
+
+      const result = await service.resolve(USDC_IOU);
+
+      expect(result).toStrictEqual(
+        toXrplAssetMetadata({
+          assetId: USDC_IOU,
+          decimals: IOU_DECIMAL_PLACES,
+          symbol: 'USDC',
+          name: 'USD Coin',
+        }),
+      );
+      expect(getAssetMetadata).toHaveBeenCalledWith(USDC_IOU);
+      expect(getByAssetIds).not.toHaveBeenCalled();
+      expect(fetchAssetsByAssetIds).not.toHaveBeenCalled();
+      expect(saveMany).not.toHaveBeenCalled();
+    });
+
+    it('falls back to snap catalog when AssetsController misses', async () => {
+      const cached = createCachedIou(USDC_IOU);
+      const { service, assetsService, getByAssetIds, fetchAssetsByAssetIds } =
+        createService({
+          repo: {
+            getByAssetIds: vi.fn().mockResolvedValue([cached]),
+          },
+        });
+      const getAssetMetadata = vi
+        .spyOn(assetsService, 'getAssetMetadata')
+        .mockResolvedValue(null);
+
+      const result = await service.resolve(USDC_IOU);
+
+      expect(result).toStrictEqual(cached);
+      expect(getAssetMetadata).toHaveBeenCalledWith(USDC_IOU);
+      expect(getByAssetIds).toHaveBeenCalledWith([USDC_IOU]);
+      expect(fetchAssetsByAssetIds).not.toHaveBeenCalled();
+    });
+
+    it('throws when AssetsController, snap, and token API all miss', async () => {
+      const {
+        service,
+        assetsService,
+        getByAssetIds,
+        saveMany,
+        fetchAssetsByAssetIds,
+      } = createService({});
+
+      await expect(service.resolve(USDC_MPT)).rejects.toBeInstanceOf(
+        AssetMetadataServiceException,
+      );
+      expect(assetsService.getAssetMetadata).toHaveBeenCalledWith(USDC_MPT);
+      expect(getByAssetIds).toHaveBeenCalledWith([USDC_MPT]);
+      expect(fetchAssetsByAssetIds).toHaveBeenCalledWith([USDC_MPT]);
+      expect(saveMany).not.toHaveBeenCalled();
+    });
   });
 
-  it('resolves requested MPT metadata and persists it', async () => {
-    const tokenRow: TokenMetadata = {
-      assetId: USDC_MPT,
-      decimals: 6,
-      name: 'USDC',
-      symbol: 'USDC',
-    };
-    const { service, saveMany, fetchAssetsByAssetIds } = createService({});
-    fetchAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
-
-    const result = await service.fetchAndPersistAssetsByAssetIds([USDC_MPT]);
-
-    expect(result).toStrictEqual([
-      expect.objectContaining({
+  describe('fetchAndPersistAssetsByAssetIds', () => {
+    it('persists only the ids returned by the token API', async () => {
+      const tokenRow: TokenMetadata = {
         assetId: USDC_MPT,
+        decimals: 6,
         name: 'USDC',
         symbol: 'USDC',
-        assetType: AssetType.Mpt,
-      }),
-    ]);
-    expect(fetchAssetsByAssetIds).toHaveBeenCalledWith([USDC_MPT]);
-    expect(saveMany).toHaveBeenCalledWith([
-      expect.objectContaining({
-        assetId: USDC_MPT,
-        symbol: 'USDC',
-      }),
-    ]);
-  });
+      };
+      const { service, saveMany, fetchAssetsByAssetIds } = createService({});
+      fetchAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
 
-  it('resolves mainnet IOU from token API when API returns metadata', async () => {
-    const tokenRow: TokenMetadata = {
-      assetId: USDC_IOU,
-      decimals: IOU_DECIMAL_PLACES,
-      name: 'USD Coin',
-      symbol: 'USDC',
-    };
-    const { service, saveMany, fetchAssetsByAssetIds } = createService({});
-    fetchAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
+      const result = await service.fetchAndPersistAssetsByAssetIds([
+        USDC_MPT,
+        USDC_IOU,
+      ]);
 
-    const result = await service.resolve(USDC_IOU);
-
-    expect(result).toMatchObject({
-      assetId: USDC_IOU,
-      name: 'USD Coin',
-      symbol: 'USDC',
-      chainId: scope,
-      assetType: AssetType.Token,
-      fungible: true,
-      units: [
-        {
-          name: 'USD Coin',
-          symbol: 'USDC',
-          decimals: IOU_DECIMAL_PLACES,
-        },
-      ],
-      iconUrl: buildUrl({
-        baseUrl: AppConfig.api.staticApi.baseUrl,
-        path: '/api/v2/tokenIcons/assets/{assetId}.png',
-        pathParams: {
-          assetId: USDC_IOU.replace(/:/gu, '/'),
-        },
-        encodePathParams: false,
-      }),
-    });
-    expect(saveMany).toHaveBeenCalledWith([
-      expect.objectContaining({ assetId: USDC_IOU }),
-    ]);
-  });
-
-  it('falls back IOU name and symbol to a decoded currency code when the API omits them', async () => {
-    const tokenRow: TokenMetadata = {
-      assetId: RLUSD_IOU,
-      decimals: IOU_DECIMAL_PLACES,
-    };
-    const { service, fetchAssetsByAssetIds } = createService({});
-    fetchAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
-
-    const result = await service.resolve(RLUSD_IOU);
-
-    expect(result).toMatchObject({
-      name: 'RLUSD',
-      symbol: 'RLUSD',
-      units: [
-        {
-          name: 'RLUSD',
-          symbol: 'RLUSD',
-          decimals: IOU_DECIMAL_PLACES,
-        },
-      ],
-    });
-  });
-
-  it('falls back MPT name and symbol to the issuance id when the API omits them', async () => {
-    const tokenRow: TokenMetadata = {
-      assetId: USDC_MPT,
-      decimals: 0,
-    };
-    const { service, fetchAssetsByAssetIds, fetchAssetsByChainId } =
-      createService({});
-    fetchAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
-
-    const result = await service.resolve(USDC_MPT);
-
-    expect(result).toMatchObject({
-      name: parseMptIssuanceId(USDC_MPT),
-      symbol: parseMptIssuanceId(USDC_MPT),
-    });
-  });
-
-  it('uses token API iconUrl when provided', async () => {
-    const iconUrl = 'https://cdn.example/token.png';
-    const tokenRow: TokenMetadata = {
-      assetId: USDC_IOU,
-      decimals: IOU_DECIMAL_PLACES,
-      name: 'USD Coin',
-      symbol: 'USDC',
-      iconUrl,
-    };
-    const { service, fetchAssetsByAssetIds, fetchAssetsByChainId } =
-      createService({});
-    fetchAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
-
-    const result = await service.resolve(USDC_IOU);
-
-    expect(result.iconUrl).toStrictEqual(iconUrl);
-  });
-
-  it('persists mapped non-MPT assets from token API during synchronize', async () => {
-    const iouTokenRow: TokenMetadata = {
-      assetId: USDC_IOU,
-      decimals: IOU_DECIMAL_PLACES,
-      name: 'USD Coin',
-      symbol: 'USDC',
-    };
-    const mptTokenRow: TokenMetadata = {
-      assetId: USDC_MPT,
-      decimals: 6,
-      name: 'USDC',
-      symbol: 'USDC',
-    };
-    const { service, saveMany, fetchAssetsByChainId } = createService({});
-    fetchAssetsByChainId.mockResolvedValueOnce({
-      data: [iouTokenRow, mptTokenRow],
-      count: 2,
-      totalCount: 2,
-    });
-
-    await service.synchronize(scope);
-
-    expect(fetchAssetsByChainId).toHaveBeenCalledWith(scope);
-    expect(saveMany).toHaveBeenCalledWith(
-      [
+      expect(fetchAssetsByAssetIds).toHaveBeenCalledWith([USDC_MPT, USDC_IOU]);
+      expect(result).toStrictEqual([
         expect.objectContaining({
-          assetId: USDC_IOU,
-          name: 'USD Coin',
-          symbol: 'USDC',
-          assetType: AssetType.Token,
-          chainId: scope,
+          assetId: USDC_MPT,
+          assetType: AssetType.Mpt,
         }),
-      ],
-      true,
-    );
+      ]);
+      expect(saveMany).toHaveBeenCalledWith([
+        expect.objectContaining({ assetId: USDC_MPT }),
+      ]);
+    });
+
+    it('resolves requested MPT metadata and persists it', async () => {
+      const tokenRow: TokenMetadata = {
+        assetId: USDC_MPT,
+        decimals: 6,
+        name: 'USDC',
+        symbol: 'USDC',
+      };
+      const { service, saveMany, fetchAssetsByAssetIds } = createService({});
+      fetchAssetsByAssetIds.mockResolvedValueOnce([tokenRow]);
+
+      const result = await service.fetchAndPersistAssetsByAssetIds([USDC_MPT]);
+
+      expect(result).toStrictEqual([
+        expect.objectContaining({
+          assetId: USDC_MPT,
+          name: 'USDC',
+          symbol: 'USDC',
+          assetType: AssetType.Mpt,
+        }),
+      ]);
+      expect(fetchAssetsByAssetIds).toHaveBeenCalledWith([USDC_MPT]);
+      expect(saveMany).toHaveBeenCalledWith([
+        expect.objectContaining({
+          assetId: USDC_MPT,
+          symbol: 'USDC',
+        }),
+      ]);
+    });
+  });
+
+  describe('synchronize', () => {
+    it('persists mapped non-MPT assets from token API during synchronize', async () => {
+      const iouTokenRow: TokenMetadata = {
+        assetId: USDC_IOU,
+        decimals: IOU_DECIMAL_PLACES,
+        name: 'USD Coin',
+        symbol: 'USDC',
+      };
+      const mptTokenRow: TokenMetadata = {
+        assetId: USDC_MPT,
+        decimals: 6,
+        name: 'USDC',
+        symbol: 'USDC',
+      };
+      const { service, saveMany, fetchAssetsByChainId } = createService({});
+      fetchAssetsByChainId.mockResolvedValueOnce({
+        data: [iouTokenRow, mptTokenRow],
+        count: 2,
+        totalCount: 2,
+      });
+
+      await service.synchronize(scope);
+
+      expect(fetchAssetsByChainId).toHaveBeenCalledWith(scope);
+      expect(saveMany).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            assetId: USDC_IOU,
+            name: 'USD Coin',
+            symbol: 'USDC',
+            assetType: AssetType.Token,
+            chainId: scope,
+          }),
+        ],
+        true,
+      );
+    });
   });
 
   describe('synchronizeIfStale', () => {
@@ -444,7 +529,7 @@ describe('AssetMetadataService', () => {
 
     it('returns fetched MPT rows and skips other asset types', async () => {
       const mptRow = freshCatalogRow();
-      const { service, fetchAssetsByChainId } = createService({});
+      const { service } = createService({});
       const fetchByIds = vi
         .spyOn(service, 'fetchAndPersistAssetsByAssetIds')
         .mockResolvedValue([createCachedIou(USDC_IOU), mptRow]);
@@ -492,75 +577,5 @@ describe('AssetMetadataService', () => {
       expect(result).toStrictEqual(catalog);
       expect(getByAssetType).toHaveBeenCalledWith(AssetType.Mpt, scope);
     });
-  });
-
-  it('maps AssetsController catalog metadata into XrplAssetMetadata without reading snap state', async () => {
-    const {
-      service,
-      assetsService,
-      getByAssetIds,
-      saveMany,
-      fetchAssetsByAssetIds,
-    } = createService({});
-    const getAssetMetadata = vi
-      .spyOn(assetsService, 'getAssetMetadata')
-      .mockResolvedValue({
-        symbol: 'USDC',
-        decimals: IOU_DECIMAL_PLACES,
-        name: 'USD Coin',
-      });
-
-    const result = await service.resolve(USDC_IOU);
-
-    expect(result).toStrictEqual(
-      toXrplAssetMetadata({
-        assetId: USDC_IOU,
-        decimals: IOU_DECIMAL_PLACES,
-        symbol: 'USDC',
-        name: 'USD Coin',
-      }),
-    );
-    expect(getAssetMetadata).toHaveBeenCalledWith(USDC_IOU);
-    expect(getByAssetIds).not.toHaveBeenCalled();
-    expect(fetchAssetsByAssetIds).not.toHaveBeenCalled();
-    expect(saveMany).not.toHaveBeenCalled();
-  });
-
-  it('falls back to snap catalog when AssetsController misses', async () => {
-    const cached = createCachedIou(USDC_IOU);
-    const { service, assetsService, getByAssetIds, fetchAssetsByAssetIds } =
-      createService({
-        repo: {
-          getByAssetIds: vi.fn().mockResolvedValue([cached]),
-        },
-      });
-    const getAssetMetadata = vi
-      .spyOn(assetsService, 'getAssetMetadata')
-      .mockResolvedValue(null);
-
-    const result = await service.resolve(USDC_IOU);
-
-    expect(result).toStrictEqual(cached);
-    expect(getAssetMetadata).toHaveBeenCalledWith(USDC_IOU);
-    expect(getByAssetIds).toHaveBeenCalledWith([USDC_IOU]);
-    expect(fetchAssetsByAssetIds).not.toHaveBeenCalled();
-  });
-
-  it('throws when AssetsController, snap, and token API all miss', async () => {
-    const {
-      service,
-      assetsService,
-      getByAssetIds,
-      saveMany,
-      fetchAssetsByAssetIds,
-    } = createService({});
-
-    await expect(service.resolve(USDC_MPT)).rejects.toBeInstanceOf(
-      AssetMetadataServiceException,
-    );
-    expect(assetsService.getAssetMetadata).toHaveBeenCalledWith(USDC_MPT);
-    expect(getByAssetIds).toHaveBeenCalledWith([USDC_MPT]);
-    expect(fetchAssetsByAssetIds).toHaveBeenCalledWith([USDC_MPT]);
-    expect(saveMany).not.toHaveBeenCalled();
   });
 });
