@@ -1,6 +1,10 @@
 import type { TransactionStatus, TransactionType } from '@metamask/keyring-api';
 import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
-import type { AnalyticsService, Logger } from '@metamask/snap-networks-utils';
+import type {
+  AnalyticsService,
+  Logger,
+  TransactionSecurityProperties,
+} from '@metamask/snap-networks-utils';
 
 import type { KnownCaip2ChainId } from '../../api';
 import { AppConfig } from '../../config';
@@ -87,6 +91,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
       accountIdsOrAddresses,
       attempt = 0,
       transactionType,
+      securityProperties,
     } = request.params;
 
     this.logger.debug('Tracking transaction', {
@@ -109,6 +114,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
           accountIdsOrAddresses,
           transactionType,
           transaction.status,
+          securityProperties,
         );
       } else {
         this.logger.warn(
@@ -132,6 +138,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
           accountIdsOrAddresses,
           attempt,
           transactionType,
+          securityProperties,
         });
         return;
       }
@@ -156,6 +163,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
    * @param params.accountIdsOrAddresses - Sender account id and optional receiver address passed through to settlement.
    * @param params.attempt - Current track cron attempt (matches serialized `attempt` param).
    * @param params.transactionType - Classification resolved at submit time, forwarded when present.
+   * @param params.securityProperties - The security verdict the user saw when confirming, forwarded when present.
    */
   async #rescheduleWhenHorizonNotIndexed(
     params: TrackTransactionParams,
@@ -166,6 +174,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
       attempt = 0,
       accountIdsOrAddresses,
       transactionType,
+      securityProperties,
     } = params;
     const maxReschedules = AppConfig.transaction.trackTransactionMaxReschedules;
 
@@ -184,6 +193,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
           accountIdsOrAddresses,
           attempt: attempt + 1,
           ...(transactionType === undefined ? {} : { transactionType }),
+          ...(securityProperties ? { securityProperties } : {}),
         },
         Duration.TwoSeconds,
       );
@@ -206,12 +216,14 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
    * @param transactionType - Classification resolved at submit time, forwarded when present.
    * @param transactionStatus - Terminal Horizon status (confirmed or failed), forwarded so the
    * finalized event distinguishes a failed transaction from a successful one.
+   * @param securityProperties - The security verdict the user saw when confirming, reported when present.
    */
   async #synchronize(
     scope: KnownCaip2ChainId,
     accountIdsOrAddresses: TrackTransactionParams['accountIdsOrAddresses'],
     transactionType: TransactionType | undefined,
     transactionStatus: TransactionStatus,
+    securityProperties: TransactionSecurityProperties | undefined,
   ): Promise<void> {
     // The first entry is the sender account UUID (validated by Superstruct).
     const senderAccountId = accountIdsOrAddresses[0];
@@ -230,6 +242,7 @@ export class TrackTransactionHandler extends CronjobBaseHandler<TrackTransaction
       chainIdCaip: scope,
       transactionStatus,
       ...(transactionType === undefined ? {} : { transactionType }),
+      ...securityProperties,
     });
 
     const accountsToSynchronize = [senderAccount];

@@ -1,5 +1,12 @@
-import type { GetPreferencesResult } from '@metamask/snaps-sdk';
+import type { TransactionSecurityProperties } from '@metamask/snap-networks-utils';
+import {
+  getTransactionSecurityProperties,
+  SECURITY_ALERT_LOADING_RESPONSE,
+  TransactionSecurityPropertiesStruct,
+} from '@metamask/snap-networks-utils';
+import type { DialogResult, GetPreferencesResult } from '@metamask/snaps-sdk';
 import type { CaipAccountId, Json } from '@metamask/utils';
+import { isObject } from '@metamask/utils';
 import { BigNumber } from 'bignumber.js';
 
 import type { KnownCaip19AssetIdOrSlip44Id } from '../../api';
@@ -19,8 +26,8 @@ import {
   withInterfaceLock,
 } from '../../utils';
 import { xlmIcon } from '../images';
-import { FetchStatus } from './api';
-import type { FeeData } from './api';
+import { ContextWithSecurityScanStruct, FetchStatus } from './api';
+import type { FeeData, TransactionConfirmationResult } from './api';
 
 const NetworkName = {
   [KnownCaip2ChainId.Mainnet]: 'Stellar Mainnet',
@@ -446,4 +453,115 @@ export function withLockedContext(
         await handler({ ...options, context });
       }
     });
+}
+
+/**
+ * Returns the security properties of the verdict the dialog showed. Returns
+ * `undefined` when there is nothing to report: there is no context, the dialog
+ * did not open with a scan, security alerts were disabled, or the scan was
+ * paused by a failed transaction validation before it produced a verdict.
+ *
+ * While no verdict is stored yet, a scan that is still running is reported as
+ * `Loading`. Once a verdict is stored, a re-scan in progress reports that
+ * verdict. Otherwise the scan is reported as it is. A failed refresh keeps the
+ * stored verdict, and the dialog may show that verdict as unavailable, so the
+ * two can differ.
+ *
+ * @param context - The confirmation context at the time of the decision, or `null` when the dialog gave none.
+ * @returns The security properties, or `undefined`.
+ */
+export function getSecurityProperties(
+  context: Record<string, Json> | null,
+): TransactionSecurityProperties | undefined {
+  const isLocalValidationFailed = isLocalTransactionValidationFailed(
+    context?.transactionsFetchStatus as FetchStatus | undefined,
+  );
+
+  if (
+    // The scan fields are only stored when the dialog opened with a scan.
+    !ContextWithSecurityScanStruct.is(context) ||
+    !context.preferences.useSecurityAlerts ||
+    // The scan was paused, not run: a failed transaction validation stops it
+    // before any verdict exists. The user never saw a verdict and the scan did
+    // not fail, so there is nothing to report.
+    (isLocalValidationFailed && !context.scan?.validation)
+  ) {
+    return undefined;
+  }
+
+  const isLoading =
+    isFetchInProgress(context.scanFetchStatus) && !context.scan?.validation;
+
+  const scan = isLoading
+    ? SECURITY_ALERT_LOADING_RESPONSE
+    : (context.scan ?? null);
+
+  return getTransactionSecurityProperties(scan);
+}
+
+/**
+ * Builds the value that a confirmation event resolves its interface with.
+ *
+ * The interface context holds much more than the handlers need, so only the
+ * decision, the security verdict, and the caller's `customContext` are passed
+ * on. Each caller decides what extra data its flow resolves with, for example
+ * the confirm-send flow passes the saved memo. Fields with no value are left
+ * out, because the resolved value must be JSON.
+ *
+ * @param confirmed - Whether the user confirmed the transaction.
+ * @param context - The latest interface context, read under the interface lock.
+ * @param customContext - Extra flow-specific fields to resolve the interface with.
+ * @returns The value to resolve the interface with.
+ */
+export function buildResolveResult(
+  confirmed: boolean,
+  context: Record<string, Json> | null | undefined,
+  customContext: Record<string, Json> = {},
+): Json {
+  const securityProperties = getSecurityProperties(context ?? null);
+
+  return {
+    confirmed,
+    ...(securityProperties ? { securityProperties } : {}),
+    ...customContext,
+  };
+}
+
+/**
+ * Reads the value that a transaction confirmation dialog resolved with.
+ *
+ * A bare `true` is a confirmation with nothing else. Any other value that is
+ * not an object, such as a dismissed dialog, is a rejection. In an object, a
+ * truthy `confirmed` is a confirmation. A memo or security verdict of the wrong
+ * shape is left out.
+ *
+ * @param value - The value the dialog resolved with.
+ * @returns The decision, with the memo and security verdict when there are any.
+ */
+export function parseTransactionConfirmationResult(
+  value: DialogResult,
+): TransactionConfirmationResult {
+  // Bare `true` from the Snap dialog: confirmed, and nothing else was returned.
+  if (value === true) {
+    return { confirmed: true };
+  }
+
+  // Cancel, dismiss, or a non-object payload: the user did not confirm.
+  if (!isObject(value)) {
+    return { confirmed: false };
+  }
+
+  const memo = typeof value.memo === 'string' ? value.memo.trim() : '';
+
+  const securityProperties = TransactionSecurityPropertiesStruct.is(
+    value.securityProperties,
+  )
+    ? { securityProperties: value.securityProperties }
+    : {};
+
+  return {
+    confirmed: Boolean(value.confirmed),
+    ...(memo ? { memo } : {}),
+    ...securityProperties,
+  };
 }

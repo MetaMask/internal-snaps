@@ -43,6 +43,7 @@ import {
 import { KeyringTransactionType } from '../../services/transaction/KeyringTransactionBuilder';
 import { WalletService } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
+import { maliciousScanSecurityProperties } from '../../ui/confirmation/__fixtures__/confirmation.fixtures';
 import {
   ConfirmationInterfaceKey,
   FetchStatus,
@@ -850,6 +851,99 @@ describe('ChangeTrustOptHandler', () => {
         trackTransactionSubmittedSpy.mock.invocationCallOrder[0];
       const sendOrder = sendTransaction.mock.invocationCallOrder[0];
       expect(sendOrder).toBeLessThan(submittedOrder as number);
+    });
+
+    describe('security verdict', () => {
+      const expectedProperties = {
+        origin: DEFAULT_METAMASK_ORIGIN,
+        chainIdCaip: scope,
+        transactionType: TransactionType.TokenApprove,
+      };
+
+      it('reports the verdict the user saw on approved and submitted, and carries it to finalized', async () => {
+        const {
+          handler,
+          account,
+          renderConfirmationDialog,
+          trackTransactionAddedSpy,
+          trackTransactionApprovedSpy,
+          trackTransactionSubmittedSpy,
+        } = setup();
+        renderConfirmationDialog.mockResolvedValue({
+          confirmed: true,
+          securityProperties: maliciousScanSecurityProperties,
+        });
+
+        await handler.handle(addRequest);
+
+        const properties = {
+          ...expectedProperties,
+          accountType: account.type,
+        };
+        expect(trackTransactionAddedSpy).toHaveBeenCalledWith(properties);
+        expect(trackTransactionApprovedSpy).toHaveBeenCalledWith({
+          ...properties,
+          ...maliciousScanSecurityProperties,
+        });
+        expect(trackTransactionSubmittedSpy).toHaveBeenCalledWith({
+          ...properties,
+          ...maliciousScanSecurityProperties,
+        });
+        expect(
+          TrackTransactionHandler.scheduleBackgroundEvent,
+        ).toHaveBeenCalledWith({
+          txId: transactionHash,
+          scope,
+          accountIdsOrAddresses: [account.id],
+          transactionType: TransactionType.TokenApprove,
+          securityProperties: maliciousScanSecurityProperties,
+        });
+      });
+
+      it('reports the verdict the user saw on rejected', async () => {
+        const {
+          handler,
+          account,
+          renderConfirmationDialog,
+          trackTransactionRejectedSpy,
+        } = setup();
+        renderConfirmationDialog.mockResolvedValue({
+          confirmed: false,
+          securityProperties: maliciousScanSecurityProperties,
+        });
+
+        await expect(handler.handle(addRequest)).rejects.toThrow(
+          UserRejectedRequestError,
+        );
+
+        expect(trackTransactionRejectedSpy).toHaveBeenCalledWith({
+          ...expectedProperties,
+          accountType: account.type,
+          ...maliciousScanSecurityProperties,
+        });
+      });
+
+      it('reports the verdict for an opt-out confirmation', async () => {
+        const {
+          handler,
+          account,
+          renderConfirmationDialog,
+          trackTransactionApprovedSpy,
+        } = setup({ withTrustline: true });
+        renderConfirmationDialog.mockResolvedValue({
+          confirmed: true,
+          securityProperties: maliciousScanSecurityProperties,
+        });
+
+        await handler.handle(deleteRequest);
+
+        expect(trackTransactionApprovedSpy).toHaveBeenCalledWith({
+          ...expectedProperties,
+          accountType: account.type,
+          transactionType: TransactionType.TokenDisapprove,
+          ...maliciousScanSecurityProperties,
+        });
+      });
     });
   });
 });

@@ -51,6 +51,7 @@ import {
 import { KeyringTransactionType } from '../../services/transaction/KeyringTransactionBuilder';
 import { WalletService } from '../../services/wallet';
 import { getTestWallet } from '../../services/wallet/__mocks__/wallet.fixtures';
+import { maliciousScanSecurityProperties } from '../../ui/confirmation/__fixtures__/confirmation.fixtures';
 import {
   ConfirmationInterfaceKey,
   FetchStatus,
@@ -1053,6 +1054,123 @@ describe('ConfirmSendHandler', () => {
         trackTransactionSubmittedSpy.mock.invocationCallOrder[0];
       const sendOrder = sendTransaction.mock.invocationCallOrder[0];
       expect(sendOrder).toBeLessThan(submittedOrder as number);
+    });
+
+    describe('security verdict', () => {
+      const expectedProperties = {
+        origin: DEFAULT_METAMASK_ORIGIN,
+        chainIdCaip: scope,
+        transactionType: TransactionType.Send,
+      };
+
+      it('reports the verdict the user saw on approved and submitted, and carries it to finalized', async () => {
+        const {
+          handler,
+          account,
+          renderConfirmationDialog,
+          trackTransactionAddedSpy,
+          trackTransactionApprovedSpy,
+          trackTransactionSubmittedSpy,
+          scheduleBackgroundEvent,
+        } = setup();
+        renderConfirmationDialog.mockResolvedValue({
+          confirmed: true,
+          securityProperties: maliciousScanSecurityProperties,
+        });
+
+        await handler.handle(baseRequest());
+
+        const properties = {
+          ...expectedProperties,
+          accountType: account.type,
+        };
+        expect(trackTransactionAddedSpy).toHaveBeenCalledWith(properties);
+        expect(trackTransactionApprovedSpy).toHaveBeenCalledWith({
+          ...properties,
+          ...maliciousScanSecurityProperties,
+        });
+        expect(trackTransactionSubmittedSpy).toHaveBeenCalledWith({
+          ...properties,
+          ...maliciousScanSecurityProperties,
+        });
+        expect(scheduleBackgroundEvent).toHaveBeenCalledWith({
+          txId: transactionId,
+          scope,
+          accountIdsOrAddresses: [account.id, destinationAddress],
+          transactionType: TransactionType.Send,
+          securityProperties: maliciousScanSecurityProperties,
+        });
+      });
+
+      it('reports the verdict the user saw on rejected', async () => {
+        const {
+          handler,
+          account,
+          renderConfirmationDialog,
+          trackTransactionRejectedSpy,
+        } = setup();
+        renderConfirmationDialog.mockResolvedValue({
+          confirmed: false,
+          securityProperties: maliciousScanSecurityProperties,
+        });
+
+        await expect(handler.handle(baseRequest())).rejects.toThrow(
+          UserRejectedRequestError,
+        );
+
+        expect(trackTransactionRejectedSpy).toHaveBeenCalledWith({
+          ...expectedProperties,
+          accountType: account.type,
+          ...maliciousScanSecurityProperties,
+        });
+      });
+
+      it('reports Loading when the dialog resolved before the scan completed', async () => {
+        const {
+          handler,
+          renderConfirmationDialog,
+          trackTransactionApprovedSpy,
+        } = setup();
+        renderConfirmationDialog.mockResolvedValue({
+          confirmed: true,
+          securityProperties: {
+            securityAlertResponse: 'Loading',
+            securityAlertReason: 'validation_in_progress',
+          },
+        });
+
+        await handler.handle(baseRequest());
+
+        expect(trackTransactionApprovedSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            securityAlertResponse: 'Loading',
+            securityAlertReason: 'validation_in_progress',
+          }),
+        );
+      });
+
+      it('reports no verdict when the dialog resolved without one', async () => {
+        const {
+          handler,
+          account,
+          renderConfirmationDialog,
+          trackTransactionApprovedSpy,
+          scheduleBackgroundEvent,
+        } = setup();
+        renderConfirmationDialog.mockResolvedValue({ confirmed: true });
+
+        await handler.handle(baseRequest());
+
+        expect(trackTransactionApprovedSpy).toHaveBeenCalledWith({
+          ...expectedProperties,
+          accountType: account.type,
+        });
+        expect(scheduleBackgroundEvent).toHaveBeenCalledWith(
+          expect.not.objectContaining({
+            securityProperties: expect.anything(),
+          }),
+        );
+      });
     });
   });
 });

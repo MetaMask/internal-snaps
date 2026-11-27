@@ -367,14 +367,18 @@ export class TransactionScanService extends BaseTransactionScanService {
     >,
   ): TransactionScanValidation {
     // Match Solana/Tron: drive the banner from `result_type` and MetaMask
-    // generic copy. Do not pass Blockaid `description` / `classification` —
-    // they can embed machine labels (e.g. `stellar_expert_malicious`) when
-    // `reason` is `OTHER`. Placeholder until Blockaid provides mappable
+    // generic copy. Do not pass Blockaid `description` / `classification` to
+    // the UI because they can embed machine labels (e.g.
+    // `stellar_expert_malicious`) when `reason` is `OTHER`. The `description`
+    // is used only for telemetry. Placeholder until Blockaid provides mappable
     // reasons (WPN-2215).
+    // Blockaid returns an empty string when there is no description.
+    const description = validation.description ?? null;
+
     return {
       type: validation.result_type,
       reason: validation.reason ?? null,
-      description: null,
+      description: description === '' ? null : description,
     };
   }
 

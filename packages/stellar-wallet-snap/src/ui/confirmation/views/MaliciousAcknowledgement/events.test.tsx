@@ -7,6 +7,10 @@ import {
   updateInterfaceIfExists,
 } from '../../../../utils';
 import * as SnapUtils from '../../../../utils/snap';
+import {
+  buildScannedConfirmationContext,
+  maliciousScanSecurityProperties,
+} from '../../__fixtures__/confirmation.fixtures';
 import { ConfirmationInterfaceKey, FetchStatus } from '../../api';
 import { renderConfirmationView } from '../render';
 import * as ConfirmationRender from '../render';
@@ -126,58 +130,91 @@ describe('malicious acknowledgement events', () => {
     );
   });
 
-  it('resolves the interface on "Confirm"', async () => {
+  it('resolves the interface with the decision on "Confirm"', async () => {
     const name = MaliciousAcknowledgementFormNames.Proceed;
+    const context = {
+      ...baseContext,
+      interfaceKey: ConfirmationInterfaceKey.SignTransaction,
+      acknowledgementScreen: true,
+      acknowledged: true,
+    };
     await handlers[name]?.({
       id: INTERFACE_ID,
       event: buttonEvent(name),
-      context: {
-        ...baseContext,
-        acknowledgementScreen: true,
-        acknowledged: true,
-      },
+      context,
     });
 
     expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
       confirmed: true,
-      memo: null,
     });
     expect(updateInterfaceIfExists).not.toHaveBeenCalled();
   });
 
-  it('resolves ConfirmSend with memo from context.memo', async () => {
+  it('resolves ConfirmSend with its memo and security verdict', async () => {
     const name = MaliciousAcknowledgementFormNames.Proceed;
+    const context = {
+      ...baseContext,
+      ...buildScannedConfirmationContext(),
+      acknowledgementScreen: true,
+      acknowledged: true,
+      memo: '  ack-memo  ',
+    };
     await handlers[name]?.({
       id: INTERFACE_ID,
       event: buttonEvent(name),
-      context: {
-        ...baseContext,
-        acknowledgementScreen: true,
-        acknowledged: true,
-        memo: '  ack-memo  ',
-      },
+      context,
     });
 
     expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
       confirmed: true,
       memo: 'ack-memo',
+      securityProperties: maliciousScanSecurityProperties,
     });
   });
 
-  it('resolves a non-send confirmation with true', async () => {
+  it.each([
+    ConfirmationInterfaceKey.ChangeTrustlineOptIn,
+    ConfirmationInterfaceKey.ChangeTrustlineOptOut,
+  ])('resolves a %s confirmation without a memo', async (interfaceKey) => {
     const name = MaliciousAcknowledgementFormNames.Proceed;
+    const context = {
+      ...baseContext,
+      ...buildScannedConfirmationContext({ memo: 'stray-memo' }),
+      interfaceKey,
+      acknowledgementScreen: true,
+      acknowledged: true,
+    };
     await handlers[name]?.({
       id: INTERFACE_ID,
       event: buttonEvent(name),
-      context: {
-        ...baseContext,
-        interfaceKey: ConfirmationInterfaceKey.SignTransaction,
-        acknowledgementScreen: true,
-        acknowledged: true,
-      },
+      context,
     });
 
-    expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, true);
+    expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
+      confirmed: true,
+      securityProperties: maliciousScanSecurityProperties,
+    });
+  });
+
+  it('resolves a SignTransaction confirmation without a memo', async () => {
+    const name = MaliciousAcknowledgementFormNames.Proceed;
+    const context = {
+      ...baseContext,
+      ...buildScannedConfirmationContext({ memo: 'stray-memo' }),
+      interfaceKey: ConfirmationInterfaceKey.SignTransaction,
+      acknowledgementScreen: true,
+      acknowledged: true,
+    };
+    await handlers[name]?.({
+      id: INTERFACE_ID,
+      event: buttonEvent(name),
+      context,
+    });
+
+    expect(resolveInterface).toHaveBeenCalledWith(INTERFACE_ID, {
+      confirmed: true,
+      securityProperties: maliciousScanSecurityProperties,
+    });
   });
 
   it('does not resolve on "Confirm" when the risk is not acknowledged', async () => {

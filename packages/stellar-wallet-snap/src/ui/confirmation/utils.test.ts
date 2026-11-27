@@ -2,25 +2,30 @@ import {
   DEFAULT_METAMASK_ORIGIN,
   requiresMaliciousAcknowledgement,
 } from '@metamask/snap-networks-utils';
+import type { Json } from '@metamask/utils';
 
 import { KnownCaip2ChainId } from '../../api';
 import { FieldType } from '../../services/transaction';
 import type { ReadableOperationField } from '../../services/transaction';
 import { TransactionScanValidationType } from '../../services/transaction-scan';
+import type { TransactionScanResult } from '../../services/transaction-scan';
 import {
   defaultPreferences as preferences,
   maliciousScan,
 } from './__fixtures__/confirmation.fixtures';
-import { FetchStatus } from './api';
+import { ConfirmationInterfaceKey, FetchStatus } from './api';
 import {
+  buildResolveResult,
   ConfirmationBanner,
   getNetworkName,
   getParam,
   getInvocationDetailParams,
+  getSecurityProperties,
   isFetchInProgress,
   formatOrigin,
   isLocalTransactionValidationFailed,
   isRemoteTransactionScanLoading,
+  parseTransactionConfirmationResult,
   resolveConfirmationBanner,
   shouldDisableConfirmation,
 } from './utils';
@@ -33,6 +38,29 @@ const warningScan = {
     description: null,
   },
 };
+
+const buildScan = (
+  validation: TransactionScanResult['validation'],
+  overrides: Partial<TransactionScanResult> = {},
+): TransactionScanResult => ({
+  status: 'SUCCESS',
+  estimatedChanges: { assets: [] },
+  validation,
+  error: null,
+  validationError: null,
+  ...overrides,
+});
+
+const buildContext = (
+  overrides: Record<string, Json> = {},
+): Record<string, Json> => ({
+  preferences: { useSecurityAlerts: true, simulateOnChainActions: true },
+  scan: buildScan({ type: 'Benign', reason: null, description: null }),
+  scanFetchStatus: FetchStatus.Fetched,
+  securityScanning: true,
+  remoteSimulation: false,
+  ...overrides,
+});
 
 describe('confirmation utils', () => {
   describe('getNetworkName', () => {
@@ -376,6 +404,317 @@ describe('confirmation utils', () => {
           { key: 'salt', value: 'aa', type: FieldType.copyable },
         ]),
       ).toStrictEqual([{ key: 'salt', value: 'aa', type: FieldType.copyable }]);
+    });
+  });
+
+  describe('getSecurityProperties', () => {
+    it('reports the verdict of a successful scan', () => {
+      const context = buildContext({
+        scan: buildScan({
+          type: 'Malicious',
+          reason: 'transfer_farming',
+          description: 'Drains the account',
+        }),
+      });
+
+      expect(getSecurityProperties(context)).toStrictEqual({
+        securityAlertResponse: 'Malicious',
+        securityAlertReason: 'transfer_farming',
+        securityAlertDescription: 'Drains the account',
+      });
+    });
+
+    it('omits the reason of a benign verdict', () => {
+      expect(getSecurityProperties(buildContext())).toStrictEqual({
+        securityAlertResponse: 'Benign',
+      });
+    });
+
+    it('reports NotApplicable for a non-benign verdict without a reason', () => {
+      const context = buildContext({
+        scan: buildScan({ type: 'Warning', reason: null, description: null }),
+      });
+
+      expect(getSecurityProperties(context)).toStrictEqual({
+        securityAlertResponse: 'Warning',
+        securityAlertReason: 'NotApplicable',
+      });
+    });
+
+    it.each([FetchStatus.Fetching, FetchStatus.Initial])(
+      'reports Loading while the first scan is %s',
+      (scanFetchStatus) => {
+        // A send seeds the first scan with local estimates and no verdict.
+        const context = buildContext({
+          scan: buildScan(null),
+          scanFetchStatus,
+        });
+
+        expect(getSecurityProperties(context)).toStrictEqual({
+          securityAlertResponse: 'Loading',
+          securityAlertReason: 'validation_in_progress',
+        });
+      },
+    );
+
+    it('reports Loading while the first scan has no result yet', () => {
+      const context = buildContext({
+        scan: null,
+        scanFetchStatus: FetchStatus.Fetching,
+      });
+
+      expect(getSecurityProperties(context)).toStrictEqual({
+        securityAlertResponse: 'Loading',
+        securityAlertReason: 'validation_in_progress',
+      });
+    });
+
+    it('reports the stored verdict while a re-scan is in progress', () => {
+      const context = buildContext({ scanFetchStatus: FetchStatus.Fetching });
+
+      expect(getSecurityProperties(context)).toStrictEqual({
+        securityAlertResponse: 'Benign',
+      });
+    });
+
+    it('reports Error when the scan request failed', () => {
+      const context = buildContext({
+        scan: null,
+        scanFetchStatus: FetchStatus.Error,
+      });
+
+      expect(getSecurityProperties(context)).toStrictEqual({
+        securityAlertResponse: 'Error',
+        securityAlertReason: 'Error',
+      });
+    });
+
+    it('reports Error when the scan returned no verdict', () => {
+      const context = buildContext({
+        scan: buildScan(null, { status: 'ERROR' }),
+      });
+
+      expect(getSecurityProperties(context)).toStrictEqual({
+        securityAlertResponse: 'Error',
+        securityAlertReason: 'Error',
+      });
+    });
+
+    it('reports Error when the scan is missing from the context', () => {
+      const { scan: _scan, ...context } = buildContext();
+
+      expect(getSecurityProperties(context)).toStrictEqual({
+        securityAlertResponse: 'Error',
+        securityAlertReason: 'Error',
+      });
+    });
+
+    it('returns undefined when a failed transaction validation paused the scan', () => {
+      // Send opened with a missing memo: the scan is paused, not failed.
+      const context = buildContext({
+        scan: buildScan(null),
+        scanFetchStatus: FetchStatus.Error,
+        transactionsFetchStatus: FetchStatus.Error,
+      });
+
+      expect(getSecurityProperties(context)).toBeUndefined();
+    });
+
+    it('reports the stored verdict when the transaction validation failed later', () => {
+      const context = buildContext({
+        scanFetchStatus: FetchStatus.Error,
+        transactionsFetchStatus: FetchStatus.Error,
+      });
+
+      expect(getSecurityProperties(context)).toStrictEqual({
+        securityAlertResponse: 'Benign',
+      });
+    });
+
+    it('returns undefined when there is no context', () => {
+      expect(getSecurityProperties(null)).toBeUndefined();
+    });
+
+    it('returns undefined when the dialog opened without a scan', () => {
+      const {
+        securityScanning: _securityScanning,
+        remoteSimulation: _remoteSimulation,
+        ...context
+      } = buildContext();
+
+      expect(getSecurityProperties(context)).toBeUndefined();
+    });
+
+    it('returns undefined when security alerts are disabled', () => {
+      const context = buildContext({
+        preferences: { useSecurityAlerts: false, simulateOnChainActions: true },
+      });
+
+      expect(getSecurityProperties(context)).toBeUndefined();
+    });
+  });
+
+  describe('buildResolveResult', () => {
+    it('passes on the decision and the security verdict', () => {
+      expect(buildResolveResult(true, buildContext())).toStrictEqual({
+        confirmed: true,
+        securityProperties: { securityAlertResponse: 'Benign' },
+      });
+    });
+
+    it('passes on the custom context of the caller', () => {
+      expect(
+        buildResolveResult(true, buildContext(), { memo: 'memo' }),
+      ).toStrictEqual({
+        confirmed: true,
+        memo: 'memo',
+        securityProperties: { securityAlertResponse: 'Benign' },
+      });
+    });
+
+    it('never reads the memo from the interface context itself', () => {
+      const context = buildContext({
+        memo: 'memo',
+        interfaceKey: ConfirmationInterfaceKey.ConfirmSendTransaction,
+      });
+
+      expect(buildResolveResult(true, context)).not.toHaveProperty('memo');
+    });
+
+    it('passes on nothing else of the context', () => {
+      const context = buildContext({
+        memo: 'memo',
+        transaction: 'xdr',
+        account: { id: 'a' },
+      });
+      const result = buildResolveResult(true, context, { memo: 'memo' });
+
+      expect(Object.keys(result as object)).toStrictEqual([
+        'confirmed',
+        'securityProperties',
+        'memo',
+      ]);
+    });
+
+    it('lets the custom context take precedence over the decision and verdict', () => {
+      const result = buildResolveResult(true, buildContext(), {
+        confirmed: false,
+        securityProperties: { securityAlertResponse: 'Malicious' },
+      });
+
+      expect(result).toStrictEqual({
+        confirmed: false,
+        securityProperties: { securityAlertResponse: 'Malicious' },
+      });
+    });
+
+    it('leaves out the verdict when there is none to report', () => {
+      expect(buildResolveResult(true, null)).toStrictEqual({
+        confirmed: true,
+      });
+    });
+
+    it('reports Loading when the dialog is resolved during the first scan', () => {
+      const context = buildContext({
+        scan: null,
+        scanFetchStatus: FetchStatus.Fetching,
+      });
+
+      expect(buildResolveResult(false, context)).toStrictEqual({
+        confirmed: false,
+        securityProperties: {
+          securityAlertResponse: 'Loading',
+          securityAlertReason: 'validation_in_progress',
+        },
+      });
+    });
+
+    it('survives being parsed back', () => {
+      expect(
+        parseTransactionConfirmationResult(
+          buildResolveResult(true, buildContext(), { memo: 'memo' }),
+        ),
+      ).toStrictEqual({
+        confirmed: true,
+        memo: 'memo',
+        securityProperties: { securityAlertResponse: 'Benign' },
+      });
+    });
+  });
+
+  describe('parseTransactionConfirmationResult', () => {
+    it('treats a bare true as a confirmation with nothing else', () => {
+      expect(parseTransactionConfirmationResult(true)).toStrictEqual({
+        confirmed: true,
+      });
+    });
+
+    it.each([false, null, 'yes', 1, [true]])(
+      'treats %s as a rejection with nothing else',
+      (value) => {
+        expect(parseTransactionConfirmationResult(value)).toStrictEqual({
+          confirmed: false,
+        });
+      },
+    );
+
+    it('returns the memo and the security verdict the event resolved with', () => {
+      const securityProperties = {
+        securityAlertResponse: 'Malicious',
+        securityAlertReason: 'known_attacker',
+      };
+
+      expect(
+        parseTransactionConfirmationResult({
+          confirmed: true,
+          memo: '  memo  ',
+          securityProperties,
+        }),
+      ).toStrictEqual({ confirmed: true, memo: 'memo', securityProperties });
+    });
+
+    it('returns the security verdict on a rejection', () => {
+      const securityProperties = { securityAlertResponse: 'Benign' };
+
+      expect(
+        parseTransactionConfirmationResult({
+          confirmed: false,
+          securityProperties,
+        }),
+      ).toStrictEqual({ confirmed: false, securityProperties });
+    });
+
+    it('treats a truthy confirmed as a confirmation', () => {
+      expect(
+        parseTransactionConfirmationResult({ confirmed: 'true' }),
+      ).toStrictEqual({ confirmed: true });
+    });
+
+    it.each([null, 1, '', '   '])('omits a memo of %j', (memo) => {
+      expect(
+        parseTransactionConfirmationResult({ confirmed: true, memo }),
+      ).toStrictEqual({ confirmed: true });
+    });
+
+    it.each([null, 'Benign', 1, { securityAlertResponse: 'Unknown' }])(
+      'omits security properties of %j',
+      (securityProperties) => {
+        expect(
+          parseTransactionConfirmationResult({
+            confirmed: true,
+            securityProperties,
+          }),
+        ).toStrictEqual({ confirmed: true });
+      },
+    );
+
+    it('ignores any other field, such as a whole context', () => {
+      expect(
+        parseTransactionConfirmationResult({
+          confirmed: true,
+          context: { memo: 'memo', scanFetchStatus: 'fetched' },
+        }),
+      ).toStrictEqual({ confirmed: true });
     });
   });
 });

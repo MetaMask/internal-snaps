@@ -1,4 +1,5 @@
 import { UuidStruct } from '@metamask/snap-networks-utils';
+import type { TransactionSecurityProperties } from '@metamask/snap-networks-utils';
 import type { GetPreferencesResult } from '@metamask/snaps-sdk';
 import type { Infer } from '@metamask/superstruct';
 import {
@@ -175,4 +176,17 @@ export type ConfirmationBaseProps = Partial<ContextWithPrices> & {
    * MemoEdit Save reuses this snapshot for restart.
    */
   enabledRefresherKeys?: string[];
+};
+
+/**
+ * The user's decision in a transaction confirmation dialog, with the only
+ * fields of the interface context that the handlers read.
+ */
+export type TransactionConfirmationResult = {
+  /** Whether the user confirmed the transaction. */
+  confirmed: boolean;
+  /** The memo the user saved in the dialog, when there is one. */
+  memo?: string;
+  /** The security verdict the dialog showed, when there is one to report. */
+  securityProperties?: TransactionSecurityProperties;
 };

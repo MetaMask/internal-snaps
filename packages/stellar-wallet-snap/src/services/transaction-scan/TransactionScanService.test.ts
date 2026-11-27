@@ -402,8 +402,10 @@ describe('TransactionScanService', () => {
     });
   });
 
-  it('drops Blockaid description so the banner uses MetaMask generic copy', async () => {
+  it('keeps the Blockaid description in the scan result for telemetry', async () => {
     const { service, securityAlertsApiClient } = setup();
+    const blockaidDescription =
+      'Gaining account GDUW4TP24B3PF2CCUZJ4AOSCHVXXQGKF3RDVCLFYFTL3XWB2YGTTXGIT is classified as stellar_expert_malicious';
     securityAlertsApiClient.scanTransaction.mockResolvedValue({
       simulation: null,
       validation: {
@@ -411,8 +413,7 @@ describe('TransactionScanService', () => {
         result_type: TransactionScanValidationType.Malicious,
         reason: 'OTHER',
         classification: 'other',
-        description:
-          'Gaining account GDUW4TP24B3PF2CCUZJ4AOSCHVXXQGKF3RDVCLFYFTL3XWB2YGTTXGIT is classified as stellar_expert_malicious',
+        description: blockaidDescription,
       },
     });
 
@@ -423,7 +424,7 @@ describe('TransactionScanService', () => {
       validation: {
         type: TransactionScanValidationType.Malicious,
         reason: 'OTHER',
-        description: null,
+        description: blockaidDescription,
       },
     });
   });
