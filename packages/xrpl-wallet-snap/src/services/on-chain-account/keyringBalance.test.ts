@@ -8,6 +8,7 @@ import {
   getDefaultBalanceEntry,
   MptBalanceEntryStruct,
   MptHolderStatus,
+  mptAuthorizedFromHolderStatus,
   toIouBalanceEntry,
   toMptBalanceEntry,
   toNativeBalanceEntry,
@@ -87,6 +88,23 @@ describe('toIouBalanceEntry', () => {
         limit: '0',
       },
     });
+  });
+});
+
+describe('mptAuthorizedFromHolderStatus', () => {
+  it('is false for opted-in without issuer authorization', () => {
+    expect(mptAuthorizedFromHolderStatus(MptHolderStatus.HolderOptedIn)).toBe(
+      false,
+    );
+  });
+
+  it('is true when the issuer-authorized bit is set', () => {
+    expect(
+      mptAuthorizedFromHolderStatus(
+        // eslint-disable-next-line no-bitwise -- HolderOptedIn | IssuerAuthorized
+        MptHolderStatus.HolderOptedIn | MptHolderStatus.IssuerAuthorized,
+      ),
+    ).toBe(true);
   });
 });
 
