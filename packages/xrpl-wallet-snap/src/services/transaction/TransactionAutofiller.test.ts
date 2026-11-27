@@ -126,4 +126,72 @@ describe('TransactionAutofiller', () => {
     expect(networkService.fetchValidatedLedgerIndex).toHaveBeenCalledTimes(1);
     expect(networkService.getBaseFee).toHaveBeenCalledTimes(1);
   });
+
+  it('sets Sequence to 0 on batch inners that use a ticket', async () => {
+    const { autofiller: service } = autofiller();
+    const filled = await service.autofill(
+      {
+        TransactionType: 'Batch',
+        Account: account,
+        Flags: 1,
+        RawTransactions: [
+          {
+            RawTransaction: {
+              TransactionType: 'Payment',
+              Account: account,
+              Destination: destination,
+              Amount: '10',
+              TicketSequence: 42,
+              Flags: 0x4000_0000,
+            },
+          },
+        ],
+      },
+      KnownCaip2ChainId.Mainnet,
+    );
+
+    expect(filled.TransactionType).toBe('Batch');
+    const batch = filled as Extract<
+      XrplTransaction,
+      { TransactionType: 'Batch' }
+    >;
+    const inner = batch.RawTransactions[0]?.RawTransaction;
+    expect(inner).toMatchObject({
+      TicketSequence: 42,
+      Sequence: 0,
+      Fee: '0',
+      SigningPubKey: '',
+    });
+  });
+
+  it('overwrites a non-zero Sequence on ticketed batch inners', async () => {
+    const { autofiller: service } = autofiller();
+    const filled = await service.autofill(
+      {
+        TransactionType: 'Batch',
+        Account: account,
+        Flags: 1,
+        RawTransactions: [
+          {
+            RawTransaction: {
+              TransactionType: 'Payment',
+              Account: account,
+              Destination: destination,
+              Amount: '10',
+              TicketSequence: 42,
+              Sequence: 7,
+              Flags: 0x4000_0000,
+            },
+          },
+        ],
+      },
+      KnownCaip2ChainId.Mainnet,
+    );
+
+    const batch = filled as Extract<
+      XrplTransaction,
+      { TransactionType: 'Batch' }
+    >;
+    expect(batch.RawTransactions[0]?.RawTransaction.Sequence).toBe(0);
+  });
 });
