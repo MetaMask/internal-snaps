@@ -25,9 +25,9 @@ import {
   SignedNumberStringStruct,
   UnSignedNumberStringStruct,
   ValidDestinationTagStruct,
+  XrplAddressStruct,
   XrplTransactionStringStruct,
   ValidXrplDropsStruct,
-  XrplAddressStruct,
   XrplTransactionHashStruct,
 } from '../../api';
 import { MptIssuanceIdStruct } from '../../api/asset';
@@ -304,7 +304,7 @@ export type AccountFlags = Infer<typeof AccountFlagsStruct>;
 export const AccountInfoResponseStruct = mergeBaseRpcResponseStruct(
   type({
     account_data: type({
-      Account: XrplAddressStruct,
+      Account: string(),
       Balance: ValidXrplDropsStruct,
       Flags: UnSignedIntegerStruct,
       LedgerEntryType: literal('AccountRoot'),
@@ -325,7 +325,7 @@ export const AccountInfoResponseStruct = mergeBaseRpcResponseStruct(
       /**
        * Account paying this account's base reserve. Omitted when this account pays its own.
        */
-      Sponsor: optional(XrplAddressStruct),
+      Sponsor: optional(string()),
     }),
     account_flags: AccountFlagsStruct,
   }),
@@ -352,7 +352,7 @@ export const AccountLinesRequestStruct = assign(
 export type AccountLinesRequest = Infer<typeof AccountLinesRequestStruct>;
 
 export const TrustLineStruct = type({
-  account: XrplAddressStruct,
+  account: string(),
   // Balance can be negative for trust lines
   balance: SignedNumberStringStruct,
   currency: CurrencyCodeStruct,
@@ -372,7 +372,7 @@ export type TrustLine = Infer<typeof TrustLineStruct>;
 
 export const AccountLinesResponseStruct = mergeBaseRpcResponseStruct(
   type({
-    account: XrplAddressStruct,
+    account: string(),
     lines: array(TrustLineStruct),
     limit: optional(PageLimitStruct),
     marker: optional(PageMarkerStruct),
@@ -400,7 +400,7 @@ export type AccountMptokensRequest = Infer<typeof AccountMptokensRequestStruct>;
 
 export const AccountMptokenStruct = type({
   mpt_id: Hash256Struct,
-  account: XrplAddressStruct,
+  account: string(),
   mpt_issuance_id: MptIssuanceIdStruct,
   mpt_amount: UnSignedIntegerStringStruct,
   locked_amount: optional(UnSignedIntegerStringStruct),
@@ -416,7 +416,7 @@ export type AccountMptoken = Infer<typeof AccountMptokenStruct>;
 
 export const AccountMptokensResponseStruct = mergeBaseRpcResponseStruct(
   type({
-    account: XrplAddressStruct,
+    account: string(),
     mptokens: array(AccountMptokenStruct),
     limit: optional(PageLimitStruct),
     marker: optional(PageMarkerStruct),
@@ -468,12 +468,7 @@ export type LedgerEntryRequest = Infer<typeof LedgerEntryRequestStruct>;
 export const MptIssuanceNodeStruct = type({
   LedgerEntryType: literal('MPTokenIssuance'),
   Flags: UnSignedIntegerStruct,
-  Issuer: XrplAddressStruct,
-  Sequence: UnSignedIntegerStruct,
-  OutstandingAmount: UnSignedIntegerStringStruct,
-  OwnerNode: string(),
-  PreviousTxnID: Hash256Struct,
-  PreviousTxnLgrSeq: UnSignedIntegerStruct,
+  Issuer: string(),
   AssetScale: optional(size(integer(), 0, 255)),
   MaximumAmount: optional(UnSignedIntegerStringStruct),
   TransferFee: optional(size(integer(), 0, 50_000)),
@@ -485,13 +480,10 @@ export type MptIssuanceNode = Infer<typeof MptIssuanceNodeStruct>;
 
 export const MptHolderNodeStruct = type({
   LedgerEntryType: literal('MPToken'),
-  Account: XrplAddressStruct,
+  Account: string(),
   MPTokenIssuanceID: MptIssuanceIdStruct,
   Flags: UnSignedIntegerStruct,
   MPTAmount: UnSignedIntegerStringStruct,
-  OwnerNode: string(),
-  PreviousTxnID: Hash256Struct,
-  PreviousTxnLgrSeq: UnSignedIntegerStruct,
   LockedAmount: optional(UnSignedIntegerStringStruct),
 });
 
@@ -588,8 +580,8 @@ export type DepositAuthorizedRequest = Infer<
 export const DepositAuthorizedResponseStruct = mergeBaseRpcResponseStruct(
   type({
     deposit_authorized: boolean(),
-    source_account: XrplAddressStruct,
-    destination_account: XrplAddressStruct,
+    source_account: string(),
+    destination_account: string(),
     credentials: optional(array(Hash256Struct)),
   }),
 );
@@ -623,7 +615,7 @@ export const BaseTxJsonStruct = type({
       (transactionType) => transactionType !== XrplTransactionType.Batch,
     ),
   ),
-  Account: XrplAddressStruct,
+  Account: string(),
   hash: optional(XrplTransactionHashStruct),
   Fee: optional(ValidXrplDropsStruct),
   Sequence: optional(UnSignedIntegerStruct),
@@ -634,7 +626,7 @@ export const BaseTxJsonStruct = type({
   DestinationTag: optional(ValidDestinationTagStruct),
 });
 
-export const BaseTxJsonWithRawTransactionsStruct = assign(
+export const BatchTxJsonStruct = assign(
   BaseTxJsonStruct,
   type({
     TransactionType: literal(XrplTransactionType.Batch),
@@ -653,10 +645,7 @@ export const BaseTxJsonWithRawTransactionsStruct = assign(
   }),
 );
 
-export const TxJsonStruct = union([
-  BaseTxJsonStruct,
-  BaseTxJsonWithRawTransactionsStruct,
-]);
+export const TxJsonStruct = union([BaseTxJsonStruct, BatchTxJsonStruct]);
 
 export type TxJson = Infer<typeof TxJsonStruct>;
 

@@ -214,11 +214,6 @@ describe('MptIssuanceNodeStruct', () => {
     LedgerEntryType: 'MPTokenIssuance',
     Flags: 0,
     Issuer: issuer,
-    Sequence: 1,
-    OutstandingAmount: '1000000',
-    OwnerNode: '0',
-    PreviousTxnID: transactionHash,
-    PreviousTxnLgrSeq: 88901200,
   };
 
   it.each([
@@ -256,9 +251,6 @@ describe('MptHolderNodeStruct', () => {
     MPTokenIssuanceID: issuanceId,
     Flags: 0,
     MPTAmount: '100000000',
-    OwnerNode: '1',
-    PreviousTxnID: transactionHash,
-    PreviousTxnLgrSeq: 88901200,
   };
 
   it.each([
@@ -282,9 +274,6 @@ describe('MptHolderNodeStruct', () => {
         Account: account,
         MPTokenIssuanceID: issuanceId,
         Flags: 0,
-        OwnerNode: '1',
-        PreviousTxnID: transactionHash,
-        PreviousTxnLgrSeq: 88901200,
       },
       expected: false,
     },
