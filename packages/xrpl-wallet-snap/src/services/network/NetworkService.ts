@@ -5,7 +5,7 @@ import type {
 } from '@metamask/snap-networks-utils';
 import { useCache } from '@metamask/snap-networks-utils';
 import { BigNumber } from 'bignumber.js';
-import { hashes, xrpToDrops } from 'xrpl';
+import { hashes } from 'xrpl';
 
 import type {
   KnownCaip19IouAssetId,
@@ -26,6 +26,7 @@ import {
   rethrowIfInstanceElseThrow,
   toCaip19IouAssetId,
   toCaip19MptAssetId,
+  toSmallestUnit,
 } from '../../utils';
 import type {
   AccountInfoResponse,
@@ -177,9 +178,7 @@ export class NetworkService {
           );
           const factor = serverInfo.info.load_factor ?? DEFAULT_LOAD_FACTOR;
           const feeInXrp = baseFeeXrp.multipliedBy(factor);
-          return new BigNumber(
-            xrpToDrops(feeInXrp.toFixed(XRPL_DECIMAL_PLACES)),
-          );
+          return new BigNumber(toSmallestUnit(feeInXrp, XRPL_DECIMAL_PLACES));
         },
       );
     } catch (error: unknown) {
