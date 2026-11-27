@@ -1,10 +1,31 @@
-import { createSandbox, writeFile, readFile } from '@metamask/utils/node';
 import { promises as fs } from 'fs';
+import os from 'os';
 import path from 'path';
 
 import { readAllFiles, writeFiles } from './fs-utils';
 
-const { withinSandbox } = createSandbox('create-package/fs-utils');
+async function withinSandbox(
+  callback: (sandbox: { directoryPath: string }) => Promise<void>,
+): Promise<void> {
+  const directoryPath = await fs.mkdtemp(
+    path.join(os.tmpdir(), 'create-package-fs-utils-'),
+  );
+
+  try {
+    return await callback({ directoryPath });
+  } finally {
+    await fs.rm(directoryPath, { recursive: true, force: true });
+  }
+}
+
+async function writeFile(filePath: string, content: string): Promise<void> {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, content);
+}
+
+async function readFile(filePath: string): Promise<string> {
+  return await fs.readFile(filePath, 'utf8');
+}
 
 describe('create-package/fs-utils', () => {
   describe('readAllFiles', () => {

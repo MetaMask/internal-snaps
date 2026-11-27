@@ -4,7 +4,7 @@ import {
   serialize,
 } from '@metamask/snap-networks-utils';
 import * as SnapNetworks from '@metamask/snap-networks-utils';
-import type { JsonRpcParams, JsonRpcRequest } from '@metamask/utils';
+import type { JsonRpcRequest } from '@metamask/snaps-sdk';
 import type { Mock } from 'vitest';
 
 import * as ConfirmTransactionRequestView from '../../../../features/confirmation/views/ConfirmTransactionRequest/ConfirmTransactionRequest';
@@ -89,7 +89,7 @@ describe('refreshConfirmationEstimation', () => {
     vi.mocked(isTransactionBlockhashExpired).mockResolvedValue(true);
 
     await refreshConfirmationEstimation({
-      request: {} as JsonRpcRequest<JsonRpcParams>,
+      request: {} as JsonRpcRequest,
     });
 
     expect(updateInterface).toHaveBeenCalledWith(
@@ -111,7 +111,7 @@ describe('refreshConfirmationEstimation', () => {
     (transactionScanService.scanTransaction as Mock).mockRejectedValue(error);
 
     await refreshConfirmationEstimation({
-      request: {} as JsonRpcRequest<JsonRpcParams>,
+      request: {} as JsonRpcRequest,
     });
 
     expect(trackError).toHaveBeenCalledWith(error);
@@ -134,7 +134,7 @@ describe('refreshConfirmationEstimation', () => {
     vi.mocked(isTransactionBlockhashExpired).mockResolvedValue(true);
 
     await refreshConfirmationEstimation({
-      request: {} as JsonRpcRequest<JsonRpcParams>,
+      request: {} as JsonRpcRequest,
     });
 
     expect(transactionScanService.scanTransaction).not.toHaveBeenCalled();
@@ -157,7 +157,7 @@ describe('refreshConfirmationEstimation', () => {
     (getInterfaceContext as Mock).mockResolvedValue(interfaceContext);
 
     await refreshConfirmationEstimation({
-      request: {} as JsonRpcRequest<JsonRpcParams>,
+      request: {} as JsonRpcRequest,
     });
 
     expect(isTransactionBlockhashExpired).not.toHaveBeenCalled();
@@ -216,7 +216,7 @@ describe('refreshConfirmationEstimation', () => {
     });
 
     await refreshConfirmationEstimation({
-      request: {} as JsonRpcRequest<JsonRpcParams>,
+      request: {} as JsonRpcRequest,
     });
 
     expect(transactionScanService.scanTransaction).toHaveBeenCalledTimes(1);
