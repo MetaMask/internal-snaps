@@ -18,7 +18,7 @@ jobs:
       pull-requests: write # Required to apply the size-* label
     steps:
       - name: Check PR lines changed
-        uses: MetaMask/github-tools/.github/actions/pr-line-check@a4c45d2f30cf1d30b0ee43303bb8ea6441cb54c2 # v1.27.0
+        uses: MetaMask/github-tools/.github/actions/pr-line-check@c0006fff89d70f7b1063d47cabb7ab09b3782ba3 # v1.28.0
         with:
           # This repo uses the action only to apply the size-* label, not to
           # gate merges, so the limit is deliberately out of reach. Lower it
