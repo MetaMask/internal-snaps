@@ -3,8 +3,8 @@ import { BigNumber } from 'bignumber.js';
 import { parseAccountRootFlags } from 'xrpl';
 
 import type {
-  KnownCaip19AssetId,
   KnownCaip19AssetIdOrSlip44Id,
+  KnownCaip19IouAssetId,
   KnownCaip19MptAssetId,
   KnownCaip2ChainId,
 } from '../../api';
@@ -39,6 +39,8 @@ import {
   SerializableMptSpendableBalanceStruct,
 } from './api';
 import type {
+  IouAssetBalance,
+  MptAssetBalance,
   OnChainAccountSerializableFull,
   SerializableSpendableBalance,
 } from './api';
@@ -54,10 +56,8 @@ import type { ReserveLedgerMeta } from './utils';
 /**
  * Loads and binds {@link OnChainAccount} from either the ledger or AssetsController.
  *
- * Two paths:
- * 1. Network — `account_info` for the account root. Callers then bind every
- *    holding or a chosen asset id list.
- * 2. Controller — indexed holdings (native + trust-line metadata; MPT spendable only), then bind.
+ * - Network — `account_info` for the account root, then bind holdings (all or a chosen list)
+ * - Controller — indexed holdings (native + trust-line metadata; MPT spendable only), then bind
  */
 export class OnChainAccountService {
   readonly #networkService: NetworkService;
@@ -86,9 +86,7 @@ export class OnChainAccountService {
   }
 
   /**
-   * Whether the address has a funded account on the network.
-   *
-   * Reads `account_info` on the validated ledger.
+   * Verify if the account is activated on the network.
    *
    * @param params - Address and network.
    * @param params.address - XRPL account address.
@@ -116,8 +114,7 @@ export class OnChainAccountService {
    *
    * @param accountAddress - XRPL account address.
    * @param scope - CAIP-2 network.
-   * @param assetIds - `'all'`, or the IOU and MPT ids to bind. An empty list
-   * binds neither (account root only).
+   * @param assetIds - `'all'`, or the IOU and MPT ids to bind.
    * @returns Account with the requested holdings bound.
    * @throws {AccountNotActivatedException} When the account is not funded.
    */
@@ -150,46 +147,7 @@ export class OnChainAccountService {
   }
 
   /**
-   * Fetch one account, or `null` when it is not in the ledger.
-   *
-   * @param params - Address, holdings, and network.
-   * @param params.address - XRPL account address.
-   * @param params.scope - CAIP-2 chain ID.
-   * @param params.assetIds - IOU and MPT ids to read. Omit or pass `[]` to
-   * read neither. Use {@link fetchAccountWithAllAssetsBalances} for every holding.
-   * @param params.useCache - When true, reuse a cached `account_info` read.
-   * @returns The account, or `null` when `account_info` returns `actNotFound`.
-   */
-  async fetchActivatedAccount(params: {
-    address: string;
-    scope: KnownCaip2ChainId;
-    assetIds?: KnownCaip19AssetId[];
-    useCache?: boolean;
-  }): Promise<OnChainAccount | null> {
-    const { address, scope, assetIds = [], useCache = false } = params;
-    try {
-      const onChainAccount = await this.fetchAccount({
-        accountAddress: address,
-        scope,
-        ledgerIndex: LedgerState.Validated,
-        useCache,
-      });
-      await this.bindAssetsBalancesFromOnChain(onChainAccount, scope, assetIds);
-      return onChainAccount;
-    } catch (error: unknown) {
-      if (error instanceof AccountNotActivatedException) {
-        return null;
-      }
-      throw error;
-    }
-  }
-
-  /**
    * Loads the account root from the ledger.
-   *
-   * Reads `account_info` only: sequence, reserve, flags, and the XRP balance.
-   * Trust lines and MPT holdings stay empty until
-   * {@link bindAssetsBalancesFromOnChain}.
    *
    * @param params - Address and network.
    * @param params.accountAddress - XRPL account address.
@@ -230,11 +188,6 @@ export class OnChainAccountService {
 
   /**
    * Reads trust lines and MPT holdings onto an account that is already loaded.
-   *
-   * `'all'` reads every holding. An asset id list reads only those lines.
-   * An empty list reads neither. MPT `AssetScale` values come from
-   * {@link AssetMetadataService.fetchAndPersistMptAssetMetadata} (AssetsController /
-   * snap / token API). Missing scales fail closed.
    *
    * @param onChainAccount - Account root from {@link fetchAccount}. Entries are written onto this object.
    * @param scope - CAIP-2 network.
@@ -287,12 +240,6 @@ export class OnChainAccountService {
   /**
    * Loads issuance `AssetScale` for the MPT holdings just read.
    *
-   * Uses {@link AssetMetadataService.fetchAndPersistMptAssetMetadata} so
-   * AssetsController / snap / token API metadata is reused and newly fetched
-   * catalog rows are persisted. An empty holding list does not call the
-   * metadata service. A holding whose issuance is missing from those sources
-   * fails with {@link OnChainAccountException}.
-   *
    * @param mptokens - MPT holdings from `account_mptokens`.
    * @param scope - CAIP-2 network.
    * @returns Issuance scale by MPT asset id. Missing issuances are absent.
@@ -332,6 +279,9 @@ export class OnChainAccountService {
   /**
    * Writes IOU and MPT holdings onto an account that already has its root.
    *
+   * Validates every entry before mutating the account so a mid-loop failure
+   * cannot leave a partially bound inventory.
+   *
    * @param onChainAccount - Account to update.
    * @param scope - CAIP-2 network used to build asset ids.
    * @param loaded - Trust lines, MPT holdings, and issuance scales.
@@ -345,6 +295,11 @@ export class OnChainAccountService {
       mptDecimals: Map<KnownCaip19MptAssetId, number>;
     },
   ): void {
+    const pending: (
+      | { assetId: KnownCaip19IouAssetId; entry: IouAssetBalance }
+      | { assetId: KnownCaip19MptAssetId; entry: MptAssetBalance }
+    )[] = [];
+
     for (const line of loaded.trustlines) {
       const assetId = toCaip19IouAssetId(scope, line.currency, line.account);
       const entry = SerializableIouSpendableBalanceStruct.create({
@@ -360,10 +315,13 @@ export class OnChainAccountService {
         freeze: line.freeze,
         freezePeer: line.freeze_peer,
       });
-      onChainAccount.setAsset(assetId, {
-        ...entry,
-        balance: new BigNumber(entry.balance),
-        limit: new BigNumber(entry.limit),
+      pending.push({
+        assetId,
+        entry: {
+          ...entry,
+          balance: new BigNumber(entry.balance),
+          limit: new BigNumber(entry.limit),
+        },
       });
     }
 
@@ -372,7 +330,7 @@ export class OnChainAccountService {
       const assetId = toCaip19MptAssetId(scope, holding.mpt_issuance_id);
       const decimals = loaded.mptDecimals.get(assetId);
       if (decimals === undefined) {
-        continue;
+        throw new OnChainAccountException(`MPT issuance scale missing`);
       }
       const unlocked = new BigNumber(holding.mpt_amount).minus(lockedAmount);
       const entry = SerializableMptSpendableBalanceStruct.create({
@@ -387,20 +345,24 @@ export class OnChainAccountService {
           ? {}
           : { mptLocked: holding.mpt_locked }),
       });
-      onChainAccount.setAsset(assetId, {
-        ...entry,
-        mptAmount: new BigNumber(entry.mptAmount),
-        lockedAmount: new BigNumber(entry.lockedAmount),
-        balance: new BigNumber(entry.balance),
+      pending.push({
+        assetId,
+        entry: {
+          ...entry,
+          mptAmount: new BigNumber(entry.mptAmount),
+          lockedAmount: new BigNumber(entry.lockedAmount),
+          balance: new BigNumber(entry.balance),
+        },
       });
+    }
+
+    for (const { assetId, entry } of pending) {
+      onChainAccount.setAsset(assetId, entry);
     }
   }
 
   /**
    * Binds ledger responses into an {@link OnChainAccount}.
-   *
-   * Converts `account_info` into {@link OnChainAccountSerializableFull},
-   * then hydrates the account from that snapshot. Holdings are empty.
    *
    * @param accountInfo - `account_info` response.
    * @param scope - CAIP-2 network the response was read from.
@@ -442,16 +404,16 @@ export class OnChainAccountService {
   }
 
   /**
-   * Path 2: AssetsController → bind.
+   * Best-effort display binding from AssetsController holdings.
    *
-   * Reads indexed holdings and binds a best-effort account. Native and IOU keep
-   * the same shapes as the ledger path (IOU is trust-line metadata). MPT rows
-   * only carry spendable (`mpt_amount = spendable`, `locked_amount = 0`).
+   * Display-only, do not use the result for transaction building
+   * or reserve-sensitive decisions that need a live ledger read.
    *
    * @param keyringAccountId - MetaMask keyring account id.
    * @param accountAddress - XRPL account address for the account header.
    * @param scope - CAIP-2 network.
-   * @returns Bound account, or `null` when the controller has no native XRP row.
+   * @returns Bound account, or `null` when the controller has no native XRP row
+   * for `scope`.
    * @throws {OnChainAccountException} When holdings cannot be mapped.
    */
   async resolveFromController(
@@ -464,7 +426,10 @@ export class OnChainAccountService {
       keyringAccountId,
     );
 
-    if (assets.length === 0) {
+    const hasNative = assets.some(
+      (asset) => asset.chainId === scope && isCoreNativeAsset(asset),
+    );
+    if (!hasNative) {
       return null;
     }
 
@@ -500,7 +465,8 @@ export class OnChainAccountService {
    * @param params - Account header and controller assets.
    * @param params.accountAddress - XRPL account address.
    * @param params.scope - CAIP-2 network.
-   * @param params.assets - Assets held by the account.
+   * @param params.assets - Assets held by the account (native row already
+   * gated by {@link resolveFromController}).
    * @returns Bound account.
    */
   #bindFromController({
@@ -513,7 +479,7 @@ export class OnChainAccountService {
     assets: CoreAsset[];
   }): OnChainAccount {
     return OnChainAccount.fromSerializable(
-      this.#mapControllerAssetsToSerializable({
+      this.#serializableFromController({
         accountAddress,
         scope,
         assets,
@@ -522,11 +488,10 @@ export class OnChainAccountService {
   }
 
   /**
-   * Maps AssetsController holdings into a full snapshot for {@link OnChainAccount.fromSerializable}.
+   * Maps AssetsController holdings into a display-only snapshot for
+   * {@link OnChainAccount.fromSerializable}.
    *
-   * Native: ledger balance + reserve meta derived from `minimumReserveBalance`.
-   * IOU: trust-line `limit`. Currency stays inside `assetId`.
-   * MPT: spendable only (`mptAmount` and `balance` are the spendable amount, `lockedAmount` is 0).
+   * Lossy relative to a ledger bind: see {@link resolveFromController}.
    *
    * @param params - Account header and controller assets.
    * @param params.accountAddress - XRPL account address.
@@ -534,7 +499,7 @@ export class OnChainAccountService {
    * @param params.assets - Holdings from AssetsController.
    * @returns Full serializable binding.
    */
-  #mapControllerAssetsToSerializable({
+  #serializableFromController({
     accountAddress,
     scope,
     assets,
@@ -589,6 +554,7 @@ export class OnChainAccountService {
 
       if (isCoreMptAsset(asset)) {
         const { decimals } = asset.metadata;
+        // Controller amount is spendable only; locked/total holder amounts are unknown.
         const spendable = toSmallestUnit(
           new BigNumber(asset.balance.amount),
           decimals,

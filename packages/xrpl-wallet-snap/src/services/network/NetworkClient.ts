@@ -17,8 +17,8 @@ import type {
   AccountLinesResponse,
   AccountMptokensRequest,
   AccountMptokensResponse,
-  AccountTransactionsRequest,
-  BaseAccountTransactionsResponse,
+  FetchAccountTransactionsRequest,
+  FetchAccountTransactionsResponse,
   BaseRpcResponse,
   BaseTxResponse,
   BaseTxResult,
@@ -47,8 +47,8 @@ import {
   AccountLinesResponseStruct,
   AccountMptokensRequestStruct,
   AccountMptokensResponseStruct,
-  AccountTransactionsRequestStruct,
-  BaseAccountTransactionsResponseStruct,
+  FetchAccountTransactionsRequestStruct,
+  FetchAccountTransactionsResponseStruct,
   BaseTxResponseStruct,
   DepositAuthorizedRequestStruct,
   DepositAuthorizedResponseStruct,
@@ -69,7 +69,8 @@ import {
 } from './api';
 import { NetworkServiceException, RpcResponseException } from './exceptions';
 
-/** Reads sent together by {@link JsonRpcClient.batchRead}. */
+/** Reads sent together by {@link JsonRpcClient.batchRead}.
+ */
 export type JsonRpcRead<Params, Response> = {
   method: string;
   params: Params;
@@ -77,14 +78,17 @@ export type JsonRpcRead<Params, Response> = {
   resultStruct: Struct<Response>;
 };
 
-/** Chunk size and pause used by {@link JsonRpcClient.batchRead}. */
+/** Chunk size and pause used by {@link JsonRpcClient.batchRead}.
+ */
 export type JsonRpcBatchOptions = {
-  /** Reads started together. Defaults to 10. */
+  /** Reads started together. Defaults to 10.
+   */
   chunkSize?: number;
   /**
    * Milliseconds to wait before the next chunk when a response carries
    * `warning: "load"`. Defaults to 1 second. No delay otherwise.
-   */
+ 
+  */
   delayMs?: number;
 };
 
@@ -94,7 +98,8 @@ const DEFAULT_RPC_CHUNK_DELAY_MS = 1000;
 
 const RPC_LOAD_WARNING = 'load';
 
-/** Default `limit` for XRPL paginated account reads (server clamps to 10–400). */
+/** Default `limit` for XRPL paginated account reads (server clamps to 10–400).
+ */
 const DEFAULT_PAGE_LIMIT = 400;
 
 type LedgerScopedRequest = {
@@ -261,7 +266,7 @@ export class HttpClient {
 }
 
 /**
- * JSON-RPC POST client shared by rippled ({@link RpcClient}) and Clio
+ * JSON-RPC POST client shared by Xrpld ({@link RpcClient}) and Clio
  * ({@link ClioClient}). Validates the request params and the `result` object
  * with superstruct before returning.
  */
@@ -419,8 +424,8 @@ class JsonRpcClient {
         );
       }
 
-      const jsonReponse: unknown = await response.json();
-      const rpcError = this.#extractRpcError(jsonReponse);
+      const jsonResponse: unknown = await response.json();
+      const rpcError = this.#extractRpcError(jsonResponse);
       if (rpcError !== undefined) {
         throw new RpcResponseException(
           method,
@@ -429,9 +434,9 @@ class JsonRpcClient {
         );
       }
 
-      assertHttpResponse(jsonReponse, resultStruct);
+      assertHttpResponse(jsonResponse, resultStruct);
 
-      return jsonReponse;
+      return jsonResponse;
     } catch (error: unknown) {
       return this.#throwError(error, `Failed to call ${method}`);
     }
@@ -477,7 +482,7 @@ class JsonRpcClient {
 
 /**
  * Clio JSON-RPC. `account_mptokens` is served by Clio v2.7.0+, not by an
- * xrpld node.
+ * Xrpld node.
  */
 export class ClioClient extends JsonRpcClient {
   /**
@@ -504,7 +509,7 @@ export class ClioClient extends JsonRpcClient {
    *   "result": {
    *     "account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
    *     "mptokens": [{
-   *       "mpt_id": "0000000000000000000000000000000000000000000000000000000000000001",
+   *       "mpt_id": "A6C5A4E7B2F1D0C9B8A796857463524110FEDCBBA9876543210FEDCBA9876543",
    *       "account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
    *       "mpt_issuance_id": "05FAA0DF561E39FA605779B829BB5974E82B40AF173D6AF3",
    *       "mpt_amount": "1500000"
@@ -545,7 +550,7 @@ export class ClioClient extends JsonRpcClient {
    * Method return value:
    * ```json
    * [{
-   *   "mpt_id": "0000000000000000000000000000000000000000000000000000000000000001",
+   *   "mpt_id": "A6C5A4E7B2F1D0C9B8A796857463524110FEDCBBA9876543210FEDCBA9876543",
    *   "account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
    *   "mpt_issuance_id": "05FAA0DF561E39FA605779B829BB5974E82B40AF173D6AF3",
    *   "mpt_amount": "1500000"
@@ -580,7 +585,8 @@ export class ClioClient extends JsonRpcClient {
   }
 }
 
-/** rippled JSON-RPC for account, ledger, fee, transaction reads, simulate, and submit. */
+/** Xrpld JSON-RPC for account, ledger, fee, transaction reads, simulate, and submit.
+ */
 export class RpcClient extends JsonRpcClient {
   /**
    * Reads reserve requirements, the reference transaction cost, and load factor.
@@ -900,7 +906,7 @@ export class RpcClient extends JsonRpcClient {
    *     "tx_json": {
    *       "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
    *       "TransactionType": "Payment",
-   *       "Destination": "rN7n7otQDd6FczFgLdlqtyMVea5zArihM",
+   *       "Destination": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
    *       "Amount": "1000000",
    *       "Fee": "12",
    *       "Sequence": 1
@@ -953,13 +959,13 @@ export class RpcClient extends JsonRpcClient {
    * ```
    */
   async fetchAccountTransactions(
-    params: AccountTransactionsRequest,
-  ): Promise<BaseAccountTransactionsResponse> {
+    params: FetchAccountTransactionsRequest,
+  ): Promise<FetchAccountTransactionsResponse> {
     return this.call(
       'account_tx',
       params,
-      AccountTransactionsRequestStruct,
-      BaseAccountTransactionsResponseStruct,
+      FetchAccountTransactionsRequestStruct,
+      FetchAccountTransactionsResponseStruct,
     );
   }
 
@@ -1016,7 +1022,7 @@ export class RpcClient extends JsonRpcClient {
    *   "method": "deposit_authorized",
    *   "params": [{
    *     "source_account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *     "destination_account": "rN7n7otQDd6FczFgLdlqtyMVea5zArihM",
+   *     "destination_account": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
    *     "ledger_index": "validated",
    *     "api_version": 2
    *   }]
@@ -1028,7 +1034,7 @@ export class RpcClient extends JsonRpcClient {
    *   "result": {
    *     "deposit_authorized": true,
    *     "source_account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *     "destination_account": "rN7n7otQDd6FczFgLdlqtyMVea5zArihM",
+   *     "destination_account": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
    *     "status": "success",
    *     "validated": true,
    *     "ledger_index": 88901234
@@ -1048,7 +1054,7 @@ export class RpcClient extends JsonRpcClient {
   }
 
   /**
-   * Dry-runs an unsigned transaction. rippled fills `Fee`, `Sequence`,
+   * Dry-runs an unsigned transaction. Xrpld fills `Fee`, `Sequence`,
    * `SigningPubKey`, and `NetworkID` when they are omitted. Nothing is
    * submitted, and a later submission can differ because ledger state changes.
    *
@@ -1064,7 +1070,7 @@ export class RpcClient extends JsonRpcClient {
    *     "tx_json": {
    *       "TransactionType": "Payment",
    *       "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-   *       "Destination": "rN7n7otQDd6FczFgLdlqtyMVea5zArihM",
+   *       "Destination": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
    *       "Amount": "1000000"
    *     },
    *     "api_version": 2
@@ -1083,7 +1089,7 @@ export class RpcClient extends JsonRpcClient {
    *     "tx_json": {
    *       "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
    *       "TransactionType": "Payment",
-   *       "Destination": "rN7n7otQDd6FczFgLdlqtyMVea5zArihM",
+   *       "Destination": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
    *       "Amount": "1000000",
    *       "Fee": "12",
    *       "Sequence": 1
@@ -1107,12 +1113,12 @@ export class RpcClient extends JsonRpcClient {
 
   /**
    * Submits an already-signed transaction blob. This does not sign or autofill.
-   * rippled returns a preliminary `engine_result` for local failures as well as
-   * success. {@link NetworkService.sendTransaction} decides which results count
-   * as submitted.
+   * Always sends `fail_hard: true` so a local failure is not relayed to other
+   * servers. Xrpld returns a preliminary `engine_result` for local failures as
+   * well as success. {@link NetworkService.sendTransaction} decides which
+   * results count as submitted.
    *
    * @param txBlob - Signed transaction hex (`tx_blob`).
-   * @param failHard - When true, a local failure is not relayed to other servers.
    * @returns The preliminary `submit` result, including `engine_result` and `tx_json`.
    * @example
    * Request:
@@ -1137,7 +1143,7 @@ export class RpcClient extends JsonRpcClient {
    *     "tx_json": {
    *       "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
    *       "TransactionType": "Payment",
-   *       "Destination": "rN7n7otQDd6FczFgLdlqtyMVea5zArihM",
+   *       "Destination": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
    *       "Amount": "1000000",
    *       "Fee": "12",
    *       "Sequence": 1
@@ -1156,14 +1162,14 @@ export class RpcClient extends JsonRpcClient {
    */
   async submitTransaction(
     txBlob: SubmitRequest['tx_blob'],
-    failHard = false,
   ): Promise<SubmitResponse> {
+    const params: SubmitRequest = {
+      tx_blob: txBlob,
+      fail_hard: true,
+    };
     return this.call(
       'submit',
-      {
-        tx_blob: txBlob,
-        fail_hard: failHard,
-      },
+      params,
       SubmitRequestStruct,
       SubmitResponseStruct,
     );

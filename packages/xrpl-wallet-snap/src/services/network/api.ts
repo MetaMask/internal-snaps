@@ -1,10 +1,4 @@
-import {
-  defaulted,
-  Infer,
-  record,
-  Struct,
-  unknown,
-} from '@metamask/superstruct';
+import { Infer, record, Struct, unknown } from '@metamask/superstruct';
 import {
   array,
   assign,
@@ -31,16 +25,16 @@ import {
   SignedNumberStringStruct,
   UnSignedNumberStringStruct,
   ValidDestinationTagStruct,
+  XrplAddressStruct,
   XrplTransactionStringStruct,
   ValidXrplDropsStruct,
-  XrplAddressStruct,
   XrplTransactionHashStruct,
 } from '../../api';
 import { MptIssuanceIdStruct } from '../../api/asset';
 import { Hash256Struct } from '../../api/string';
 
 /**
- * Known rippled JSON-RPC error codes returned by `submit` and shared universal
+ * Known Xrpld JSON-RPC error codes returned by `submit` and shared universal
  * method failures.
  *
  * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/submit
@@ -153,12 +147,10 @@ export type XrplTransactionType =
   (typeof XrplTransactionType)[keyof typeof XrplTransactionType];
 
 /**
- * JSON-RPC request and response structs for the rippled and Clio methods this
+ * JSON-RPC request and response structs for the Xrpld and Clio methods this
  * snap calls. Request structs use `object` so unexpected fields are rejected.
  * Response structs use `type` so the server can add fields without failing
  * validation.
- *
- * @see https://xrpl.org/docs/references/http-websocket-apis
  */
 export const LedgerState = {
   Validated: 'validated',
@@ -183,6 +175,11 @@ const LedgerSelectionStruct = object({
   ledger_hash: optional(Hash256Struct),
 });
 
+/**
+ * Marker for paginated methods.
+ *
+ * @see https://xrpl.org/docs/references/http-websocket-apis/api-conventions/markers-and-pagination
+ */
 const StringPageMarkerStruct = string();
 const ObjectPageMarkerStruct = object({
   ledger: UnSignedIntegerStruct,
@@ -197,7 +194,7 @@ const PageMarkerStruct = union([
 export type PageMarker = Infer<typeof PageMarkerStruct>;
 const PageLimitStruct = size(integer(), 10, 400);
 
-/** `limit` accepted by paginated account methods (server clamps to 10–400). */
+/** `limit` accepted by paginated methods (server clamps to 10–400). */
 export const PageRequestStruct = object({
   limit: optional(PageLimitStruct),
   marker: optional(PageMarkerStruct),
@@ -206,7 +203,7 @@ export const PageRequestStruct = object({
 export type PageRequest = Infer<typeof PageRequestStruct>;
 
 /**
- * Shared fields on every successful rippled/Clio `result`.
+ * Shared fields on every successful Xrpld/Clio `result`.
  *
  * `status` is always present. `validated` is omitted on some methods (e.g.
  * `submit`, `server_info`, `simulate`) and present on ledger-scoped reads.
@@ -307,7 +304,7 @@ export type AccountFlags = Infer<typeof AccountFlagsStruct>;
 export const AccountInfoResponseStruct = mergeBaseRpcResponseStruct(
   type({
     account_data: type({
-      Account: XrplAddressStruct,
+      Account: string(),
       Balance: ValidXrplDropsStruct,
       Flags: UnSignedIntegerStruct,
       LedgerEntryType: literal('AccountRoot'),
@@ -328,7 +325,7 @@ export const AccountInfoResponseStruct = mergeBaseRpcResponseStruct(
       /**
        * Account paying this account's base reserve. Omitted when this account pays its own.
        */
-      Sponsor: optional(XrplAddressStruct),
+      Sponsor: optional(string()),
     }),
     account_flags: AccountFlagsStruct,
   }),
@@ -355,7 +352,7 @@ export const AccountLinesRequestStruct = assign(
 export type AccountLinesRequest = Infer<typeof AccountLinesRequestStruct>;
 
 export const TrustLineStruct = type({
-  account: XrplAddressStruct,
+  account: string(),
   // Balance can be negative for trust lines
   balance: SignedNumberStringStruct,
   currency: CurrencyCodeStruct,
@@ -375,7 +372,7 @@ export type TrustLine = Infer<typeof TrustLineStruct>;
 
 export const AccountLinesResponseStruct = mergeBaseRpcResponseStruct(
   type({
-    account: XrplAddressStruct,
+    account: string(),
     lines: array(TrustLineStruct),
     limit: optional(PageLimitStruct),
     marker: optional(PageMarkerStruct),
@@ -387,7 +384,7 @@ export type AccountLinesResponse = Infer<
 >['result'];
 
 /**
- * `account_mptokens` params. Clio v2.7.0+ only; rippled does not serve this.
+ * `account_mptokens` params. Clio v2.7.0+ only; Xrpld does not serve this.
  *
  * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/clio-methods/account_mptokens
  */
@@ -403,7 +400,7 @@ export type AccountMptokensRequest = Infer<typeof AccountMptokensRequestStruct>;
 
 export const AccountMptokenStruct = type({
   mpt_id: Hash256Struct,
-  account: XrplAddressStruct,
+  account: string(),
   mpt_issuance_id: MptIssuanceIdStruct,
   mpt_amount: UnSignedIntegerStringStruct,
   locked_amount: optional(UnSignedIntegerStringStruct),
@@ -419,7 +416,7 @@ export type AccountMptoken = Infer<typeof AccountMptokenStruct>;
 
 export const AccountMptokensResponseStruct = mergeBaseRpcResponseStruct(
   type({
-    account: XrplAddressStruct,
+    account: string(),
     mptokens: array(AccountMptokenStruct),
     limit: optional(PageLimitStruct),
     marker: optional(PageMarkerStruct),
@@ -471,12 +468,7 @@ export type LedgerEntryRequest = Infer<typeof LedgerEntryRequestStruct>;
 export const MptIssuanceNodeStruct = type({
   LedgerEntryType: literal('MPTokenIssuance'),
   Flags: UnSignedIntegerStruct,
-  Issuer: XrplAddressStruct,
-  Sequence: UnSignedIntegerStruct,
-  OutstandingAmount: UnSignedIntegerStringStruct,
-  OwnerNode: string(),
-  PreviousTxnID: Hash256Struct,
-  PreviousTxnLgrSeq: UnSignedIntegerStruct,
+  Issuer: string(),
   AssetScale: optional(size(integer(), 0, 255)),
   MaximumAmount: optional(UnSignedIntegerStringStruct),
   TransferFee: optional(size(integer(), 0, 50_000)),
@@ -488,14 +480,11 @@ export type MptIssuanceNode = Infer<typeof MptIssuanceNodeStruct>;
 
 export const MptHolderNodeStruct = type({
   LedgerEntryType: literal('MPToken'),
-  Account: XrplAddressStruct,
+  Account: string(),
   MPTokenIssuanceID: MptIssuanceIdStruct,
   Flags: UnSignedIntegerStruct,
-  MPTAmount: defaulted(UnSignedIntegerStringStruct, '0'),
-  OwnerNode: string(),
-  PreviousTxnID: Hash256Struct,
-  PreviousTxnLgrSeq: UnSignedIntegerStruct,
-  LockedAmount: defaulted(UnSignedIntegerStringStruct, '0'),
+  MPTAmount: UnSignedIntegerStringStruct,
+  LockedAmount: optional(UnSignedIntegerStringStruct),
 });
 
 export type MptHolderNode = Infer<typeof MptHolderNodeStruct>;
@@ -573,7 +562,7 @@ export type LedgerResponse = Infer<typeof LedgerResponseStruct>['result'];
 /**
  * `deposit_authorized` params.
  *
- * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/deposit_authorized
+ * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/path-and-order-book-methods/deposit_authorized
  */
 export const DepositAuthorizedRequestStruct = assign(
   LedgerSelectionStruct,
@@ -591,8 +580,8 @@ export type DepositAuthorizedRequest = Infer<
 export const DepositAuthorizedResponseStruct = mergeBaseRpcResponseStruct(
   type({
     deposit_authorized: boolean(),
-    source_account: XrplAddressStruct,
-    destination_account: XrplAddressStruct,
+    source_account: string(),
+    destination_account: string(),
     credentials: optional(array(Hash256Struct)),
   }),
 );
@@ -615,7 +604,7 @@ export const TxRequestStruct = object({
 export type TxRequest = Infer<typeof TxRequestStruct>;
 
 /**
- * RPC `tx_json` as returned by rippled / Clio (`tx`, `submit`, `account_tx`, simulate).
+ * RPC `tx_json` as returned by Xrpld / Clio (`tx`, `submit`, `account_tx`, simulate).
  *
  * Includes optional ledger `hash` and signatures. Unsigned build/autofill drafts
  * live in `services/transaction/api`.
@@ -626,7 +615,7 @@ export const BaseTxJsonStruct = type({
       (transactionType) => transactionType !== XrplTransactionType.Batch,
     ),
   ),
-  Account: XrplAddressStruct,
+  Account: string(),
   hash: optional(XrplTransactionHashStruct),
   Fee: optional(ValidXrplDropsStruct),
   Sequence: optional(UnSignedIntegerStruct),
@@ -637,7 +626,7 @@ export const BaseTxJsonStruct = type({
   DestinationTag: optional(ValidDestinationTagStruct),
 });
 
-export const BaseTxJsonWithRawTransactionsStruct = assign(
+export const BatchTxJsonStruct = assign(
   BaseTxJsonStruct,
   type({
     TransactionType: literal(XrplTransactionType.Batch),
@@ -656,72 +645,111 @@ export const BaseTxJsonWithRawTransactionsStruct = assign(
   }),
 );
 
-export const TxJsonStruct = union([
-  BaseTxJsonStruct,
-  BaseTxJsonWithRawTransactionsStruct,
-]);
+export const TxJsonStruct = union([BaseTxJsonStruct, BatchTxJsonStruct]);
 
 export type TxJson = Infer<typeof TxJsonStruct>;
 
-/**
- * Transaction payload shared by `tx` results and `account_tx` entries.
- * API v2 places `hash` next to `tx_json` (not inside it).
- */
-export const BaseTxResultStruct = type({
+/** Transaction metadata (JSON object or binary hex string). */
+export const TxMetaStruct = union([record(string(), unknown()), string()]);
+
+export type TxMeta = Infer<typeof TxMetaStruct>;
+
+const BaseTxFieldsStruct = type({
   hash: XrplTransactionHashStruct,
-  meta: union([record(string(), unknown()), string()]),
   tx_json: optional(TxJsonStruct),
   ledger_index: optional(UnSignedIntegerStruct),
   ledger_hash: optional(Hash256Struct),
   close_time_iso: optional(string()),
 });
 
+/**
+ * Transaction payload shared by `tx` results and `account_tx` entries.
+ * API v2 places `hash` next to `tx_json` (not inside it).
+ *
+ * `meta` is omitted until the transaction is in a validated ledger.
+ */
+export const BaseTxResultStruct = assign(
+  BaseTxFieldsStruct,
+  type({
+    meta: optional(TxMetaStruct),
+  }),
+);
+
 export type BaseTxResult = Infer<typeof BaseTxResultStruct>;
 
-export const BaseTxResponseStruct =
-  mergeBaseRpcResponseStruct(BaseTxResultStruct);
+/** Pending `tx` fields: `validated` omitted/`false`; `meta` optional. */
+const PendingTxResultFieldsStruct = assign(
+  BaseTxFieldsStruct,
+  type({
+    validated: optional(literal(false)),
+    meta: optional(TxMetaStruct),
+  }),
+);
+
+/** Validated `tx` fields: `validated: true`; `meta` required. */
+const ValidatedTxResultFieldsStruct = assign(
+  BaseTxFieldsStruct,
+  type({
+    validated: literal(true),
+    meta: TxMetaStruct,
+  }),
+);
+
+/**
+ * Full `tx` JSON-RPC envelope.
+ *
+ * Union of {@link mergeBaseRpcResponseStruct} branches, discriminated on
+ * `result.validated`:
+ * - pending: `validated` omitted/`false`, `meta` optional
+ * - validated: `validated: true`, `meta` required
+ */
+export const BaseTxResponseStruct = union([
+  mergeBaseRpcResponseStruct(PendingTxResultFieldsStruct),
+  mergeBaseRpcResponseStruct(ValidatedTxResultFieldsStruct),
+]);
 
 export type BaseTxResponse = Infer<typeof BaseTxResponseStruct>['result'];
 
-const DelicationFilterStruct = object({
+const DelegationFilterStruct = object({
   delegate_filter: string(),
   counter_party: optional(XrplAddressStruct),
 });
 
 /**
- * `account_transactions` params.
+ * `account_tx` params.
  *
- * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_transactions
+ * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_tx
  */
-export const AccountTransactionsRequestStruct = object({
+export const FetchAccountTransactionsRequestStruct = object({
   account: XrplAddressStruct,
-  tx_type: optional(UnSignedIntegerStruct),
+  tx_type: optional(string()),
   ledger_index_min: optional(min(integer(), -1)),
   ledger_index_max: optional(min(integer(), -1)),
   binary: optional(boolean()),
   forward: optional(boolean()),
-  delegate: optional(DelicationFilterStruct),
+  delegate: optional(DelegationFilterStruct),
   limit: optional(PageLimitStruct),
   marker: optional(PageMarkerStruct),
 });
 
-export type AccountTransactionsRequest = Infer<
-  typeof AccountTransactionsRequestStruct
+export type FetchAccountTransactionsRequest = Infer<
+  typeof FetchAccountTransactionsRequestStruct
 >;
 
-export const BaseAccountTransactionsResponseStruct = mergeBaseRpcResponseStruct(
-  type({
-    transactions: array(BaseTxResultStruct),
-    limit: optional(PageLimitStruct),
-    marker: optional(PageMarkerStruct),
-  }),
-);
+export const FetchAccountTransactionsResponseStruct =
+  mergeBaseRpcResponseStruct(
+    type({
+      transactions: array(BaseTxResultStruct),
+      limit: optional(PageLimitStruct),
+      marker: optional(PageMarkerStruct),
+    }),
+  );
 
-export type BaseAccountTransactionsResponse = Infer<
-  typeof BaseAccountTransactionsResponseStruct
+export type FetchAccountTransactionsResponse = Infer<
+  typeof FetchAccountTransactionsResponseStruct
 >['result'];
 
-/** JSON-RPC `result` object when rippled or Clio rejected the command. */
+/** JSON-RPC `result` object when Xrpld or Clio rejected the command. */
 export const RpcErrorResponseStruct = type({
   error: nonempty(string()),
   error_code: optional(union([string(), integer()])),
@@ -784,14 +812,15 @@ export const SimulateResponseStruct = mergeBaseRpcResponseStruct(
 export type SimulateResponse = Infer<typeof SimulateResponseStruct>['result'];
 
 /**
- * Submit-only `submit` params. `tx_blob` is a signed transaction. The response
- * is preliminary until `tx` reports a validated result.
+ * Submit transaction params.
+ * `tx_blob` is a signed transaction.
+ * `fail_hard` is always `true` so a local failure is not relayed.
  *
  * @see https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/submit
  */
 export const SubmitRequestStruct = object({
   tx_blob: XrplTransactionStringStruct,
-  fail_hard: optional(boolean()),
+  fail_hard: literal(true),
 });
 
 export type SubmitRequest = Infer<typeof SubmitRequestStruct>;
