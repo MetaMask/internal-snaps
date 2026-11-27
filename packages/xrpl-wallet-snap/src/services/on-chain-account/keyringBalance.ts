@@ -138,6 +138,17 @@ export function mptHolderStatusFromBalance(asset: MptAssetBalance): number {
 }
 
 /**
+ * Whether keyring / controller MPT `metadata.status` includes issuer authorization.
+ *
+ * @param status - {@link MptHolderStatus} bitmask from AssetsController.
+ * @returns `true` when the {@link MptHolderStatus.IssuerAuthorized} bit is set.
+ */
+export function mptAuthorizedFromHolderStatus(status: number): boolean {
+  // eslint-disable-next-line no-bitwise -- test IssuerAuthorized bit
+  return (status & MptHolderStatus.IssuerAuthorized) !== 0;
+}
+
+/**
  * Keyring balance payload for native XRP.
  *
  * `amount` is display units. `spendableBalance` and `minimumReserveBalance` stay in drops.

@@ -15,6 +15,7 @@ import {
   KnownCaip19Slip44IdStruct,
   KnownCaip2ChainIdStruct,
   UnSignedNumberStringStruct,
+  ValidIouAmountStruct,
   ValidXrplAmountStruct,
   ValidXrplDropsStruct,
 } from '../../api';
@@ -54,11 +55,12 @@ export const CoreNativeBalanceStruct = type({
 
 /**
  * Core `Asset.balance` for IOU assets: human `amount` plus trustline
- * metadata. `limit` is a finite, non-negative issued-currency amount string
- * (not XRP drops).
+ * metadata. `amount` uses issued-currency limits (15 fractional digits /
+ * {@link ValidIouAmountStruct}), not native XRP drop rules. `limit` is a
+ * finite, non-negative issued-currency amount string (not XRP drops).
  */
 export const CoreIouBalanceStruct = type({
-  amount: ValidXrplAmountStruct,
+  amount: ValidIouAmountStruct,
   metadata: type({
     limit: UnSignedNumberStringStruct,
   }),
