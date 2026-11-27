@@ -9,6 +9,7 @@ import {
 export type AppliedLanguage = {
   profileId: string;
   language: string;
+  sessionExpiresAt: number;
 };
 
 type PersistedStorage = {
@@ -140,11 +141,18 @@ function parsePersistedStorage(state: unknown): {
     isObject(rawLanguage) &&
     hasProperty(rawLanguage, 'profileId') &&
     hasProperty(rawLanguage, 'language') &&
+    hasProperty(rawLanguage, 'sessionExpiresAt') &&
     typeof rawLanguage.profileId === 'string' &&
     rawLanguage.profileId.length > 0 &&
     typeof rawLanguage.language === 'string' &&
-    rawLanguage.language.length > 0
-      ? { profileId: rawLanguage.profileId, language: rawLanguage.language }
+    rawLanguage.language.length > 0 &&
+    typeof rawLanguage.sessionExpiresAt === 'number' &&
+    Number.isFinite(rawLanguage.sessionExpiresAt)
+      ? {
+          profileId: rawLanguage.profileId,
+          language: rawLanguage.language,
+          sessionExpiresAt: rawLanguage.sessionExpiresAt,
+        }
       : undefined;
 
   return {

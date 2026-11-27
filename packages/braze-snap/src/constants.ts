@@ -15,6 +15,11 @@ export const FLUSH_TIMEOUT_MS = 25_000;
 export const REQUEST_TIMEOUT_MS = 20_000;
 
 /**
+ * Braze session inactivity timeout in seconds.
+ */
+export const SESSION_TIMEOUT_SECONDS = 1_800;
+
+/**
  * The key under which the SDK storage is persisted in snap state.
  */
 export const STORAGE_STATE_KEY = 'braze';

@@ -2,7 +2,7 @@ import nock from 'nock';
 
 import { stubSnap } from '../tests/snap';
 import { brazeSdkLoader } from './braze-sdk';
-import { STORAGE_STATE_KEY } from './constants';
+import { SESSION_TIMEOUT_SECONDS, STORAGE_STATE_KEY } from './constants';
 import { abortRequests, drainRequests } from './network';
 import { BrazeMethod, onClientRequest } from './rpc';
 import { resetRuntime } from './runtime';
@@ -104,6 +104,7 @@ describe('Braze Web SDK in the snap globals', () => {
 
   afterEach(async () => {
     await restartSnap();
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -184,6 +185,34 @@ describe('Braze Web SDK in the snap globals', () => {
 
     expect(requests.flatMap(({ attributes = [] }) => attributes)).toStrictEqual(
       [],
+    );
+  });
+
+  it('re-sends the language with the new session after the session timeout expires', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    stubSnap();
+
+    await syncUser('profile-a', 'fr');
+    expect(requests).toHaveLength(1);
+
+    await restartSnap();
+    requests = [];
+    await vi.advanceTimersByTimeAsync((SESSION_TIMEOUT_SECONDS - 60) * 1000);
+    await syncUser('profile-a', 'fr');
+    expect(requests).toStrictEqual([]);
+
+    await restartSnap();
+    requests = [];
+    await vi.advanceTimersByTimeAsync(SESSION_TIMEOUT_SECONDS * 1000 + 1);
+    await syncUser('profile-a', 'fr');
+
+    expect(requests).toHaveLength(1);
+    expect(getEventNames(requests)).toStrictEqual(
+      expect.arrayContaining(['se', 'ss']),
+    );
+    expect(requests.flatMap(({ attributes = [] }) => attributes)).toStrictEqual(
+      [{ user_id: 'profile-a', language: 'fr' }],
     );
   });
 

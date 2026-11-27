@@ -1,7 +1,11 @@
 import { mockBrazeSdk } from '../tests/braze';
 import { stubSnap } from '../tests/snap';
 import { brazeSdkLoader } from './braze-sdk';
-import { FLUSH_TIMEOUT_MS, STORAGE_STATE_KEY } from './constants';
+import {
+  FLUSH_TIMEOUT_MS,
+  SESSION_TIMEOUT_SECONDS,
+  STORAGE_STATE_KEY,
+} from './constants';
 import { GuardedXMLHttpRequest, drainRequests } from './network';
 import type { BrazeConfig } from './runtime';
 import { resetRuntime, withBraze } from './runtime';
@@ -57,6 +61,7 @@ describe('withBraze', () => {
       allowUserSuppliedJavascript: false,
       manageServiceWorkerExternally: true,
       disablePushTokenMaintenance: true,
+      sessionTimeoutInSeconds: SESSION_TIMEOUT_SECONDS,
       devicePropertyAllowlist: [DeviceProperties.TIME_ZONE],
     });
   });

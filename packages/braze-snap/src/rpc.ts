@@ -3,7 +3,7 @@ import { InvalidParamsError, MethodNotFoundError } from '@metamask/snaps-sdk';
 import type { Struct } from '@metamask/superstruct';
 import { validate } from '@metamask/superstruct';
 
-import type { BrazeSdk } from './braze-sdk';
+import { SESSION_TIMEOUT_SECONDS } from './constants';
 import { withBraze } from './runtime';
 import { getAppliedLanguage, setAppliedLanguage } from './storage';
 import type { SyncUserParams } from './structs';
@@ -16,6 +16,8 @@ export const BrazeMethod = {
 export type SyncUserResult = {
   flushed: boolean;
 };
+
+const SESSION_TIMEOUT_MS = SESSION_TIMEOUT_SECONDS * 1_000;
 
 /**
  * Validate request params against a struct.
@@ -37,29 +39,10 @@ function validateParams<Params>(
 }
 
 /**
- * Set the language of the current user, unless it was already set for this
- * user. The SDK sends every attribute it is given, even an unchanged one.
- *
- * @param sdk - The Braze SDK.
- * @param profileId - The canonical profile ID of the current user.
- * @param language - The ISO 639-1 language code.
- */
-function setLanguage(sdk: BrazeSdk, profileId: string, language: string): void {
-  const applied = getAppliedLanguage();
-  if (applied?.profileId === profileId && applied.language === language) {
-    return;
-  }
-
-  if (sdk.getUser()?.setLanguage(language)) {
-    setAppliedLanguage({ profileId, language });
-  }
-}
-
-/**
  * Identify the device as the given Braze user. Changes the user only when it
- * differs from the current one, then flushes because `setLanguage` only queues
- * attributes in storage and `initialize` does not renew an expired session
- * before the snap runtime tears down timers at the end of the request.
+ * differs from the current one, sets the language when it changed or when the
+ * tracked session window expired (so a new session re-asserts the device's
+ * language if another device changed it), then flushes.
  *
  * @param params - The validated params.
  * @param params.profileId - The canonical profile ID of the user.
@@ -74,19 +57,47 @@ async function syncUser({
   config,
 }: SyncUserParams): Promise<SyncUserResult> {
   return withBraze(config, async (sdk, flush) => {
+    const now = Date.now();
     const currentUserId = sdk.getUser()?.getUserId() ?? null;
-    if (currentUserId === null && language !== undefined) {
+    const applied = getAppliedLanguage();
+    const isActiveLanguageSession =
+      applied?.profileId === profileId &&
+      applied.language === language &&
+      now < applied.sessionExpiresAt;
+
+    let appliedInThisCall = false;
+    const setLanguage = (): void => {
+      if (language !== undefined && !isActiveLanguageSession) {
+        appliedInThisCall = Boolean(sdk.getUser()?.setLanguage(language));
+      }
+    };
+
+    if (currentUserId === null) {
       // Queue before changeUser so initial identification promotes the
       // anonymous attribute and sends session start + language together.
-      setLanguage(sdk, profileId, language);
+      setLanguage();
     }
     if (currentUserId !== profileId) {
       sdk.changeUser(profileId);
     }
-    if (currentUserId !== null && language !== undefined) {
-      setLanguage(sdk, profileId, language);
+    if (currentUserId !== null) {
+      setLanguage();
     }
-    return { flushed: await flush() };
+
+    const flushed = await flush();
+    if (
+      flushed &&
+      language !== undefined &&
+      (isActiveLanguageSession || appliedInThisCall)
+    ) {
+      setAppliedLanguage({
+        profileId,
+        language,
+        sessionExpiresAt: now + SESSION_TIMEOUT_MS,
+      });
+    }
+
+    return { flushed };
   });
 }
 

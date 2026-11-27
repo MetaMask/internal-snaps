@@ -90,26 +90,47 @@ describe('storage', () => {
       expect(getAppliedLanguage()).toBeUndefined();
     });
 
-    it('drops invalid appliedLanguage entries', async () => {
-      stubSnap({
-        [STORAGE_STATE_KEY]: {
-          version: 1,
-          items: { [KEY]: 'device' },
-          appliedLanguage: { profileId: '', language: 'fr' },
+    it.each([
+      [
+        'empty profileId',
+        { profileId: '', language: 'fr', sessionExpiresAt: 1 },
+      ],
+      ['missing sessionExpiresAt', { profileId: 'profile-a', language: 'fr' }],
+      [
+        'non-finite sessionExpiresAt',
+        {
+          profileId: 'profile-a',
+          language: 'fr',
+          sessionExpiresAt: Number.NaN,
         },
-      });
+      ],
+    ])(
+      'drops invalid appliedLanguage entries (%s)',
+      async (_, appliedLanguage) => {
+        stubSnap({
+          [STORAGE_STATE_KEY]: {
+            version: 1,
+            items: { [KEY]: 'device' },
+            appliedLanguage,
+          },
+        });
 
-      await hydrateStorage();
+        await hydrateStorage();
 
-      expect(getAppliedLanguage()).toBeUndefined();
-    });
+        expect(getAppliedLanguage()).toBeUndefined();
+      },
+    );
 
     it('loads the applied language separately from the SDK storage', async () => {
       stubSnap({
         [STORAGE_STATE_KEY]: {
           version: 1,
           items: { [KEY]: 'device' },
-          appliedLanguage: { profileId: 'profile-a', language: 'fr' },
+          appliedLanguage: {
+            profileId: 'profile-a',
+            language: 'fr',
+            sessionExpiresAt: 1_000_000,
+          },
         },
       });
 
@@ -118,6 +139,7 @@ describe('storage', () => {
       expect(getAppliedLanguage()).toStrictEqual({
         profileId: 'profile-a',
         language: 'fr',
+        sessionExpiresAt: 1_000_000,
       });
       expect(storageShim).toHaveLength(1);
     });
@@ -156,13 +178,21 @@ describe('storage', () => {
       await hydrateStorage();
 
       storageShim.setItem(KEY, 'device');
-      setAppliedLanguage({ profileId: 'profile-a', language: 'fr' });
+      setAppliedLanguage({
+        profileId: 'profile-a',
+        language: 'fr',
+        sessionExpiresAt: 1_000_000,
+      });
       await commitStorage();
 
       expect(state.get(STORAGE_STATE_KEY)).toStrictEqual({
         version: 1,
         items: { [KEY]: 'device' },
-        appliedLanguage: { profileId: 'profile-a', language: 'fr' },
+        appliedLanguage: {
+          profileId: 'profile-a',
+          language: 'fr',
+          sessionExpiresAt: 1_000_000,
+        },
       });
     });
 
@@ -215,7 +245,11 @@ describe('storage', () => {
       });
       await hydrateStorage();
       storageShim.setItem('ab.storage.other', 'value');
-      setAppliedLanguage({ profileId: 'profile-a', language: 'fr' });
+      setAppliedLanguage({
+        profileId: 'profile-a',
+        language: 'fr',
+        sessionExpiresAt: 1_000_000,
+      });
 
       resetStorage();
       expect(storageShim).toHaveLength(0);

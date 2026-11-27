@@ -12,7 +12,7 @@ The snap exposes a client-only `onClientRequest` handler, so only MetaMask can i
 
 Identify the device as the given Braze user. The SDK changes the user only when it differs from the current one, and then flushes, which starts a new session if the previous one expired. Returns `{ flushed: boolean }` so the client knows whether queued events and attributes were delivered.
 
-When `language` is given, it becomes the user's language in Braze. The snap only sets it when it differs from the last language it set for that user, because the SDK sends every attribute it is given.
+When `language` is given, it becomes the user's language in Braze. The snap skips re-sending an unchanged language during an active 30-minute session (because the SDK sends every attribute it is given), and refreshes it once a new session starts so another device using the same profile cannot leave it stale.
 
 ```ts
 const { flushed } = await snapController.handleRequest({

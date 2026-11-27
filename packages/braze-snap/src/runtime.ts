@@ -1,6 +1,6 @@
 import type { BrazeSdk } from './braze-sdk';
 import { brazeSdkLoader } from './braze-sdk';
-import { FLUSH_TIMEOUT_MS } from './constants';
+import { FLUSH_TIMEOUT_MS, SESSION_TIMEOUT_SECONDS } from './constants';
 import {
   abortRequests,
   drainRequests,
@@ -44,6 +44,7 @@ function initializeSdk(brazeSdk: BrazeSdk, config: BrazeConfig): void {
     allowUserSuppliedJavascript: false,
     manageServiceWorkerExternally: true,
     disablePushTokenMaintenance: true,
+    sessionTimeoutInSeconds: SESSION_TIMEOUT_SECONDS,
     devicePropertyAllowlist: [DeviceProperties.TIME_ZONE],
   });
 

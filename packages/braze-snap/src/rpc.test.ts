@@ -2,6 +2,7 @@ import type { JsonRpcRequest } from '@metamask/utils';
 
 import { mockBrazeSdk } from '../tests/braze';
 import { stubSnap } from '../tests/snap';
+import { SESSION_TIMEOUT_SECONDS } from './constants';
 import { BrazeMethod, onClientRequest } from './rpc';
 import { resetRuntime } from './runtime';
 import { resetStorage } from './storage';
@@ -42,6 +43,7 @@ describe('onClientRequest', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it('rejects unknown methods', async () => {
@@ -148,13 +150,42 @@ describe('onClientRequest', () => {
         );
       });
 
-      it('does not set the same language again for the same user', async () => {
+      it('does not set the same language again while the session is active, and slides the window', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(1_000_000);
         const { setLanguage } = mockBrazeSdk();
 
         await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
+        vi.advanceTimersByTime((SESSION_TIMEOUT_SECONDS - 60) * 1000);
+        await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
+        vi.advanceTimersByTime((SESSION_TIMEOUT_SECONDS - 60) * 1000);
         await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
 
         expect(setLanguage).toHaveBeenCalledTimes(1);
+      });
+
+      it('re-sets the language once the session window expires', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(1_000_000);
+        const { setLanguage } = mockBrazeSdk();
+
+        await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
+        vi.advanceTimersByTime(SESSION_TIMEOUT_SECONDS * 1000);
+        await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
+
+        expect(setLanguage).toHaveBeenCalledTimes(2);
+      });
+
+      it('re-sets the language on retry if the flush did not succeed', async () => {
+        const { setLanguage, requestImmediateDataFlush } = mockBrazeSdk();
+        requestImmediateDataFlush.mockImplementationOnce((onFlushed) =>
+          onFlushed?.(false),
+        );
+
+        await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
+        await call(BrazeMethod.SyncUser, { ...PARAMS, language: 'fr' });
+
+        expect(setLanguage).toHaveBeenCalledTimes(2);
       });
 
       it('sets a changed language', async () => {

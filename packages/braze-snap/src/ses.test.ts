@@ -296,7 +296,11 @@ describe('SES Compartment runtime', () => {
         persisted: {
           version: number;
           items: Record<string, string>;
-          appliedLanguage?: { profileId: string; language: string };
+          appliedLanguage?: {
+            profileId: string;
+            language: string;
+            sessionExpiresAt: number;
+          };
         };
       };
 
@@ -318,6 +322,7 @@ describe('SES Compartment runtime', () => {
       expect(output.persisted.appliedLanguage).toStrictEqual({
         profileId: 'profile-ses',
         language: 'fr',
+        sessionExpiresAt: expect.any(Number),
       });
       expect(Object.keys(output.persisted.items)).toStrictEqual(
         expect.arrayContaining([
