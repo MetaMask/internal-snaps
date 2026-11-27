@@ -3,7 +3,7 @@ import { ECDSA, Wallet as XrplWallet } from 'xrpl';
 
 import { Wallet } from '../Wallet';
 
-const TEST_MNEMONIC =
+export const TEST_MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
 
 /**
