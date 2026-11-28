@@ -364,6 +364,111 @@ describe('BdkAccountRepository', () => {
     });
   });
 
+  describe('getWalletsByIds', () => {
+    it('returns empty array if no account IDs are provided', async () => {
+      const result = await repo.getWalletsByIds([]);
+
+      expect(mockState.getKey).not.toHaveBeenCalled();
+      expect(result).toStrictEqual([]);
+    });
+
+    it('loads full wallets for requested accounts in requested order, skipping missing ones', async () => {
+      const id1 = 'some-id-1';
+      const id2 = 'some-id-2';
+      const id3 = 'some-id-3';
+      mockState.getKey.mockResolvedValue({
+        [id1]: { ...mockAccountState, id: id1 },
+        [id2]: { ...mockAccountState, id: id2 },
+        [id3]: { ...mockAccountState, id: id3 },
+      });
+      const mockAccount1 = { ...mockAccount, id: id1 };
+      const mockAccount2 = { ...mockAccount, id: id2 };
+      (BdkAccountAdapter.load as Mock)
+        .mockReturnValueOnce(mockAccount2)
+        .mockReturnValueOnce(mockAccount1);
+
+      const result = await repo.getWalletsByIds([id2, 'missing-id', id1]);
+
+      expect(mockState.getKey).toHaveBeenCalledWith('accounts');
+      expect(BdkAccountAdapter.load).toHaveBeenCalledTimes(2);
+      expect(BdkAccountAdapter.load).not.toHaveBeenCalledWith(
+        id3,
+        expect.anything(),
+        expect.anything(),
+      );
+      expect(result).toStrictEqual([mockAccount2, mockAccount1]);
+    });
+
+    it('loads wallets even when cached account metadata is present', async () => {
+      const id = 'some-id-1';
+      mockState.getKey.mockResolvedValue({
+        [id]: {
+          ...mockAccountState,
+          id,
+          metadata: {
+            address: 'bc1qcached1...',
+            addressType: 'p2wpkh',
+            network: 'bitcoin',
+            publicDescriptor: 'cached-public-descriptor-1',
+          },
+        },
+      });
+      const loadedAccount = { ...mockAccount, id };
+      (BdkAccountAdapter.load as Mock).mockReturnValueOnce(loadedAccount);
+
+      const result = await repo.getWalletsByIds([id]);
+
+      expect(ChangeSet.from_json).toHaveBeenCalled();
+      expect(BdkAccountAdapter.load).toHaveBeenCalledTimes(1);
+      expect(result).toStrictEqual([loadedAccount]);
+    });
+
+    it('matches account IDs case-insensitively', async () => {
+      const id = '724ac464-6572-4d9c-a8e2-4075c8846d65';
+      mockState.getKey.mockResolvedValue({
+        [id]: { ...mockAccountState, id },
+      });
+      const loadedAccount = { ...mockAccount, id };
+      (BdkAccountAdapter.load as Mock).mockReturnValueOnce(loadedAccount);
+
+      const result = await repo.getWalletsByIds([id.toUpperCase()]);
+
+      expect(BdkAccountAdapter.load).toHaveBeenCalledTimes(1);
+      expect(result).toStrictEqual([loadedAccount]);
+    });
+
+    it('returns empty array if no accounts are stored', async () => {
+      mockState.getKey.mockResolvedValue(null);
+
+      const result = await repo.getWalletsByIds(['some-id']);
+
+      expect(result).toStrictEqual([]);
+    });
+  });
+
+  describe('getIds', () => {
+    it('returns empty array if no accounts are stored', async () => {
+      mockState.getKey.mockResolvedValue(null);
+
+      expect(await repo.getIds()).toStrictEqual([]);
+    });
+
+    it('returns IDs of stored accounts without loading their wallets', async () => {
+      mockState.getKey.mockResolvedValue({
+        'some-id-1': { ...mockAccountState, id: 'some-id-1' },
+        'deleted-id': null,
+        'some-id-2': { ...mockAccountState, id: 'some-id-2' },
+      });
+
+      const result = await repo.getIds();
+
+      expect(mockState.getKey).toHaveBeenCalledWith('accounts');
+      expect(result).toStrictEqual(['some-id-1', 'some-id-2']);
+      expect(BdkAccountAdapter.load).not.toHaveBeenCalled();
+      expect(ChangeSet.from_json).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getByDerivationPath', () => {
     it('returns null if account not found', async () => {
       mockState.getKey.mockResolvedValue(null);

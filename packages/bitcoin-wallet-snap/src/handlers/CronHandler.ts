@@ -16,6 +16,7 @@ import {
   TrackingSnapEvent,
 } from '../entities';
 import type {
+  BitcoinAccount,
   Logger,
   RescanState,
   SnapClient,
@@ -150,11 +151,20 @@ export class CronHandler {
         await getSelectedAccounts(this.#snap),
       );
 
-      const accounts = (await this.#accountsUseCases.list()).filter(
-        (account) => {
-          return selectedAccounts.has(account.id);
-        },
-      );
+      // Load only the selected wallets: each loaded wallet is deserialized into
+      // WASM memory, and unselected accounts are not synchronized. The same
+      // wallets are shared with the repair step below.
+      let accounts: BitcoinAccount[];
+      try {
+        accounts = await this.#accountsUseCases.getWalletsByIds([
+          ...selectedAccounts,
+        ]);
+      } catch (error) {
+        await this.#snapClient.emitTrackingError(
+          new Error('Selected account loading failed', { cause: error }),
+        );
+        throw error;
+      }
 
       const results = await Promise.allSettled(
         accounts.map(async (account) =>
@@ -178,7 +188,7 @@ export class CronHandler {
           return;
         }
 
-        await this.#repairNextAccount();
+        await this.#repairNextAccount(accounts);
       } catch (error) {
         await this.#snapClient.emitTrackingError(
           new Error('Account repair scan failed', { cause: error }),
@@ -287,8 +297,15 @@ export class CronHandler {
    * pending list only after the scan succeeds, so a scan that never runs
    * (client locked/inactive) or fails leaves the account pending for the
    * next sync run instead of being marked done prematurely.
+   *
+   * Only selected accounts are repaired: unselected accounts are not
+   * synchronized either, and scanning them would send their addresses to the
+   * indexer for no benefit. They stay pending until they are selected.
+   *
+   * @param accounts - The accounts already loaded by the sync run. Used to find
+   * the selected pending accounts, since their IDs use the stored casing.
    */
-  async #repairNextAccount(): Promise<void> {
+  async #repairNextAccount(accounts: BitcoinAccount[]): Promise<void> {
     const stored = await this.#unencryptedState.getKey<RescanState>('rescanV1');
     const hasValidRescanState = is(stored, RescanStateStruct);
 
@@ -296,18 +313,23 @@ export class CronHandler {
       return;
     }
 
-    const accounts = await this.#accountsUseCases.list();
-    const liveIds = new Set(accounts.map((account) => account.id));
+    // Pending IDs can belong to unselected accounts, which are not loaded here,
+    // so liveness is checked against every stored account ID.
+    const allAccountIds = new Set(await this.#accountsUseCases.listIds());
 
     const pending = hasValidRescanState
-      ? stored.pending.filter((id) => liveIds.has(id))
-      : accounts.map((account) => account.id);
+      ? stored.pending.filter((id) => allAccountIds.has(id))
+      : [...allAccountIds];
 
     if (!hasValidRescanState || pending.length !== stored.pending.length) {
       await this.#unencryptedState.setKey('rescanV1', { pending });
     }
 
-    const account = accounts.find(({ id }) => id === pending[0]);
+    const accountsById = new Map(
+      accounts.map((account) => [account.id, account]),
+    );
+    const nextId = pending.find((id) => accountsById.has(id));
+    const account = nextId === undefined ? undefined : accountsById.get(nextId);
     if (!account) {
       return;
     }
@@ -331,7 +353,7 @@ export class CronHandler {
 
     await this.#emitSyncEvents([result]);
     await this.#unencryptedState.setKey('rescanV1', {
-      pending: pending.slice(1),
+      pending: pending.filter((id) => id !== account.id),
     });
   }
 }

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The account repair scan now only repairs selected accounts; unselected accounts stay pending until they are selected ([#PR](https://github.com/MetaMask/internal-snaps/pull/PR))
+
+### Fixed
+
+- Stop loading every stored wallet a second time during the account repair scan in `synchronizeAccounts`, which could exhaust WASM memory (`RuntimeError: unreachable`) for users with large wallets ([#PR](https://github.com/MetaMask/internal-snaps/pull/PR))
+
 ## [3.4.0]
 
 ### Added

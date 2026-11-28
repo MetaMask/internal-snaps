@@ -117,29 +117,27 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
   }
 
   async getByIds(ids: string[]): Promise<BitcoinAccount[]> {
-    if (ids.length === 0) {
-      return [];
-    }
+    const stored = await this.#getStoredAccountsByIds(ids);
+    return stored.map(({ id, account }) =>
+      this.#loadPersistedAccount(id, account),
+    );
+  }
 
+  async getWalletsByIds(ids: string[]): Promise<BitcoinAccount[]> {
+    const stored = await this.#getStoredAccountsByIds(ids);
+    return stored.map(({ id, account }) => this.#loadAccount(id, account));
+  }
+
+  async getIds(): Promise<string[]> {
     const accounts =
       await this.#encryptedState.getKey<SnapState['accounts']>('accounts');
     if (!accounts) {
       return [];
     }
 
-    const accountsByLowercaseId = new Map(
-      Object.entries(accounts).map(([id, account]) => [
-        id.toLowerCase(),
-        { id, account },
-      ]),
+    return Object.entries(accounts).flatMap(([id, account]) =>
+      account ? [id] : [],
     );
-
-    return ids.flatMap((id) => {
-      const storedAccount = accountsByLowercaseId.get(id.toLowerCase());
-      return storedAccount?.account
-        ? [this.#loadPersistedAccount(storedAccount.id, storedAccount.account)]
-        : [];
-    });
   }
 
   async getByDerivationPath(
@@ -504,6 +502,41 @@ export class BdkAccountRepository implements BitcoinAccountRepository {
       account.derivationPath,
       ChangeSet.from_json(account.wallet),
     );
+  }
+
+  /**
+   * Finds stored accounts by ID, matching case-insensitively, using one read of
+   * the account map. Missing accounts are skipped.
+   *
+   * @param accountIds - Account IDs.
+   * @returns The stored accounts, in requested order.
+   */
+  async #getStoredAccountsByIds(
+    accountIds: string[],
+  ): Promise<{ id: string; account: AccountState }[]> {
+    if (accountIds.length === 0) {
+      return [];
+    }
+
+    const accounts =
+      await this.#encryptedState.getKey<SnapState['accounts']>('accounts');
+    if (!accounts) {
+      return [];
+    }
+
+    const accountsByLowercaseId = new Map(
+      Object.entries(accounts).map(([id, account]) => [
+        id.toLowerCase(),
+        { id, account },
+      ]),
+    );
+
+    return accountIds.flatMap((id) => {
+      const storedAccount = accountsByLowercaseId.get(id.toLowerCase());
+      const account = storedAccount?.account;
+
+      return account ? [{ id: storedAccount.id, account }] : [];
+    });
   }
 
   #loadPersistedAccount(id: string, account: AccountState): BitcoinAccount {

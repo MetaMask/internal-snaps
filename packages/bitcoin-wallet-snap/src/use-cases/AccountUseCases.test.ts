@@ -164,6 +164,43 @@ describe('AccountUseCases', () => {
     });
   });
 
+  describe('listIds', () => {
+    it('returns the IDs of stored accounts', async () => {
+      mockRepository.getIds.mockResolvedValue(['some-id']);
+
+      const result = await useCases.listIds();
+
+      expect(mockRepository.getIds).toHaveBeenCalled();
+      expect(result).toStrictEqual(['some-id']);
+    });
+
+    it('propagates an error if the repository getIds fails', async () => {
+      const error = new Error('Get failed');
+      mockRepository.getIds.mockRejectedValue(error);
+
+      await expect(useCases.listIds()).rejects.toBe(error);
+    });
+  });
+
+  describe('getWalletsByIds', () => {
+    it('returns accounts with their wallets loaded', async () => {
+      const mockAccount = mock<BitcoinAccount>();
+      mockRepository.getWalletsByIds.mockResolvedValue([mockAccount]);
+
+      const result = await useCases.getWalletsByIds(['some-id']);
+
+      expect(mockRepository.getWalletsByIds).toHaveBeenCalledWith(['some-id']);
+      expect(result).toStrictEqual([mockAccount]);
+    });
+
+    it('propagates an error if the repository getWalletsByIds fails', async () => {
+      const error = new Error('Get failed');
+      mockRepository.getWalletsByIds.mockRejectedValue(error);
+
+      await expect(useCases.getWalletsByIds(['some-id'])).rejects.toBe(error);
+    });
+  });
+
   describe('createMany', () => {
     const createParams: CreateAccountParams = {
       network: 'bitcoin',
