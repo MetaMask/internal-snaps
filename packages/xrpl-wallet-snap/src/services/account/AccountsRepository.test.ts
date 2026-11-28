@@ -1,7 +1,6 @@
 import { InMemoryState } from '@metamask/snap-networks-utils';
 
 import { KnownCaip2ChainId } from '../../api';
-import { DEFAULT_UNENCRYPTED_STATE } from '../state/stateTypes';
 import {
   generateMockXrplKeyringAccounts,
   generateXrplKeyringAccount,
@@ -19,7 +18,6 @@ function createState(
   keyringAccounts: Record<string, XrplKeyringAccount> = {},
 ): InMemoryState<KeyringAccountState> {
   return new InMemoryState<KeyringAccountState>({
-    ...DEFAULT_UNENCRYPTED_STATE,
     keyringAccounts,
   });
 }
