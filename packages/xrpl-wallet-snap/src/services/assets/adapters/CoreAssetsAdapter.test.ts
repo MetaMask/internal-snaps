@@ -1,0 +1,222 @@
+import type { Asset, AssetMetadata } from '@metamask/assets-controller';
+import type { Logger } from '@metamask/snap-networks-utils';
+import type { Mock } from 'vitest';
+
+import { KnownCaip2ChainId } from '../../../api';
+import { NATIVE_ASSET_SYMBOL, XRPL_DECIMAL_PLACES } from '../../../constants';
+import { getSlip44AssetId } from '../../../utils';
+import { CoreAssetsAdapterException } from '../exceptions';
+import { CoreAssetsAdapter } from './CoreAssetsAdapter';
+
+const ACCOUNT_ID = 'acct-1';
+const MAINNET_ASSET_ID = getSlip44AssetId(KnownCaip2ChainId.Mainnet);
+
+const fungiblePrice = {
+  assetPriceType: 'fungible' as const,
+  price: 0,
+  usdPrice: 0,
+  lastUpdated: 0,
+};
+
+const metadata: AssetMetadata = {
+  type: 'native',
+  symbol: NATIVE_ASSET_SYMBOL,
+  name: 'XRP',
+  decimals: XRPL_DECIMAL_PLACES,
+};
+
+function coreAsset(
+  id: typeof MAINNET_ASSET_ID,
+  chainId: KnownCaip2ChainId,
+): Asset {
+  return {
+    id,
+    chainId,
+    balance: { amount: '1' },
+    metadata,
+    price: fungiblePrice,
+    fiatValue: 0,
+  };
+}
+
+const mainnetAsset = coreAsset(MAINNET_ASSET_ID, KnownCaip2ChainId.Mainnet);
+
+function createAdapter(): {
+  adapter: CoreAssetsAdapter;
+  getAccountAssetByID: Mock;
+  getAccountAssetsByIDs: Mock;
+  getAccountAssetsByScope: Mock;
+  getAssetMetadata: Mock;
+} {
+  const logger = {
+    debug: vi.fn(),
+    withPrefix: vi.fn(),
+  } as unknown as Logger;
+  (logger.withPrefix as Mock).mockReturnValue(logger);
+
+  const getAccountAssetByID = vi.fn();
+  const getAccountAssetsByIDs = vi.fn();
+  const getAccountAssetsByScope = vi.fn();
+  const getAssetMetadata = vi.fn();
+
+  const adapter = new CoreAssetsAdapter({
+    logger,
+    getAccountAssetByID,
+    getAccountAssetsByIDs,
+    getAccountAssetsByScope,
+    getAssetMetadata,
+  });
+
+  return {
+    adapter,
+    getAccountAssetByID,
+    getAccountAssetsByIDs,
+    getAccountAssetsByScope,
+    getAssetMetadata,
+  };
+}
+
+describe('CoreAssetsAdapter', () => {
+  describe('getAccountAssetByID', () => {
+    it('returns the controller asset', async () => {
+      const { adapter, getAccountAssetByID } = createAdapter();
+      getAccountAssetByID.mockResolvedValue(mainnetAsset);
+
+      expect(
+        await adapter.getAccountAssetByID(ACCOUNT_ID, MAINNET_ASSET_ID),
+      ).toStrictEqual(mainnetAsset);
+      expect(getAccountAssetByID).toHaveBeenCalledWith(
+        ACCOUNT_ID,
+        MAINNET_ASSET_ID,
+      );
+    });
+
+    it('returns null when Core has no account asset', async () => {
+      const { adapter, getAccountAssetByID } = createAdapter();
+      getAccountAssetByID.mockResolvedValue(undefined);
+
+      expect(
+        await adapter.getAccountAssetByID(ACCOUNT_ID, MAINNET_ASSET_ID),
+      ).toBeNull();
+    });
+
+    it('throws CoreAssetsAdapterException when Core fails', async () => {
+      const { adapter, getAccountAssetByID } = createAdapter();
+      getAccountAssetByID.mockRejectedValue(new Error('messenger down'));
+
+      await expect(
+        adapter.getAccountAssetByID(ACCOUNT_ID, MAINNET_ASSET_ID),
+      ).rejects.toThrow(CoreAssetsAdapterException);
+    });
+  });
+
+  describe('getAccountAssetsByIDs', () => {
+    it('returns assets in id order and null for a miss', async () => {
+      const { adapter, getAccountAssetsByIDs } = createAdapter();
+      getAccountAssetsByIDs.mockResolvedValue({
+        [MAINNET_ASSET_ID]: mainnetAsset,
+      });
+
+      expect(
+        await adapter.getAccountAssetsByIDs(ACCOUNT_ID, [
+          MAINNET_ASSET_ID,
+          'xrpl:0/token:USD.rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY',
+        ]),
+      ).toStrictEqual([mainnetAsset, null]);
+    });
+
+    it('throws CoreAssetsAdapterException when Core fails', async () => {
+      const { adapter, getAccountAssetsByIDs } = createAdapter();
+      getAccountAssetsByIDs.mockRejectedValue(new Error('messenger down'));
+
+      await expect(
+        adapter.getAccountAssetsByIDs(ACCOUNT_ID, [MAINNET_ASSET_ID]),
+      ).rejects.toThrow(CoreAssetsAdapterException);
+    });
+  });
+
+  describe('getAccountAssetsByScope', () => {
+    it('returns the controller assets for the scope', async () => {
+      const { adapter, getAccountAssetsByScope } = createAdapter();
+      getAccountAssetsByScope.mockResolvedValue({
+        [MAINNET_ASSET_ID]: mainnetAsset,
+      });
+
+      expect(
+        await adapter.getAccountAssetsByScope(
+          KnownCaip2ChainId.Mainnet,
+          ACCOUNT_ID,
+        ),
+      ).toStrictEqual([mainnetAsset]);
+      expect(getAccountAssetsByScope).toHaveBeenCalledWith(
+        KnownCaip2ChainId.Mainnet,
+        ACCOUNT_ID,
+      );
+    });
+
+    it('throws CoreAssetsAdapterException when Core fails', async () => {
+      const { adapter, getAccountAssetsByScope } = createAdapter();
+      getAccountAssetsByScope.mockRejectedValue(new Error('messenger down'));
+
+      await expect(
+        adapter.getAccountAssetsByScope(KnownCaip2ChainId.Mainnet, ACCOUNT_ID),
+      ).rejects.toThrow(CoreAssetsAdapterException);
+    });
+  });
+
+  describe('getAccountAssets', () => {
+    it('returns mainnet assets from known scopes', async () => {
+      const { adapter, getAccountAssetsByScope } = createAdapter();
+      getAccountAssetsByScope.mockImplementation(async (_scope: string) => {
+        return { [MAINNET_ASSET_ID]: mainnetAsset };
+      });
+
+      expect(await adapter.getAccountAssets(ACCOUNT_ID)).toStrictEqual([
+        mainnetAsset,
+      ]);
+      expect(getAccountAssetsByScope).toHaveBeenCalledWith(
+        KnownCaip2ChainId.Mainnet,
+        ACCOUNT_ID,
+      );
+    });
+
+    it('keeps the scope error when a network read fails', async () => {
+      const { adapter, getAccountAssetsByScope } = createAdapter();
+      getAccountAssetsByScope.mockImplementation(async (_scope: string) => {
+        throw new Error('messenger down');
+      });
+
+      await expect(adapter.getAccountAssets(ACCOUNT_ID)).rejects.toThrow(
+        CoreAssetsAdapterException,
+      );
+    });
+  });
+
+  describe('getAssetMetadata', () => {
+    it('returns controller metadata', async () => {
+      const { adapter, getAssetMetadata } = createAdapter();
+      getAssetMetadata.mockResolvedValue(metadata);
+
+      expect(await adapter.getAssetMetadata(MAINNET_ASSET_ID)).toStrictEqual(
+        metadata,
+      );
+      expect(getAssetMetadata).toHaveBeenCalledWith(MAINNET_ASSET_ID);
+    });
+
+    it('returns null when Core has no metadata', async () => {
+      const { adapter, getAssetMetadata } = createAdapter();
+      getAssetMetadata.mockResolvedValue(undefined);
+
+      expect(await adapter.getAssetMetadata(MAINNET_ASSET_ID)).toBeNull();
+    });
+
+    it('throws CoreAssetsAdapterException when Core fails', async () => {
+      const { adapter, getAssetMetadata } = createAdapter();
+      getAssetMetadata.mockRejectedValue(new Error('messenger down'));
+
+      await expect(adapter.getAssetMetadata(MAINNET_ASSET_ID)).rejects.toThrow(
+        CoreAssetsAdapterException,
+      );
+    });
+  });
+});
