@@ -1,9 +1,5 @@
 import { SolMethod } from '@metamask/keyring-api';
-import {
-  DEFAULT_METAMASK_ORIGIN,
-  serialize,
-} from '@metamask/snap-networks-utils';
-import { BigNumber } from 'bignumber.js';
+import { DEFAULT_METAMASK_ORIGIN } from '@metamask/snap-networks-utils';
 
 import { Network } from '../../../../core/constants/solana';
 import type { TransactionScanResult } from '../../../../core/services/transaction-scan/types';
@@ -303,110 +299,66 @@ describe('getSecurityProperties', () => {
 
 describe('parseConfirmTransactionRequestDialogValue', () => {
   it.each([undefined, null, false, 'dialog-result'])(
-    'reports a rejection with no context when the dialog resolves to %p',
+    'reports a rejection with no security properties when the dialog resolves to %p',
     (value) => {
       expect(parseConfirmTransactionRequestDialogValue(value)).toStrictEqual({
-        result: false,
-        context: null,
+        confirmed: false,
       });
     },
   );
 
   it('only reads a boolean true as a confirmation', () => {
     expect(
-      parseConfirmTransactionRequestDialogValue({
-        result: 'true',
-        context: null,
-      }),
-    ).toStrictEqual({ result: false, context: null });
+      parseConfirmTransactionRequestDialogValue({ confirmed: 'true' }),
+    ).toStrictEqual({ confirmed: false });
   });
 
-  it('restores the context it was created from', () => {
-    const context = buildContext({
-      scan: buildScan({
-        validation: { type: 'Malicious', reason: 'known_attacker' },
-      }),
-    });
+  it('reads a confirmation with no security properties', () => {
+    expect(
+      parseConfirmTransactionRequestDialogValue({ confirmed: true }),
+    ).toStrictEqual({ confirmed: true });
+  });
+
+  it('reads the security properties the dialog resolved with', () => {
+    const securityProperties = {
+      securityAlertResponse: 'Malicious',
+      securityAlertReason: 'known_attacker',
+    };
 
     expect(
       parseConfirmTransactionRequestDialogValue({
-        result: true,
-        context: serialize(context),
+        confirmed: true,
+        securityProperties,
       }),
-    ).toStrictEqual({ result: true, context });
+    ).toStrictEqual({ confirmed: true, securityProperties });
   });
 
-  it('restores bigint and BigNumber values in the context', () => {
-    const context = buildContext({
-      advanced: {
-        shown: true,
-        instructions: [
-          {
-            type: 'TokenTransfer',
-            parsed: { data: { amount: 1000n, fee: new BigNumber('1.5') } },
-          },
-        ] as unknown as ConfirmTransactionRequestContext['advanced']['instructions'],
-      },
-    });
+  it('keeps the security properties of a rejection', () => {
+    const securityProperties = { securityAlertResponse: 'Benign' };
 
     expect(
       parseConfirmTransactionRequestDialogValue({
-        result: true,
-        context: serialize(context),
+        confirmed: false,
+        securityProperties,
       }),
-    ).toStrictEqual({ result: true, context });
+    ).toStrictEqual({ confirmed: false, securityProperties });
   });
 
-  it('drops undefined values, so they read back as missing keys', () => {
-    const context = buildContext({
-      advanced: {
-        shown: true,
-        instructions: [
-          {
-            type: 'TokenTransfer',
-            parsed: { data: { amount: 1000n, memo: undefined } },
-          },
-        ] as unknown as ConfirmTransactionRequestContext['advanced']['instructions'],
-      },
-    });
-
-    expect(
-      parseConfirmTransactionRequestDialogValue({
-        result: true,
-        context: serialize(context),
-      }),
-    ).toStrictEqual({
-      result: true,
-      context: {
-        ...context,
-        advanced: {
-          shown: true,
-          instructions: [
-            {
-              type: 'TokenTransfer',
-              parsed: { data: { amount: 1000n } },
-            },
-          ],
-        },
-      },
-    });
-  });
-
-  it('has no context when the value carries none', () => {
-    expect(
-      parseConfirmTransactionRequestDialogValue({
-        result: true,
-        context: null,
-      }),
-    ).toStrictEqual({ result: true, context: null });
-  });
-
-  it('has no context when the value carries something other than an object', () => {
-    expect(
-      parseConfirmTransactionRequestDialogValue({
-        result: true,
-        context: 'not-a-context',
-      }),
-    ).toStrictEqual({ result: true, context: null });
-  });
+  it.each([
+    null,
+    'Malicious',
+    1,
+    { securityAlertResponse: 1 },
+    { extra: true },
+  ])(
+    'leaves out security properties of the wrong shape: %p',
+    (securityProperties) => {
+      expect(
+        parseConfirmTransactionRequestDialogValue({
+          confirmed: true,
+          securityProperties,
+        }),
+      ).toStrictEqual({ confirmed: true });
+    },
+  );
 });

@@ -2,7 +2,6 @@ import type { SecurityAlertResponse } from '@metamask/snap-networks-utils';
 import {
   MaliciousAcknowledgementFormNames,
   requiresMaliciousAcknowledgement,
-  serialize,
 } from '@metamask/snap-networks-utils';
 import type { InputChangeEvent } from '@metamask/snaps-sdk';
 
@@ -15,6 +14,7 @@ import {
 } from '../../../../core/utils/interface';
 import { state } from '../../../../snapContext';
 import { ConfirmTransactionRequest } from './ConfirmTransactionRequest';
+import { getSecurityProperties } from './securityProperties';
 import type { ConfirmTransactionRequestContext as Context } from './types';
 import { shouldDisableConfirmation, toUiContext } from './utils';
 
@@ -70,26 +70,31 @@ async function updateLatestContext(
 }
 
 /**
- * Resolves the confirmation interface with the user's result and the latest
- * stored context, then clears its mapping. Render computes the security
- * verdict from that context.
+ * Resolves the confirmation interface with the user's decision and the security
+ * verdict the user saw, then clears its mapping.
+ *
+ * The interface context holds much more than the render step needs, so only
+ * the decision and the security verdict are passed on. The verdict is omitted
+ * when there is none, because the resolved value must be JSON.
  *
  * The context must be read under the interface lock, so it is the context the
  * user acted on. The interface is deleted once it resolves, so the context
  * cannot be read afterward.
  *
  * @param id - The ID of the interface to resolve.
- * @param result - Whether the user confirmed the transaction.
+ * @param confirmed - Whether the user confirmed the transaction.
  * @param context - The latest stored context, or `null` if there is none.
  */
 async function resolveResult(
   id: string,
-  result: boolean,
+  confirmed: boolean,
   context: Context | null,
 ): Promise<void> {
+  const securityProperties = getSecurityProperties(context);
+
   await resolveInterface(id, {
-    result,
-    context: context === null ? null : serialize(context),
+    confirmed,
+    ...(securityProperties ? { securityProperties } : {}),
   });
   await state.deleteKey(
     `mapInterfaceNameToId.${CONFIRM_SIGN_AND_SEND_TRANSACTION_INTERFACE_NAME}`,

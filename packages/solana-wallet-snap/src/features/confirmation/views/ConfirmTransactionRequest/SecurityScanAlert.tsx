@@ -81,7 +81,10 @@ export const SecurityScanAlert = ({
       isFetchError={false}
       error={null}
       validation={
-        preferences.useSecurityAlerts ? (scan?.validation ?? null) : null
+        preferences.useSecurityAlerts && scan?.validation
+          ? // The raw Blockaid description is kept for telemetry only.
+            { ...scan.validation, description: null }
+          : null
       }
     />
   );
